@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% block title %}Stratigraphy{% endblock %}
+{% block content %}
+<h2>Stratigraphy — Stratigraphic Column Viewer</h2>
+<style>
+/* ---- Hierarchy-based stratigraphic column ---- */
+.sc-wrap { max-width: 96rem; }
+.sc-panel { border:1px solid #e1dfdd; border-radius:8px; background:#fff; padding:.75rem; }
+.muted { color:#605e5c; }
+.btn { display:inline-block; padding:.35rem .6rem; border:1px solid #605e5c; border-radius:3px; background:#fff; cursor:pointer; }
+.btn:hover { background:#f3f2f1; }
+#matrix-root { overflow:auto; max-height: 78vh; border:1px solid #ccc; border-radius:6px; }
+.sc-table { border-collapse: collapse; width: 100%; }
+.sc-table th, .sc-table td { padding: 4px 7px; text-align: left; vertical-align: middle; }
+.sc-table thead th { position: sticky; top: 0; z-index: 2; font-size: .9rem;
+  border-bottom: 2px solid rgba(0,0,0,.25); letter-spacing: .02em; }
+.sc-cell { border: 1px solid rgba(0,0,0,.12); }
+.sc-cell strong { display: block; font-size: .88rem; line-height: 1.25; }
+.sc-age { font-size: .78rem; opacity: .75; margin-top: 1px; }
+.sc-empty { background: #f8f8f8; border: 1px solid rgba(0,0,0,.06); }
+.sc-footnote { font-size: .85rem; color: #605e5c; margin-top:.35rem; }
+.legend { display:flex; gap:.5rem; flex-wrap:wrap; margin:.35rem 0 .6rem; }
+.rank-col { min-width: 8rem; }
+</style>
+
+<!-- Search -->
+<section class="sc-wrap sc-panel" style="margin-bottom:1rem;">
+  <h3 style="margin:0 0 .5rem 0;">Find Stratigraphic Columns</h3>
+  <div class="row" style="grid-template-columns:160px 1fr;">
+    <label for="strat-q">Query</label>
+    <input id="strat-q" type="text" value="*" placeholder="e.g., data.Name:Gudrun OR *" />
+    <label for="strat-limit">Limit</label>
+    <input id="strat-limit" type="number" value="50" min="1" max="1000" />
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <button class="btn" id="btn-search" type="button">Search Columns</button>
+    <span id="search-status" class="muted"></span>
+  </div>
+  <div style="margin-top:.5rem;">
+    <label for="strat-results">Results</label>
+    <select id="strat-results" size="7" style="width:100%;">
+      <option value="">— no results —</option>
+    </select>
+    <div class="muted" style="font-size:.85rem;margin-top:.25rem;">
+      Select a record to render the hierarchical stratigraphic column.
+    </div>
+  </div>
+</section>
+
+<!-- Legend + Matrix -->
+<section class="sc-wrap sc-panel">
+  <span id="load-status" class="muted" style="display:inline-block;margin-bottom:.5rem;"></span>
+  <div id="legend" class="legend"></div>
+  <div id="matrix-root"></div>
+  <div class="sc-footnote">
+    Columns represent rank levels (coarsest left, finest right).
+    Cells span rows to show the hierarchical nesting of stratigraphic units.
+    Ages displayed as supplementary information within each cell.
+  </div>
+  <details style="margin-top:.75rem;">
+    <summary class="muted">Raw metadata</summary>
+    <table class="sc-table" style="font-size:13px;">
+      <tbody id="meta-body"></tbody>
+    </table>
+  </details>
+</section>
+
+<script>
+(function(){
+  'use strict';
+
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const qInput     = $('#strat-q');
+  const limitInput = $('#strat-limit');
+  const btnSearch  = $('#btn-search');
+  const resSelect  = $('#strat-results');
+  const searchStat = $('#search-status');
+  const statusBox  = $('#load-status');
+  const legendBox  = $('#legend');
+  const matrixRoot = $('#matrix-root');
+  const metaBody   = $('#meta-body');
+
+  const setStatus = (msg) => { if (statusBox) statusBox.textContent = msg || ''; };
+  const clear = (el) => { if (el) el.innerHTML=''; };
+
+  /* ------------------------------------------------------------------ */
+  /*  METADATA helper                                                   */
+  /* ------------------------------------------------------------------ */
+  function renderMetaPairs(obj){
+    if (!metaBody) return;
+    function flt(val, path='', out=[]){
+      if (val && typeof val === 'object' && !Array.isArray(val))
+        for (const [k,v] of Object.entries(val)) flt(v, path ? `${path}.${k}` : k, out);
+      else if (Array.isArray(val)) val.forEach((v,i)=>flt(v, path?`${path}.${i}`:`${i}`, out));
+      else out.push({name:path, value:(val===null||val===undefined)?'—':String(val)});
+      return out;
+    }
+    const pairs = flt(obj);
+    clear(metaBody);
+    if (!pairs.length){ metaBody.innerHTML='<tr><td class="muted">No metadata</td><td></td></tr>'; return; }
+    for (const p of pairs){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td class="meta-name">${p.name}</td><td>${p.value}</td>`;
+      metaBody.appendChild(tr);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  CONTAINMENT helpers                                               */
+  /* ------------------------------------------------------------------ */
+  function isContainedIn(child, parent) {
+    // Age containment: topMa = older (bigger), baseMa = younger (smaller)
+    // Use 0.5 Ma tolerance for boundary rounding between geological schemes
+    if (child.topMa != null && child.baseMa != null &&
+        parent.topMa != null && parent.baseMa != null) {
+      return child.topMa <= parent.topMa + 0.5 &&
+             child.baseMa >= parent.baseMa - 0.5;
+    }
+    // Chrono Code hierarchy (e.g. "Phanerozoic.Paleozoic.Silurian")
+    if (child.code && parent.code) {
+      return child.code.startsWith(parent.code + '.') || child.code === parent.code;
+    }
+    return false;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  BUILD HIERARCHY TREE                                              */
+  /*  Ranks kept in original OSDU order (coarsest → finest).            */
+  /*  Parent–child via age/code containment; leaf nodes get colSpan     */
+  /*  to fill remaining columns.  Row count = number of leaves.         */
+  /* ------------------------------------------------------------------ */
+  function buildHierarchy(model) {
+    const ranks = (model.ranks || []).map((rk, ri) => ({
+      rankName: rk.rankName || 'Unspecified',
+      units: (rk.units || []).map(u => ({
+        name:   u.name   || '(unit)',
+        topMa:  (u.topMa  != null) ? u.topMa  : null,
+        baseMa: (u.baseMa != null) ? u.baseMa : null,
+        color:  u.color  || null,
+        code:   u.code   || '',
+      }))
+    })).filter(rk => rk.units.length > 0);
+
+    if (!ranks.length) return null;
+    const nRanks = ranks.length;
+
+    // Create tree nodes
+    const levels = ranks.map((rk, ri) =>
+      rk.units.map(u => ({
+        ...u,
+        rankIdx:   ri,
+        rankName:  rk.rankName,
+        children:  [],
+        parent:    null,
+        leafCount: 0,
+        rowStart:  0,
+        isLeaf:    false,
+        colSpan:   1,
+      }))
+    );
+
+    // Assign parents: for each node at rank ri, find nearest ancestor with tightest fit
+    for (let ri = 1; ri < nRanks; ri++) {
+      for (const child of levels[ri]) {
+        let bestParent = null;
+        let bestRange  = Infinity;    // narrowest age-span wins
+        let bestRank   = -1;
+        for (let pi = ri - 1; pi >= 0; pi--) {
+          for (const p of levels[pi]) {
+            if (!isContainedIn(child, p)) continue;
+            const range = (p.topMa != null && p.baseMa != null)
+              ? (p.topMa - p.baseMa) : Infinity;
+            // Prefer nearest rank; within same rank, prefer narrowest range
+            if (pi > bestRank || (pi === bestRank && range < bestRange)) {
+              bestParent = p;
+              bestRange  = range;
+              bestRank   = pi;
+            }
+          }
+          if (bestParent && bestRank === pi) break;   // found at nearest possible rank
+        }
+        if (bestParent) {
+          bestParent.children.push(child);
+          child.parent = bestParent;
+        }
+      }
+    }
+
+    // Collect roots (no parent) — rank-0 nodes + orphans from deeper ranks
+    const roots = [];
+    for (let ri = 0; ri < nRanks; ri++)
+      for (const n of levels[ri])
+        if (!n.parent) roots.push(n);
+
+    // Sort roots older-first (bigger topMa first)
+    roots.sort((a, b) => (b.topMa || 0) - (a.topMa || 0));
+
+    // Compute leaf counts + colSpan
+    function computeLeaf(node) {
+      if (node.children.length === 0) {
+        node.isLeaf = true;
+        node.leafCount = 1;
+        node.colSpan = nRanks - node.rankIdx;   // span to rightmost column
+      } else {
+        node.isLeaf = false;
+        node.children.sort((a, b) => (b.topMa || 0) - (a.topMa || 0));
+        node.leafCount = 0;
+        for (const c of node.children) {
+          computeLeaf(c);
+          node.leafCount += c.leafCount;
+        }
+        const minChildRank = Math.min(...node.children.map(c => c.rankIdx));
+        node.colSpan = minChildRank - node.rankIdx;
+      }
+    }
+    for (const r of roots) computeLeaf(r);
+
+    // Assign row starts via DFS
+    let rowIdx = 0;
+    function assignRows(nodes) {
+      for (const n of nodes) {
+        n.rowStart = rowIdx;
+        if (n.isLeaf) rowIdx++;
+        else assignRows(n.children);
+      }
+    }
+    assignRows(roots);
+
+    const totalRows = rowIdx;
+
+    // Column metadata: rank-level gradient dark → light
+    const columns = ranks.map((rk, ri) => {
+      const t = nRanks === 1 ? 0.5 : ri / (nRanks - 1);
+      const lightness  = Math.round(36 + t * 50);    // 36% → 86%
+      const saturation = Math.round(46 - t * 16);    // 46% → 30%
+      const bg = `hsl(210, ${saturation}%, ${lightness}%)`;
+      const fg = lightness < 55 ? '#fff' : '#222';
+      return { rankName: rk.rankName, bg, fg, nodes: levels[ri] };
+    });
+
+    return { columns, totalRows, nRanks };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  RENDER LEGEND                                                     */
+  /* ------------------------------------------------------------------ */
+  function renderLegend(columns) {
+    clear(legendBox);
+    if (!columns) return;
+    for (const col of columns) {
+      const wrap = document.createElement('span');
+      wrap.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;margin-right:.75rem;';
+      const sw = document.createElement('i');
+      sw.style.cssText = `width:14px;height:14px;display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,.18);background:${col.bg};`;
+      wrap.appendChild(sw);
+      const lbl = document.createElement('span');
+      lbl.textContent = `${col.rankName} (${col.nodes.length})`;
+      wrap.appendChild(lbl);
+      legendBox.appendChild(wrap);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  RENDER HIERARCHY TABLE                                            */
+  /* ------------------------------------------------------------------ */
+  function fmtAge(v) {
+    if (v == null) return '';
+    return Math.round(v * 100) / 100;
+  }
+  function isLightColor(hex) {
+    if (!hex || hex[0] !== '#') return true;
+    const r = parseInt(hex.substr(1,2),16),
+          g = parseInt(hex.substr(3,2),16),
+          b = parseInt(hex.substr(5,2),16);
+    return (0.299*r + 0.587*g + 0.114*b) > 155;
+  }
+
+  function renderHierarchy(hierarchy) {
+    clear(matrixRoot);
+    if (!hierarchy || hierarchy.totalRows === 0) {
+      matrixRoot.innerHTML = '<p class="muted" style="padding:.5rem;">No stratigraphic units to display.</p>';
+      return;
+    }
+    const { columns, totalRows, nRanks } = hierarchy;
+
+    // Build start-map per column:  row → node
+    const startMap = columns.map(col => {
+      const m = new Map();
+      for (const node of col.nodes) m.set(node.rowStart, node);
+      return m;
+    });
+
+    const table = document.createElement('table');
+    table.className = 'sc-table';
+
+    //  Header
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    for (const col of columns) {
+      const th = document.createElement('th');
+      th.textContent = col.rankName;
+      th.className = 'rank-col';
+      th.style.background = col.bg;
+      th.style.color = col.fg;
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    //  Body
+    const tbody = document.createElement('tbody');
+    const coveredUntil = new Array(nRanks).fill(-1);
+
+    for (let r = 0; r < totalRows; r++) {
+      const tr = document.createElement('tr');
+
+      for (let c = 0; c < nRanks; c++) {
+        if (r <= coveredUntil[c]) continue;           // covered by rowspan / colspan
+
+        const node = startMap[c].get(r);
+        if (node) {
+          const td = document.createElement('td');
+          td.className = 'sc-cell';
+          if (node.leafCount > 1)  td.rowSpan = node.leafCount;
+          if (node.colSpan  > 1)   td.colSpan = node.colSpan;
+
+          // Background: prefer ICS chrono colour; else rank gradient
+          const bgColor = node.color || columns[c].bg;
+          td.style.background = bgColor;
+          td.style.color = node.color ? (isLightColor(node.color) ? '#222' : '#fff') : columns[c].fg;
+
+          // Name
+          const nameEl = document.createElement('strong');
+          nameEl.textContent = node.name;
+          td.appendChild(nameEl);
+
+          // Age (supplementary info)
+          if (node.topMa != null && node.baseMa != null) {
+            const ageEl = document.createElement('div');
+            ageEl.className = 'sc-age';
+            ageEl.textContent = `${fmtAge(node.topMa)}\u2013${fmtAge(node.baseMa)} Ma`;
+            td.appendChild(ageEl);
+          }
+
+          td.title = node.name
+            + (node.topMa != null ? `\n${node.topMa}\u2013${node.baseMa} Ma` : '')
+            + (node.code  ? `\n${node.code}` : '');
+
+          tr.appendChild(td);
+
+          // Mark coverage
+          const endRow = r + node.leafCount - 1;
+          for (let cc = c; cc < Math.min(c + node.colSpan, nRanks); cc++)
+            coveredUntil[cc] = Math.max(coveredUntil[cc], endRow);
+        } else {
+          // Uncovered empty cell (rare with colSpan logic)
+          const td = document.createElement('td');
+          td.className = 'sc-cell sc-empty';
+          tr.appendChild(td);
+        }
+      }
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    matrixRoot.appendChild(table);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  LOAD + SEARCH                                                     */
+  /* ------------------------------------------------------------------ */
+  async function loadColumnById(id){
+    const rid = (id||'').trim();
+    if (!rid) { setStatus('Select a StratigraphicColumn.'); return; }
+    setStatus('Loading\u2026');
+    try {
+      const url = `/api/strat/column.json?id=${encodeURIComponent(rid)}&enrich=true`;
+      const res = await fetch(url, { headers:{'Cache-Control':'no-store'} });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const model = await res.json();
+      const hierarchy = buildHierarchy(model);
+      renderLegend(hierarchy ? hierarchy.columns : []);
+      renderHierarchy(hierarchy);
+      renderMetaPairs({
+        column: model.column || {},
+        ranks: (model.ranks || []).map(r => ({
+          rankName: r.rankName,
+          unitCount: r.unitCount || (r.units||[]).length
+        }))
+      });
+      const info = hierarchy
+        ? `${hierarchy.totalRows} rows \u00d7 ${hierarchy.nRanks} ranks`
+        : 'empty';
+      setStatus(`OK \u2014 ${info}`);
+    } catch(e) {
+      console.warn(e);
+      setStatus('Load failed: ' + e.message);
+    }
+  }
+
+  async function doSearch(){
+    const q = (qInput.value||'*').trim();
+    const lim = Math.max(1, Math.min(200, parseInt(limitInput.value||'20', 10)));
+    searchStat.textContent = 'Searching\u2026';
+    resSelect.innerHTML = '<option value="">— searching —</option>';
+    try {
+      const url = `/api/strat/search.json?q=${encodeURIComponent(q)}&limit=${lim}`;
+      const r = await fetch(url, { headers:{'Cache-Control':'no-store'} });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const data = await r.json();
+      const items = data.items || [];
+      resSelect.innerHTML = '';
+      if (!items.length) {
+        resSelect.innerHTML = '<option value="">— no results —</option>';
+        searchStat.textContent = 'No results';
+        clear(legendBox); clear(matrixRoot);
+        return;
+      }
+      for (const it of items) {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = `[StratigraphicColumn] ${it.name||it.id} — ${it.id}`;
+        resSelect.appendChild(opt);
+      }
+      resSelect.selectedIndex = 0;
+      searchStat.textContent = `Found ${data.total ?? items.length}`;
+      loadColumnById(resSelect.value);
+    } catch(e) {
+      console.warn(e);
+      resSelect.innerHTML = '<option value="">— error —</option>';
+      searchStat.textContent = 'Search failed: ' + e.message;
+    }
+  }
+
+  btnSearch?.addEventListener('click', doSearch);
+  resSelect?.addEventListener('change', () => {
+    const id = resSelect.value || '';
+    if (id) loadColumnById(id);
+  });
+
+})();
+</script>
+{% endblock %}

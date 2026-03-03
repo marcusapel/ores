@@ -1,0 +1,12 @@
+{
+  "remote.portsAttributes": {
+    "8000": {
+      "label": "FastAPI",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "remote.autoForwardPorts": true,
+  "remote.autoForwardPortsSource": "process",
+  "python-envs.defaultEnvManager": "ms-python.python:system"
+}
+
