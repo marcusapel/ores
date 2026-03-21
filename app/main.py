@@ -460,6 +460,28 @@ async def _enrich_bd_activity(
             full = r.json()
             d = full.get("data") or {}
             log.info("[BD-ACT] Loaded Activity %s: %s", target_id, d.get("Name", ""))
+
+            # Resolve names for DataObjectParameter refs in Parameters
+            param_labels: Dict[str, str] = {}
+            params_list = d.get("Parameters") or []
+            dop_ids = []
+            for p in params_list:
+                if isinstance(p, dict):
+                    dop = p.get("DataObjectParameter") or ""
+                    if dop and dop not in param_labels:
+                        dop_ids.append(dop)
+            # Batch-fetch names (up to 20)
+            for dop_id in dop_ids[:20]:
+                try:
+                    lr = await client.get(f"{storage_url}/{dop_id}", headers=hdr)
+                    if lr.status_code == 200:
+                        ld = lr.json()
+                        lname = (ld.get("data") or {}).get("Name") or ""
+                        if lname:
+                            param_labels[dop_id] = lname
+                except Exception:
+                    pass
+
             return {
                 "id": full.get("id", target_id),
                 "kind": full.get("kind", ""),
@@ -469,7 +491,8 @@ async def _enrich_bd_activity(
                 "CreationDateTime": d.get("CreationDateTime", ""),
                 "Originator": d.get("Originator", ""),
                 "ActivityTemplateID": d.get("ActivityTemplateID", ""),
-                "Parameters": d.get("Parameters") or [],
+                "Parameters": params_list,
+                "param_labels": param_labels,
             }
         else:
             log.warning("[BD-ACT] Activity %s returned %d", target_id, r.status_code)
