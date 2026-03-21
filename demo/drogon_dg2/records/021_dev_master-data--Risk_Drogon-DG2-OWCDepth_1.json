@@ -18,9 +18,9 @@
     ]
   },
   "data": {
-    "Name": "Drogon DG2 — OWC depth and aquifer support uncertainty",
-    "Summary": "Uncertainty in oil-water contact depth and aquifer pressure support affects STOIIP and depletion strategy.",
-    "Description": "OWC refined to 1710 ± 10 m TVDSS (from ±15 m at DG1). Aquifer modelling suggests moderate pressure support, sufficient for primary depletion; water injection reserved for Phase 2.",
+    "Name": "Drogon DG2 — Fluid contact depth uncertainty",
+    "Summary": "Free water level and gas–oil contact depths are uncertain across the 7 fault-bounded reservoir regions, directly impacting STOIIP.",
+    "Description": "FWL Central = UNIFORM(1672, 1682) m, FWL NorthHorst = UNIFORM(1655, 1665) m, GOC NorthHorst = UNIFORM(1635, 1645) m (from global_variables.dist). The 10 m uncertainty range in each region translates to ~8–12 % STOIIP uncertainty per segment. Combined effect: P90–P10 range of ~25 MSm³ total oil in place. NorthHorst GOC is particularly critical as it controls the gas cap volume and associated-gas recovery. Sensitivity analysis shows FWL_CENTRAL and FWL_NORTH_HORST are top 3 STOIIP drivers.",
     "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",
     "EffectiveDateTime": "2026-02-28T00:00:00Z",
     "ext": {
@@ -29,14 +29,18 @@
         "SeverityScaleID": "dev:reference-data--RiskSeverityScale:Equinor-5x5:1",
         "ProbabilityScaleID": "dev:reference-data--RiskProbabilityScale:Equinor-5x5:1",
         "RiskAcceptanceCriteriaID": "dev:reference-data--RiskAcceptanceCriteria:RAC-2025-01:1",
-        "InherentSeverity": "S2",
-        "InherentProbability": "P3",
+        "InherentSeverity": "S3",
+        "InherentProbability": "P4",
         "ResidualSeverity": "S2",
-        "ResidualProbability": "P2",
+        "ResidualProbability": "P3",
         "AcceptedAsIs": false,
-        "Status": "Mitigated",
+        "Status": "Open",
         "MitigationActionIDs": [],
-        "UncertaintyImpact": "Medium"
+        "FmuParameters": [
+          "FWL_CENTRAL (UNIFORM 1672–1682 m)",
+          "FWL_NORTH_HORST (UNIFORM 1655–1665 m)",
+          "GOC_NORTH_HORST (UNIFORM 1635–1645 m)"
+        ]
       }
     }
   }
