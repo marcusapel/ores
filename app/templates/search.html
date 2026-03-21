@@ -399,7 +399,6 @@
       {# ── Depth maps from linked RDDMS dataspaces ── #}
       {% set bd_maps_raw = rec.bd_maps or {} %}
       {% set bd_maps = (bd_maps_raw.get('maps') if bd_maps_raw is mapping else []) or [] %}
-      {% set bd_maps_all = (bd_maps_raw.get('all') if bd_maps_raw is mapping else []) or [] %}
 
       {# ── Stat WPC table volume helpers ── #}
       {% set has_table_vol = (volns.has_o10 or volns.has_o50 or volns.has_o90 or volns.has_g10 or volns.has_g50 or volns.has_g90) %}

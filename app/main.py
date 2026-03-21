@@ -16,7 +16,7 @@ load_dotenv()  # must run before any module reads os.getenv at import time
 
 import httpx
 from httpx import HTTPStatusError
-from fastapi import FastAPI, Request, Form, HTTPException, Query
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -154,17 +154,8 @@ def _access_token(request: Request) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Local record cache & helpers
+# Helpers — volume / BD enrichment
 # ──────────────────────────────────────────────────────────────────────────────
-# Registered ext.equinor keys (Alternatives, UncertaintySummary, etc.) survive
-# OSDU workflow ingestion.  DevelopmentConcept is stored as a proper WPC
-# (kind dev:wks:work-product-component--DevelopmentConcept:1.0.0) linked via
-# BD Parameters[] and fetched at render-time by _enrich_bd_developmentconcept().
-# ──────────────────────────────────────────────────────────────────────────────
-
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-
-# (Local record cache removed — all demo records are now in OSDU.)
 
 
 def _normalize_volumes(data_block: Dict[str, Any]) -> Dict[str, Any]:
@@ -578,9 +569,6 @@ async def _enrich_bd_maps(
 
     Each entry: ``{"ds", "uuid", "title", "ds_name"}``
     """
-    import urllib.parse as _up
-    import re as _re
-
     params = data_block.get("Parameters") or []
     # Collect ETPDataspace record IDs
     ds_ids: List[str] = []
@@ -624,7 +612,7 @@ async def _enrich_bd_maps(
                 continue
 
             # 2. List Grid2d objects in this dataspace
-            enc = _up.quote(ds_path, safe="")
+            enc = urllib.parse.quote(ds_path, safe="")
             grid2d_type = "resqml20.obj_Grid2dRepresentation"
             at = hdr.get("Authorization", "").replace("Bearer ", "")
             try:
