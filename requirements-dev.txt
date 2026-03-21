@@ -1,0 +1,19 @@
+# Extra requirements for demo scripts, notebooks, and subsurface tools
+# Install with: pip install -r requirements-dev.txt
+-r requirements.txt
+
+# Demo scripts (demo/ folder)
+requests>=2.31.0
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Notebook / ETP demo extras
+ipykernel>=6.29.0
+plotly>=5.18.0
+IPython>=8.18.0
+
+# OSDU / subsurface libs (platform-specific wheels)
+osdu-client
+fesapi
+fetpapi
+xtgeo
