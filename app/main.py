@@ -601,7 +601,7 @@ async def _enrich_bd_maps(
             #   eml:///dataspace('maap/drogon_dg') → maap/drogon_dg   (quoted)
             #   eml:///dataspace(maap/drogon_dg)   → maap/drogon_dg   (unquoted)
             ds_path = ""
-            m = _re.search(r"dataspace\(['\"]?([^'\")\s]+)['\"]?\)", raw_uri)
+            m = re.search(r"dataspace\(['\"]?([^'\")\s]+)['\"]?\)", raw_uri)
             if m:
                 ds_path = m.group(1)
             # Fallback: also try Name field itself (often equals the ds path)
