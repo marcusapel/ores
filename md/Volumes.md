@@ -1,7 +1,11 @@
 
 # Reservoir Estimated Volumes — Raw & Aggregated in OSDU
 
-This note updates the volume representation to **match the two manifests** you shared and aligns names, reference types, and property types. We also outline **alternative approaches** (pure `ColumnBasedTable` vs `ReservoirEstimatedVolumes`) and list **improvements** for search and governance.
+> **FMU context**: In fmu-dataio, in-place volumes are exported as a **standard result** via [`export_inplace_volumes`](https://fmu-dataio.readthedocs.io/en/latest/simple_exports/index.html). This produces Parquet tables with validated column conventions (BULK, NET, PORV, HCPV, STOIIP, GIIP, etc. keyed by ZONE, REGION, FACIES, REAL). The OSDU mapping below uses `ReservoirEstimatedVolumes` WPC to persist these same volumes with domain semantics.
+>
+> **Links**: [fmu-dataio docs](https://fmu-dataio.readthedocs.io/en/latest/) · [fmu-drogon](https://github.com/equinor/fmu-drogon) · [OSDU Data Definitions](https://community.opengroup.org/osdu/data/data-definitions) · [Uncertainty guide](Uncertainty.md) · [FMU ↔ OSDU](FmuOsdu.md)
+
+This note covers the volume representation using OSDU's **ReservoirEstimatedVolumes** WPC, aligned with the fmu-dataio standard result column conventions. We also outline **alternative approaches** (pure `ColumnBasedTable` vs `ReservoirEstimatedVolumes`) and list **improvements** for search and governance.
 
 - **Raw realizations**: `work-product-component--ReservoirEstimatedVolumes:1.1.0` with a `Volumes` block keyed by `Realisation`, `Zone`, and `SegmentID`.
 - **Aggregated statistics**: `work-product-component--ReservoirEstimatedVolumes:1.1.0` with `Volumes` columns carrying Facets for P10/P50/P90, Minimum/Maximum, ArithmeticMean, StandardDeviation.
@@ -40,6 +44,22 @@ Use the **reference catalog** `reference-data--ReservoirEstimatedVolumePropertyT
 Each statistic column should attach a `FacetIDs` array with:
 - `FacetTypeID = ...:FacetType:statistics`
 - `FacetRoleID = ...:FacetRole:<Role>` (`P10`, `P50`, `P90`, `ArithmeticMean`, `Minimum`, `Maximum`, `StandardDeviation`). 
+
+### 1.6 fmu-dataio standard result → OSDU REV column mapping
+
+| fmu-dataio column (standard result) | OSDU REV PropertyType | Notes |
+|---|---|---|
+| `BULK` | `ReservoirEstimatedVolumePropertyType:Bulk` | Bulk rock volume |
+| `NET` | `ReservoirEstimatedVolumePropertyType:Net` | Net rock volume |
+| `PORV` | `ReservoirEstimatedVolumePropertyType:Pore` | Pore volume |
+| `HCPV` | `ReservoirEstimatedVolumePropertyType:HydrocarbonPore` | HC pore volume |
+| `STOIIP` | `ReservoirEstimatedVolumePropertyType:Oil` | Stock tank oil in place |
+| `GIIP` | `ReservoirEstimatedVolumePropertyType:Gas` | Gas initially in place |
+| `ASSOCIATEDGAS` | `ReservoirEstimatedVolumePropertyType:AssociatedGas` | Associated gas |
+| `ASSOCIATEDOIL` | `ReservoirEstimatedVolumePropertyType:AssociatedOil` | Associated oil |
+| `REAL` (key) | `Realisation` KeyColumn | fmu.realization.id |
+| `ZONE` (key) | `Zone` KeyColumn | Stratigraphic zone |
+| `REGION` / `FACIES` (key) | `SegmentID` KeyColumn | Maps to ReservoirSegment | 
 
 ---
 

@@ -507,6 +507,94 @@ async def _enrich_bd_activity(
 
     return {}
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# BD enrichment: discover Grid2d depth maps from linked RDDMS dataspaces
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _enrich_bd_maps(
+    data_block: Dict[str, Any],
+    client: httpx.AsyncClient,
+    storage_url: str,
+    hdr: dict,
+) -> List[Dict[str, Any]]:
+    """Discover Grid2dRepresentation maps in the BD's linked RDDMS dataspaces.
+
+    Walks the BD ``Parameters[]`` for ETPDataspace refs, fetches each to
+    extract the EML URI, then lists Grid2d objects in each dataspace via
+    the Reservoir DDMS API.
+
+    Returns a list of dicts::
+
+        [{"ds": "maap/drogon_dg", "uuid": "...", "title": "...", "ds_name": "..."}, ...]
+    """
+    import urllib.parse as _up
+    import re as _re
+
+    params = data_block.get("Parameters") or []
+    # Collect ETPDataspace record IDs
+    ds_ids: List[str] = []
+    for p in params:
+        if not isinstance(p, dict):
+            continue
+        dop = p.get("DataObjectParameter") or ""
+        if "etpdataspace" in dop.lower():
+            ds_ids.append(dop)
+
+    if not ds_ids:
+        return []
+
+    maps: List[Dict[str, Any]] = []
+
+    for ds_id in ds_ids[:3]:  # limit to 3 dataspaces
+        try:
+            # 1. Fetch the ETPDataspace OSDU record to get the EML URI
+            r_ds = await client.get(f"{storage_url}/{ds_id}", headers=hdr)
+            if r_ds.status_code != 200:
+                continue
+            ds_rec = r_ds.json()
+            ds_data = ds_rec.get("data") or {}
+            ds_name = ds_data.get("Name") or ""
+            raw_uri = (ds_data.get("DatasetProperties") or {}).get("URI") or ""
+
+            # Extract dataspace path from EML URI:
+            #   eml:///dataspace('maap/drogon_dg') → maap/drogon_dg
+            ds_path = ""
+            m = _re.search(r"dataspace\(['\"]([^'\"]+)['\"]\)", raw_uri)
+            if m:
+                ds_path = m.group(1)
+            if not ds_path:
+                continue
+
+            # 2. List Grid2d objects in this dataspace
+            enc = _up.quote(ds_path, safe="")
+            grid2d_type = "resqml20.obj_Grid2dRepresentation"
+            at = hdr.get("Authorization", "").replace("Bearer ", "")
+            try:
+                objs = await osdu.list_resources(at, enc, grid2d_type)
+            except Exception:
+                objs = []
+
+            for obj in (objs or [])[:20]:  # cap at 20 maps per dataspace
+                uid = obj.get("Uuid") or obj.get("UUID") or obj.get("uuid") or ""
+                uri = obj.get("uri") or ""
+                if not uid and "(" in uri and ")" in uri:
+                    uid = uri.split("(")[-1].rstrip(")")
+                title = (obj.get("Citation") or {}).get("Title") or uid
+                if uid:
+                    maps.append({
+                        "ds": ds_path,
+                        "uuid": uid,
+                        "title": title,
+                        "ds_name": ds_name or ds_path,
+                    })
+        except Exception as e:
+            log.warning("[BD-MAPS] Failed to discover maps in %s: %s", ds_id, e)
+
+    log.info("[BD-MAPS] Discovered %d Grid2d maps across %d dataspaces", len(maps), len(ds_ids))
+    return maps
+
+
 async def _enrich_bd_production(
     data_block: Dict[str, Any],
     client: httpx.AsyncClient,
@@ -1065,6 +1153,7 @@ async def search_run(
                         bd_geolabel: Dict[str, Any] = {}
                         bd_production: Dict[str, Any] = {}
                         bd_activity: Dict[str, Any] = {}
+                        bd_maps: List[Dict[str, Any]] = []
                         if "businessdecision" in (full.get("kind") or "").lower():
                             if not (volumes or {}).get("ColumnValues"):
                                 volumes = await _enrich_bd_volumes(
@@ -1076,6 +1165,8 @@ async def search_run(
                             await _enrich_bd_developmentconcept(
                                 data_block, client, storage_url, hdr)
                             bd_activity = await _enrich_bd_activity(
+                                data_block, client, storage_url, hdr)
+                            bd_maps = await _enrich_bd_maps(
                                 data_block, client, storage_url, hdr)
 
                         # Generic WPC/master-data links (exclude reference-data)
@@ -1160,6 +1251,7 @@ async def search_run(
                             "bd_geolabel": bd_geolabel,
                             "bd_production": bd_production,
                             "bd_activity": bd_activity,
+                            "bd_maps": bd_maps,
                         })
                     except Exception as e:
                         log.warning("[SEARCH] Exception enriching %s: %s", rid, e)
@@ -1238,6 +1330,7 @@ async def view_record(request: Request, record_id: str):
             bd_geolabel: Dict[str, Any] = {}
             bd_production: Dict[str, Any] = {}
             bd_activity: Dict[str, Any] = {}
+            bd_maps: List[Dict[str, Any]] = []
             if "businessdecision" in (full.get("kind") or "").lower():
                 if not (volumes or {}).get("ColumnValues"):
                     volumes = await _enrich_bd_volumes(
@@ -1249,6 +1342,8 @@ async def view_record(request: Request, record_id: str):
                 await _enrich_bd_developmentconcept(
                     data_block, client, storage_url, hdr)
                 bd_activity = await _enrich_bd_activity(
+                    data_block, client, storage_url, hdr)
+                bd_maps = await _enrich_bd_maps(
                     data_block, client, storage_url, hdr)
 
             links = extract_osdu_links(data_block) or []
@@ -1321,6 +1416,7 @@ async def view_record(request: Request, record_id: str):
                 "bd_geolabel": bd_geolabel,
                 "bd_production": bd_production,
                 "bd_activity": bd_activity,
+                "bd_maps": bd_maps,
             }
 
         return templates.TemplateResponse(

@@ -980,6 +980,148 @@ async def keys_object_table(
     })
 
 
+# ── Depth-map PNG rendering for Grid2dRepresentation ────────────────────────
+
+from fastapi.responses import Response
+
+@router.get("/keys/object/map.png")
+async def keys_object_map_png(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path"),
+    uuid: str = Query(..., description="UUID of Grid2dRepresentation"),
+    cmap: str = Query("viridis_r", description="Matplotlib colormap"),
+    dpi: int = Query(120, ge=72, le=300, description="Image DPI"),
+    w: int = Query(10, ge=4, le=20, description="Figure width (inches)"),
+    h: int = Query(8, ge=4, le=16, description="Figure height (inches)"),
+):
+    """
+    Render a Grid2dRepresentation as a depth-map PNG with correct RESQML
+    coordinate rotation, colour bar, grid lines and CRS annotation.
+
+    Fetches the object, its z-value array and the referenced CRS in one
+    logical transaction against the Reservoir DDMS REST API.
+    """
+    at = _access_token(request)
+
+    try:
+        surface = await osdu.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+    except Exception as e:
+        log.exception("map.png: fetch_grid2d_surface failed: %s", e)
+        raise HTTPException(502, f"Failed to fetch surface: {e}")
+
+    grid = surface["grid"]
+    title = (grid.get("Citation") or {}).get("Title") or uuid
+
+    # Resolve horizon name from RepresentedInterpretation if available
+    interp = grid.get("RepresentedInterpretation") or {}
+    interp_title = interp.get("Title") or ""
+    if interp_title and interp_title != title:
+        title = f"{title} — {interp_title}"
+
+    zvalues = surface["zvalues"]
+    dims = surface["dims"]
+    geometry = surface["geometry"]
+    crs = surface["crs"]
+
+    if not zvalues:
+        raise HTTPException(404, "No z-values array found for this surface")
+    if dims[0] == 0 or dims[1] == 0:
+        raise HTTPException(400, "Grid has zero dimensions")
+
+    # Determine depth unit from CRS
+    unit = "m"
+    if crs:
+        unit = crs.get("VerticalUom") or crs.get("ProjectedUom") or "m"
+
+    try:
+        png_bytes = osdu.render_grid2d_png(
+            zvalues, dims, geometry, crs,
+            title=title,
+            cmap=cmap,
+            figsize=(w, h),
+            dpi=dpi,
+            unit=unit,
+        )
+    except Exception as e:
+        log.exception("map.png: render failed: %s", e)
+        raise HTTPException(500, f"Render failed: {e}")
+
+    return Response(content=png_bytes, media_type="image/png")
+
+
+@router.get("/keys/object/map.json")
+async def keys_object_map_json(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path"),
+    uuid: str = Query(..., description="UUID of Grid2dRepresentation"),
+):
+    """
+    Return the parsed surface metadata (geometry, CRS, dims, stats) as JSON
+    — useful for the front-end to know what it can plot before requesting
+    the full PNG.
+    """
+    at = _access_token(request)
+
+    try:
+        surface = await osdu.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+    except Exception as e:
+        raise HTTPException(502, f"Failed to fetch surface: {e}")
+
+    grid = surface["grid"]
+    zvalues = surface["zvalues"]
+    dims = surface["dims"]
+    geo = surface["geometry"]
+    crs = surface["crs"]
+
+    # Stats
+    z_arr = [v for v in zvalues if v is not None and abs(v) < 1e30]
+    stats = {}
+    if z_arr:
+        stats = {
+            "min": round(min(z_arr), 2),
+            "max": round(max(z_arr), 2),
+            "mean": round(sum(z_arr) / len(z_arr), 2),
+            "count": len(z_arr),
+            "nan_count": len(zvalues) - len(z_arr),
+        }
+
+    crs_info = None
+    if crs:
+        rot_obj = crs.get("ArealRotation") or {}
+        wkt = ""
+        for em in (crs.get("ExtraMetadata") or []):
+            if isinstance(em, dict) and "Wkt" in (em.get("Name") or ""):
+                wkt = em.get("Value", "")
+                break
+        crs_info = {
+            "title": (crs.get("Citation") or {}).get("Title", ""),
+            "projectedUom": crs.get("ProjectedUom", ""),
+            "verticalUom": crs.get("VerticalUom", ""),
+            "axisOrder": crs.get("ProjectedAxisOrder", ""),
+            "zIncreasingDownward": crs.get("ZIncreasingDownward", True),
+            "arealRotation_deg": float(rot_obj.get("_", 0) or rot_obj.get("Value", 0) or 0),
+            "xOffset": float(crs.get("XOffset", 0) or 0),
+            "yOffset": float(crs.get("YOffset", 0) or 0),
+            "wkt": wkt[:200] if wkt else "",
+        }
+
+    title = (grid.get("Citation") or {}).get("Title", uuid)
+
+    return JSONResponse({
+        "title": title,
+        "dims": dims,
+        "geometry": {
+            "origin": list(geo["origin"]),
+            "u_vec": list(geo["u_vec"]),
+            "v_vec": list(geo["v_vec"]),
+            "u_space": geo["u_space"],
+            "v_space": geo["v_space"],
+        },
+        "crs": crs_info,
+        "stats": stats,
+    })
+
+
 # ── Object graph ──────────────────────────────────────────────────────────────
 
 @router.get("/keys/object/graph.json")

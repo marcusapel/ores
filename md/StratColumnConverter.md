@@ -722,12 +722,12 @@ python stratcolumnhandler.py osdu2resqml \
 | `demo/strat/ow2osdu.map.json` | Vendor → OSDU field mapping config |
 | `demo/strat/manifest_stratcolumn.json` | StratigraphicColumn manifest (179 units + 118 horizons + 5 ranks + 1 column) |
 | `demo/strat/manifest_chronostratics.json` | ChronoStratigraphy reference bundle (1372 records) |
-| `demo/py/7genchronostratics.py` | Generator — downloads/filters ChronoStratigraphy reference records, emits manifest |
-| `demo/py/7genstratcolumn.py` | Generator — builds column manifest (units + ranks + column) from chrono manifest |
-| `demo/py/10genhorizons.py` | Generator — creates `HorizonInterpretation` WPCs from unit boundaries; updates unit records with ages + horizon refs |
-| `demo/py/8deploy_stratcolumn.py` | Deploy — splits strat column manifest into individual records, optionally ingests via osducli |
-| `demo/py/9deploy_chronostratics.py` | Deploy — splits chrono manifest into individual records in dependency order, optionally ingests |
-| `demo/py/7manifest2records.py` | Utility — extracts individual record JSON files from any manifest |
+| `demo/strat/genrec/7genchronostratics.py` | Generator — downloads/filters ChronoStratigraphy reference records, emits manifest |
+| `demo/strat/genrec/7genstratcolumn.py` | Generator — builds column manifest (units + ranks + column) from chrono manifest |
+| `demo/strat/genrec/10genhorizons.py` | Generator — creates `HorizonInterpretation` WPCs from unit boundaries; updates unit records with ages + horizon refs |
+| `demo/strat/genrec/8deploy_stratcolumn.py` | Deploy — splits strat column manifest into individual records, optionally ingests via osducli |
+| `demo/strat/genrec/9deploy_chronostratics.py` | Deploy — splits chrono manifest into individual records in dependency order, optionally ingests |
+| `demo/strat/genrec/7manifest2records.py` | Utility — extracts individual record JSON files from any manifest |
 | `demo/strat/stratcolumn_records/` | Pre‑generated OSDU WPC records (ICS 2017) |
 | `demo/strat/stratref_records/` | Pre‑generated ChronoStratigraphy reference records |
 
@@ -774,9 +774,9 @@ python stratcolumnhandler.py osdu2resqml \
 
 | # | Script | Purpose |
 |---|--------|---------|
-| 34 | `demo/py/10genhorizons.py` | Generates 118 `HorizonInterpretation` WPC records from ICS2017 unit boundaries. Updates unit records in‑place with `OlderPossibleAge`, `YoungerPossibleAge`, `ColumnStratigraphicHorizonTopID`, `ColumnStratigraphicHorizonBaseID`. |
-| 35 | `demo/py/8deploy_stratcolumn.py` | Splits `manifest_stratcolumn.json` into individual record files in `stratcolumn_records/`, optionally ingests via `osducli storage add` |
-| 36 | `demo/py/9deploy_chronostratics.py` | Splits `manifest_chronostratics.json` in dependency order (scheme → roots → children → WPC), optionally ingests |
+| 34 | `demo/strat/genrec/10genhorizons.py` | Generates 118 `HorizonInterpretation` WPC records from ICS2017 unit boundaries. Updates unit records in‑place with `OlderPossibleAge`, `YoungerPossibleAge`, `ColumnStratigraphicHorizonTopID`, `ColumnStratigraphicHorizonBaseID`. |
+| 35 | `demo/strat/genrec/8deploy_stratcolumn.py` | Splits `manifest_stratcolumn.json` into individual record files in `stratcolumn_records/`, optionally ingests via `osducli storage add` |
+| 36 | `demo/strat/genrec/9deploy_chronostratics.py` | Splits `manifest_chronostratics.json` in dependency order (scheme → roots → children → WPC), optionally ingests |
 
 ### A.6 Previously Fixed (prior session)
 

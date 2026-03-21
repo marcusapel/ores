@@ -365,11 +365,11 @@ When scenario facets are present:
 
 ---
 
-[ref-geolabelset-md]: https://community.opengroup.org/osdu/data/data-definitions
-[ref-geolabelset-json]: https://community.opengroup.org/osdu/data/data-definitions
-[ref-geolabeltype]: https://community.opengroup.org/osdu/data/data-definitions
-[ref-worked-examples]: https://community.opengroup.org/osdu/data/data-definitions
-[ref-columntype-md]: https://community.opengroup.org/osdu/data/data-definitions
-[ref-columntype-json]: https://community.opengroup.org/osdu/data/data-definitions
-[ref-platform]: https://community.opengroup.org/osdu/platform
-[ref-overview]: https://community.opengroup.org/osdu
+[ref-geolabelset-md]: https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Shared/WorkProductComponent/GeoLabelSet.1.0.0.md
+[ref-geolabelset-json]: https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Shared/WorkProductComponent/GeoLabelSet.1.0.0.json
+[ref-geolabeltype]: https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Shared/ReferenceData/GeoLabelType.1.0.0.md
+[ref-worked-examples]: https://community.opengroup.org/osdu/data/data-definitions/-/tree/master/WorkedExamples/GeoLabels
+[ref-columntype-md]: https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Shared/WorkProductComponent/ColumnBasedTableType.1.1.0.md
+[ref-columntype-json]: https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Shared/WorkProductComponent/ColumnBasedTableType.1.1.0.json
+[ref-platform]: https://community.opengroup.org/osdu/platform/data-flow/ingestion/ingestion-workflow
+[ref-overview]: https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/README.md

@@ -33,7 +33,7 @@ Key rendering features:
 | FastAPI | 0.115+ |
 | uvicorn | 0.32+ |
 | httpx | (latest) |
-| numpy | (latest) |
+
 
 Install all dependencies:
 
@@ -93,21 +93,18 @@ app/
   static/              # JS/CSS assets
 
 demo/
+  run_pipeline.py      # Generic cross-platform pipeline runner
   drogon/              # Drogon DG1 pipeline (self-contained)
   drogon_dg2/          # Drogon DG2 pipeline (references drogon/ for shared data)
-  grand/               # GRAND DG2 pipeline
-    json/              # Generated manifests and reference data
-    py/                # Generator scripts
-  md/                  # Documentation and guides
-  data/                # Raw CSV data files
-  strat/               # Stratigraphy manifests and records
+  strat/               # Stratigraphic column manifests and tools
+md/                    # Documentation and guides
 ```
 
 ---
 
 ## Pipeline guide — adding a new field / decision gate dataset
 
-See [demo/md/PipelineGuide.md](demo/md/PipelineGuide.md) for the full guide, including:
+See [md/DGDigest.md](md/DGDigest.md) for the full DG data model guide, including:
 
 - Data input format (CSV structure, supported units, properties)
 - Step-by-step pipeline walkthrough
@@ -135,32 +132,22 @@ The Drogon pipeline (`demo/drogon/`) generates ~19 OSDU records from a single FM
 | 8 | `manifest2records_drogon.py` | Split manifests → individual record files |
 | 9 | `ingest_records_batch.py` | PUT records to OSDU Storage API |
 
-Run the full pipeline:
-
-```powershell
-.\demo\drogon\run_pipeline.ps1                # generate + ingest
-.\demo\drogon\run_pipeline.ps1 -SkipIngest    # generate manifests only
-.\demo\drogon\run_pipeline.ps1 -VerifyAfter   # verify all records after ingest
-```
-
-Or step by step:
+Run pipelines with the generic Python runner (cross-platform):
 
 ```bash
-python demo/drogon/split_valysar.py
-python demo/drogon/genrefpropertytypes_drogon.py
-python demo/drogon/genreffacetrole_drogon.py
-python demo/drogon/genmaster_drogon.py
-python demo/drogon/genrawmanifest_drogon.py
-python demo/drogon/genstatmanifest_drogon.py
-python demo/drogon/genparamsmanifest_drogon.py
-python demo/drogon/gen_risk_drogon.py
-python demo/drogon/gen_activity_drogon.py
-python demo/drogon/gen_businessdecision_drogon.py
-python demo/drogon/gen_documents_drogon.py
-python demo/drogon/gengeolabelset_drogon.py
-python demo/drogon/manifest2records_drogon.py
-python demo/drogon/ingest_records_batch.py --delay 3
+python demo/run_pipeline.py                          # default: drogon_dg2
+python demo/run_pipeline.py demo/drogon               # DG1 full pipeline
+python demo/run_pipeline.py demo/drogon_dg2            # DG2 pipeline
+python demo/run_pipeline.py demo/drogon --skip-ingest  # generate only
+python demo/run_pipeline.py demo/drogon --dry-run      # preview commands
+python demo/run_pipeline.py --show demo/drogon_dg2     # show discovered steps
+python demo/run_pipeline.py --list                     # list built-in profiles
 ```
+
+The runner auto-discovers generator scripts by naming convention from any directory.
+See `python demo/run_pipeline.py --help` for all options.
+
+PowerShell scripts (`run_pipeline.ps1`) are kept for backward compatibility.
 
 ---
 
@@ -181,7 +168,6 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 |---------|----------|---------|-----|
 | **Drogon DG1** | `demo/drogon/` | ~19 | Identify & Assess (7 segments, 3 facies) |
 | **Drogon DG2** | `demo/drogon_dg2/` | ~25 | Concept Select (porosity ×0.8 scenario) |
-| **GRAND DG2** | `demo/grand/` | ~9 | Concept Select (2 segments, no facies) |
 
 ---
 
@@ -196,8 +182,10 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 | Analyse page | `app/analyse.py` |
 | Add DG page | `app/addgate.py` |
 | Drogon pipeline | `demo/drogon/` |
-| Pipeline guide | `demo/md/PipelineGuide.md` |
-| BD modelling guide | `demo/md/BusinessDecision.md` |
-| Volume schemas | `demo/md/Volumes.md` |
-| Risk guide | `demo/md/Risk.md` |
-| Digest (overview) | `demo/md/Digest.md` |
+| Pipeline runner | `demo/run_pipeline.py` |
+| BD modelling guide | `md/BusinessDecision.md` |
+| Volume schemas | `md/Volumes.md` |
+| Risk guide | `md/Risk.md` |
+| DG Digest (overview) | `md/DGDigest.md` |
+| FMU ↔ OSDU | `md/FmuOsdu.md` |
+| Strat column | `md/StratColumnConverter.md` |

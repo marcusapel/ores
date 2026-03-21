@@ -2,6 +2,31 @@
 # Uncertainty (FMU) in OSDU — Detailed Guide
 
 > **Purpose**: Persist FMU ensemble / Monte Carlo **inputs**, **scenarios**, and **outputs** in OSDU; link **input design and static bundles** to **output volumes** by **Realisation**; use **Activity semantics** and **persisted collections** for robust provenance across DG1…DG4.
+>
+> **FMU ecosystem context**:
+> - [ERT](https://github.com/equinor/ert) orchestrates FMU workflows — defines cases, iterations/ensembles, realizations, and the design matrix (parameterization)
+> - [fmu-dataio](https://github.com/equinor/fmu-dataio) exports data with metadata including `fmu.realization.id`, `fmu.ensemble`, `fmu.case` identity
+> - [Sumo](https://github.com/equinor/fmu-sumo) is the current cloud SoR for FMU results; OSDU provides the structured data management layer described here
+> - The OSDU Activity model with `Parameters[]` is a **proposed mapping** for representing FMU provenance in OSDU — it is not how FMU currently stores provenance (which uses the denormalized fmu-dataio metadata schema v0.20.0)
+
+---
+
+## 0. FMU uncertainty model (how it works today)
+
+In Equinor's FMU workflow:
+
+1. **ERT** manages the **design matrix** — a table of parameter combinations (e.g., porosity multiplier, rel-perm family, OWC shift) that defines each realization
+2. Each realization runs a chain of FORWARD_MODELs: RMS (geomodel) → Eclipse/OPM (simulator) → post-processing
+3. **fmu-dataio** exports results from each step with metadata tagging:
+   - `fmu.case.uuid` — the FMU case
+   - `fmu.ensemble.name` / `.uuid` — the ensemble (iteration)
+   - `fmu.realization.id` — the realization index (0, 1, 2, …)
+   - `data.content` — what kind of data (volumes, surfaces, tables, etc.)
+   - `data.standard_result.name` — standardized result name (e.g., `inplace_volumes`)
+4. **Sumo** receives all exports and indexes them for querying by case/ensemble/realization/content
+5. Post-processing aggregates results across realizations → statistical summaries (P10/P50/P90)
+
+The **design matrix → realization → output** provenance chain is captured implicitly by the shared `fmu.realization.id` across all exports in a run. OSDU's explicit Activity model can make this provenance chain **explicit and queryable**.
 
 ---
 
@@ -225,6 +250,18 @@ erDiagram
 ---
 
 ## 8. Where to read more
-- ReservoirEstimatedVolumes and Reservoir Management worked examples (schema ER and examples).
-- ColumnBasedTable usage for reservoir data; Schema usage guide; Activity semantics; WorkProduct and CollaborationProjectCollection docs.
+
+| Topic | Link |
+|---|---|
+| FMU results data model | [fmu-dataio data model](https://fmu-dataio.readthedocs.io/en/latest/datamodel/index.html) |
+| fmu-dataio documentation | [fmu-dataio.readthedocs.io](https://fmu-dataio.readthedocs.io/en/latest/) |
+| Standard results (volumes) | [Simple exports](https://fmu-dataio.readthedocs.io/en/latest/simple_exports/index.html) |
+| ERT (orchestrator) | [github.com/equinor/ert](https://github.com/equinor/ert) |
+| Sumo (current SoR) | [github.com/equinor/fmu-sumo](https://github.com/equinor/fmu-sumo) |
+| Drogon reference case | [github.com/equinor/fmu-drogon](https://github.com/equinor/fmu-drogon) |
+| REV schema (OSDU) | [OSDU Data Definitions — ReservoirEstimatedVolumes](https://community.opengroup.org/osdu/data/data-definitions) |
+| ColumnBasedTable (OSDU) | [OSDU Data Definitions — ColumnBasedTable](https://community.opengroup.org/osdu/data/data-definitions) |
+| Activity semantics (OSDU) | [OSDU Data Definitions — AbstractProjectActivity](https://community.opengroup.org/osdu/data/data-definitions) |
+| Volume schemas (this repo) | [md/Volumes.md](Volumes.md) |
+| FMU ↔ OSDU mapping | [md/FmuOsdu.md](FmuOsdu.md) |
 
