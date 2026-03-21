@@ -1113,6 +1113,125 @@ async def dataspaces_create(
     return RedirectResponse(url=f"/d/{urllib.parse.quote(path, safe='')}", status_code=302)
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Shared record enrichment — used by both search_run() and view_record()
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _enrich_record(
+    full: Dict[str, Any],
+    client: httpx.AsyncClient,
+    storage_url: str,
+    search_url: str,
+    hdr: dict,
+) -> Dict[str, Any]:
+    """Enrich a raw OSDU Storage record with volumes, links, labels, metadata.
+
+    Returns a dict ready for template rendering.
+    """
+    rid = full.get("id", "")
+    data_block = full.get("data", {}) or {}
+    ancestry = data_block.get("ancestry", {}) or {}
+    volumes = _normalize_volumes(data_block)
+
+    # BusinessDecision: pull headline volumes + linked WPC data
+    bd_geolabel: Dict[str, Any] = {}
+    bd_production: Dict[str, Any] = {}
+    bd_activity: Dict[str, Any] = {}
+    bd_maps: Dict[str, Any] = {"maps": [], "all": []}
+    if "businessdecision" in (full.get("kind") or "").lower():
+        if not (volumes or {}).get("ColumnValues"):
+            volumes = await _enrich_bd_volumes(
+                data_block, client, storage_url, hdr)
+        bd_geolabel = await _enrich_bd_geolabel(
+            data_block, client, storage_url, hdr)
+        bd_production = await _enrich_bd_production(
+            data_block, client, storage_url, hdr)
+        await _enrich_bd_developmentconcept(
+            data_block, client, storage_url, hdr)
+        bd_activity = await _enrich_bd_activity(
+            data_block, client, storage_url, hdr)
+        bd_maps = await _enrich_bd_maps(
+            data_block, client, storage_url, hdr)
+
+    # Generic WPC/master-data links (exclude reference-data)
+    links = extract_osdu_links(data_block) or []
+
+    # Reverse-lookup: find records that reference this one
+    rev_links = await _reverse_lookup(rid, client, search_url, hdr)
+    fwd_ids = {l["id"] for l in links}
+    for rl in rev_links:
+        if rl["id"] not in fwd_ids:
+            links.append(rl)
+
+    # Hydrate labels for linked records (bounded, parallel)
+    linked_labels: Dict[str, Dict[str, Any]] = {}
+    try:
+        unique_lids = []
+        for l in links[:25]:
+            lid = l.get("id")
+            if lid and lid not in linked_labels:
+                unique_lids.append(lid)
+                linked_labels[lid] = {}
+
+        async def _fetch_label(lid: str):
+            try:
+                r_link = await client.get(f"{storage_url}/{lid}", headers=hdr)
+                if r_link.status_code == 200:
+                    rr = r_link.json()
+                    nm = (rr.get("data") or {}).get("Name")
+                    entry: Dict[str, Any] = {
+                        "name": nm or lid,
+                        "kind": rr.get("kind"),
+                        "version": rr.get("version"),
+                    }
+                    if "ETPDataspace" in (rr.get("kind") or ""):
+                        entry["data"] = rr.get("data") or {}
+                    return (lid, entry)
+            except Exception:
+                pass
+            return (lid, {"name": lid})
+
+        results = await asyncio.gather(*[_fetch_label(lid) for lid in unique_lids])
+        for lid, entry in results:
+            linked_labels[lid] = entry
+    except Exception as e:
+        log.warning("[ENRICH] Linked record name hydration failed: %s", e)
+
+    # Compact metadata pairs from data{}
+    metadata_pairs: list = []
+    try:
+        md = extract_metadata_generic(
+            data_block, ds="",
+            typ=full.get("kind", "") or "",
+            uuid=full.get("id", "") or "",
+            arrays=None, max_string_len=300, max_preview_items=5,
+        )
+        metadata_pairs = [
+            p for p in (md.get("pairs", []) or [])
+            if not (str(p.get("name")).lower() == "uri"
+                    and str(p.get("value") or "").startswith("eml:///"))
+        ]
+    except Exception as e:
+        log.warning("[ENRICH] metadata_pairs extraction failed for %s: %s", rid, e)
+
+    return {
+        "id": full.get("id"),
+        "kind": full.get("kind"),
+        "version": full.get("version"),
+        "data": data_block,
+        "ancestry_parents": ancestry.get("parents", []) or [],
+        "ancestry_children": ancestry.get("children", []) or [],
+        "volumes": volumes,
+        "links": links,
+        "linked_labels": linked_labels,
+        "metadata_pairs": metadata_pairs,
+        "bd_geolabel": bd_geolabel,
+        "bd_production": bd_production,
+        "bd_activity": bd_activity,
+        "bd_maps": bd_maps,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Search (OSDU search v2) — enrich with storage fetch, ancestry, links, metadata
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -1210,119 +1329,9 @@ async def search_run(
                             continue
                         full = r_full.json()
 
-                        # data{} block
-                        data_block = full.get("data", {}) or {}
-
-                        # Existing: ancestry & volumes normalization
-                        ancestry = data_block.get("ancestry", {}) or {}
-                        ancestry_parents = ancestry.get("parents", []) or []
-                        ancestry_children = ancestry.get("children", []) or []
-                        volumes = _normalize_volumes(data_block)
-
-                        # BusinessDecision: pull headline volumes + linked WPC data
-                        bd_geolabel: Dict[str, Any] = {}
-                        bd_production: Dict[str, Any] = {}
-                        bd_activity: Dict[str, Any] = {}
-                        bd_maps: Dict[str, Any] = {"maps": [], "all": []}
-                        if "businessdecision" in (full.get("kind") or "").lower():
-                            if not (volumes or {}).get("ColumnValues"):
-                                volumes = await _enrich_bd_volumes(
-                                    data_block, client, storage_url, hdr)
-                            bd_geolabel = await _enrich_bd_geolabel(
-                                data_block, client, storage_url, hdr)
-                            bd_production = await _enrich_bd_production(
-                                data_block, client, storage_url, hdr)
-                            await _enrich_bd_developmentconcept(
-                                data_block, client, storage_url, hdr)
-                            bd_activity = await _enrich_bd_activity(
-                                data_block, client, storage_url, hdr)
-                            bd_maps = await _enrich_bd_maps(
-                                data_block, client, storage_url, hdr)
-
-                        # Generic WPC/master-data links (exclude reference-data)
-                        links = extract_osdu_links(data_block) or []
-
-                        # Reverse-lookup: find records that reference this one
-                        rev_links = await _reverse_lookup(
-                            rid, client, search_url, hdr)
-                        fwd_ids = {l["id"] for l in links}
-                        for rl in rev_links:
-                            if rl["id"] not in fwd_ids:
-                                links.append(rl)
-
-                        # Hydrate labels for linked records (bounded, parallel)
-                        linked_labels: Dict[str, Dict[str, Any]] = {}
-                        try:
-                            unique_lids = []
-                            for l in links[:25]:
-                                lid = l.get("id")
-                                if lid and lid not in linked_labels:
-                                    unique_lids.append(lid)
-                                    linked_labels[lid] = {}  # placeholder
-
-                            async def _fetch_link(lid: str):
-                                try:
-                                    r_link = await client.get(f"{storage_url}/{lid}", headers=hdr)
-                                    if r_link.status_code == 200:
-                                        rr = r_link.json()
-                                        nm = (rr.get("data") or {}).get("Name")
-                                        entry: Dict[str, Any] = {
-                                            "name": nm or lid,
-                                            "kind": rr.get("kind"),
-                                            "version": rr.get("version"),
-                                        }
-                                        if "ETPDataspace" in (rr.get("kind") or ""):
-                                            entry["data"] = rr.get("data") or {}
-                                        return (lid, entry)
-                                except Exception:
-                                    pass
-                                return (lid, {"name": lid})
-
-                            results = await asyncio.gather(*[_fetch_link(lid) for lid in unique_lids])
-                            for lid, entry in results:
-                                linked_labels[lid] = entry
-                        except Exception as e:
-                            log.warning("[SEARCH] Linked record name hydration failed: %s", e)
-
-                        # Compact metadata pairs from data{}
-                        try:
-                            md = extract_metadata_generic(
-                                data_block,
-                                ds="",
-                                typ=full.get("kind", "") or "",
-                                uuid=full.get("id", "") or "",
-                                arrays=None,
-                                max_string_len=300,
-                                max_preview_items=5,
-                            )
-                            metadata_pairs = md.get("pairs", []) or []
-                            metadata_pairs = [
-                                p for p in metadata_pairs
-                                if not (
-                                    str(p.get("name")).lower() == "uri"
-                                    and str(p.get("value") or "").startswith("eml:///")
-                                )
-                            ]
-                        except Exception as e:
-                            log.warning("[SEARCH] metadata_pairs extraction failed for %s: %s", rid, e)
-                            metadata_pairs = []
-
-                        enriched_results.append({
-                            "id": full.get("id"),
-                            "kind": full.get("kind"),
-                            "version": full.get("version"),
-                            "data": data_block,
-                            "ancestry_parents": ancestry_parents,
-                            "ancestry_children": ancestry_children,
-                            "volumes": volumes,
-                            "links": links,
-                            "linked_labels": linked_labels,
-                            "metadata_pairs": metadata_pairs,
-                            "bd_geolabel": bd_geolabel,
-                            "bd_production": bd_production,
-                            "bd_activity": bd_activity,
-                            "bd_maps": bd_maps,
-                        })
+                        enriched_results.append(
+                            await _enrich_record(full, client, storage_url, search_url, hdr)
+                        )
                     except Exception as e:
                         log.warning("[SEARCH] Exception enriching %s: %s", rid, e)
 
