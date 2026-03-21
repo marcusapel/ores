@@ -1,6 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────
 # run_pipeline_dg2.ps1 — Drogon DG2 (Concept Select) end-to-end pipeline
 #
+# DEPRECATED — Use the generic Python pipeline runner instead:
+#   python demo/run_pipeline.py drogon_dg2
+#   python demo/run_pipeline.py drogon_dg2 --skip-ingest
+#   python demo/run_pipeline.py drogon_dg2 --dry-run
+#
+# This PowerShell script is kept for backward compatibility.
+#
 # Pre-requisite: DG1 pipeline has been run (shared master data manifests
 # must exist in demo/drogon/).
 #
@@ -13,6 +20,7 @@
 #   .\demo\drogon_dg2\run_pipeline_dg2.ps1                # full pipeline
 #   .\demo\drogon_dg2\run_pipeline_dg2.ps1 -SkipIngest    # generate only
 #   .\demo\drogon_dg2\run_pipeline_dg2.ps1 -Delay 5       # custom delay
+#   python demo/run_pipeline.py drogon_dg2                 # preferred (cross-platform)
 # ─────────────────────────────────────────────────────────────────────
 param(
     [switch]$SkipIngest,
