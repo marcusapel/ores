@@ -906,33 +906,6 @@
               </details>
               {% endif %}
 
-              {# ── Input Parameters ── #}
-              {% set bd_params = (rec.data or {}).get('Parameters') or [] %}
-              {% if bd_params %}
-              <details class="bd-collapse">
-              <summary class="bd-section-title" style="cursor:pointer;">Input Parameters ▸</summary>
-              <ul class="bd-param-list">
-                {% for p in bd_params if p is mapping %}
-                {# Skip GeoModelDataspace — shown in Data Sources section below #}
-                {% if 'etpdataspace' not in ((p.get('DataObjectParameter') or '')|lower) and p.get('Title') != 'GeoModelDataspace' %}
-                <li>
-                  <div>
-                    <div class="bd-param-title">{{ p.get('Title') or 'Parameter' }}</div>
-                    {% if p.get('Selection') %}<div class="bd-param-desc">{{ p.get('Selection') }}</div>{% endif %}
-                  </div>
-                  {% set pkeys = p.get('Keys') or [] %}
-                  {% if pkeys is mapping %}{% set pkeys = [pkeys] %}{% endif %}
-                  {% if pkeys and pkeys is iterable and pkeys|length > 0 %}
-                    {% set pk0 = pkeys[0] if pkeys[0] is mapping else {} %}
-                    <span class="bd-param-tag">{{ pk0.get('StringParameterKey') or pk0.get('ParameterKey') or '' }}</span>
-                  {% endif %}
-                </li>
-                {% endif %}
-                {% endfor %}
-              </ul>
-              </details>
-              {% endif %}
-
               {# ── Data Sources (ETPDataspace / RDDMS geomodel) ── #}
               {% if ds_params %}
               <div class="bd-section-title">Data Sources</div>
@@ -1273,21 +1246,53 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
 
             <div class="rel-links">
               <b>Linked objects</b>
-              <ul>
-                {% for l in rec.links or [] %}
-                  {% set lid = l.id %}
-                  {% if lid not in (rec.ancestry_parents or []) and lid not in (rec.ancestry_children or []) %}
-                  {% set info = (rec.linked_labels or {}).get(lid, {}) %}
-                  <li>
-                    <a href="/search/view/{{ lid }}" title="Role: {{ l.role or 'ref' }}{% if info.kind %} · Kind: {{ info.kind }}{% endif %}">
-                      {{ info.name or lid }}
-                    </a>
-                    <span class="muted">({{ l.role or 'ref' }})</span>
-                  </li>
+              {# ── Group links by role category ── #}
+              {% set ns_links = namespace(
+                  activities=[], risks=[], params=[], parents=[], refs=[], rev=[]
+              ) %}
+              {% for l in rec.links or [] %}
+                {% if l.id not in (rec.ancestry_parents or []) and l.id not in (rec.ancestry_children or []) %}
+                  {% if l.role == 'prior-activity' %}
+                    {% set ns_links.activities = ns_links.activities + [l] %}
+                  {% elif l.role == 'risk' %}
+                    {% set ns_links.risks = ns_links.risks + [l] %}
+                  {% elif l.role == 'parameter-object' %}
+                    {% set ns_links.params = ns_links.params + [l] %}
+                  {% elif l.role in ('parent-work-product', 'parent-object') %}
+                    {% set ns_links.parents = ns_links.parents + [l] %}
+                  {% elif l.role == 'referenced-by' %}
+                    {% set ns_links.rev = ns_links.rev + [l] %}
+                  {% else %}
+                    {% set ns_links.refs = ns_links.refs + [l] %}
                   {% endif %}
-                {% endfor %}
-                {% if not (rec.links or []) %}<li class="muted">No linked objects.</li>{% endif %}
-              </ul>
+                {% endif %}
+              {% endfor %}
+
+              {% macro link_group(label, items, icon) %}
+              {% if items %}
+              <div style="margin-top:.5rem;">
+                <div style="font-size:.78rem;font-weight:600;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">{{ icon }} {{ label }}</div>
+                <ul style="margin:0;padding-left:1.2rem;">
+                  {% for l in items %}
+                    {% set info = (rec.linked_labels or {}).get(l.id, {}) %}
+                    <li>
+                      <a href="/search/view/{{ l.id }}" title="{{ l.role or 'ref' }}{% if info.kind %} · {{ info.kind }}{% endif %}">{{ info.name or l.id }}</a>
+                      {% if info.kind %}<span class="muted" style="font-size:.75rem;">{{ info.kind.split('--')[-1].split(':')[0] }}</span>{% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+              {% endmacro %}
+
+              {{ link_group('Activities', ns_links.activities, '⚙') }}
+              {{ link_group('Parameters & Inputs', ns_links.params, '📋') }}
+              {{ link_group('Risks', ns_links.risks, '⚠') }}
+              {{ link_group('Parent Objects', ns_links.parents, '📦') }}
+              {{ link_group('Referenced By', ns_links.rev, '↩') }}
+              {{ link_group('Other References', ns_links.refs, '🔗') }}
+
+              {% if not (rec.links or []) %}<div class="muted" style="margin-top:.3rem;">No linked objects.</div>{% endif %}
             </div>
           </section>
 
