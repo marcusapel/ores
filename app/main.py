@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+import asyncio
 import os
 import re
 import secrets
@@ -470,17 +471,22 @@ async def _enrich_bd_activity(
                     dop = p.get("DataObjectParameter") or ""
                     if dop and dop not in param_labels:
                         dop_ids.append(dop)
-            # Batch-fetch names (up to 20)
-            for dop_id in dop_ids[:20]:
+            # Parallel-fetch names (up to 15)
+            async def _fetch_label(did: str) -> tuple:
                 try:
-                    lr = await client.get(f"{storage_url}/{dop_id}", headers=hdr)
+                    lr = await client.get(f"{storage_url}/{did}", headers=hdr)
                     if lr.status_code == 200:
-                        ld = lr.json()
-                        lname = (ld.get("data") or {}).get("Name") or ""
-                        if lname:
-                            param_labels[dop_id] = lname
+                        nm = (lr.json().get("data") or {}).get("Name") or ""
+                        if nm:
+                            return (did, nm)
                 except Exception:
                     pass
+                return (did, "")
+            if dop_ids:
+                results = await asyncio.gather(*[_fetch_label(d) for d in dop_ids[:15]])
+                for did, nm in results:
+                    if nm:
+                        param_labels[did] = nm
 
             return {
                 "id": full.get("id", target_id),
@@ -1083,27 +1089,37 @@ async def search_run(
                             if rl["id"] not in fwd_ids:
                                 links.append(rl)
 
-                        # Hydrate labels for linked records (bounded)
+                        # Hydrate labels for linked records (bounded, parallel)
                         linked_labels: Dict[str, Dict[str, Any]] = {}
                         try:
+                            unique_lids = []
                             for l in links[:25]:
                                 lid = l.get("id")
-                                if not lid or lid in linked_labels:
-                                    continue
-                                r_link = await client.get(f"{storage_url}/{lid}", headers=hdr)
-                                if r_link.status_code == 200:
-                                    rr = r_link.json()
-                                    nm = (rr.get("data") or {}).get("Name")
-                                    entry: Dict[str, Any] = {
-                                        "name": nm or lid,
-                                        "kind": rr.get("kind"),
-                                        "version": rr.get("version"),
-                                    }
-                                    # Include data block for ETPDataspace so templates
-                                    # can render the EML URI and server URL directly.
-                                    if "ETPDataspace" in (rr.get("kind") or ""):
-                                        entry["data"] = rr.get("data") or {}
-                                    linked_labels[lid] = entry
+                                if lid and lid not in linked_labels:
+                                    unique_lids.append(lid)
+                                    linked_labels[lid] = {}  # placeholder
+
+                            async def _fetch_link(lid: str):
+                                try:
+                                    r_link = await client.get(f"{storage_url}/{lid}", headers=hdr)
+                                    if r_link.status_code == 200:
+                                        rr = r_link.json()
+                                        nm = (rr.get("data") or {}).get("Name")
+                                        entry: Dict[str, Any] = {
+                                            "name": nm or lid,
+                                            "kind": rr.get("kind"),
+                                            "version": rr.get("version"),
+                                        }
+                                        if "ETPDataspace" in (rr.get("kind") or ""):
+                                            entry["data"] = rr.get("data") or {}
+                                        return (lid, entry)
+                                except Exception:
+                                    pass
+                                return (lid, {"name": lid})
+
+                            results = await asyncio.gather(*[_fetch_link(lid) for lid in unique_lids])
+                            for lid, entry in results:
+                                linked_labels[lid] = entry
                         except Exception as e:
                             log.warning("[SEARCH] Linked record name hydration failed: %s", e)
 
@@ -1247,19 +1263,31 @@ async def view_record(request: Request, record_id: str):
 
             linked_labels: Dict[str, Dict[str, Any]] = {}
             try:
+                unique_lids = []
                 for l in links[:25]:
                     lid = l.get("id")
-                    if not lid or lid in linked_labels:
-                        continue
-                    r_link = await client.get(f"{storage_url}/{lid}", headers=hdr)
-                    if r_link.status_code == 200:
-                        rr = r_link.json()
-                        nm = (rr.get("data") or {}).get("Name")
-                        linked_labels[lid] = {
-                            "name": nm or lid,
-                            "kind": rr.get("kind"),
-                            "version": rr.get("version"),
-                        }
+                    if lid and lid not in linked_labels:
+                        unique_lids.append(lid)
+                        linked_labels[lid] = {}
+
+                async def _vfetch(lid: str):
+                    try:
+                        r_link = await client.get(f"{storage_url}/{lid}", headers=hdr)
+                        if r_link.status_code == 200:
+                            rr = r_link.json()
+                            nm = (rr.get("data") or {}).get("Name")
+                            return (lid, {
+                                "name": nm or lid,
+                                "kind": rr.get("kind"),
+                                "version": rr.get("version"),
+                            })
+                    except Exception:
+                        pass
+                    return (lid, {"name": lid})
+
+                results = await asyncio.gather(*[_vfetch(lid) for lid in unique_lids])
+                for lid, entry in results:
+                    linked_labels[lid] = entry
             except Exception as e:
                 log.warning("[VIEW] Linked record name hydration failed: %s", e)
 
