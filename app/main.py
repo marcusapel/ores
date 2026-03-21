@@ -512,21 +512,71 @@ async def _enrich_bd_activity(
 # BD enrichment: discover Grid2d depth maps from linked RDDMS dataspaces
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _is_proper_grid2d_map(title: str) -> bool:
+    """Return True if the Grid2d title looks like an actual depth/property map.
+
+    RESQML 2.0.1 has no dedicated table object, so resqpy DataFrames
+    (parameter tables, volume tables) are stored as Grid2dRepresentation.
+    Those should NOT be plotted as maps.
+
+    Heuristic: real FMU maps have short prefixed names (DS_, TS_, GS_, …);
+    table-disguised Grid2d have long titles with keywords like 'Parameters',
+    'Volumes', 'Estimated', 'statistics', 'per realisation', etc.
+    """
+    t = title.strip()
+    tl = t.lower()
+
+    # Known table markers — skip these
+    _TABLE_MARKERS = (
+        "parameter", "volume", "estimated", "statistic",
+        "per realisation", "per realization", "raw,", "(raw",
+        "dataframe", "table",
+    )
+    if any(m in tl for m in _TABLE_MARKERS):
+        return False
+
+    # Known map-like prefixes (FMU convention)
+    _MAP_PREFIXES = ("ds_", "ts_", "gs_", "fs_")
+    if any(tl.startswith(p) for p in _MAP_PREFIXES):
+        return True
+
+    # Titles containing depth/horizon/surface keywords are maps
+    _MAP_KEYWORDS = (
+        "depth", "horizon", "surface", "geogrid", "simgrid",
+        "extract", "interp", "filter", "velocity", "facies",
+        "hum_", "gf_", "residual", "isochore", "thickness",
+    )
+    if any(k in tl for k in _MAP_KEYWORDS):
+        return True
+
+    # Short single-word or underscore-delimited names are likely maps
+    if "_" in t and len(t) < 60:
+        return True
+
+    # Default: include (be inclusive rather than hiding data)
+    return True
+
+
 async def _enrich_bd_maps(
     data_block: Dict[str, Any],
     client: httpx.AsyncClient,
     storage_url: str,
     hdr: dict,
-) -> List[Dict[str, Any]]:
-    """Discover Grid2dRepresentation maps in the BD's linked RDDMS dataspaces.
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Discover Grid2dRepresentation objects in the BD's linked RDDMS dataspaces.
 
     Walks the BD ``Parameters[]`` for ETPDataspace refs, fetches each to
     extract the EML URI, then lists Grid2d objects in each dataspace via
     the Reservoir DDMS API.
 
-    Returns a list of dicts::
+    Returns a dict with two keys::
 
-        [{"ds": "maap/drogon_dg", "uuid": "...", "title": "...", "ds_name": "..."}, ...]
+        {
+          "maps":  [...],   # proper depth/property maps (plotted as images)
+          "all":   [...],   # all Grid2d objects (shown in activity refs)
+        }
+
+    Each entry: ``{"ds", "uuid", "title", "ds_name"}``
     """
     import urllib.parse as _up
     import re as _re
@@ -542,9 +592,11 @@ async def _enrich_bd_maps(
             ds_ids.append(dop)
 
     if not ds_ids:
-        return []
+        log.debug("[BD-MAPS] No ETPDataspace refs in Parameters[]")
+        return {"maps": [], "all": []}
 
-    maps: List[Dict[str, Any]] = []
+    all_objs: List[Dict[str, Any]] = []
+    log.info("[BD-MAPS] Found %d ETPDataspace refs: %s", len(ds_ids), ds_ids)
 
     for ds_id in ds_ids[:3]:  # limit to 3 dataspaces
         try:
@@ -558,12 +610,17 @@ async def _enrich_bd_maps(
             raw_uri = (ds_data.get("DatasetProperties") or {}).get("URI") or ""
 
             # Extract dataspace path from EML URI:
-            #   eml:///dataspace('maap/drogon_dg') → maap/drogon_dg
+            #   eml:///dataspace('maap/drogon_dg') → maap/drogon_dg   (quoted)
+            #   eml:///dataspace(maap/drogon_dg)   → maap/drogon_dg   (unquoted)
             ds_path = ""
-            m = _re.search(r"dataspace\(['\"]([^'\"]+)['\"]\)", raw_uri)
+            m = _re.search(r"dataspace\(['\"]?([^'\")\s]+)['\"]?\)", raw_uri)
             if m:
                 ds_path = m.group(1)
+            # Fallback: also try Name field itself (often equals the ds path)
+            if not ds_path and "/" in ds_name:
+                ds_path = ds_name
             if not ds_path:
+                log.warning("[BD-MAPS] Cannot extract ds_path from URI=%r name=%r", raw_uri, ds_name)
                 continue
 
             # 2. List Grid2d objects in this dataspace
@@ -575,14 +632,19 @@ async def _enrich_bd_maps(
             except Exception:
                 objs = []
 
-            for obj in (objs or [])[:20]:  # cap at 20 maps per dataspace
+            for obj in (objs or []):
                 uid = obj.get("Uuid") or obj.get("UUID") or obj.get("uuid") or ""
                 uri = obj.get("uri") or ""
                 if not uid and "(" in uri and ")" in uri:
                     uid = uri.split("(")[-1].rstrip(")")
-                title = (obj.get("Citation") or {}).get("Title") or uid
+                # RDDMS listing returns title in "name"; individual fetch uses "Citation.Title"
+                title = (
+                    obj.get("name")
+                    or (obj.get("Citation") or {}).get("Title")
+                    or uid
+                )
                 if uid:
-                    maps.append({
+                    all_objs.append({
                         "ds": ds_path,
                         "uuid": uid,
                         "title": title,
@@ -591,8 +653,28 @@ async def _enrich_bd_maps(
         except Exception as e:
             log.warning("[BD-MAPS] Failed to discover maps in %s: %s", ds_id, e)
 
-    log.info("[BD-MAPS] Discovered %d Grid2d maps across %d dataspaces", len(maps), len(ds_ids))
-    return maps
+    # Split: proper maps vs everything (tables stay only in activity refs)
+    proper_maps = [o for o in all_objs if _is_proper_grid2d_map(o["title"])]
+
+    # Pick ONE representative map for the dashboard image.
+    # Preference order: DS_extract_simgrid > DS_extract_geogrid > first proper map.
+    hero_map: List[Dict[str, Any]] = []
+    if proper_maps:
+        _PREF = ("ds_extract_simgrid", "ds_extract_geogrid", "ds_extract")
+        for pref in _PREF:
+            for mp in proper_maps:
+                if mp["title"].lower().startswith(pref):
+                    hero_map = [mp]
+                    break
+            if hero_map:
+                break
+        if not hero_map:
+            hero_map = [proper_maps[0]]
+
+    log.info("[BD-MAPS] Discovered %d Grid2d objects (%d proper maps, hero=%s) across %d dataspaces",
+             len(all_objs), len(proper_maps),
+             hero_map[0]["title"] if hero_map else "none", len(ds_ids))
+    return {"maps": hero_map, "all": all_objs, "maps_total": len(proper_maps)}
 
 
 async def _enrich_bd_production(
@@ -1153,7 +1235,7 @@ async def search_run(
                         bd_geolabel: Dict[str, Any] = {}
                         bd_production: Dict[str, Any] = {}
                         bd_activity: Dict[str, Any] = {}
-                        bd_maps: List[Dict[str, Any]] = []
+                        bd_maps: Dict[str, Any] = {"maps": [], "all": []}
                         if "businessdecision" in (full.get("kind") or "").lower():
                             if not (volumes or {}).get("ColumnValues"):
                                 volumes = await _enrich_bd_volumes(
@@ -1330,7 +1412,7 @@ async def view_record(request: Request, record_id: str):
             bd_geolabel: Dict[str, Any] = {}
             bd_production: Dict[str, Any] = {}
             bd_activity: Dict[str, Any] = {}
-            bd_maps: List[Dict[str, Any]] = []
+            bd_maps: Dict[str, Any] = {"maps": [], "all": []}
             if "businessdecision" in (full.get("kind") or "").lower():
                 if not (volumes or {}).get("ColumnValues"):
                     volumes = await _enrich_bd_volumes(

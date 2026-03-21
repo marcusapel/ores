@@ -92,6 +92,7 @@ def main():
     ap.add_argument("--documents", default=str(SCRIPT_DIR / "manifest_documents_dg2.json"))
     ap.add_argument("--production", default=str(SCRIPT_DIR / "manifest_wpc_production_dg2.json"))
     ap.add_argument("--devconcept", default=str(SCRIPT_DIR / "manifest_devconcept_dg2.json"))
+    ap.add_argument("--geolabelset-id", default="dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1")
     ap.add_argument("--manifest",  default=str(SCRIPT_DIR / "manifest_bd_dg2.json"))
     ap.add_argument("--id-prefix", default="dev")
     args = ap.parse_args()
@@ -193,12 +194,13 @@ def main():
                 pfx, raw_wpc_id, stat_wpc_id, params_wpc_id,
                 reservoir_id, dataspace_id, dg1_bd_id, doc_ids,
                 pp_wpc_id, devconcept_wpc_id,
+                gls_id=args.geolabelset_id,
             ),
             # ── Canonical fields (survive OSDU ingestion) ──
             **_build_canonical_fields(pfx),
             "ancestry": {
                 "parents": [activity_id] if activity_id else [],
-                "children": [],
+                "children": [x for x in [args.geolabelset_id] if x],
             },
             "ext": {
                 "equinor": _build_ext_equinor(pfx, risk_ids),
@@ -240,6 +242,7 @@ def _build_parameters(
     doc_ids: Dict[str, str],
     pp_wpc_id: str = "",
     devconcept_wpc_id: str = "",
+    gls_id: str = "",
 ) -> List[Dict[str, Any]]:
     params: List[Dict[str, Any]] = [
         {
@@ -325,6 +328,16 @@ def _build_parameters(
             "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
             "DataObjectParameter": devconcept_wpc_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "DevelopmentConcept"}],
+        })
+    # GeoLabelSet — headline volumes & reservoir properties
+    if gls_id:
+        params.append({
+            "Title": "Headline volumes & reservoir properties (GeoLabelSet)",
+            "Selection": "P10/P50/P90 headline volumes per segment, derived from stat REV",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "DataObjectParameter": gls_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "GeoLabelSet"}],
         })
     return params
 

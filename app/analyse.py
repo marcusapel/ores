@@ -164,7 +164,12 @@ def _extract_bd_metrics(
     data: Dict[str, Any],
     gls: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Pull a flat metrics dict from a BD data block + its GeoLabelSet."""
+    """Pull a flat metrics dict from a BD data block + its GeoLabelSet.
+
+    Preference cascade for volumes:
+      1. GeoLabelSet volumes_by_segment (canonical FMU labels)
+      2. ext.equinor.UncertaintySummary (inline P10/P50/P90 in the BD itself)
+    """
     ext_eq = ((data or {}).get("ext") or {}).get("equinor") or {}
     econ = ext_eq.get("KeyEconomics") or {}
     dcon = ext_eq.get("DevelopmentConcept") or {}
@@ -175,7 +180,7 @@ def _extract_bd_metrics(
 
     m: Dict[str, Any] = {}
 
-    # Volumes from GeoLabelSet
+    # ── Volumes: prefer GeoLabelSet, fall back to UncertaintySummary ──
     for stat in ("P90", "P50", "P10"):
         v = total.get(f"Oil.{stat}")
         if v is not None:
@@ -188,6 +193,26 @@ def _extract_bd_metrics(
         v = gls_unc.get(f"RecoveryFactor.{stat}")
         if v is not None:
             m[f"rf_{stat.lower()}"] = v
+
+    # Fallback: UncertaintySummary (ext.equinor) when GeoLabelSet is absent
+    if not m:
+        usumm = ext_eq.get("UncertaintySummary") or {}
+        stoiip = usumm.get("StaticInPlace_Oil_MSm3") or {}
+        recov = usumm.get("Recoverable_Oil_MSm3") or {}
+        rf = usumm.get("RecoveryFactor_pct") or {}
+        for stat in ("P90", "P50", "P10"):
+            v = stoiip.get(stat)
+            if v is not None:
+                # UncertaintySummary stores in MSm³; convert to Sm³ to match GLS
+                m[f"stoiip_{stat.lower()}"] = float(v) * 1_000_000
+        for stat in ("P90", "P50", "P10"):
+            v = recov.get(stat)
+            if v is not None:
+                m[f"recoverable_{stat.lower()}"] = float(v) * 1_000_000
+        for stat in ("P90", "P50", "P10"):
+            v = rf.get(stat)
+            if v is not None:
+                m[f"rf_{stat.lower()}"] = float(v)
 
     # Economics
     if econ.get("NPV_10pct_MUSD") is not None:

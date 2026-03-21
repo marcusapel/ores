@@ -397,7 +397,9 @@
       {% set bd_prod = rec.bd_production or {} %}
 
       {# ── Depth maps from linked RDDMS dataspaces ── #}
-      {% set bd_maps = rec.bd_maps or [] %}
+      {% set bd_maps_raw = rec.bd_maps or {} %}
+      {% set bd_maps = (bd_maps_raw.get('maps') if bd_maps_raw is mapping else []) or [] %}
+      {% set bd_maps_all = (bd_maps_raw.get('all') if bd_maps_raw is mapping else []) or [] %}
 
       {# ── Stat WPC table volume helpers ── #}
       {% set has_table_vol = (volns.has_o10 or volns.has_o50 or volns.has_o90 or volns.has_g10 or volns.has_g50 or volns.has_g90) %}
@@ -1121,7 +1123,7 @@
 
                   {% if act_outputs %}
                   <div style="background:#f0fff4;border-radius:6px;padding:.5rem;">
-                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Outputs ({{ act_outputs|length }}{% if bd_maps %} + {{ bd_maps|length }} maps{% endif %})</div>
+                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Outputs ({{ act_outputs|length }}{% if bd_maps %} + 1 Depth Surface{% endif %})</div>
                     {% for p in act_outputs[:12] %}
                     <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
                       <span style="font-weight:500;">{{ p.get('Title', '') }}</span>
@@ -1134,41 +1136,35 @@
                     </div>
                     {% endfor %}
                     {% if act_outputs|length > 12 %}<div style="font-size:.75rem;color:#a0aec0;margin-top:.2rem;">… +{{ act_outputs|length - 12 }} more</div>{% endif %}
-                    {# ── Depth map output references from linked RDDMS ── #}
+                    {# ── Single hero depth-surface from linked RDDMS ── #}
                     {% if bd_maps %}
+                    {% set hero_act = bd_maps[0] %}
                     <div style="margin-top:.4rem;border-top:1px dashed #9ae6b4;padding-top:.4rem;">
-                      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.2rem;">Depth Maps (RDDMS)</div>
-                      {% for mp in bd_maps[:6] %}
+                      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.2rem;">Depth Surface (RDDMS)</div>
                       <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
-                        <span style="font-weight:500;">{{ mp.title }}</span>
+                        <span style="font-weight:500;">{{ hero_act.title }}</span>
                         <div style="font-size:.72rem;word-break:break-all;">
-                          <a href="/keys/object/map.png?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}" target="_blank" style="color:#276749;" title="Rendered depth map">map.png ↗</a>
+                          <a href="/keys/object/map.json?ds={{ hero_act.ds }}&amp;uuid={{ hero_act.uuid }}" target="_blank" style="color:#276749;" title="Object metadata">json ↗</a>
                           <span style="color:#a0aec0;margin:0 .2rem;">·</span>
-                          <a href="/keys/object/map.json?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}" target="_blank" style="color:#276749;" title="Surface metadata">map.json ↗</a>
-                          <span style="color:#a0aec0;margin:0 .2rem;">·</span>
-                          <span style="color:#a0aec0;">{{ mp.ds }}/{{ mp.uuid }}</span>
+                          <span style="color:#a0aec0;">{{ hero_act.ds }}/{{ hero_act.uuid }}</span>
                         </div>
                       </div>
-                      {% endfor %}
                     </div>
                     {% endif %}
                   </div>
                   {% elif bd_maps %}
-                  {# No existing outputs but maps discovered — show standalone #}
+                  {# No existing outputs but hero depth-surface discovered — show standalone #}
                   <div style="background:#f0fff4;border-radius:6px;padding:.5rem;">
-                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Outputs — Depth Maps ({{ bd_maps|length }})</div>
-                    {% for mp in bd_maps[:6] %}
+                    {% set hero_act2 = bd_maps[0] %}
+                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Output — Depth Surface</div>
                     <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
-                      <span style="font-weight:500;">{{ mp.title }}</span>
+                      <span style="font-weight:500;">{{ hero_act2.title }}</span>
                       <div style="font-size:.72rem;word-break:break-all;">
-                        <a href="/keys/object/map.png?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}" target="_blank" style="color:#276749;">map.png ↗</a>
+                        <a href="/keys/object/map.json?ds={{ hero_act2.ds }}&amp;uuid={{ hero_act2.uuid }}" target="_blank" style="color:#276749;">json ↗</a>
                         <span style="color:#a0aec0;margin:0 .2rem;">·</span>
-                        <a href="/keys/object/map.json?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}" target="_blank" style="color:#276749;">map.json ↗</a>
-                        <span style="color:#a0aec0;margin:0 .2rem;">·</span>
-                        <span style="color:#a0aec0;">{{ mp.ds }}/{{ mp.uuid }}</span>
+                        <span style="color:#a0aec0;">{{ hero_act2.ds }}/{{ hero_act2.uuid }}</span>
                       </div>
                     </div>
-                    {% endfor %}
                   </div>
                   {% endif %}
                 </div>
@@ -1556,35 +1552,30 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
           </section>
           {% endif %}
 
-          {# ── Depth Maps (Grid2dRepresentation from linked RDDMS dataspaces) ── #}
+          {# ── Depth Map (one representative Grid2dRepresentation) ── #}
           {% if bd_maps %}
+          {% set hero = bd_maps[0] %}
+          {% set maps_total = (bd_maps_raw.get('maps_total') if bd_maps_raw is mapping else 0) or bd_maps|length %}
           <section class="section-card">
-            <h5>Depth Maps</h5>
-            <div style="font-size:.82rem;color:#718096;margin-bottom:.5rem;">
-              RESQML Grid2dRepresentation surfaces from linked Reservoir DDMS dataspaces
+            <h5>Depth Map</h5>
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem;">
+              <span style="font-weight:600;font-size:.88rem;color:#2d3748;">{{ hero.title }}</span>
+              <span style="font-size:.72rem;background:#e2e8f0;border-radius:999px;padding:.1rem .4rem;color:#4a5568;">{{ hero.ds_name or hero.ds }}</span>
+              {% if maps_total > 1 %}
+              <span style="font-size:.72rem;background:#bee3f8;border-radius:999px;padding:.1rem .4rem;color:#2b6cb0;">{{ maps_total }} maps in dataspace</span>
+              {% endif %}
             </div>
-            {% for mp in bd_maps[:6] %}
-            <div style="margin-bottom:1rem;{% if not loop.last %}border-bottom:1px solid #e2e8f0;padding-bottom:.8rem;{% endif %}">
-              <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem;">
-                <span style="font-weight:600;font-size:.88rem;color:#2d3748;">{{ mp.title }}</span>
-                <span style="font-size:.72rem;background:#e2e8f0;border-radius:999px;padding:.1rem .4rem;color:#4a5568;">{{ mp.ds_name or mp.ds }}</span>
-              </div>
-              <div style="margin-bottom:.3rem;">
-                <img src="/keys/object/map.png?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}&amp;w=12&amp;h=8&amp;dpi=100"
-                     alt="Depth map: {{ mp.title }}"
-                     loading="lazy"
-                     style="max-width:100%;border-radius:6px;border:1px solid #e2e8f0;" />
-              </div>
-              <div style="font-size:.72rem;color:#a0aec0;word-break:break-all;">
-                <code>/keys/object/map.png?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}</code>
-                <a href="/keys/object/map.json?ds={{ mp.ds }}&amp;uuid={{ mp.uuid }}" target="_blank" style="margin-left:.5rem;font-size:.72rem;">JSON ↗</a>
-                <a href="/keys?ds={{ mp.ds }}" style="margin-left:.5rem;font-size:.72rem;">Browse dataspace →</a>
-              </div>
+            <div style="margin-bottom:.3rem;">
+              <img src="/keys/object/map.png?ds={{ hero.ds }}&amp;uuid={{ hero.uuid }}&amp;w=12&amp;h=8&amp;dpi=100"
+                   alt="Depth map: {{ hero.title }}"
+                   loading="lazy"
+                   style="max-width:100%;border-radius:6px;border:1px solid #e2e8f0;" />
             </div>
-            {% endfor %}
-            {% if bd_maps|length > 6 %}
-            <div style="font-size:.82rem;color:#a0aec0;margin-top:.3rem;">… +{{ bd_maps|length - 6 }} more maps available in <a href="/keys?ds={{ bd_maps[0].ds }}">RDDMS explorer</a></div>
-            {% endif %}
+            <div style="font-size:.72rem;color:#a0aec0;word-break:break-all;">
+              <code>/keys/object/map.png?ds={{ hero.ds }}&amp;uuid={{ hero.uuid }}</code>
+              <a href="/keys/object/map.json?ds={{ hero.ds }}&amp;uuid={{ hero.uuid }}" target="_blank" style="margin-left:.5rem;font-size:.72rem;">JSON ↗</a>
+              <a href="/keys?ds={{ hero.ds }}" style="margin-left:.5rem;font-size:.72rem;">Browse dataspace →</a>
+            </div>
           </section>
           {% endif %}
 

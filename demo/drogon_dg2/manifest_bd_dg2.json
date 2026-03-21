@@ -163,6 +163,19 @@
                 "StringParameterKey": "DevelopmentConcept"
               }
             ]
+          },
+          {
+            "Title": "Headline volumes & reservoir properties (GeoLabelSet)",
+            "Selection": "P10/P50/P90 headline volumes per segment, derived from stat REV",
+            "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
+            "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
+            "DataObjectParameter": "dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1",
+            "Keys": [
+              {
+                "ParameterKey": "artifact",
+                "StringParameterKey": "GeoLabelSet"
+              }
+            ]
           }
         ],
         "Personnel": [
@@ -326,7 +339,9 @@
           "parents": [
             "dev:work-product-component--Activity:f7b43d02-f3e1-5c3b-ae2e-dce9da267c19:1"
           ],
-          "children": []
+          "children": [
+            "dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1"
+          ]
         },
         "ext": {
           "equinor": {

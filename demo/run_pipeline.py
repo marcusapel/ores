@@ -96,11 +96,11 @@ STEP_CONVENTIONS: List[Tuple[float, str, str]] = [
     (0.1, "genrefpropertytypes_*.py",    "Reference data (PropertyTypes)"),
     (0.2, "genreffacetrole_*.py",        "Reference data (FacetRoles)"),
     (0.3, "genmaster_*.py",             "Master data (Reservoir + Segments)"),
-    (0.4, "gengeolabelset_*.py",        "GeoLabelSet"),
     # Common DG steps (present in every decision-gate dataset)
     (1,   "genparamsmanifest_*.py",      "Parameters"),
     (2,   "genrawmanifest_*.py",         "Raw volumes"),
     (3,   "genstatmanifest_*.py",        "Statistics"),
+    (3.5, "gengeolabelset_*.py",         "GeoLabelSet"),
     (4,   "gen_activity_*.py",           "Activity"),
     (5,   "gen_risk_*.py",               "Risks"),
     (6,   "gen_documents_*.py",          "Documents"),

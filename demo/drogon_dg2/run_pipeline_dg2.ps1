@@ -83,6 +83,11 @@ try {
     py demo/drogon_dg2/gen_devconcept_dg2.py
     if ($LASTEXITCODE -ne 0) { throw "gen_devconcept_dg2.py failed" }
 
+    # ── Step 6c: Generate DG2 GeoLabelSet ─────────────────────────
+    Write-Host "`n═══ Step 6c: DG2 GeoLabelSet ═══" -ForegroundColor Cyan
+    py demo/drogon_dg2/gengeolabelset_dg2.py
+    if ($LASTEXITCODE -ne 0) { throw "gengeolabelset_dg2.py failed" }
+
     # ── Step 7: Generate DG2 Business Decision ────────────────────
     Write-Host "`n═══ Step 7: DG2 Business Decision ═══" -ForegroundColor Cyan
     py demo/drogon_dg2/gen_businessdecision_dg2.py
