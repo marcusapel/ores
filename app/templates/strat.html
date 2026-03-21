@@ -21,6 +21,24 @@
 .sc-footnote { font-size: .85rem; color: #605e5c; margin-top:.35rem; }
 .legend { display:flex; gap:.5rem; flex-wrap:wrap; margin:.35rem 0 .6rem; }
 .rank-col { min-width: 8rem; }
+
+/* ---- Import panel ---- */
+.imp-panel { background: #f9f9ff; border: 1px solid #d0d0e8; }
+.imp-tabs { display:flex; gap:0; border-bottom:2px solid #e1dfdd; margin-bottom:.75rem; }
+.imp-tab { padding:.45rem .9rem; cursor:pointer; font-weight:500; font-size:13.5px;
+  border:1px solid transparent; border-bottom:none; border-radius:6px 6px 0 0;
+  color:#605e5c; background:transparent; transition:background .15s; }
+.imp-tab:hover { background:#f3f2f1; }
+.imp-tab.active { color:#007079; background:#fff; border-color:#d0d0e8; border-bottom:2px solid #fff; margin-bottom:-2px; }
+.imp-body { display:none; }
+.imp-body.active { display:block; }
+.imp-status { font-size:13px; margin-top:.5rem; padding:6px 10px; border-radius:4px; }
+.imp-status.ok { background:#e6f9e6; color:#2e7d32; }
+.imp-status.err { background:#ffeaea; color:#c62828; }
+.imp-status.info { background:#e3f2fd; color:#1565c0; }
+.imp-preview { max-height:280px; overflow:auto; margin-top:.5rem; font-size:12.5px; }
+.btn-ingest { background:#007079; color:#fff; border-color:#007079; }
+.btn-ingest:hover { background:#004F55; border-color:#004F55; }
 </style>
 
 <!-- Search -->
@@ -46,6 +64,82 @@
     </div>
   </div>
 </section>
+
+<!-- Import / Ingest -->
+<details class="sc-wrap" style="margin-bottom:1rem;">
+  <summary style="font-weight:600; font-size:15px; cursor:pointer; color:#007079;">Import &amp; Ingest Stratigraphic Columns</summary>
+  <section class="sc-wrap sc-panel imp-panel" style="margin-top:.5rem;">
+    <div class="imp-tabs">
+      <span class="imp-tab active" data-tab="ow">OpenWorks JSON</span>
+      <span class="imp-tab" data-tab="smda">SMDA API</span>
+      <span class="imp-tab" data-tab="file">OSDU Bundle File</span>
+    </div>
+
+    <!-- Tab: OpenWorks JSON upload -->
+    <div class="imp-body active" id="imp-ow">
+      <p class="muted" style="margin:0 0 .5rem;">Upload an OpenWorks JSON export with <code>{"StratColumn":{"Name":"..."}, "Units":[...]}</code> structure.</p>
+      <div class="row" style="grid-template-columns:160px 1fr;">
+        <label for="ow-file">OW JSON File</label>
+        <input id="ow-file" type="file" accept=".json" />
+        <label for="ow-partition">OSDU Partition</label>
+        <input id="ow-partition" type="text" value="data" />
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
+        <button class="btn" id="btn-ow-convert" type="button">Convert to OSDU</button>
+        <button class="btn btn-ingest" id="btn-ow-ingest" type="button" disabled>Ingest to OSDU</button>
+        <button class="btn" id="btn-ow-storage" type="button" disabled title="Direct Storage PUT (bypass workflow)">Storage PUT</button>
+        <button class="btn" id="btn-ow-download" type="button" disabled>Download Bundle</button>
+      </div>
+      <div id="ow-status" class="imp-status info" style="display:none;"></div>
+      <div id="ow-preview" class="imp-preview"></div>
+    </div>
+
+    <!-- Tab: SMDA API fetch -->
+    <div class="imp-body" id="imp-smda">
+      <p class="muted" style="margin:0 0 .5rem;">Fetch a stratigraphic column from the SMDA OPUS API and convert to OSDU format.</p>
+      <div class="row" style="grid-template-columns:160px 1fr;">
+        <label for="smda-url">SMDA Base URL</label>
+        <input id="smda-url" type="text" value="https://opus.smda.equinor.com" />
+        <label for="smda-col">Column Identifier</label>
+        <div style="display:flex;gap:.4rem;">
+          <input id="smda-col" type="text" placeholder="e.g. NCS Lithostratigraphy" style="flex:1;" />
+          <button class="btn" id="btn-smda-list" type="button" title="List available columns">List</button>
+        </div>
+        <label for="smda-partition">OSDU Partition</label>
+        <input id="smda-partition" type="text" value="data" />
+      </div>
+      <div id="smda-columns-list" style="display:none;margin-bottom:.5rem;">
+        <label>Available columns</label>
+        <select id="smda-columns-sel" size="5" style="width:100%;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
+        <button class="btn" id="btn-smda-fetch" type="button">Fetch &amp; Convert</button>
+        <button class="btn btn-ingest" id="btn-smda-ingest" type="button" disabled>Ingest to OSDU</button>
+        <button class="btn" id="btn-smda-storage" type="button" disabled title="Direct Storage PUT">Storage PUT</button>
+        <button class="btn" id="btn-smda-download" type="button" disabled>Download Bundle</button>
+      </div>
+      <div id="smda-status" class="imp-status info" style="display:none;"></div>
+      <div id="smda-preview" class="imp-preview"></div>
+    </div>
+
+    <!-- Tab: OSDU Bundle file (direct upload) -->
+    <div class="imp-body" id="imp-file">
+      <p class="muted" style="margin:0 0 .5rem;">Upload a pre-built OSDU WPC bundle JSON (<code>{"records":[...]}</code>) for direct ingestion.</p>
+      <div class="row" style="grid-template-columns:160px 1fr;">
+        <label for="bundle-file">Bundle JSON</label>
+        <input id="bundle-file" type="file" accept=".json" />
+        <label for="bundle-partition">OSDU Partition</label>
+        <input id="bundle-partition" type="text" value="data" />
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
+        <button class="btn btn-ingest" id="btn-bundle-ingest" type="button">Ingest to OSDU</button>
+        <button class="btn" id="btn-bundle-storage" type="button" title="Direct Storage PUT">Storage PUT</button>
+      </div>
+      <div id="bundle-status" class="imp-status info" style="display:none;"></div>
+      <div id="bundle-preview" class="imp-preview"></div>
+    </div>
+  </section>
+</details>
 
 <!-- Legend + Matrix -->
 <section class="sc-wrap sc-panel">
@@ -436,6 +530,205 @@
   resSelect?.addEventListener('change', () => {
     const id = resSelect.value || '';
     if (id) loadColumnById(id);
+  });
+
+  /* ================================================================ */
+  /*  IMPORT / INGEST TAB UI                                          */
+  /* ================================================================ */
+
+  // Tab switching
+  document.querySelectorAll('.imp-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.imp-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.imp-body').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+      const body = document.getElementById('imp-' + tab.dataset.tab);
+      if (body) body.classList.add('active');
+    });
+  });
+
+  function impStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'imp-status ' + (cls || 'info');
+    el.style.display = 'block';
+  }
+
+  function impPreview(id, bundle) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const recs = (bundle && bundle.records) || [];
+    const kinds = {};
+    recs.forEach(r => { const k = (r.kind||'').split('--').pop().split(':')[0]; kinds[k] = (kinds[k]||0)+1; });
+    let html = `<strong>${recs.length} records</strong><br>`;
+    for (const [k,v] of Object.entries(kinds)) html += `&bull; ${k}: ${v}<br>`;
+    html += `<details style="margin-top:.4rem;"><summary class="muted">Raw JSON (first 3 records)</summary>`;
+    html += `<pre style="max-height:200px;overflow:auto;font-size:11.5px;">${JSON.stringify(recs.slice(0,3), null, 2)}</pre></details>`;
+    el.innerHTML = html;
+  }
+
+  function downloadJSON(obj, filename) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Shared ingest function
+  async function doIngest(bundle, partition, statusId, endpoint) {
+    impStatus(statusId, 'Ingesting…', 'info');
+    try {
+      const url = endpoint || '/api/strat/ingest';
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({bundle, partition}),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+      impStatus(statusId, `${data.status}: ${data.recordCount || data.created || data.totalRecords || '?'} records processed`, 'ok');
+    } catch(e) {
+      impStatus(statusId, 'Ingest failed: ' + e.message, 'err');
+    }
+  }
+
+  /* ---- OpenWorks tab ---- */
+  let owBundle = null;
+  const btnOwConvert  = document.getElementById('btn-ow-convert');
+  const btnOwIngest   = document.getElementById('btn-ow-ingest');
+  const btnOwStorage  = document.getElementById('btn-ow-storage');
+  const btnOwDownload = document.getElementById('btn-ow-download');
+
+  btnOwConvert?.addEventListener('click', async () => {
+    const fileInput = document.getElementById('ow-file');
+    const file = fileInput?.files?.[0];
+    if (!file) { impStatus('ow-status', 'Select a JSON file first', 'err'); return; }
+    const partition = document.getElementById('ow-partition')?.value || 'data';
+    impStatus('ow-status', 'Converting…', 'info');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('partition', partition);
+    try {
+      const r = await fetch('/api/strat/import/ow', {method:'POST', body:fd});
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+      owBundle = data.bundle;
+      impStatus('ow-status', `Converted: "${data.columnName}" — ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
+      impPreview('ow-preview', owBundle);
+      btnOwIngest.disabled = false;
+      btnOwStorage.disabled = false;
+      btnOwDownload.disabled = false;
+    } catch(e) {
+      owBundle = null;
+      impStatus('ow-status', 'Conversion failed: ' + e.message, 'err');
+    }
+  });
+  btnOwIngest?.addEventListener('click', () => {
+    if (owBundle) doIngest(owBundle, document.getElementById('ow-partition')?.value, 'ow-status');
+  });
+  btnOwStorage?.addEventListener('click', () => {
+    if (owBundle) doIngest(owBundle, document.getElementById('ow-partition')?.value, 'ow-status', '/api/strat/storage/put');
+  });
+  btnOwDownload?.addEventListener('click', () => {
+    if (owBundle) downloadJSON(owBundle, 'strat_column_osdu_bundle.json');
+  });
+
+  /* ---- SMDA tab ---- */
+  let smdaBundle = null;
+  const btnSmdaList    = document.getElementById('btn-smda-list');
+  const btnSmdaFetch   = document.getElementById('btn-smda-fetch');
+  const btnSmdaIngest  = document.getElementById('btn-smda-ingest');
+  const btnSmdaStorage = document.getElementById('btn-smda-storage');
+  const btnSmdaDownload= document.getElementById('btn-smda-download');
+
+  btnSmdaList?.addEventListener('click', async () => {
+    const smdaUrl = document.getElementById('smda-url')?.value || '';
+    impStatus('smda-status', 'Listing columns…', 'info');
+    try {
+      const r = await fetch(`/api/strat/smda/columns.json?smda_url=${encodeURIComponent(smdaUrl)}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+      const sel = document.getElementById('smda-columns-sel');
+      sel.innerHTML = '';
+      (data.columns || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        sel.appendChild(opt);
+      });
+      document.getElementById('smda-columns-list').style.display = 'block';
+      impStatus('smda-status', `Found ${data.total} column identifiers`, 'ok');
+    } catch(e) {
+      impStatus('smda-status', 'List failed: ' + e.message, 'err');
+    }
+  });
+
+  document.getElementById('smda-columns-sel')?.addEventListener('change', function() {
+    document.getElementById('smda-col').value = this.value;
+  });
+
+  btnSmdaFetch?.addEventListener('click', async () => {
+    const col = document.getElementById('smda-col')?.value?.trim();
+    if (!col) { impStatus('smda-status', 'Enter a column identifier', 'err'); return; }
+    const smdaUrl = document.getElementById('smda-url')?.value || '';
+    const partition = document.getElementById('smda-partition')?.value || 'data';
+    impStatus('smda-status', `Fetching "${col}" from SMDA…`, 'info');
+    const fd = new FormData();
+    fd.append('column', col);
+    fd.append('smda_url', smdaUrl);
+    fd.append('partition', partition);
+    try {
+      const r = await fetch('/api/strat/import/smda', {method:'POST', body:fd});
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+      smdaBundle = data.bundle;
+      impStatus('smda-status', `Fetched: "${data.columnName}" — ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
+      impPreview('smda-preview', smdaBundle);
+      btnSmdaIngest.disabled = false;
+      btnSmdaStorage.disabled = false;
+      btnSmdaDownload.disabled = false;
+    } catch(e) {
+      smdaBundle = null;
+      impStatus('smda-status', 'Fetch failed: ' + e.message, 'err');
+    }
+  });
+  btnSmdaIngest?.addEventListener('click', () => {
+    if (smdaBundle) doIngest(smdaBundle, document.getElementById('smda-partition')?.value, 'smda-status');
+  });
+  btnSmdaStorage?.addEventListener('click', () => {
+    if (smdaBundle) doIngest(smdaBundle, document.getElementById('smda-partition')?.value, 'smda-status', '/api/strat/storage/put');
+  });
+  btnSmdaDownload?.addEventListener('click', () => {
+    if (smdaBundle) downloadJSON(smdaBundle, 'smda_strat_osdu_bundle.json');
+  });
+
+  /* ---- OSDU Bundle file tab ---- */
+  let fileBundle = null;
+  const btnBundleIngest  = document.getElementById('btn-bundle-ingest');
+  const btnBundleStorage = document.getElementById('btn-bundle-storage');
+
+  document.getElementById('bundle-file')?.addEventListener('change', async function() {
+    const file = this.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const doc = JSON.parse(text);
+      fileBundle = doc;
+      const recs = doc.records || [];
+      impStatus('bundle-status', `Loaded ${recs.length} records from ${file.name}`, 'ok');
+      impPreview('bundle-preview', doc);
+    } catch(e) {
+      fileBundle = null;
+      impStatus('bundle-status', 'Invalid JSON: ' + e.message, 'err');
+    }
+  });
+  btnBundleIngest?.addEventListener('click', () => {
+    if (fileBundle) doIngest(fileBundle, document.getElementById('bundle-partition')?.value, 'bundle-status');
+  });
+  btnBundleStorage?.addEventListener('click', () => {
+    if (fileBundle) doIngest(fileBundle, document.getElementById('bundle-partition')?.value, 'bundle-status', '/api/strat/storage/put');
   });
 
 })();

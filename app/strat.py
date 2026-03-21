@@ -1,14 +1,25 @@
 
 from __future__ import annotations
 import asyncio
+import json
 import os
+import sys
 import urllib.parse
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from . import osdu
+
+# Import the stratcolumnhandler from demo/strat/
+_handler_dir = os.path.join(os.path.dirname(__file__), "..", "demo", "strat")
+if _handler_dir not in sys.path:
+    sys.path.insert(0, os.path.abspath(_handler_dir))
+try:
+    from stratcolumnhandler import StratColumn as _StratColumn
+except ImportError:
+    _StratColumn = None
 
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
@@ -403,4 +414,227 @@ async def get_strat_column(
     return JSONResponse({
         "column": col,
         "ranks": ranks_model
+    })
+
+
+# =====================================================================
+# IMPORT / CONVERT / INGEST endpoints
+# =====================================================================
+
+@router.post("/api/strat/import/ow")
+async def import_ow_json(
+    request: Request,
+    file: UploadFile = File(...),
+    partition: str = Form("data"),
+):
+    """Upload an OpenWorks JSON file; convert it to an OSDU WPC bundle.
+
+    Returns the OSDU bundle JSON (ready for ingestion via /api/strat/ingest).
+    """
+    if _StratColumn is None:
+        raise HTTPException(500, "stratcolumnhandler not available on this deployment")
+
+    try:
+        raw = await file.read()
+        doc = json.loads(raw)
+    except Exception as e:
+        raise HTTPException(400, f"Invalid JSON file: {e}")
+
+    try:
+        col = _StratColumn.from_openworks_json(doc)
+        bundle = col.to_osdu_bundle(partition=partition)
+    except Exception as e:
+        raise HTTPException(422, f"Conversion error: {e}")
+
+    return JSONResponse({
+        "source": "openworks",
+        "columnName": col.name,
+        "rankCount": len(col.ranks),
+        "unitCount": sum(len(r.units) for r in col.ranks if r.kind == "litho"),
+        "bundle": bundle,
+    })
+
+
+@router.post("/api/strat/import/smda")
+async def import_smda_api(
+    request: Request,
+    column: str = Form(...),
+    smda_url: str = Form("https://opus.smda.equinor.com"),
+    partition: str = Form("data"),
+):
+    """Fetch a strat column from SMDA OPUS API and convert to OSDU WPC bundle.
+
+    Uses the caller's OSDU access token (if available) to authenticate
+    against SMDA, since both use Azure AD (Equinor SSO).
+    """
+    if _StratColumn is None:
+        raise HTTPException(500, "stratcolumnhandler not available")
+
+    # Try to get access token for SMDA auth (same tenant)
+    at = getattr(request.state, "access_token", None)
+
+    try:
+        col = _StratColumn.from_smda_api(
+            column,
+            base_url=smda_url,
+            access_token=at,
+        )
+        bundle = col.to_osdu_bundle(partition=partition)
+    except Exception as e:
+        raise HTTPException(422, f"SMDA fetch/convert error: {e}")
+
+    return JSONResponse({
+        "source": "smda",
+        "columnName": col.name,
+        "rankCount": len(col.ranks),
+        "unitCount": sum(len(r.units) for r in col.ranks if r.kind == "litho"),
+        "bundle": bundle,
+    })
+
+
+@router.get("/api/strat/smda/columns.json")
+async def list_smda_columns(
+    request: Request,
+    smda_url: str = Query("https://opus.smda.equinor.com"),
+):
+    """List available strat column identifiers from SMDA OPUS API."""
+    if _StratColumn is None:
+        raise HTTPException(500, "stratcolumnhandler not available")
+
+    at = getattr(request.state, "access_token", None)
+    try:
+        names = _StratColumn.from_smda_api_list_columns(
+            base_url=smda_url,
+            access_token=at,
+        )
+    except Exception as e:
+        raise HTTPException(502, f"SMDA API error: {e}")
+
+    return JSONResponse({"columns": names, "total": len(names)})
+
+
+@router.post("/api/strat/ingest")
+async def ingest_strat_bundle(
+    request: Request,
+):
+    """Ingest an OSDU WPC bundle (strat column records) via the OSDU Workflow Service.
+
+    Body:
+    {
+      "bundle": {"records": [...]},
+      "partition": "data"  // optional
+    }
+    """
+    at = _access_token(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    bundle = body.get("bundle")
+    if not isinstance(bundle, dict) or "records" not in bundle:
+        raise HTTPException(400, "Body must include 'bundle' with 'records' array")
+
+    partition = body.get("partition") or osdu.DATA_PARTITION_ID or "data"
+    base = f"https://{osdu.OSDU_BASE_URL}"
+
+    # Build manifest envelope for the Osdu_ingest workflow
+    records = bundle["records"]
+    ref_data = [r for r in records if "reference-data--" in (r.get("kind") or "")]
+    wpc_data = [r for r in records if "work-product-component--" in (r.get("kind") or "")]
+
+    manifest = {
+        "kind": "osdu:wks:Manifest:1.0.0",
+        "ReferenceData": ref_data,
+        "MasterData": [],
+        "Data": {
+            "Datasets": [],
+            "WorkProductComponents": wpc_data,
+            "WorkProduct": {},
+        },
+    }
+
+    # POST to workflow service
+    url = f"{base}/api/workflow/v1/workflow/Osdu_ingest/workflowRun"
+    hdr = osdu.headers(at)
+    payload = {
+        "executionContext": {
+            "Payload": {"data-partition-id": partition},
+            "manifest": manifest,
+        }
+    }
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        try:
+            r = await client.post(url, headers=hdr, json=payload)
+            if r.status_code >= 400:
+                return JSONResponse({
+                    "status": "error",
+                    "httpStatus": r.status_code,
+                    "detail": r.text[:2000],
+                }, status_code=502)
+            result = r.json()
+        except Exception as e:
+            raise HTTPException(502, f"Workflow ingestion failed: {e}")
+
+    return JSONResponse({
+        "status": "submitted",
+        "recordCount": len(records),
+        "refDataCount": len(ref_data),
+        "wpcCount": len(wpc_data),
+        "workflowResponse": result,
+    })
+
+
+@router.post("/api/strat/storage/put")
+async def storage_put_strat_records(
+    request: Request,
+):
+    """Directly PUT strat column records to OSDU Storage (bypassing workflow).
+
+    Body:
+    {
+      "bundle": {"records": [...]},
+      "partition": "data"
+    }
+    """
+    at = _access_token(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    bundle = body.get("bundle")
+    if not isinstance(bundle, dict) or "records" not in bundle:
+        raise HTTPException(400, "Body must include 'bundle' with 'records' array")
+
+    records = bundle["records"]
+    base = f"https://{osdu.OSDU_BASE_URL}"
+    url = f"{base}/api/storage/v2/records"
+    hdr = osdu.headers(at)
+
+    results = {"created": 0, "errors": []}
+    # Upload in batches of 20
+    async with httpx.AsyncClient(timeout=60) as client:
+        for i in range(0, len(records), 20):
+            batch = records[i:i + 20]
+            try:
+                r = await client.put(url, headers=hdr, json=batch)
+                if r.status_code < 300:
+                    resp = r.json()
+                    results["created"] += resp.get("recordCount", len(batch))
+                else:
+                    results["errors"].append({
+                        "batch": i,
+                        "httpStatus": r.status_code,
+                        "detail": r.text[:1000],
+                    })
+            except Exception as e:
+                results["errors"].append({"batch": i, "error": str(e)})
+
+    status = "ok" if not results["errors"] else "partial"
+    return JSONResponse({
+        "status": status,
+        "totalRecords": len(records),
+        **results,
     })
