@@ -44,9 +44,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent        # demo/drogon_dg2
 DG1_DIR    = SCRIPT_DIR.parent / "drogon"            # demo/drogon
 
 # ── Stable deterministic UUIDs for DG2 ──────────────────────────────
+# Keep original seeds so OSDU creates new versions (not new records)
 _NS = uuid.UUID("a0000000-d509-4e00-8000-000000000000")
-TEMPLATE_UUID_DG2 = str(uuid.uuid5(_NS, "dg2-fmu-comprehensive-template"))
-ACTIVITY_UUID_DG2 = str(uuid.uuid5(_NS, "dg2-fmu-comprehensive-activity"))
+TEMPLATE_UUID_DG2 = str(uuid.uuid5(_NS, "dg2-volumetrics-template"))
+ACTIVITY_UUID_DG2 = str(uuid.uuid5(_NS, "dg2-volumetrics-activity"))
 
 # ETP Dataspace — shared with DG1 (same geomodel)
 DATASPACE_NAME = "maap/drogon_dg"
