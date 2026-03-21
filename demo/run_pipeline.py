@@ -84,6 +84,127 @@ class Step:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Auto-discovery: scan a directory for generator scripts by convention
+# ─────────────────────────────────────────────────────────────────────
+
+# Ordered (step_number, glob_pattern, label_template)
+# The pipeline runs steps in this order.  Each glob must match at most
+# one script; if missing the step is silently skipped.
+STEP_CONVENTIONS: List[Tuple[float, str, str]] = [
+    # DG1-only pre-steps (only present in base/seed datasets)
+    (0,   "split_*.py",                  "Split CSV"),
+    (0.1, "genrefpropertytypes_*.py",    "Reference data (PropertyTypes)"),
+    (0.2, "genreffacetrole_*.py",        "Reference data (FacetRoles)"),
+    (0.3, "genmaster_*.py",             "Master data (Reservoir + Segments)"),
+    (0.4, "gengeolabelset_*.py",        "GeoLabelSet"),
+    # Common DG steps (present in every decision-gate dataset)
+    (1,   "genparamsmanifest_*.py",      "Parameters"),
+    (2,   "genrawmanifest_*.py",         "Raw volumes"),
+    (3,   "genstatmanifest_*.py",        "Statistics"),
+    (4,   "gen_activity_*.py",           "Activity"),
+    (5,   "gen_risk_*.py",               "Risks"),
+    (6,   "gen_documents_*.py",          "Documents"),
+    (6.1, "gen_devconcept_*.py",         "DevelopmentConcept"),
+    (7,   "gen_businessdecision_*.py",   "Business Decision"),
+    # Infrastructure steps (records + ingest)
+    (8,   "manifest2records*.py",        "Manifests → records"),
+    (9,   "ingest_records_batch.py",     "Storage API ingestion"),
+]
+
+
+def discover_pipeline(dataset_dir: str) -> Dict[str, Any]:
+    """Auto-discover a pipeline profile from a directory.
+
+    Scans *dataset_dir* for Python scripts matching the naming conventions
+    in STEP_CONVENTIONS.  Returns a profile dict compatible with
+    PipelineRunner.
+
+    Args:
+        dataset_dir: path relative to repo root, e.g. "demo/drogon_dg2"
+    """
+    abs_dir = REPO_ROOT / dataset_dir
+    if not abs_dir.is_dir():
+        raise SystemExit(f"Directory not found: {dataset_dir}")
+
+    # Derive a human-friendly name from the directory
+    dir_name = abs_dir.name                      # e.g. "drogon_dg2"
+    parts = dir_name.rsplit("_", 1)
+    if len(parts) == 2:
+        field, gate = parts[0].replace("_", " ").title(), parts[1].upper()
+        name = f"{field} {gate} (auto-discovered)"
+    else:
+        name = f"{dir_name} (auto-discovered)"
+
+    steps: List[Step] = []
+    for step_num, pattern, label in STEP_CONVENTIONS:
+        matches = sorted(abs_dir.glob(pattern))
+        # Exclude __pycache__ and other non-script matches
+        matches = [m for m in matches if m.suffix == ".py" and "__" not in m.name]
+        if not matches:
+            continue
+        # Use first match (there should only be one per convention)
+        script = matches[0]
+        rel_script = str(script.relative_to(REPO_ROOT))
+        optional = step_num < 1  # pre-steps are optional
+        steps.append(Step(step_num, label, rel_script, optional=optional))
+
+    if not steps:
+        raise SystemExit(
+            f"No generator scripts found in {dataset_dir}/\n"
+            f"Expected scripts like: genparamsmanifest_*.py, gen_risk_*.py, etc.\n"
+            f"Run with --show {dataset_dir} to see what was checked."
+        )
+
+    # Detect records/ subdirectory
+    records_dir = f"{dataset_dir}/records"
+
+    # Detect prerequisites: look for a _shared.py that imports from a parent DG
+    prereqs: List[str] = []
+    depends_on: Optional[str] = None
+    shared_py = abs_dir / "_shared.py"
+    if shared_py.exists():
+        text = shared_py.read_text(encoding="utf-8")
+        # If _shared.py imports from a parent directory (DG1 pattern)
+        if "parent" in text and "drogon" in text.lower():
+            # Check if DG1 master manifest is expected
+            dg1_master = REPO_ROOT / "demo/drogon/manifest_masterwp_drogon.json"
+            if dg1_master.exists():
+                prereqs.append("demo/drogon/manifest_masterwp_drogon.json")
+                depends_on = "drogon_dg1"
+
+    return {
+        "name": name,
+        "base_dir": dataset_dir,
+        "records_dir": records_dir,
+        "depends_on": depends_on,
+        "prereqs": prereqs,
+        "steps": steps,
+    }
+
+
+def show_discovery(dataset_dir: str) -> None:
+    """Print what the auto-discovery finds (or would find) in a directory."""
+    abs_dir = REPO_ROOT / dataset_dir
+    print(f"\nAuto-discovery for: {dataset_dir}/\n")
+
+    if not abs_dir.is_dir():
+        print(f"  Directory not found: {abs_dir}")
+        return
+
+    for step_num, pattern, label in STEP_CONVENTIONS:
+        matches = sorted(abs_dir.glob(pattern))
+        matches = [m for m in matches if m.suffix == ".py" and "__" not in m.name]
+        status = "✓" if matches else "·"
+        found = matches[0].name if matches else "(not found)"
+        opt = " [optional]" if step_num < 1 else ""
+        print(f"  {status} Step {step_num:>4}  {label:30s}  {pattern:35s}  → {found}{opt}")
+
+    records = abs_dir / "records"
+    print(f"\n  {'✓' if records.is_dir() else '·'} records/  → {'exists' if records.is_dir() else 'will be created'}")
+    print()
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Built-in pipeline profiles
 # ─────────────────────────────────────────────────────────────────────
 
@@ -362,36 +483,53 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generic OSDU demo pipeline runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Built-in profiles:
-  drogon_dg1   Drogon DG1 (Explore / BOD) — full pipeline from CSV
-  drogon_dg2   Drogon DG2 (Concept Select) — requires DG1 first
+        epilog=f"""
+Auto-discovery (recommended):
+  python demo/run_pipeline.py                                # default: {DEFAULT_DIR}
+  python demo/run_pipeline.py demo/drogon_dg2                # explicit directory
+  python demo/run_pipeline.py demo/my_field_dg3              # any dataset dir
+  python demo/run_pipeline.py --show demo/drogon_dg2         # show discovered steps
 
-Custom configs:
+Built-in profiles:
+  python demo/run_pipeline.py --profile drogon_dg1           # DG1 full pipeline
+  python demo/run_pipeline.py --profile drogon_dg2           # DG2 pipeline
+
+Custom JSON config:
   python demo/run_pipeline.py --config my_pipeline.json
 
-Example pipeline config JSON:
-  {
-    "name": "Johan Sverdrup DG3",
-    "base_dir": "demo/sverdrup_dg3",
-    "records_dir": "demo/sverdrup_dg3/records",
-    "steps": [
-      {"number": 1, "label": "Parameters", "script": "demo/sverdrup_dg3/gen_params.py"},
-      {"number": 8, "label": "Split records", "script": "demo/sverdrup_dg3/manifest2records.py"},
-      {"number": 9, "label": "Ingest",        "script": "demo/sverdrup_dg3/ingest_records_batch.py"}
-    ]
-  }
+Expected directory layout for new datasets:
+  demo/<field>_<gate>/
+      genparamsmanifest_<suffix>.py      # step 1
+      genrawmanifest_<suffix>.py         # step 2
+      genstatmanifest_<suffix>.py        # step 3
+      gen_activity_<suffix>.py           # step 4
+      gen_risk_<suffix>.py               # step 5
+      gen_documents_<suffix>.py          # step 6
+      gen_devconcept_<suffix>.py         # step 6.1
+      gen_businessdecision_<suffix>.py   # step 7
+      manifest2records_<suffix>.py       # step 8
+      ingest_records_batch.py            # step 9
+      records/                           # output
 """,
     )
     parser.add_argument(
-        "profile",
+        "directory",
         nargs="?",
+        default=None,
+        help=f"Dataset directory to auto-discover pipeline from (default: {DEFAULT_DIR})",
+    )
+    parser.add_argument(
+        "--profile", "-p",
         choices=list(PROFILES.keys()),
-        help="Built-in pipeline profile to run",
+        help="Use a built-in pipeline profile instead of auto-discovery",
     )
     parser.add_argument(
         "--config", "-c",
-        help="Path to a custom pipeline config JSON file (overrides profile)",
+        help="Path to a custom pipeline config JSON file",
+    )
+    parser.add_argument(
+        "--show", metavar="DIR",
+        help="Show discovered steps for a directory and exit",
     )
     parser.add_argument(
         "--skip-ingest", action="store_true",
@@ -420,23 +558,35 @@ Example pipeline config JSON:
 
     args = parser.parse_args()
 
+    # --list: show built-in profiles
     if args.list:
         print("\nBuilt-in pipeline profiles:\n")
         for key, prof in PROFILES.items():
             dep = f" (requires: {prof['depends_on']})" if prof.get("depends_on") else ""
             n_steps = len(prof["steps"])
             print(f"  {key:20s}  {prof['name']}{dep}  [{n_steps} steps]")
+        print(f"\nOr auto-discover from any directory:")
+        print(f"  python demo/run_pipeline.py demo/<field>_<gate>")
         print()
         return
 
-    # Resolve config
+    # --show: display discovery results
+    if args.show:
+        show_discovery(args.show)
+        return
+
+    # Resolve pipeline config (priority: --config > --profile > directory > default)
     if args.config:
         profile = load_config_file(args.config)
     elif args.profile:
         profile = PROFILES[args.profile]
     else:
-        parser.error("Specify a profile name or --config file. Use --list to see options.")
-        return
+        # Auto-discover from directory (positional arg or default)
+        dataset_dir = args.directory or DEFAULT_DIR
+        # Normalize path: strip trailing slash
+        dataset_dir = dataset_dir.rstrip("/").rstrip("\\")
+        print(f"Auto-discovering pipeline from: {dataset_dir}/")
+        profile = discover_pipeline(dataset_dir)
 
     # Parse step filter
     only_steps = None
