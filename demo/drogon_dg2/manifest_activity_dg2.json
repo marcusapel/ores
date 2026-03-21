@@ -319,6 +319,42 @@
               "MinOccurs": 0,
               "MaxOccurs": 1,
               "DefaultParameterKind": "string"
+            },
+            {
+              "Title": "VolumeEstimates",
+              "Description": "P50 volume estimates link to statistical REV WPC record.",
+              "IsInput": false,
+              "IsOutput": true,
+              "MinOccurs": 0,
+              "MaxOccurs": 1,
+              "DefaultParameterKind": "DataObject"
+            },
+            {
+              "Title": "ProductionProfileP50",
+              "Description": "P50 production profile link to ColumnBasedTable WPC with real OPM Flow output.",
+              "IsInput": false,
+              "IsOutput": true,
+              "MinOccurs": 0,
+              "MaxOccurs": 1,
+              "DefaultParameterKind": "DataObject"
+            },
+            {
+              "Title": "ReservoirRecord",
+              "Description": "OSDU Reservoir master-data record for the Drogon field.",
+              "IsInput": true,
+              "IsOutput": false,
+              "MinOccurs": 0,
+              "MaxOccurs": 1,
+              "DefaultParameterKind": "DataObject"
+            },
+            {
+              "Title": "DevelopmentConcept",
+              "Description": "DG2 Development Concept WPC record.",
+              "IsInput": false,
+              "IsOutput": true,
+              "MinOccurs": 0,
+              "MaxOccurs": 1,
+              "DefaultParameterKind": "DataObject"
             }
           ]
         }
@@ -594,16 +630,54 @@
             {
               "Title": "VolumeEstimates",
               "Description": "P50 volume estimates: STOIIP 45.4 MSm³, GIIP 6.4 GSm³, recoverable oil 15.2 MSm³, RF 33.5%. Breakdown by 7 regions and 3 zones.",
-              "ParameterKindID": "dev:reference-data--ParameterKind:String:1",
+              "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
               "ParameterRoleID": "dev:reference-data--ParameterRole:Output:1",
-              "StringParameter": "{\"STOIIP_MSm3\":45.4,\"GIIP_GSm3\":6.4,\"RecoverableOil_MSm3\":15.2,\"RecoveryFactor_pct\":33.5,\"ByRegion\":{\"WestLowland\":{\"STOIIP_MSm3\":0.5,\"RF_pct\":30.0},\"CentralSouth\":{\"STOIIP_MSm3\":6.22,\"RF_pct\":35.0},\"CentralNorth\":{\"STOIIP_MSm3\":7.81,\"RF_pct\":34.0},\"NorthHorst\":{\"STOIIP_MSm3\":10.85,\"RF_pct\":36.0},\"CentralRamp\":{\"STOIIP_MSm3\":5.14,\"RF_pct\":32.0},\"CentralHorst\":{\"STOIIP_MSm3\":5.61,\"RF_pct\":33.0},\"EastLowland\":{\"STOIIP_MSm3\":9.27,\"RF_pct\":31.0}},\"ByZone\":{\"Valysar\":{\"STOIIP_MSm3\":28.5,\"RF_pct\":35.0},\"Therys\":{\"STOIIP_MSm3\":11.2,\"RF_pct\":31.0},\"Volon\":{\"STOIIP_MSm3\":5.7,\"RF_pct\":29.0}}}"
+              "DataObjectParameter": "dev:work-product-component--ReservoirEstimatedVolumes:491522b1-2e98-479e-85e7-a3b17b7cc4ba:1",
+              "Keys": [
+                {
+                  "ParameterKey": "artifact",
+                  "StringParameterKey": "REV-stats-volumes"
+                }
+              ]
             },
             {
               "Title": "ProductionProfileP50",
-              "Description": "P50 reference production profile: field-level FOPR, FGPR, FWPR, FWIR, FPR, FOPT, FWCT from 2018 to 2037. Peak oil rate ~5500 Sm³/d (2020), plateau ~4-5 kSm³/d, EUR ~10.4 MSm³ oil.",
-              "ParameterKindID": "dev:reference-data--ParameterKind:String:1",
+              "Description": "P50 reference production profile: field-level FOPR, FGPR, FWPR, FWIR, FPR, FOPT, FWCT. Real OPM Flow output from realization-0, 31 monthly timesteps 2018–2020. Peak oil rate ~14.3 kSm³/d.",
+              "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
               "ParameterRoleID": "dev:reference-data--ParameterRole:Output:1",
-              "StringParameter": "{\"Source\":\"webviz-subsurface-testdata/01_drogon_ahm/realization-0/iter-0\",\"StartDate\":\"2018-01-01\",\"EndDate\":\"2020-07-01\",\"Wells\":{\"appraisal\":[\"55_33-1\"],\"producers\":[\"A1\",\"A2\",\"A3\",\"A4\"],\"injectors\":[\"A5\",\"A6\"],\"rft_wells\":[\"R_A2\",\"R_A3\",\"R_A4\",\"R_A5\",\"R_A6\"]},\"FieldProduction\":{\"dates\":[\"2018-01-01\",\"2018-02-01\",\"2018-03-01\",\"2018-04-01\",\"2018-05-01\",\"2018-06-01\",\"2018-07-01\",\"2018-08-01\",\"2018-09-01\",\"2018-10-01\",\"2018-11-01\",\"2018-12-01\",\"2019-01-01\",\"2019-02-01\",\"2019-03-01\",\"2019-04-01\",\"2019-05-01\",\"2019-06-01\",\"2019-07-01\",\"2019-08-01\",\"2019-09-01\",\"2019-10-01\",\"2019-11-01\",\"2019-12-01\",\"2020-01-01\",\"2020-02-01\",\"2020-03-01\",\"2020-04-01\",\"2020-05-01\",\"2020-06-01\",\"2020-07-01\"],\"FOPR_Sm3d\":[0.0,3970.2,3980.0,7974.2,8002.0,7392.6,6410.7,10161.7,10515.3,14259.3,13142.6,10962.8,10603.0,10388.9,10134.9,9810.2,9558.2,9364.9,9114.0,8706.0,8369.2,8096.3,7641.7,7214.0,6923.2,6529.5,6282.0,6069.8,5810.2,5681.1,5520.3],\"FGPR_Sm3d\":[0.0,559088.4,556397.9,1084306.6,1073526.5,993481.6,875296.4,1365438.1,1382394.2,1956233.0,1896926.8,1494532.1,1417747.9,1379509.0,1337871.5,1290774.4,1255550.0,1234463.5,1209852.6,1176561.2,1160631.8,1153680.1,1108378.4,1055485.6,1017094.1,951073.4,907477.2,869131.2,821222.4,792453.7,766359.7],\"FWPR_Sm3d\":[0.0,41.3,38.2,77.7,77.9,100.5,169.1,347.6,822.0,1923.9,2615.5,2470.0,2771.6,3041.3,3288.4,3598.5,3970.7,4350.2,4783.1,5256.4,5703.3,6081.3,6349.9,6547.1,6765.2,6892.6,7030.7,7171.1,7265.9,7413.1,7581.4],\"FWIR_Sm3d\":[0.0,0.0,0.0,0.0,0.0,8000.0,8000.0,8000.0,8000.0,8000.0,8000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0,16000.0],\"FPR_barsa\":[301.0,295.4,291.1,285.2,280.9,280.1,280.2,277.4,274.7,270.3,264.5,262.4,261.8,261.3,260.8,260.4,260.0,259.8,259.3,258.8,258.3,257.7,257.2,256.9,256.6,256.5,256.4,256.4,256.6,256.8,257.0],\"FOPT_Sm3\":[0,107186,218503,429416,668809,902715,1098834,1367803,1688689,2040743,2457924,2799600,3131530,3455186,3741322,4049177,4338311,4593814,4870662,5145290,5408784,5655302,5897222,6110950,6327287,6533738,6718742,6907922,7084592,7239404,7406547],\"FWCT_frac\":[0.0,0.0103,0.0095,0.0097,0.0096,0.0134,0.0257,0.0331,0.0725,0.1189,0.166,0.1839,0.2072,0.2264,0.245,0.2684,0.2935,0.3172,0.3442,0.3765,0.4053,0.4289,0.4538,0.4758,0.4942,0.5135,0.5281,0.5416,0.5557,0.5661,0.5787]}}"
+              "DataObjectParameter": "dev:work-product-component--ColumnBasedTable:Drogon-DG2-ProductionForecast:1",
+              "Keys": [
+                {
+                  "ParameterKey": "artifact",
+                  "StringParameterKey": "ProductionProfile-P50"
+                }
+              ]
+            },
+            {
+              "Title": "ReservoirRecord",
+              "Description": "OSDU Reservoir master-data record for Drogon. Links to 7 ReservoirSegment records (WestLowland, CentralSouth, etc.).",
+              "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
+              "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
+              "DataObjectParameter": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+              "Keys": [
+                {
+                  "ParameterKey": "artifact",
+                  "StringParameterKey": "Reservoir"
+                }
+              ]
+            },
+            {
+              "Title": "DevelopmentConcept",
+              "Description": "DG2 Development Concept record: subsea tieback to Ivar Aasen, 6 wells (A1-A4 prod + A5-A6 inj), FPSO host, waterflood IOR.",
+              "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
+              "ParameterRoleID": "dev:reference-data--ParameterRole:Output:1",
+              "DataObjectParameter": "dev:work-product-component--DevelopmentConcept:Drogon-DG2:1",
+              "Keys": [
+                {
+                  "ParameterKey": "artifact",
+                  "StringParameterKey": "DevelopmentConcept"
+                }
+              ]
             }
           ],
           "ancestry": {
@@ -614,7 +688,8 @@
               "dev:work-product-component--ColumnBasedTable:3f518dae-22d4-4ebd-b2ec-b4f7cc60c1e3:1",
               "dev:work-product-component--ReservoirEstimatedVolumes:5a021693-c20a-4b96-be28-68f2240791b4:1",
               "dev:work-product-component--ReservoirEstimatedVolumes:491522b1-2e98-479e-85e7-a3b17b7cc4ba:1",
-              "dev:work-product-component--ColumnBasedTable:Drogon-DG2-ProductionForecast:1"
+              "dev:work-product-component--ColumnBasedTable:Drogon-DG2-ProductionForecast:1",
+              "dev:work-product-component--DevelopmentConcept:Drogon-DG2:1"
             ]
           }
         }

@@ -541,6 +541,19 @@ def build_template(prefix, acl, legal):
                 _pt("OutputEclipseTables", "Eclipse-derived tables: saturation "
                     "functions, PVT, VFP, group tree, summary vectors.",
                     is_in=False, is_out=True, kind="string"),
+
+                # ── CONTEXT: Linked OSDU records ─────────────────────
+                _pt("VolumeEstimates", "P50 volume estimates link to "
+                    "statistical REV WPC record.",
+                    is_in=False, is_out=True),
+                _pt("ProductionProfileP50", "P50 production profile link to "
+                    "ColumnBasedTable WPC with real OPM Flow output.",
+                    is_in=False, is_out=True),
+                _pt("ReservoirRecord", "OSDU Reservoir master-data record "
+                    "for the Drogon field.",
+                    kind="DataObject"),
+                _pt("DevelopmentConcept", "DG2 Development Concept WPC record.",
+                    is_in=False, is_out=True),
             ],
         },
     }
@@ -581,6 +594,7 @@ def build_activity(
     params_wpc_id, raw_wpc_id, stat_wpc_id,
     production_wpc_id="",
     dataspace_id="",
+    devconcept_id="",
 ):
     activity_id = f"{prefix}:work-product-component--Activity:{ACTIVITY_UUID_DG2}:1"
 
@@ -971,23 +985,49 @@ def build_activity(
                 "recoverable oil 15.2 MSm³, RF 33.5%. Breakdown by 7 regions "
                 "and 3 zones."
             ),
-            "ParameterKindID": _kind("String"),
+            "ParameterKindID": _kind("DataObject"),
             "ParameterRoleID": _role("Output"),
-            "StringParameter": json.dumps(VOLUME_ESTIMATES, separators=(",", ":")),
+            "DataObjectParameter": stat_wpc_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "REV-stats-volumes"}],
         },
         # ── CONTEXT: Production profile P50 ──────────────────────
         {
             "Title": "ProductionProfileP50",
             "Description": (
                 "P50 reference production profile: field-level FOPR, FGPR, "
-                "FWPR, FWIR, FPR, FOPT, FWCT from 2018 to 2037. "
-                "Peak oil rate ~5500 Sm³/d (2020), plateau ~4-5 kSm³/d, "
-                "EUR ~10.4 MSm³ oil."
+                "FWPR, FWIR, FPR, FOPT, FWCT. Real OPM Flow output from "
+                "realization-0, 31 monthly timesteps 2018–2020. "
+                "Peak oil rate ~14.3 kSm³/d."
             ),
-            "ParameterKindID": _kind("String"),
+            "ParameterKindID": _kind("DataObject"),
             "ParameterRoleID": _role("Output"),
-            "StringParameter": json.dumps(PRODUCTION_PROFILE_P50, separators=(",", ":")),
+            "DataObjectParameter": production_wpc_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ProductionProfile-P50"}],
+        } if production_wpc_id else None,
+        # ── INPUT: Reservoir master-data record ───────────────────
+        {
+            "Title": "ReservoirRecord",
+            "Description": (
+                "OSDU Reservoir master-data record for Drogon. Links to "
+                "7 ReservoirSegment records (WestLowland, CentralSouth, etc.)."
+            ),
+            "ParameterKindID": _kind("DataObject"),
+            "ParameterRoleID": _role("Input"),
+            "DataObjectParameter": reservoir_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "Reservoir"}],
         },
+        # ── OUTPUT: Development Concept ──────────────────────────
+        {
+            "Title": "DevelopmentConcept",
+            "Description": (
+                "DG2 Development Concept record: subsea tieback to Ivar Aasen, "
+                "6 wells (A1-A4 prod + A5-A6 inj), FPSO host, waterflood IOR."
+            ),
+            "ParameterKindID": _kind("DataObject"),
+            "ParameterRoleID": _role("Output"),
+            "DataObjectParameter": devconcept_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "DevelopmentConcept"}],
+        } if devconcept_id else None,
     ]
 
     # Remove None entries (conditional parameters)
@@ -997,6 +1037,8 @@ def build_activity(
     children = [params_wpc_id, raw_wpc_id, stat_wpc_id]
     if production_wpc_id:
         children.append(production_wpc_id)
+    if devconcept_id:
+        children.append(devconcept_id)
 
     return {
         "id": activity_id,
@@ -1075,6 +1117,24 @@ def main():
     stat_wpc_id       = _find_id(statvol,    "ReservoirEstimatedVolumes")
     production_wpc_id = _find_id(production, "ColumnBasedTable")
 
+    # DG2 DevelopmentConcept
+    devconcept_path = SCRIPT_DIR / "manifest_devconcept_dg2.json"
+    devconcept_id = ""
+    if devconcept_path.exists():
+        devconcept_man = load_json(str(devconcept_path))
+        devconcept_id = _find_id(devconcept_man, "DevelopmentConcept")
+        if devconcept_id:
+            print(f"  DevelopmentConcept: {devconcept_id}")
+
+    # DG2 DevelopmentConcept
+    devconcept_path = SCRIPT_DIR / "manifest_devconcept_dg2.json"
+    devconcept_id = ""
+    if devconcept_path.exists():
+        devconcept_man = load_json(str(devconcept_path))
+        devconcept_id = _find_id(devconcept_man, "DevelopmentConcept")
+        if devconcept_id:
+            print(f"  DevelopmentConcept: {devconcept_id}")
+
     for label, val in [
         ("reservoir_id",      reservoir_id),
         ("workproduct_id",    workproduct_id),
@@ -1114,6 +1174,7 @@ def main():
         stat_wpc_id=stat_wpc_id,
         production_wpc_id=production_wpc_id,
         dataspace_id=dataspace_id,
+        devconcept_id=devconcept_id,
     )
 
     manifest = {

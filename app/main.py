@@ -571,19 +571,33 @@ def _parse_cbt_production(d: Dict[str, Any], target_id: str = "") -> Dict[str, A
         col_data[name] = vals
 
     # Map CBT column names → template keys
+    # Supports both generic names (OilRate) and OPM Flow names (FOPR)
     name_map = {
+        # Generic / legacy names
         "OilRate": "OilRate_kSm3d",
         "GasRate": "GasRate_kSm3d",
         "WaterRate": "WaterRate_kSm3d",
+        "WaterInjRate": "WaterInjRate_kSm3d",
         "YearlyOil": "YearlyOil_MSm3",
         "CumulativeOil": "CumOil_MSm3",
         "WaterCut": "WaterCut_pct",
         "RecoveryFactor": "RecoveryFactor_pct",
         "WellsOnline": "WellsOnline",
+        # OPM Flow / Eclipse summary vector names
+        "FOPR": "OilRate_kSm3d",
+        "FGPR": "GasRate_kSm3d",
+        "FWPR": "WaterRate_kSm3d",
+        "FWIR": "WaterInjRate_kSm3d",
+        "FOPT": "CumOil_MSm3",
+        "FPR": "FPR_barsa",
+        "FWCT": "WaterCut_pct",
+        "FGOR": "FGOR",
+        "ProducersOnline": "WellsOnline",
+        "InjectorsOnline": "InjectorsOnline",
     }
 
     result: Dict[str, Any] = {}
-    # Key column → Years
+    # Key column → Years (handles both "Year" and "Date" column names)
     for kc in key_cols:
         cn = kc.get("ColumnName", "")
         if cn in col_data:

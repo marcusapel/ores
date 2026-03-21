@@ -283,6 +283,42 @@
         "MinOccurs": 0,
         "MaxOccurs": 1,
         "DefaultParameterKind": "string"
+      },
+      {
+        "Title": "VolumeEstimates",
+        "Description": "P50 volume estimates link to statistical REV WPC record.",
+        "IsInput": false,
+        "IsOutput": true,
+        "MinOccurs": 0,
+        "MaxOccurs": 1,
+        "DefaultParameterKind": "DataObject"
+      },
+      {
+        "Title": "ProductionProfileP50",
+        "Description": "P50 production profile link to ColumnBasedTable WPC with real OPM Flow output.",
+        "IsInput": false,
+        "IsOutput": true,
+        "MinOccurs": 0,
+        "MaxOccurs": 1,
+        "DefaultParameterKind": "DataObject"
+      },
+      {
+        "Title": "ReservoirRecord",
+        "Description": "OSDU Reservoir master-data record for the Drogon field.",
+        "IsInput": true,
+        "IsOutput": false,
+        "MinOccurs": 0,
+        "MaxOccurs": 1,
+        "DefaultParameterKind": "DataObject"
+      },
+      {
+        "Title": "DevelopmentConcept",
+        "Description": "DG2 Development Concept WPC record.",
+        "IsInput": false,
+        "IsOutput": true,
+        "MinOccurs": 0,
+        "MaxOccurs": 1,
+        "DefaultParameterKind": "DataObject"
       }
     ]
   }

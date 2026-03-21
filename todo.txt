@@ -1,0 +1,16 @@
+based on the doc related to equinor and public fmu setup for reservoir mdoelling;
+https://github.com/equinor/fmu-dataio
+https://fmu.equinor.com/documentation etc
+
+
+design an activity template and drogon dg2 example activity record in the demo/drogon_dg2 folder.
+cover the 
+- inputs: ref til seismic interpretations, cubes, horizons , stratcolumn, well logs - use appropriate osdu types like persisted collection etc or other
+- workflow: ref til ert workfloww and config incl design matrix (reuse the drogon_dg2 params record) of all parameters for the ensemble run - the ert config setup is key here which we can ref in tyhe activity(rms and eclipse/opm sim and output aggrgation) 
+- outputs : ert defined/sumo collected output like maps production profiles volume tables etc (reuse the demo/drogon_dg2 volume data)
+
+
+Is the activty model and template complete to  allow for complete model reproduction (input to output) for one decision gate)
+Then update the existing drogon_dg2 activity model and record, and push to osdu dev instance.
+ 
+any ambiguities just ask!
