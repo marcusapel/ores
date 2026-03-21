@@ -2,7 +2,16 @@
 # -*- coding: utf-8 -*-
 """
 gen_devconcept_dg2.py — Generate a DevelopmentConcept WPC manifest for
-Drogon DG2.
+Drogon DG2, aligned with the real Drogon FMU model (equinor/fmu-drogon,
+tutorial 24.3.1).
+
+The concept is derived from the actual model structure:
+  - Wells: 4 producers (A1-A4), 2 water injectors (A5-A6), 1 appraisal (55_33-1)
+  - Formations: Volantis Group (Valysar, Therys, Volon)
+  - 7 fault-bounded regions (FIPNUM 1-7)
+  - ERT workflow: DESIGN2PARAMS → RMS (geomodel) → OPM Flow (simulation)
+  - 250 realisations, one-by-one sensitivity design
+  - Seismic conditioning (APS) for facies modelling
 
 Output:
   manifest_devconcept_dg2.json
@@ -65,11 +74,14 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 — Development Concept",
+            "Name": "Drogon DG2 \u2014 Development Concept (FMU-aligned)",
             "Description": (
-                "Full development concept for Drogon DG2 Concept Select. "
-                "Subsea tie-back to converted FPSO, 2×4-slot templates, "
-                "12 production wells, subsea boosting pump."
+                "Development concept for Drogon DG2 Concept Select, aligned with the "
+                "official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). "
+                "Subsea tie-back to FPSO with 4 producers (A1\u2013A4), 2 water injectors "
+                "(A5\u2013A6), targeting the Volantis Group (Valysar, Therys, Volon formations) "
+                "across 7 fault-bounded reservoir regions. 250 FMU realisations with "
+                "one-by-one sensitivity design and OPM Flow dynamic simulation."
             ),
             "ParentObjectID": reservoir_id,
             "ancestry": {
@@ -79,16 +91,19 @@ def main():
 
             # ── DevelopmentConcept fields ──
             "Summary": (
-                "Subsea development with 2×4-slot templates (8 slots + 2 contingent), "
-                "tie-back to converted FPSO via dual 10\" production flowlines and "
-                "6\" gas-lift line. Distance to FPSO ~8 km. Water depth 108 m. "
-                "Valysar formation at ~1700 m TVD MSL."
+                "Subsea development targeting the Volantis Group (Valysar, Therys, Volon) "
+                "across 7 fault-bounded regions at ~1650\u20131690 m TVD MSL. "
+                "4 producers (A1\u2013A4) and 2 water injectors (A5\u2013A6) tied back to FPSO "
+                "via dual 10\" production flowlines and 6\" gas-lift line. Distance to "
+                "FPSO ~8 km. Water depth 108 m. Gas cap in NorthHorst region (GOC ~1640 m). "
+                "APS facies model with seismic conditioning drives reservoir property "
+                "assignment. FMU workflow: ERT \u2192 RMS (geomodel + Eclipse grid) \u2192 OPM Flow."
             ),
-            "WellCount": 12,
+            "WellCount": 6,
             "ContingentWells": 2,
             "TemplateSlots": 10,
             "DrillingCentres": 2,
-            "ReservoirFormation": "Valysar",
+            "ReservoirFormation": "Volantis Group (Valysar, Therys, Volon)",
             "FieldArea": "Drogon",
             "WaterDepth_m": 108,
             "DistanceToHost_km": 8,
@@ -97,13 +112,83 @@ def main():
             "FlowlineSpec": "2\u00d710\" production + 6\" gas lift",
             "SubseaBoostingPump": True,
             "WaterTreatmentCapacity_m3d": 5000,
-            "InjectionStrategy": "Water injection for pressure support (4 injectors planned Phase 2)",
+            "InjectionStrategy": (
+                "Water injection for pressure support via A5 and A6. "
+                "Rate scaling controlled by fmuconfig rate_scaling.yml. "
+                "Phase 2: 2\u20134 additional infill wells depending on "
+                "fault compartmentalisation (contingent slots in template)."
+            ),
             "WellPlan": {
-                "Producers": 12,
-                "Injectors_Phase2": 4,
+                "Producers":  4,
+                "Injectors":  2,
+                "ContingentInfill": 2,
+                "AppraisalWells": ["55_33-1"],
+                "RFT_Wells": ["R_A2", "R_A3", "R_A4", "R_A5", "R_A6"],
                 "AvgWellDepth_mMD": 3200,
                 "DrillingDuration_days_avg": 45,
                 "CompletionType": "Frac-pack + ICD lower completion",
+                "ProducerNames": ["A1", "A2", "A3", "A4"],
+                "InjectorNames": ["A5", "A6"],
+            },
+            "ext": {
+                "equinor": {
+                    "Stratigraphy": {
+                        "MSL": {"stratigraphic": False},
+                        "TopVolantis": {"stratigraphic": True, "name": "VOLANTIS GP. Top"},
+                        "TopTherys":   {"stratigraphic": True, "name": "Therys Fm. Top"},
+                        "TopVolon":    {"stratigraphic": True, "name": "Volon Fm. Top"},
+                        "BaseVolantis": {"stratigraphic": True, "name": "VOLANTIS GP. Base"},
+                    },
+                    "Zones": ["Valysar", "Therys", "Volon"],
+                    "Regions": {
+                        "WestLowland":  {"FIPNUM": 1, "OWC": 1660.0},
+                        "CentralSouth": {"FIPNUM": 2, "OWC": 1677.0},
+                        "CentralNorth": {"FIPNUM": 3, "OWC": 1677.0},
+                        "NorthHorst":   {"FIPNUM": 4, "OWC": 1660.0, "GOC": 1640.0},
+                        "CentralRamp":  {"FIPNUM": 5, "OWC": 1677.0},
+                        "CentralHorst": {"FIPNUM": 6, "OWC": 1677.0},
+                        "EastLowland":  {"FIPNUM": 7, "OWC": 1660.0},
+                    },
+                    "FmuModel": {
+                        "Name": "Drogon (equinor/fmu-drogon)",
+                        "Version": "24.3.1",
+                        "ErtConfig": "drogon_design.ert",
+                        "RmsProject": "drogon.rms14.2.1",
+                        "RmsWorkflow": "MAIN",
+                        "Simulator": "OPM_FLOW",
+                        "NumRealizations": 250,
+                        "DesignType": "one-by-one sensitivity",
+                        "DesignMatrix": "design_matrix_one_by_one.xlsx",
+                    },
+                    "ModelSwitches": {
+                        "DCONV_ALTERNATIVE": 2,
+                        "PETROMODEL_ALTERNATIVE": 1,
+                        "FACIESMODEL_ALTERNATIVE": 1,
+                        "FACIES_VALYSAR_SEISCOND": 1,
+                    },
+                    "Facies": {
+                        "Valysar": ["Channel", "Crevasse", "Floodplain"],
+                        "Therys":  ["Upper shoreface", "Lower shoreface", "Offshore"],
+                        "Volon":   ["Channel", "Floodplain"],
+                    },
+                    "SeismicInput": {
+                        "Cubes": [
+                            "seismic--amplitude_near_time--20180101.segy",
+                            "seismic--amplitude_far_time--20180101.segy",
+                            "seismic--relai_near_time--20180101.segy",
+                            "seismic--relai_far_time--20180101.segy",
+                        ],
+                        "Conditioning": "APS facies model with near+far angle stacks",
+                    },
+                    "HorizonInput": {
+                        "Depth": ["TopVolantis.poi", "TopTherys.poi", "TopVolon.poi", "BaseVolantis.poi"],
+                        "Time":  ["TopVolantis.poi", "BaseVolantis.poi"],
+                    },
+                    "FaultInput": {
+                        "DepthPolygons": ["F1.pol", "F2.pol", "F3.pol", "F4.pol", "F5.pol", "F6.pol"],
+                        "F2_PointSet": "F2.poi",
+                    },
+                },
             },
         },
     }

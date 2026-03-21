@@ -174,7 +174,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 — Schedule risk (FPSO and long-lead equipment)",
+            "Name": "Drogon DG2 \u2014 Schedule risk (FPSO and long-lead equipment)",
             "Summary": (
                 "FPSO conversion drydock availability and subsea template fabrication "
                 "lead times threaten the 2028-H1 first oil target."
@@ -182,8 +182,8 @@ def main():
             "Description": (
                 "SRA Monte Carlo schedule analysis (1000 iterations) gives P50 first "
                 "oil June 2028 and P90 first oil March 2029. Key drivers: (1) FPSO "
-                "drydock slot availability — only two qualifying yards confirmed for "
-                "2027-Q1 window, (2) subsea template fabrication — 18-month lead time "
+                "drydock slot availability \u2014 only two qualifying yards confirmed for "
+                "2027-Q1 window, (2) subsea template fabrication \u2014 18-month lead time "
                 "from order to delivery, (3) drilling rig market tightness with 2027 "
                 "contracting window. Mitigation: early FEED commitment, dual-yard "
                 "tendering strategy, and pre-ordering of long-lead subsea equipment."
@@ -208,10 +208,106 @@ def main():
         },
     }
 
+    # ── Risk 5: Fluid contact depth uncertainty (new — from actual model) ──
+    risk_owc = {
+        "id":    f"{pfx}:master-data--Risk:Drogon-DG2-OWCDepth:1",
+        "kind":  "osdu:wks:master-data--Risk:1.2.0",
+        "acl":   DEFAULT_ACL,
+        "legal": DEFAULT_LEGAL,
+        "data": {
+            "Name": "Drogon DG2 \u2014 Fluid contact depth uncertainty",
+            "Summary": (
+                "Free water level and gas\u2013oil contact depths are uncertain across "
+                "the 7 fault-bounded reservoir regions, directly impacting STOIIP."
+            ),
+            "Description": (
+                "FWL Central = UNIFORM(1672, 1682) m, FWL NorthHorst = UNIFORM(1655, 1665) m, "
+                "GOC NorthHorst = UNIFORM(1635, 1645) m (from global_variables.dist). "
+                "The 10 m uncertainty range in each region translates to ~8\u201312 % STOIIP "
+                "uncertainty per segment. Combined effect: P90\u2013P10 range of ~25 MSm\u00b3 "
+                "total oil in place. NorthHorst GOC is particularly critical as it controls "
+                "the gas cap volume and associated-gas recovery. Sensitivity analysis shows "
+                "FWL_CENTRAL and FWL_NORTH_HORST are top 3 STOIIP drivers."
+            ),
+            "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",
+            "EffectiveDateTime": "2026-02-28T00:00:00Z",
+            "ext": {
+                "equinor": {
+                    "CategoryID": f"{pfx}:reference-data--RiskCategory:Subsurface-Static:1",
+                    "SeverityScaleID": f"{pfx}:reference-data--RiskSeverityScale:Equinor-5x5:1",
+                    "ProbabilityScaleID": f"{pfx}:reference-data--RiskProbabilityScale:Equinor-5x5:1",
+                    "RiskAcceptanceCriteriaID": f"{pfx}:reference-data--RiskAcceptanceCriteria:RAC-2025-01:1",
+                    "InherentSeverity":   "S3",
+                    "InherentProbability": "P4",
+                    "ResidualSeverity":   "S2",
+                    "ResidualProbability": "P3",
+                    "AcceptedAsIs": False,
+                    "Status": "Open",
+                    "MitigationActionIDs": [],
+                    "FmuParameters": [
+                        "FWL_CENTRAL (UNIFORM 1672\u20131682 m)",
+                        "FWL_NORTH_HORST (UNIFORM 1655\u20131665 m)",
+                        "GOC_NORTH_HORST (UNIFORM 1635\u20131645 m)",
+                    ],
+                },
+            },
+        },
+    }
+
+    # ── Risk 6: Recovery factor uncertainty (new — from dynamic simulation) ──
+    risk_rf = {
+        "id":    f"{pfx}:master-data--Risk:Drogon-DG2-RecoveryFactor:1",
+        "kind":  "osdu:wks:master-data--Risk:1.2.0",
+        "acl":   DEFAULT_ACL,
+        "legal": DEFAULT_LEGAL,
+        "data": {
+            "Name": "Drogon DG2 \u2014 Recovery factor uncertainty (dynamic)",
+            "Summary": (
+                "Dynamic simulation recovery factor ranges from 28% (P90) to 37% (P10) "
+                "driven by Kv/Kh, relperm, and fault seal uncertainties."
+            ),
+            "Description": (
+                "OPM Flow dynamic simulations (250 realisations, one-by-one sensitivity "
+                "design) show recovery factor P90=28%, P50=32.5%, P10=37%. Key dynamic "
+                "uncertainty drivers: KVKH_CHANNEL (UNIFORM 0.4\u20130.8), KVKH_CREVASSE "
+                "(UNIFORM 0.1\u20130.5), RELPERM_INT_WO (UNIFORM -1\u20131), RELPERM_INT_GO "
+                "(UNIFORM -1\u20131), and FAULT_SEAL_SCALING (LOGUNIF 0.1\u201310). "
+                "Low Kv/Kh combined with high fault seal reduces sweep efficiency and "
+                "pushes recovery below 30%. Mitigation: water injection strategy (A5, A6) "
+                "and rate scaling optimisation. Phase 2 infill wells target remaining "
+                "oil in poorly-swept segments."
+            ),
+            "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",
+            "EffectiveDateTime": "2026-02-28T00:00:00Z",
+            "ext": {
+                "equinor": {
+                    "CategoryID": f"{pfx}:reference-data--RiskCategory:Subsurface-Dynamic:1",
+                    "SeverityScaleID": f"{pfx}:reference-data--RiskSeverityScale:Equinor-5x5:1",
+                    "ProbabilityScaleID": f"{pfx}:reference-data--RiskProbabilityScale:Equinor-5x5:1",
+                    "RiskAcceptanceCriteriaID": f"{pfx}:reference-data--RiskAcceptanceCriteria:RAC-2025-01:1",
+                    "InherentSeverity":   "S3",
+                    "InherentProbability": "P3",
+                    "ResidualSeverity":   "S2",
+                    "ResidualProbability": "P3",
+                    "AcceptedAsIs": False,
+                    "Status": "Open",
+                    "MitigationActionIDs": [],
+                    "FmuParameters": [
+                        "KVKH_CHANNEL (UNIFORM 0.4\u20130.8)",
+                        "KVKH_CREVASSE (UNIFORM 0.1\u20130.5)",
+                        "RELPERM_INT_WO (UNIFORM -1\u20131)",
+                        "RELPERM_INT_GO (UNIFORM -1\u20131)",
+                        "FAULT_SEAL_SCALING (LOGUNIF 0.1\u201310)",
+                    ],
+                },
+            },
+        },
+    }
+
     manifest = {
         "kind": "osdu:wks:Manifest:1.0.0",
         "ReferenceData": [],
-        "MasterData": [risk_porosity, risk_fault, risk_hse, risk_schedule],
+        "MasterData": [risk_porosity, risk_fault, risk_hse, risk_schedule, risk_owc, risk_rf],
         "Data": {
             "Datasets": [],
             "WorkProductComponents": [],

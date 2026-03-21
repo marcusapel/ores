@@ -22,13 +22,13 @@
         ]
       },
       "data": {
-        "Name": "Drogon — Decision Gate 2 DG2 Concept Select",
-        "Description": "DG2 Concept Select for the Drogon field development. Valysar fluvial formation across 7 reservoir segments (NorthSea, NorthHorst, CentralHorst, CentralFlanks, CentralSouth, SouthWing, EastLobe) with three facies types (Channel, Crevasse, Floodplain). Revised petrophysical interpretation: porosity reduced by factor 0.8 based on core analysis and thin sections. 50 FMU realisations quantify STOIIP uncertainty: P90 33.8 / P50 45.4 / P10 59.4 MSm³ oil in-place. Recoverable oil (P50) 14.8 MSm³ at 32.5% recovery factor. Recommended concept: subsea tie-back to FPSO with 2×4-slot templates, 12 production wells. NPV@10% 520 MUSD, CAPEX 8,500 MNOK, first oil 2028-H1.",
+        "Name": "Drogon \u2014 Decision Gate 2 DG2 Concept Select (FMU-aligned)",
+        "Description": "DG2 Concept Select for the Drogon field development, aligned with the official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). Volantis Group (Valysar, Therys, Volon formations) across 7 fault-bounded reservoir regions (WestLowland, CentralSouth, CentralNorth, NorthHorst, CentralRamp, CentralHorst, EastLowland). 250 FMU realisations with one-by-one sensitivity design, OPM Flow simulator. 4 producers (A1\u2013A4), 2 water injectors (A5\u2013A6). STOIIP P50 45.4 MSm\u00b3, EUR P50 10.4 MSm\u00b3 oil, RF P50 33.5%. Recommended concept: subsea tie-back to FPSO with 2\u00d74-slot templates, 6 active wells + 2 contingent infill. NPV@10% 520 MUSD, CAPEX 8,500 MNOK, first oil 2028-H1.",
         "ProjectName": "Drogon Field Development",
         "DecisionLevelID": "dev:reference-data--DecisionLevel:DG2:1",
         "ApprovalStatusID": "dev:reference-data--DecisionApprovalStatus:Pending:1",
         "DecisionDueDate": "2026-06-30",
-        "DecisionSummary": "Approve subsea tie-back development concept. Two 4-slot templates (8 slots), 12 wells targeting full 7-segment Valysar scope. Reference case STOIIP 45.4 MSm³ (P90 33.8, P10 59.4) — revised porosity interpretation ×0.8. Recoverable oil P50 14.8 MSm³ (RF 32.5%). First oil target 2028-H1. Proceed to DG3 FEED.",
+        "DecisionSummary": "Approve subsea tie-back development concept. Two 4-slot templates (8 slots + 2 contingent), 4 producers (A1\u2013A4) + 2 injectors (A5\u2013A6) targeting full Volantis Group (Valysar, Therys, Volon) across 7 regions. STOIIP P50 45.4 MSm\u00b3 (P90 33.8, P10 59.4). EUR P50 10.4 MSm\u00b3 (RF 33.5%). 250 FMU realisations with one-by-one sensitivity (drogon_design.ert). First oil target 2028-H1. Proceed to DG3 FEED.",
         "RiskAssessmentDocument": "dev:work-product-component--Document:Drogon-SRA-DG2-Report:1",
         "RiskIDs": [
           "dev:master-data--Risk:Drogon-DG2-PorosityAndCementation:1",
@@ -39,7 +39,7 @@
           "dev:master-data--Risk:Drogon-DG2-RecoveryFactor:1"
         ],
         "PriorActivityIDs": [
-          "dev:work-product-component--Activity:f7b43d02-f3e1-5c3b-ae2e-dce9da267c19:1"
+          "dev:work-product-component--Activity:0677d7f2-5f61-5856-a278-e9a6bb0d3920:1"
         ],
         "Parameters": [
           {
@@ -140,7 +140,7 @@
           },
           {
             "Title": "Production Forecast (20-year)",
-            "Selection": "Reference case forecast from dynamic simulation (revised porosity ×0.8)",
+            "Selection": "Reference case forecast from dynamic simulation (revised porosity \u00d70.8)",
             "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
             "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
             "DataObjectParameter": "dev:work-product-component--ColumnBasedTable:Drogon-DG2-ProductionForecast:1",
@@ -163,19 +163,6 @@
                 "StringParameterKey": "DevelopmentConcept"
               }
             ]
-          },
-          {
-            "Title": "Headline volumes & reservoir properties (GeoLabelSet)",
-            "Selection": "P10/P50/P90 headline volumes per segment, derived from stat REV",
-            "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-            "DataObjectParameter": "dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1",
-            "Keys": [
-              {
-                "ParameterKey": "artifact",
-                "StringParameterKey": "GeoLabelSet"
-              }
-            ]
           }
         ],
         "Personnel": [
@@ -185,7 +172,7 @@
             "Organisation": "Drogon Subsurface"
           },
           {
-            "Name": "Henrik Bjørnstad",
+            "Name": "Henrik Bj\u00f8rnstad",
             "ProjectRoleID": "dev:reference-data--ProjectRole:ReservoirEngineer:1",
             "Organisation": "Drogon Reservoir Management"
           },
@@ -205,7 +192,7 @@
             "Organisation": "Drogon Concept"
           },
           {
-            "Name": "Olav Mæland",
+            "Name": "Olav M\u00e6land",
             "ProjectRoleID": "dev:reference-data--ProjectRole:DrillingWellsLead:1",
             "Organisation": "Drogon D&W"
           }
@@ -337,7 +324,7 @@
         ],
         "ancestry": {
           "parents": [
-            "dev:work-product-component--Activity:f7b43d02-f3e1-5c3b-ae2e-dce9da267c19:1"
+            "dev:work-product-component--Activity:0677d7f2-5f61-5856-a278-e9a6bb0d3920:1"
           ],
           "children": []
         },
@@ -345,25 +332,25 @@
           "equinor": {
             "Alternatives": [
               {
-                "Name": "Alt-A: Subsea tie-back to FPSO (2×4-slot templates)",
+                "Name": "Alt-A: Subsea tie-back to FPSO (4 prod + 2 inj, 2\u00d74-slot templates)",
                 "Rank": 1,
-                "Rationale": "Highest NPV; leverages planned FPSO conversion for Drogon area. 12 wells across 7 segments, 2×4-slot templates with 2 contingent slots for infill. Subsea boosting pump included for low-pressure phase. Modular water treatment allows staged capacity expansion.",
+                "Rationale": "Highest NPV; leverages planned FPSO conversion for Drogon area. 4 producers (A1\u2013A4) + 2 water injectors (A5\u2013A6), 2\u00d74-slot templates with 2 contingent slots for infill. Based on 250 FMU realisations (drogon_design.ert). Peak oil 5,500 Sm\u00b3/d, plateau 2020\u20132021. Subsea boosting pump for low-pressure phase. EUR 10.4 MSm\u00b3 oil at RF 33.5%.",
                 "RecommendedAction": "Approve",
                 "NPV_10pct_MUSD": 520,
                 "CAPEX_MNOK": 8500,
                 "IRR_pct": 17
               },
               {
-                "Name": "Alt-B: Reduced scope — CentralHorst + CentralSouth only",
+                "Name": "Alt-B: Reduced scope \u2014 CentralHorst + CentralSouth only (3 prod + 1 inj)",
                 "Rank": 2,
-                "Rationale": "Focus on the two highest-confidence segments (Channel facies dominant, lowest porosity uncertainty). 6 wells, single 4-slot template + 2 satellite wells. Lower investment but captures only ~55% of recoverable resource. Provides first-oil option if FPSO schedule slips.",
+                "Rationale": "Focus on the two highest-confidence regions (CentralHorst + CentralSouth, FIPNUM 2,6). Channel facies dominant, lowest FWL uncertainty. 3 producers + 1 injector, single 4-slot template. Lower investment but captures only ~55% of recoverable resource. OPM Flow sensitivity: EUR ~5.8 MSm\u00b3, RF ~30%. Provides first-oil option if FPSO schedule slips.",
                 "RecommendedAction": "Consider",
                 "NPV_10pct_MUSD": 300,
                 "CAPEX_MNOK": 4800,
                 "IRR_pct": 20
               },
               {
-                "Name": "Alt-C: Defer — acquire DG3-quality appraisal data",
+                "Name": "Alt-C: Defer \u2014 acquire DG3-quality appraisal data",
                 "Rank": 3,
                 "Rationale": "NorthHorst and EastLobe fault compartmentalisation remains poorly constrained. Additional well test data (est. 12 months, 200 MNOK) would reduce dynamic uncertainty range by ~40%. Risk of losing FPSO drydock window if deferred beyond 2026-Q3.",
                 "RecommendedAction": "Fallback",
@@ -373,30 +360,42 @@
               }
             ],
             "UncertaintySummary": {
-              "Basis": "FMU static + dynamic uncertainty from 50 geo-realisations across 7 segments and 3 facies types. Porosity revised ×0.8 from DG1. Dynamic forecasts run on 3 selected realisations (P90/P50/P10) with 5 sensitivity cases each.",
-              "Note": "See stat WPC for full P10/P50/P90 breakdown per segment & facies. Recoverable estimated from dynamic simulation with 12-producer base case.",
-              "TotalRealisations": 50,
+              "Basis": "FMU static + dynamic uncertainty from 250 realisations (one-by-one sensitivity design, drogon_design.ert) across Volantis Group (Valysar, Therys, Volon) and 7 fault-bounded regions. Dynamic forecasts run with OPM Flow for all realisations.",
+              "Note": "See stat WPC for full P10/P50/P90 breakdown per segment & facies. Recoverable estimated from dynamic simulation with 4 producers (A1\u2013A4) and 2 water injectors (A5\u2013A6). Key uncertainty drivers: FWL contacts, Kv/Kh per facies, fault seal scaling, relperm interpolation, APS facies probability fractions.",
+              "TotalRealisations": 250,
+              "DesignType": "one-by-one sensitivity",
+              "ErtConfig": "drogon_design.ert",
+              "Simulator": "OPM_FLOW",
               "SelectedRealisations": {
                 "P90": "Real 42",
                 "P50": "Real 1",
                 "P10": "Real 17"
               },
-              "MethodologyReference": "FMU Level 3 static + dynamic uncertainty workflow (Valysar geomodel v2)",
+              "MethodologyReference": "FMU Level 3 static + dynamic uncertainty workflow (equinor/fmu-drogon 24.3.1)",
               "StaticInPlace_Oil_MSm3": {
                 "P90": 33.8,
                 "P50": 45.4,
                 "P10": 59.4
               },
               "Recoverable_Oil_MSm3": {
-                "P90": 10.0,
-                "P50": 14.8,
-                "P10": 20.6
+                "P90": 7.5,
+                "P50": 10.4,
+                "P10": 14.2
               },
               "RecoveryFactor_pct": {
                 "P90": 28.0,
-                "P50": 32.5,
+                "P50": 33.5,
                 "P10": 37.0
-              }
+              },
+              "GIIP_P50_GSm3": 6.4,
+              "PeakOilRate_Sm3d": 5500,
+              "TopUncertaintyDrivers": [
+                "FWL_CENTRAL (STOIIP driver)",
+                "FAULT_SEAL_SCALING (recovery driver)",
+                "KVKH_CHANNEL (sweep efficiency)",
+                "RELPERM_INT_WO (water cut / recovery)",
+                "VALYSAR_APS_PROB_CHANNEL (facies distribution)"
+              ]
             }
           }
         }

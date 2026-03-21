@@ -17,8 +17,8 @@
           "otherRelevantDataCountries": ["NO"]
         },
         "data": {
-          "Name": "Drogon — P50 Production Forecast (OPM Flow, 2018–2037)",
-          "Description": "P50 reference case production profile from Drogon FMU design run (drogon_design.ert, 250 one-by-one sensitivity realisations, OPM Flow simulator). 4 producers (A1-A4) and 2 water injectors (A5-A6). Volantis Group (Valysar + Therys + Volon). Based on equinor/fmu-drogon tutorial 24.3.1. History period 2018–2020 (3 years observed), prediction 2021–2037. STOIIP P50 = 45.4 MSm\u00b3, EUR oil P50 = 10.4 MSm\u00b3, recovery factor P50 = 33.5%.",
+          "Name": "Drogon \u2014 P50 Production Forecast (OPM Flow, 2018\u20132037)",
+          "Description": "P50 reference case production profile from Drogon FMU design run (drogon_design.ert, 250 one-by-one sensitivity realisations, OPM Flow simulator). 4 producers (A1-A4) and 2 water injectors (A5-A6). Volantis Group (Valysar + Therys + Volon) across 7 fault-bounded regions (WestLowland, CentralSouth, CentralNorth, NorthHorst, CentralRamp, CentralHorst, EastLowland). Based on equinor/fmu-drogon tutorial 24.3.1. History period 2018\u20132020 (3 years observed), prediction 2021\u20132037. STOIIP P50 = 45.4 MSm\u00b3, EUR oil P50 = 10.4 MSm\u00b3, recovery factor P50 = 33.5%. Key uncertainty drivers: FWL contacts, Kv/Kh per facies, fault seal scaling, relperm interpolation.",
           "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",
           "Table": {
             "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",

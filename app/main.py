@@ -414,6 +414,70 @@ async def _enrich_bd_geolabel(
         return {}
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# BD enrichment: Activity record → bd_activity dict
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _enrich_bd_activity(
+    data_block: Dict[str, Any],
+    client: httpx.AsyncClient,
+    storage_url: str,
+    hdr: dict,
+) -> Dict[str, Any]:
+    """Fetch Activity record linked from BD PriorActivityIDs[].
+
+    Returns a dict with the Activity's data block if found, keyed for
+    easy template rendering: Name, Description, Parameters[], etc.
+    """
+    # Try PriorActivityIDs first
+    prior_ids = data_block.get("PriorActivityIDs") or []
+    if isinstance(prior_ids, str):
+        prior_ids = [prior_ids]
+
+    target_id = ""
+    for pid in prior_ids:
+        if isinstance(pid, str) and "Activity:" in pid and "ActivityTemplate" not in pid:
+            target_id = pid
+            break
+
+    # Also check Parameters[] for ActivityTemplate or Activity refs
+    if not target_id:
+        params = data_block.get("Parameters") or []
+        for p in params:
+            if not isinstance(p, dict):
+                continue
+            dop = p.get("DataObjectParameter") or ""
+            if "Activity:" in dop and "ActivityTemplate" not in dop:
+                target_id = dop
+                break
+
+    if not target_id:
+        return {}
+
+    try:
+        r = await client.get(f"{storage_url}/{target_id}", headers=hdr)
+        if r.status_code == 200:
+            full = r.json()
+            d = full.get("data") or {}
+            log.info("[BD-ACT] Loaded Activity %s: %s", target_id, d.get("Name", ""))
+            return {
+                "id": full.get("id", target_id),
+                "kind": full.get("kind", ""),
+                "Name": d.get("Name", ""),
+                "Description": d.get("Description", ""),
+                "WorkflowStatus": d.get("WorkflowStatus", ""),
+                "CreationDateTime": d.get("CreationDateTime", ""),
+                "Originator": d.get("Originator", ""),
+                "ActivityTemplateID": d.get("ActivityTemplateID", ""),
+                "Parameters": d.get("Parameters") or [],
+            }
+        else:
+            log.warning("[BD-ACT] Activity %s returned %d", target_id, r.status_code)
+    except Exception as e:
+        log.warning("[BD-ACT] OSDU fetch failed for %s: %s", target_id, e)
+
+    return {}
+
 async def _enrich_bd_production(
     data_block: Dict[str, Any],
     client: httpx.AsyncClient,
@@ -957,6 +1021,7 @@ async def search_run(
                         # BusinessDecision: pull headline volumes + linked WPC data
                         bd_geolabel: Dict[str, Any] = {}
                         bd_production: Dict[str, Any] = {}
+                        bd_activity: Dict[str, Any] = {}
                         if "businessdecision" in (full.get("kind") or "").lower():
                             if not (volumes or {}).get("ColumnValues"):
                                 volumes = await _enrich_bd_volumes(
@@ -966,6 +1031,8 @@ async def search_run(
                             bd_production = await _enrich_bd_production(
                                 data_block, client, storage_url, hdr)
                             await _enrich_bd_developmentconcept(
+                                data_block, client, storage_url, hdr)
+                            bd_activity = await _enrich_bd_activity(
                                 data_block, client, storage_url, hdr)
 
                         # Generic WPC/master-data links (exclude reference-data)
@@ -1039,6 +1106,7 @@ async def search_run(
                             "metadata_pairs": metadata_pairs,
                             "bd_geolabel": bd_geolabel,
                             "bd_production": bd_production,
+                            "bd_activity": bd_activity,
                         })
                     except Exception as e:
                         log.warning("[SEARCH] Exception enriching %s: %s", rid, e)
@@ -1116,6 +1184,7 @@ async def view_record(request: Request, record_id: str):
             # BusinessDecision: pull headline volumes + linked WPC data
             bd_geolabel: Dict[str, Any] = {}
             bd_production: Dict[str, Any] = {}
+            bd_activity: Dict[str, Any] = {}
             if "businessdecision" in (full.get("kind") or "").lower():
                 if not (volumes or {}).get("ColumnValues"):
                     volumes = await _enrich_bd_volumes(
@@ -1125,6 +1194,8 @@ async def view_record(request: Request, record_id: str):
                 bd_production = await _enrich_bd_production(
                     data_block, client, storage_url, hdr)
                 await _enrich_bd_developmentconcept(
+                    data_block, client, storage_url, hdr)
+                bd_activity = await _enrich_bd_activity(
                     data_block, client, storage_url, hdr)
 
             links = extract_osdu_links(data_block) or []
@@ -1184,6 +1255,7 @@ async def view_record(request: Request, record_id: str):
                 "metadata_pairs": metadata_pairs,
                 "bd_geolabel": bd_geolabel,
                 "bd_production": bd_production,
+                "bd_activity": bd_activity,
             }
 
         return templates.TemplateResponse(
