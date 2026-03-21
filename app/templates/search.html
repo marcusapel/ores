@@ -1094,7 +1094,9 @@
                   {% set role = p.get('ParameterRoleID', '') %}
                   {% if 'Output' in role %}
                     {% set _ = act_outputs.append(p) %}
-                  {% elif 'Input' in role and 'DataObject' in (p.get('ParameterKindID') or '') %}
+                  {% elif 'Workflow' in role %}
+                    {% set _ = act_workflow.append(p) %}
+                  {% elif 'Input' in role %}
                     {% set _ = act_inputs.append(p) %}
                   {% else %}
                     {% set _ = act_workflow.append(p) %}
@@ -1105,15 +1107,17 @@
                   {% if act_inputs %}
                   <div style="background:#ebf8ff;border-radius:6px;padding:.5rem;">
                     <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#2b6cb0;margin-bottom:.3rem;">Inputs ({{ act_inputs|length }})</div>
-                    {% for p in act_inputs[:8] %}
+                    {% for p in act_inputs[:10] %}
                     <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #bee3f8;">
                       <span style="font-weight:500;">{{ p.get('Title', '') }}</span>
                       {% if p.get('DataObjectParameter') %}
                       <div style="font-size:.72rem;color:#718096;word-break:break-all;">{{ p.get('DataObjectParameter', '')[:80] }}{% if p.get('DataObjectParameter', '')|length > 80 %}…{% endif %}</div>
+                      {% elif p.get('Description') %}
+                      <div style="font-size:.72rem;color:#718096;">{{ p.get('Description', '')[:100] }}{% if p.get('Description', '')|length > 100 %}…{% endif %}</div>
                       {% endif %}
                     </div>
                     {% endfor %}
-                    {% if act_inputs|length > 8 %}<div style="font-size:.75rem;color:#a0aec0;margin-top:.2rem;">… +{{ act_inputs|length - 8 }} more</div>{% endif %}
+                    {% if act_inputs|length > 10 %}<div style="font-size:.75rem;color:#a0aec0;margin-top:.2rem;">… +{{ act_inputs|length - 10 }} more</div>{% endif %}
                   </div>
                   {% endif %}
 

@@ -383,9 +383,14 @@ def _find_id(manifest: Dict[str, Any], kind_fragment: str) -> str:
 
 
 def _pt(title, desc, *, is_in=True, is_out=False, kind="DataObject",
-        min_occ=0, max_occ=1):
-    """Create a ParameterTemplate entry."""
-    return {
+        min_occ=0, max_occ=1, role="Input"):
+    """Create a ParameterTemplate entry.
+
+    role: 'Input'    — spatial/physical data (seismic, wells, horizons etc.)
+          'Workflow' — apps, process config, design, sequence definitions
+          'Output'  — generated artefacts
+    """
+    entry = {
         "Title": title,
         "Description": desc,
         "IsInput": is_in,
@@ -394,6 +399,9 @@ def _pt(title, desc, *, is_in=True, is_out=False, kind="DataObject",
         "MaxOccurs": max_occ,
         "DefaultParameterKind": kind,
     }
+    if role != "Input":
+        entry["DefaultParameterRole"] = role
+    return entry
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -448,44 +456,44 @@ def build_template(prefix, acl, legal):
                     "WCT, GOR, tracers, 4D seismic, PLT data.",
                     kind="string"),
 
-                # ── INPUTS: ERT configuration ────────────────────────
+                # ── WORKFLOW: ERT orchestration & design ────────────
                 _pt("ErtConfig", "ERT configuration: drogon_design.ert defining "
                     "the full forward model chain, LSF queue settings, random "
                     "seed, and run parameters.",
-                    kind="string", min_occ=1),
+                    kind="string", min_occ=1, role="Workflow"),
                 _pt("DesignMatrix", "Design matrix Excel file "
                     "(design_matrix_one_by_one.xlsx): DesignSheet01 with "
                     "one-by-one sensitivity layout, DefaultValues sheet.",
-                    kind="string", min_occ=1),
+                    kind="string", min_occ=1, role="Workflow"),
                 _pt("UncertaintyParameters", "Uncertainty parameter distributions "
                     "from global_variables.dist: Kv/Kh, FWL, GOC, fault seal, "
                     "relperm interpolation, APS facies probabilities.",
-                    kind="string", min_occ=1),
+                    kind="string", min_occ=1, role="Workflow"),
                 _pt("ModelSwitches", "Model alternative switches: DCONV, HUM, "
                     "PETROMODEL, FACIESMODEL, seismic conditioning, facies belts.",
-                    kind="string"),
+                    kind="string", role="Workflow"),
                 _pt("FmuConfig", "fmuconfig global_variables.yml: complete model "
                     "parameterisation including dates, seismic paths, grids, "
                     "regions, facies, petro constants, J-functions, relperm.",
-                    kind="string", min_occ=1),
+                    kind="string", min_occ=1, role="Workflow"),
                 _pt("ForwardModelChain", "Ordered list of ERT forward models: "
                     "DESIGN2PARAMS → DESIGN_KW → RMS → ECLCOMPRESS → OPM_FLOW → "
                     "export_tables → export_maps → export_ecl_roff → sim2seis.",
-                    kind="string", min_occ=1),
+                    kind="string", min_occ=1, role="Workflow"),
                 _pt("NumberOfRealizations", "Number of realisations (250 for "
                     "one-by-one design).",
-                    kind="integer", min_occ=1),
+                    kind="integer", min_occ=1, role="Workflow"),
 
-                # ── INPUTS: Simulation setup ─────────────────────────
+                # ── WORKFLOW: Simulation setup ───────────────────────
                 _pt("RmsProject", "RMS project and workflow definition: project "
                     "name, version, workflow (MAIN).",
-                    kind="string"),
+                    kind="string", role="Workflow"),
                 _pt("EclipseDataTemplate", "Eclipse/OPM DATA file template "
                     "(DROGON_HIST.DATA) with INCLUDEs for grid, props, schedule.",
-                    kind="string"),
+                    kind="string", role="Workflow"),
                 _pt("HookWorkflows", "ERT hook workflows: fmuconfig update, "
                     "fmuobs YAML creation, case metadata via dataio.",
-                    kind="string"),
+                    kind="string", role="Workflow"),
 
                 # ── INPUTS: Existing OSDU objects ────────────────────
                 _pt("InputParameterTable", "OSDU ColumnBasedTable WPC with "
@@ -668,7 +676,7 @@ def build_activity(
             "ParameterRoleID": _role("Input"),
             "StringParameter": ERT_CONFIG["ObservationsFile"],
         },
-        # ── INPUT: ERT config ────────────────────────────────────
+        # ── WORKFLOW: ERT config ─────────────────────────────────
         {
             "Title": "ErtConfig",
             "Description": (
@@ -677,10 +685,10 @@ def build_activity(
                 "random seed 123456."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(ERT_CONFIG, separators=(",", ":")),
         },
-        # ── INPUT: Design matrix ─────────────────────────────────
+        # ── WORKFLOW: Design matrix ──────────────────────────────
         {
             "Title": "DesignMatrix",
             "Description": (
@@ -689,10 +697,10 @@ def build_activity(
                 "Each parameter varied individually while others at base values."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(DESIGN_MATRIX_CONFIG, separators=(",", ":")),
         },
-        # ── INPUT: Uncertainty parameters ────────────────────────
+        # ── WORKFLOW: Uncertainty parameters ─────────────────────
         {
             "Title": "UncertaintyParameters",
             "Description": (
@@ -702,10 +710,10 @@ def build_activity(
                 "APS facies probabilities (4). All continuous uniform/loguniform."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(UNCERTAINTY_PARAMETERS, separators=(",", ":")),
         },
-        # ── INPUT: Model switches ────────────────────────────────
+        # ── WORKFLOW: Model switches ─────────────────────────────
         {
             "Title": "ModelSwitches",
             "Description": (
@@ -714,10 +722,10 @@ def build_activity(
                 "conditioning, belts-based Therys."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(MODEL_SWITCHES, separators=(",", ":")),
         },
-        # ── INPUT: FMU config ────────────────────────────────────
+        # ── WORKFLOW: FMU config ─────────────────────────────────
         {
             "Title": "FmuConfig",
             "Description": (
@@ -727,10 +735,10 @@ def build_activity(
                 "masterdata (SMDA refs), stratigraphy definitions."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(FMUCONFIG, separators=(",", ":")),
         },
-        # ── INPUT: Forward model chain ───────────────────────────
+        # ── WORKFLOW: Forward model chain ────────────────────────
         {
             "Title": "ForwardModelChain",
             "Description": (
@@ -742,18 +750,18 @@ def build_activity(
                 "SIM2SEIS → ERT_SUMMARY_PLOTTING."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(FORWARD_MODEL_CHAIN, separators=(",", ":")),
         },
-        # ── INPUT: Number of realisations ────────────────────────
+        # ── WORKFLOW: Number of realisations ─────────────────────
         {
             "Title": "NumberOfRealizations",
             "Description": "Number of realisations in the design (250)",
             "ParameterKindID": _kind("Integer"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "IntegerParameter": ERT_CONFIG["NumRealizations"],
         },
-        # ── INPUT: RMS project ───────────────────────────────────
+        # ── WORKFLOW: RMS project ────────────────────────────────
         {
             "Title": "RmsProject",
             "Description": (
@@ -762,14 +770,14 @@ def build_activity(
                 "petrophysical modelling (MVA), grid construction, upscaling."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps({
                 "Project": ERT_CONFIG["RMSProject"],
                 "Version": ERT_CONFIG["RMSVersion"],
                 "Workflow": ERT_CONFIG["RMSWorkflow"],
             }, separators=(",", ":")),
         },
-        # ── INPUT: Eclipse DATA template ─────────────────────────
+        # ── WORKFLOW: Eclipse DATA template ──────────────────────
         {
             "Title": "EclipseDataTemplate",
             "Description": (
@@ -778,10 +786,10 @@ def build_activity(
                 "grid, properties, schedule, PVT, RXVD, VFP."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": ERT_CONFIG["EclipseDataTemplate"],
         },
-        # ── INPUT: Hook workflows ────────────────────────────────
+        # ── WORKFLOW: Hook workflows ─────────────────────────────
         {
             "Title": "HookWorkflows",
             "Description": (
@@ -791,10 +799,10 @@ def build_activity(
                 "xhook_create_case_metadata (PRE_SIMULATION)."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(HOOK_WORKFLOWS, separators=(",", ":")),
         },
-        # ── INPUT: Summary vectors ───────────────────────────────
+        # ── WORKFLOW: Summary vectors ────────────────────────────
         {
             "Title": "SummaryVectors",
             "Description": (
@@ -804,7 +812,7 @@ def build_activity(
                 "(TCPU). ~60 unique vector types across field/group/well/region."
             ),
             "ParameterKindID": _kind("String"),
-            "ParameterRoleID": _role("Input"),
+            "ParameterRoleID": _role("Workflow"),
             "StringParameter": json.dumps(SUMMARY_VECTORS, separators=(",", ":")),
         },
         # ── INPUT: Existing OSDU parameter table ─────────────────

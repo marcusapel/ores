@@ -92,7 +92,8 @@
         "IsOutput": false,
         "MinOccurs": 1,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "DesignMatrix",
@@ -101,7 +102,8 @@
         "IsOutput": false,
         "MinOccurs": 1,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "UncertaintyParameters",
@@ -110,7 +112,8 @@
         "IsOutput": false,
         "MinOccurs": 1,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "ModelSwitches",
@@ -119,7 +122,8 @@
         "IsOutput": false,
         "MinOccurs": 0,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "FmuConfig",
@@ -128,7 +132,8 @@
         "IsOutput": false,
         "MinOccurs": 1,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "ForwardModelChain",
@@ -137,7 +142,8 @@
         "IsOutput": false,
         "MinOccurs": 1,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "NumberOfRealizations",
@@ -146,7 +152,8 @@
         "IsOutput": false,
         "MinOccurs": 1,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "integer"
+        "DefaultParameterKind": "integer",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "RmsProject",
@@ -155,7 +162,8 @@
         "IsOutput": false,
         "MinOccurs": 0,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "EclipseDataTemplate",
@@ -164,7 +172,8 @@
         "IsOutput": false,
         "MinOccurs": 0,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "HookWorkflows",
@@ -173,7 +182,8 @@
         "IsOutput": false,
         "MinOccurs": 0,
         "MaxOccurs": 1,
-        "DefaultParameterKind": "string"
+        "DefaultParameterKind": "string",
+        "DefaultParameterRole": "Workflow"
       },
       {
         "Title": "InputParameterTable",
