@@ -2,15 +2,20 @@
 from __future__ import annotations
 import asyncio
 import json
+import logging
 import os
 import sys
 import urllib.parse
+import uuid as _uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from . import osdu
+
+log = logging.getLogger("rddms-admin.strat")
 
 # Import the stratcolumnhandler from demo/strat/
 _handler_dir = os.path.join(os.path.dirname(__file__), "..", "demo", "strat")
@@ -601,6 +606,7 @@ async def import_smda_api(
             column,
             base_url=smda_url,
             access_token=at,
+            verify_ssl=False,
         )
         bundle = col.to_osdu_bundle(partition=partition)
     except Exception as e:
@@ -629,6 +635,7 @@ async def list_smda_columns(
         names = _StratColumn.from_smda_api_list_columns(
             base_url=smda_url,
             access_token=at,
+            verify_ssl=False,
         )
     except Exception as e:
         raise HTTPException(502, f"SMDA API error: {e}")
@@ -761,3 +768,346 @@ async def storage_put_strat_records(
         "totalRecords": len(records),
         **results,
     })
+
+
+# =====================================================================
+# RESQML CONVERSION & RDDMS INGEST
+# =====================================================================
+
+# Namespace for deterministic UUID5 generation from OSDU record IDs
+_RESQML_NS = _uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+
+
+def _det_uuid(seed: str) -> str:
+    """Deterministic UUID5 from a seed string."""
+    return str(_uuid.uuid5(_RESQML_NS, seed))
+
+
+def _resqml_citation(title: str) -> dict:
+    """Standard RESQML Citation block."""
+    return {
+        "Title": title,
+        "Originator": "ORES Strat Column Converter",
+        "Creation": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "Format": "ORES [strat-to-rddms v1.0]",
+    }
+
+
+_CONTENT_TYPE_PREFIX = "application/x-resqml+xml;version=2.0;type="
+
+
+def _resqml_ref(typ_short: str, uid: str, title: str) -> dict:
+    """Build a RESQML DataObjectReference."""
+    return {
+        "ContentType": f"{_CONTENT_TYPE_PREFIX}{typ_short}",
+        "UUID": uid,
+        "Title": title,
+    }
+
+
+def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
+    """Convert a /api/strat/column.json model to RESQML 2.0.1 objects
+    grouped by RDDMS type key.
+
+    Returns a dict:  { "resqml20.obj_X": [obj, ...], ... }
+    PUT order should be: features -> unit interpretations -> rank interpretations -> column
+    """
+    column = model.get("column") or {}
+    col_data = (column.get("data") or {}) if isinstance(column, dict) else {}
+    col_name = col_data.get("Name") or "Stratigraphic Column"
+    col_id = column.get("id") or col_name
+
+    by_type: Dict[str, List[dict]] = {
+        "resqml20.obj_OrganizationFeature": [],
+        "resqml20.obj_RockVolumeFeature": [],
+        "resqml20.obj_StratigraphicUnitInterpretation": [],
+        "resqml20.obj_StratigraphicColumnRankInterpretation": [],
+        "resqml20.obj_StratigraphicColumn": [],
+    }
+
+    rank_refs: List[dict] = []
+
+    for ri, rank in enumerate(model.get("ranks") or []):
+        rank_name = rank.get("rankName") or f"Rank_{ri}"
+        rank_uuid = _det_uuid(f"rank:{col_id}:{rank_name}")
+        rank_feat_uuid = _det_uuid(f"rankfeat:{col_id}:{rank_name}")
+
+        # OrganizationFeature for this rank
+        by_type["resqml20.obj_OrganizationFeature"].append({
+            "Uuid": rank_feat_uuid,
+            "Citation": _resqml_citation(rank_name),
+            "OrganizationKind": "stratigraphic",
+        })
+
+        unit_refs: List[dict] = []
+
+        for ui, unit in enumerate(rank.get("units") or []):
+            if unit.get("_synthetic"):
+                continue  # skip gap-fill placeholders
+
+            name = unit.get("name") or f"Unit_{ui}"
+            unit_uuid = _det_uuid(f"unit:{col_id}:{rank_name}:{name}:{ui}")
+            feat_uuid = _det_uuid(f"feat:{col_id}:{rank_name}:{name}:{ui}")
+
+            # RockVolumeFeature (the feature this unit interprets)
+            by_type["resqml20.obj_RockVolumeFeature"].append({
+                "Uuid": feat_uuid,
+                "Citation": _resqml_citation(name),
+            })
+
+            # StratigraphicUnitInterpretation
+            unit_obj: Dict[str, Any] = {
+                "Uuid": unit_uuid,
+                "Citation": _resqml_citation(name),
+                "Domain": "depth",
+                "InterpretedFeature": _resqml_ref(
+                    "obj_RockVolumeFeature", feat_uuid, name,
+                ),
+            }
+
+            # Store ages and colour as ExtraMetadata (RESQML extension point)
+            extra: List[dict] = []
+            if unit.get("topMa") is not None:
+                extra.append({"Name": "OlderPossibleAge_Ma", "Value": str(unit["topMa"])})
+            if unit.get("baseMa") is not None:
+                extra.append({"Name": "YoungerPossibleAge_Ma", "Value": str(unit["baseMa"])})
+            if unit.get("color"):
+                extra.append({"Name": "Colour", "Value": unit["color"]})
+            if unit.get("code"):
+                extra.append({"Name": "ChronoCode", "Value": unit["code"]})
+            if extra:
+                unit_obj["ExtraMetadata"] = extra
+
+            by_type["resqml20.obj_StratigraphicUnitInterpretation"].append(unit_obj)
+            unit_refs.append(_resqml_ref(
+                "obj_StratigraphicUnitInterpretation", unit_uuid, name,
+            ))
+
+        # StratigraphicColumnRankInterpretation
+        rank_obj: Dict[str, Any] = {
+            "Uuid": rank_uuid,
+            "Citation": _resqml_citation(rank_name),
+            "Domain": "depth",
+            "OrderingCriteria": "olderToYounger",
+            "RankInStratigraphicColumn": ri,
+            "InterpretedFeature": _resqml_ref(
+                "obj_OrganizationFeature", rank_feat_uuid, rank_name,
+            ),
+            "StratigraphicUnits": unit_refs,
+        }
+        by_type["resqml20.obj_StratigraphicColumnRankInterpretation"].append(rank_obj)
+        rank_refs.append(_resqml_ref(
+            "obj_StratigraphicColumnRankInterpretation", rank_uuid, rank_name,
+        ))
+
+    # StratigraphicColumn
+    col_uuid = _det_uuid(f"col:{col_id}")
+    by_type["resqml20.obj_StratigraphicColumn"].append({
+        "Uuid": col_uuid,
+        "Citation": _resqml_citation(col_name),
+        "Ranks": rank_refs,
+    })
+
+    # Remove empty type buckets
+    return {k: v for k, v in by_type.items() if v}
+
+
+async def _fetch_column_model(request: Request, column_id: str) -> dict:
+    """Fetch a strat column model (reuses the same logic as column.json)."""
+    col = await _osdu_get_record(request, column_id)
+    if not col:
+        raise HTTPException(404, "Column not found")
+
+    dcol = _get_data(col)
+    rank_ids = _ids(
+        dcol.get("StratigraphicColumnRankInterpretationSet")
+        or dcol.get("RankInterpretationSet")
+        or []
+    )
+    if not rank_ids:
+        return {"column": col, "ranks": []}
+
+    ranks_by_id = await _storage_fetch_many(request, rank_ids)
+
+    unit_ids_all: List[str] = []
+    chrono_ids_all: List[str] = []
+    for rid in rank_ids:
+        rk = ranks_by_id.get(rid) or {}
+        drk = _get_data(rk)
+        chrono_ids_all.extend(_ids(drk.get("ChronoStratigraphySet") or drk.get("ChronostratigraphySet")))
+        unit_ids_all.extend(_ids(drk.get("StratigraphicUnitInterpretationSet")))
+
+    units_by_id = await _storage_fetch_many(request, unit_ids_all) if unit_ids_all else {}
+    for u in units_by_id.values():
+        ud = _get_data(u)
+        cid = _as_id(ud.get("ChronoStratigraphyID") or ud.get("ChronostratigraphyID") or "")
+        if cid:
+            chrono_ids_all.append(cid)
+
+    chron_by_id = await _storage_fetch_many(request, chrono_ids_all) if chrono_ids_all else {}
+
+    def _age_key(u):
+        top = u.get("topMa")
+        base = u.get("baseMa")
+        if top is not None and base is not None:
+            return (-top, base)
+        return (float("inf"), float("inf"))
+
+    ranks_model: List[dict] = []
+    for rid in rank_ids:
+        rk = ranks_by_id.get(rid)
+        if not rk:
+            continue
+        drk = _get_data(rk)
+        rank_name = drk.get("Name") or "Unspecified"
+        chrono_ids = _ids(drk.get("ChronoStratigraphySet") or drk.get("ChronostratigraphySet"))
+        unit_ids = _ids(drk.get("StratigraphicUnitInterpretationSet"))
+        is_chrono = bool(chrono_ids) and not bool(unit_ids)
+
+        units_model: List[dict] = []
+        for cid in chrono_ids:
+            crec = chron_by_id.get(cid)
+            if crec:
+                ff = _flat_unit_fields(None, crec)
+                units_model.append({"unit": {}, "chrono": crec, **ff})
+        for uid in unit_ids:
+            urec = units_by_id.get(uid)
+            if not urec:
+                continue
+            ud = _get_data(urec)
+            cid_ref = _as_id(ud.get("ChronoStratigraphyID") or "")
+            cobj = chron_by_id.get(cid_ref) if cid_ref else {}
+            ff = _flat_unit_fields(urec, cobj)
+            units_model.append({"unit": urec, "chrono": cobj, **ff})
+
+        units_model.sort(key=_age_key)
+        ranks_model.append({
+            "rankName": rank_name,
+            "isChrono": is_chrono,
+            "rank": rk,
+            "unitCount": len(units_model),
+            "units": units_model,
+        })
+
+    return {"column": col, "ranks": ranks_model}
+
+
+@router.post("/api/strat/ingest/rddms")
+async def ingest_strat_to_rddms(request: Request):
+    """Fetch a StratigraphicColumn from OSDU, convert to RESQML 2.0.1 objects,
+    and PUT them into a Reservoir DDMS v2 dataspace.
+
+    Body:
+    {
+      "columnId": "<OSDU StratigraphicColumn record id>",
+      "dataspace": "maap/strat",
+      "createDataspace": true   // optional, creates the dataspace first
+    }
+    """
+    at = _access_token(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    column_id = (body.get("columnId") or "").strip()
+    dataspace = (body.get("dataspace") or "").strip()
+    create_ds = body.get("createDataspace", False)
+
+    if not column_id:
+        raise HTTPException(400, "columnId is required")
+    if not dataspace:
+        raise HTTPException(400, "dataspace is required")
+
+    # 1) Fetch the column model from OSDU
+    log.info("[RDDMS] Fetching column %s for RESQML conversion", column_id)
+    model = await _fetch_column_model(request, column_id)
+
+    # 2) Convert to RESQML 2.0.1 objects
+    resqml_by_type = _osdu_column_to_resqml(model)
+    total_objects = sum(len(v) for v in resqml_by_type.values())
+    log.info("[RDDMS] Converted to %d RESQML objects across %d types",
+             total_objects, len(resqml_by_type))
+
+    if total_objects == 0:
+        raise HTTPException(422, "No RESQML objects generated - column may be empty")
+
+    # 3) Optionally create the dataspace
+    if create_ds:
+        log.info("[RDDMS] Creating dataspace %s", dataspace)
+        try:
+            await osdu.create_dataspace(
+                at, dataspace,
+                legal_tag=osdu.DEFAULT_LEGAL_TAG,
+                owners=osdu.DEFAULT_OWNERS,
+                viewers=osdu.DEFAULT_VIEWERS,
+                countries=osdu.DEFAULT_COUNTRIES,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 409:
+                log.info("[RDDMS] Dataspace %s already exists (409)", dataspace)
+            else:
+                raise HTTPException(
+                    502,
+                    f"Dataspace creation failed: {e.response.status_code} "
+                    f"{e.response.text[:500]}",
+                )
+
+    # 4) PUT objects type by type (order: features -> interpretations -> column)
+    put_order = [
+        "resqml20.obj_RockVolumeFeature",
+        "resqml20.obj_OrganizationFeature",
+        "resqml20.obj_StratigraphicUnitInterpretation",
+        "resqml20.obj_StratigraphicColumnRankInterpretation",
+        "resqml20.obj_StratigraphicColumn",
+    ]
+    results: Dict[str, Any] = {}
+    errors: List[dict] = []
+
+    for typ in put_order:
+        objects = resqml_by_type.get(typ)
+        if not objects:
+            continue
+        try:
+            resp = await osdu.put_resources(at, dataspace, typ, objects)
+            results[typ] = {"count": len(objects), "response": resp}
+            log.info("[RDDMS] PUT %d %s objects -> OK", len(objects), typ)
+        except httpx.HTTPStatusError as e:
+            err = {
+                "type": typ,
+                "count": len(objects),
+                "httpStatus": e.response.status_code,
+                "detail": e.response.text[:1000],
+            }
+            errors.append(err)
+            log.error("[RDDMS] PUT %s failed: %s", typ, err)
+        except Exception as e:
+            errors.append({"type": typ, "error": str(e)})
+            log.error("[RDDMS] PUT %s exception: %s", typ, e)
+
+    status = "ok" if not errors else ("partial" if results else "error")
+    return JSONResponse({
+        "status": status,
+        "dataspace": dataspace,
+        "columnName": ((model.get("column") or {}).get("data") or {}).get("Name", ""),
+        "totalObjects": total_objects,
+        "types": {k: v["count"] for k, v in results.items()},
+        "errors": errors,
+    })
+
+
+@router.get("/api/strat/dataspaces.json")
+async def list_strat_dataspaces(request: Request):
+    """List available RDDMS dataspaces (for the UI picker)."""
+    at = _access_token(request)
+    try:
+        ds = await osdu.list_dataspaces(at)
+        items = []
+        for d in (ds or []):
+            path = d.get("Path") or d.get("DataspaceId") or ""
+            if path:
+                items.append({"path": path, "label": path})
+        return JSONResponse({"dataspaces": items})
+    except Exception as e:
+        log.warning("[RDDMS] List dataspaces failed: %s", e)
+        return JSONResponse({"dataspaces": [], "error": str(e)})

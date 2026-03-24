@@ -361,6 +361,37 @@ async def list_targets(access_token: str, ds_enc: str, typ: str, uuid: str) -> l
         r.raise_for_status()
         return r.json() or []
 
+async def put_resources(
+    access_token: str,
+    ds_path: str,
+    typ: str,
+    objects: list[dict],
+) -> dict:
+    """PUT RESQML objects into a Reservoir DDMS v2 dataspace.
+
+    PUT /api/reservoir-ddms/v2/dataspaces/{dataspaceId}/resources/{dataObjectType}
+    Body: JSON array of RESQML objects.
+    """
+    enc = urllib.parse.quote(ds_path, safe="")
+    url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{enc}/resources/{typ}"
+    hdr = headers(access_token)
+    async with httpx.AsyncClient(timeout=120) as client:
+        r = await client.put(url, headers=hdr, json=objects)
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError:
+        corr = r.headers.get("x-correlation-id") or r.headers.get("x-request-id")
+        log.error(
+            "PUT resources failed (%s) corr=%s ds=%s type=%s body=%s",
+            r.status_code, corr, ds_path, typ, r.text[:2000],
+        )
+        raise
+    try:
+        return r.json() or {}
+    except Exception:
+        return {"status": r.status_code, "text": r.text[:500]}
+
+
 def _eml_uri_from_parts(path: str, typ: str, uuid: str) -> str:
     """Canonical EML URI fallback if object lacks 'uri'."""
     return f"eml:///dataspace('{path}')/{typ}('{uuid}')"

@@ -156,6 +156,34 @@
     Cells span rows to show the hierarchical nesting of stratigraphic units.
     Ages displayed as supplementary information within each cell.
   </div>
+
+  <!-- RDDMS Ingest Panel (shown after column is loaded) -->
+  <div id="rddms-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #cde; border-radius:6px; background:#f4f8fa;">
+    <div style="font-weight:600; font-size:14px; margin-bottom:.5rem; color:#007079;">
+      Push to Reservoir DDMS as RESQML
+    </div>
+    <div class="row" style="grid-template-columns:140px 1fr auto; gap:.4rem; align-items:center;">
+      <label for="rddms-ds">Dataspace</label>
+      <div style="display:flex;gap:.4rem;align-items:center;">
+        <input id="rddms-ds" type="text" value="maap/strat" style="flex:1;" placeholder="e.g. maap/strat" />
+        <button class="btn" id="btn-rddms-list-ds" type="button" title="List existing dataspaces" style="white-space:nowrap;">List</button>
+      </div>
+    </div>
+    <div id="rddms-ds-picker" style="display:none; margin:.4rem 0;">
+      <select id="rddms-ds-sel" size="4" style="width:100%; font-size:13px;"></select>
+    </div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:.5rem;">
+      <label style="font-size:13px; display:flex; align-items:center; gap:.3rem; margin:0;">
+        <input id="rddms-create-ds" type="checkbox" checked /> Create dataspace if not exists
+      </label>
+    </div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:.5rem;">
+      <button class="btn btn-ingest" id="btn-rddms-push" type="button">Push to RDDMS</button>
+      <span id="rddms-status" class="muted" style="font-size:13px;"></span>
+    </div>
+    <div id="rddms-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
+  </div>
+
   <details style="margin-top:.75rem;">
     <summary class="muted">Raw metadata</summary>
     <table class="sc-table" style="font-size:13px;">
@@ -502,10 +530,15 @@
   /* ------------------------------------------------------------------ */
   /*  LOAD + SEARCH                                                     */
   /* ------------------------------------------------------------------ */
+  let currentColumnId = null;  // Track currently loaded column for RDDMS push
+
   async function loadColumnById(id){
     const rid = (id||'').trim();
     if (!rid) { setStatus('Select a StratigraphicColumn.'); return; }
     setStatus('Loading\u2026');
+    currentColumnId = null;
+    const rddmsPanel = document.getElementById('rddms-panel');
+    if (rddmsPanel) rddmsPanel.style.display = 'none';
     try {
       const url = `/api/strat/column.json?id=${encodeURIComponent(rid)}&enrich=true`;
       const res = await fetch(url, { headers:{'Cache-Control':'no-store'} });
@@ -525,6 +558,9 @@
         ? `${hierarchy.totalRows} rows \u00d7 ${hierarchy.nRanks} ranks`
         : 'empty';
       setStatus(`OK \u2014 ${info}`);
+      // Show RDDMS panel after successful load
+      currentColumnId = rid;
+      if (rddmsPanel) rddmsPanel.style.display = 'block';
     } catch(e) {
       console.warn(e);
       setStatus('Load failed: ' + e.message);
@@ -768,6 +804,108 @@
   });
   btnBundleStorage?.addEventListener('click', () => {
     if (fileBundle) doIngest(fileBundle, document.getElementById('bundle-partition')?.value, 'bundle-status', '/api/strat/storage/put');
+  });
+
+  /* ================================================================ */
+  /*  RDDMS PUSH (RESQML ingest to Reservoir DDMS dataspace)          */
+  /* ================================================================ */
+
+  const rddmsDs       = document.getElementById('rddms-ds');
+  const rddmsDsSel    = document.getElementById('rddms-ds-sel');
+  const rddmsDsPicker = document.getElementById('rddms-ds-picker');
+  const btnRddmsListDs = document.getElementById('btn-rddms-list-ds');
+  const btnRddmsPush  = document.getElementById('btn-rddms-push');
+  const rddmsStatus   = document.getElementById('rddms-status');
+  const rddmsResult   = document.getElementById('rddms-result');
+
+  function rddmsSetStatus(msg, cls) {
+    if (rddmsStatus) { rddmsStatus.textContent = msg; rddmsStatus.className = cls || 'muted'; }
+  }
+  function rddmsShowResult(html, cls) {
+    if (!rddmsResult) return;
+    rddmsResult.innerHTML = html;
+    rddmsResult.style.display = 'block';
+    rddmsResult.style.background = cls === 'ok' ? '#e8f5e9' : cls === 'err' ? '#fce4ec' : '#e3f2fd';
+    rddmsResult.style.border = '1px solid ' + (cls === 'ok' ? '#4caf50' : cls === 'err' ? '#e53935' : '#1976d2');
+  }
+
+  // List dataspaces
+  btnRddmsListDs?.addEventListener('click', async () => {
+    rddmsSetStatus('Loading dataspaces\u2026');
+    try {
+      const r = await fetch('/api/strat/dataspaces.json', { headers:{'Cache-Control':'no-store'} });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      const items = data.dataspaces || [];
+      if (!items.length) { rddmsSetStatus('No dataspaces found'); return; }
+      rddmsDsSel.innerHTML = '';
+      for (const ds of items) {
+        const opt = document.createElement('option');
+        opt.value = ds.path;
+        opt.textContent = ds.label;
+        rddmsDsSel.appendChild(opt);
+      }
+      rddmsDsPicker.style.display = 'block';
+      rddmsSetStatus(`Found ${items.length} dataspaces`);
+    } catch(e) {
+      rddmsSetStatus('List failed: ' + e.message, 'muted');
+    }
+  });
+
+  // Select dataspace from picker
+  rddmsDsSel?.addEventListener('change', function() {
+    if (rddmsDs) rddmsDs.value = this.value;
+  });
+
+  // Push to RDDMS
+  btnRddmsPush?.addEventListener('click', async () => {
+    if (!currentColumnId) { rddmsSetStatus('No column loaded'); return; }
+    const ds = (rddmsDs?.value || '').trim();
+    if (!ds) { rddmsSetStatus('Enter a dataspace path'); return; }
+    const createDs = document.getElementById('rddms-create-ds')?.checked || false;
+
+    rddmsSetStatus('Pushing to RDDMS\u2026');
+    if (rddmsResult) rddmsResult.style.display = 'none';
+    btnRddmsPush.disabled = true;
+
+    try {
+      const r = await fetch('/api/strat/ingest/rddms', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          columnId: currentColumnId,
+          dataspace: ds,
+          createDataspace: createDs,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+
+      const types = data.types || {};
+      const typeList = Object.entries(types).map(([k,v]) => {
+        const short = k.replace('resqml20.obj_','');
+        return `<tr><td style="font-family:monospace;font-size:12px;">${short}</td><td style="text-align:right;">${v}</td></tr>`;
+      }).join('');
+
+      let html = `<strong>${data.status === 'ok' ? '\u2705' : '\u26a0\ufe0f'} ${data.status.toUpperCase()}</strong> &mdash; `;
+      html += `"${data.columnName}" \u2192 <code>${data.dataspace}</code><br>`;
+      html += `<strong>${data.totalObjects}</strong> RESQML objects pushed`;
+      if (typeList) {
+        html += `<table style="margin-top:.4rem;border-collapse:collapse;"><thead><tr><th style="text-align:left;">Type</th><th style="text-align:right;">Count</th></tr></thead><tbody>${typeList}</tbody></table>`;
+      }
+      if (data.errors && data.errors.length) {
+        html += `<details style="margin-top:.4rem;"><summary style="color:#c62828;">Errors (${data.errors.length})</summary>`;
+        html += `<pre style="font-size:11px;max-height:150px;overflow:auto;">${JSON.stringify(data.errors, null, 2)}</pre></details>`;
+      }
+
+      rddmsSetStatus(data.status === 'ok' ? 'Done' : 'Completed with errors');
+      rddmsShowResult(html, data.status === 'ok' ? 'ok' : 'err');
+    } catch(e) {
+      rddmsSetStatus('Push failed: ' + e.message, 'muted');
+      rddmsShowResult(`<strong>\u274c Push failed</strong><br>${e.message}`, 'err');
+    } finally {
+      btnRddmsPush.disabled = false;
+    }
   });
 
 })();
