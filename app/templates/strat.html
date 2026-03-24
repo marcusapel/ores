@@ -18,6 +18,11 @@
 .sc-cell strong { display: block; font-size: .88rem; line-height: 1.25; }
 .sc-age { font-size: .78rem; opacity: .75; margin-top: 1px; }
 .sc-empty { background: #f8f8f8; border: 1px solid rgba(0,0,0,.06); }
+.sc-synthetic { background: repeating-linear-gradient(
+    -45deg, #f8f8f8, #f8f8f8 4px, #eee 4px, #eee 8px) !important;
+  border: 1px dashed rgba(0,0,0,.18); }
+.sc-synthetic strong { color: #888; font-style: italic; font-weight: 400; }
+.sc-synthetic .sc-age { color: #aaa; }
 .sc-footnote { font-size: .85rem; color: #605e5c; margin-top:.35rem; }
 .legend { display:flex; gap:.5rem; flex-wrap:wrap; margin:.35rem 0 .6rem; }
 .rank-col { min-width: 8rem; }
@@ -232,6 +237,7 @@
         baseMa: (u.baseMa != null) ? u.baseMa : null,
         color:  u.color  || null,
         code:   u.code   || '',
+        _synthetic: !!u._synthetic,
       }))
     })).filter(rk => rk.units.length > 0);
 
@@ -289,6 +295,17 @@
     // Sort roots older-first (bigger topMa first)
     roots.sort((a, b) => (b.topMa || 0) - (a.topMa || 0));
 
+    // Orphan roots at deeper ranks: extend leftward to column 0
+    // so they fill the full table width (otherwise they leave white gaps
+    // in all columns to their left).  We adjust rankIdx before computeLeaf
+    // so that colSpan computation (nRanks - rankIdx for leaves, or
+    // minChildRank - rankIdx for parents) properly spans all columns.
+    for (const r of roots) {
+      if (r.rankIdx > 0) {
+        r.rankIdx = 0;
+      }
+    }
+
     // Compute leaf counts + colSpan
     function computeLeaf(node) {
       if (node.children.length === 0) {
@@ -322,6 +339,34 @@
 
     const totalRows = rowIdx;
 
+    // Fill gaps: when a child at rank ci has a parent whose span ends at
+    // pe = parent.effectiveCol + parent.colSpan, and ci > pe, extend
+    // the child leftward so it starts at pe (no white holes).
+    function fillGaps(node) {
+      node.effectiveCol = (node.effectiveCol != null) ? node.effectiveCol : node.rankIdx;
+      if (!node.children.length) return;
+      const parentEnd = node.effectiveCol + node.colSpan;
+      for (const child of node.children) {
+        child.effectiveCol = child.rankIdx;
+        if (child.rankIdx > parentEnd) {
+          const gap = child.rankIdx - parentEnd;
+          child.colSpan += gap;
+          child.effectiveCol = parentEnd;
+        }
+        fillGaps(child);
+      }
+    }
+    for (const r of roots) { r.effectiveCol = r.rankIdx; fillGaps(r); }
+
+    // Build start-map using effectiveCol so gap-filled nodes render correctly
+    const startMap = new Array(nRanks).fill(null).map(() => new Map());
+    function populateStartMap(node) {
+      const col = (node.effectiveCol != null) ? node.effectiveCol : node.rankIdx;
+      startMap[col].set(node.rowStart, node);
+      for (const ch of node.children) populateStartMap(ch);
+    }
+    for (const r of roots) populateStartMap(r);
+
     // Column metadata: rank-level gradient dark → light
     const columns = ranks.map((rk, ri) => {
       const t = nRanks === 1 ? 0.5 : ri / (nRanks - 1);
@@ -332,7 +377,7 @@
       return { rankName: rk.rankName, bg, fg, nodes: levels[ri] };
     });
 
-    return { columns, totalRows, nRanks };
+    return { columns, totalRows, nRanks, startMap };
   }
 
   /* ------------------------------------------------------------------ */
@@ -375,14 +420,7 @@
       matrixRoot.innerHTML = '<p class="muted" style="padding:.5rem;">No stratigraphic units to display.</p>';
       return;
     }
-    const { columns, totalRows, nRanks } = hierarchy;
-
-    // Build start-map per column:  row → node
-    const startMap = columns.map(col => {
-      const m = new Map();
-      for (const node of col.nodes) m.set(node.rowStart, node);
-      return m;
-    });
+    const { columns, totalRows, nRanks, startMap } = hierarchy;
 
     const table = document.createElement('table');
     table.className = 'sc-table';
@@ -414,14 +452,15 @@
         const node = startMap[c].get(r);
         if (node) {
           const td = document.createElement('td');
-          td.className = 'sc-cell';
+          td.className = node._synthetic ? 'sc-cell sc-synthetic' : 'sc-cell';
           if (node.leafCount > 1)  td.rowSpan = node.leafCount;
           if (node.colSpan  > 1)   td.colSpan = node.colSpan;
 
-          // Background: prefer ICS chrono colour; else rank gradient
-          const bgColor = node.color || columns[c].bg;
+          // Background: prefer ICS chrono colour; else use the node's original rank gradient
+          const origRank = node.rankIdx;
+          const bgColor = node.color || columns[origRank].bg;
           td.style.background = bgColor;
-          td.style.color = node.color ? (isLightColor(node.color) ? '#222' : '#fff') : columns[c].fg;
+          td.style.color = node.color ? (isLightColor(node.color) ? '#222' : '#fff') : columns[origRank].fg;
 
           // Name
           const nameEl = document.createElement('strong');

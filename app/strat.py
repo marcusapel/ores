@@ -98,6 +98,15 @@ def _flat_unit_fields(unit_rec: dict, chrono_rec: dict) -> dict:
 def _label_from_ref_id(val: str) -> str:
     if not val:
         return ""
+
+def _fmt_ma(v) -> str:
+    """Format an age in Ma for display in synthetic unit labels."""
+    if v is None:
+        return "?"
+    f = float(v)
+    if f == int(f):
+        return str(int(f))
+    return f"{f:.2f}".rstrip("0").rstrip(".")
     parts = val.strip().split(":")
     if len(parts) >= 2 and parts[-1] == "":
         return parts[-2]
@@ -410,7 +419,121 @@ async def get_strat_column(
             "units": units_model
         })
 
-    # 8) Return column model
+    # 8) Fill gaps: for each consecutive pair of ranks, if a unit at rank N
+    #    has no children at rank N+1 (i.e. no unit at N+1 whose age range
+    #    is contained within the N-unit), insert a synthetic placeholder
+    #    unit at rank N+1. This ensures the hierarchical table has no
+    #    undefined white cells — missing data is visually declared.
+    #
+    #    The OSDU / ICS chrono model is inherently hierarchical and
+    #    non-overlapping per rank.  Gaps in the data therefore represent
+    #    missing information (not geological gaps) and should be declared.
+    #
+    #    Synthetic placeholders cascade through subsequent ranks: if Eonothem
+    #    "Hadean" has no Erathem children, the synthetic Erathem entry itself
+    #    propagates to System, SubSystem, Series, etc. — ensuring every cell
+    #    in the table is accounted for.  The `_originalName` field preserves
+    #    the real ancestor name so labels stay clean (no nested nesting).
+    def _is_contained(child_top, child_base, parent_top, parent_base, tol=0.5):
+        """True if child age range fits within parent (with 0.5 Ma tolerance)."""
+        if None in (child_top, child_base, parent_top, parent_base):
+            return False
+        return child_top <= parent_top + tol and child_base >= parent_base - tol
+
+    for ri in range(len(ranks_model) - 1):
+        parent_rank = ranks_model[ri]
+        child_rank = ranks_model[ri + 1]
+        child_units = child_rank["units"]
+
+        new_children: List[Dict[str, Any]] = []
+        for pu in parent_rank["units"]:
+            p_top = pu.get("topMa")
+            p_base = pu.get("baseMa")
+            if p_top is None or p_base is None:
+                continue
+            # Use original ancestor name for clean labels (avoid nested "((...) — undifferentiated)")
+            p_name = pu.get("_originalName") or pu.get("name") or ""
+
+            # Find existing children at the next rank contained in this parent
+            # (consider ALL units — real and synthetic — for containment)
+            kids = [
+                cu for cu in child_units
+                if _is_contained(cu.get("topMa"), cu.get("baseMa"), p_top, p_base)
+            ]
+
+            if not kids:
+                # No children at all → insert one synthetic placeholder
+                # covering the full parent age range
+                new_children.append({
+                    "unit": {},
+                    "chrono": {},
+                    "name": f"({p_name} — undifferentiated)",
+                    "_originalName": p_name,
+                    "topMa": p_top,
+                    "baseMa": p_base,
+                    "color": None,
+                    "code": "",
+                    "_synthetic": True,
+                })
+            else:
+                # Children exist but may not tile the full parent range.
+                # Sort kids older-first and look for age gaps.
+                # Only consider non-synthetic units for gap detection
+                # (synthetics already placed from earlier rounds shouldn't
+                # count as real coverage)
+                real_kids = [k for k in kids if not k.get("_synthetic")]
+                if not real_kids:
+                    # All children are synthetic from earlier rounds — skip
+                    continue
+                kids_sorted = sorted(real_kids, key=lambda c: -(c.get("topMa") or 0))
+                # Gap at top: parent.topMa → first child.topMa
+                first_top = kids_sorted[0].get("topMa")
+                if first_top is not None and p_top - first_top > 0.5:
+                    new_children.append({
+                        "unit": {}, "chrono": {},
+                        "name": f"(not defined, {_fmt_ma(p_top)}–{_fmt_ma(first_top)} Ma)",
+                        "_originalName": f"not defined {_fmt_ma(p_top)}–{_fmt_ma(first_top)} Ma",
+                        "topMa": p_top, "baseMa": first_top,
+                        "color": None, "code": "", "_synthetic": True,
+                    })
+                # Gaps between consecutive children
+                for ci in range(len(kids_sorted) - 1):
+                    cur_base = kids_sorted[ci].get("baseMa")
+                    nxt_top = kids_sorted[ci + 1].get("topMa")
+                    if cur_base is not None and nxt_top is not None and cur_base - nxt_top > 0.5:
+                        new_children.append({
+                            "unit": {}, "chrono": {},
+                            "name": f"(not defined, {_fmt_ma(cur_base)}–{_fmt_ma(nxt_top)} Ma)",
+                            "_originalName": f"not defined {_fmt_ma(cur_base)}–{_fmt_ma(nxt_top)} Ma",
+                            "topMa": cur_base, "baseMa": nxt_top,
+                            "color": None, "code": "", "_synthetic": True,
+                        })
+                # Gap at base: last child.baseMa → parent.baseMa
+                last_base = kids_sorted[-1].get("baseMa")
+                if last_base is not None and last_base - p_base > 0.5:
+                    new_children.append({
+                        "unit": {}, "chrono": {},
+                        "name": f"(not defined, {_fmt_ma(last_base)}–{_fmt_ma(p_base)} Ma)",
+                        "_originalName": f"not defined {_fmt_ma(last_base)}–{_fmt_ma(p_base)} Ma",
+                        "topMa": last_base, "baseMa": p_base,
+                        "color": None, "code": "", "_synthetic": True,
+                    })
+
+        if new_children:
+            # Deduplicate synthetic entries that cover overlapping age ranges
+            # (can happen when umbrella units like "Precambrian" overlap real units)
+            deduped: List[Dict[str, Any]] = []
+            seen_ranges: set = set()
+            for nc in new_children:
+                key = (round(nc.get("topMa", 0), 2), round(nc.get("baseMa", 0), 2))
+                if key not in seen_ranges:
+                    seen_ranges.add(key)
+                    deduped.append(nc)
+            child_rank["units"] = child_rank["units"] + deduped
+            child_rank["units"].sort(key=_age_key)
+            child_rank["unitCount"] = len(child_rank["units"])
+
+    # 9) Return column model
     return JSONResponse({
         "column": col,
         "ranks": ranks_model

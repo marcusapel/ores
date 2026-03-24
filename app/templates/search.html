@@ -14,6 +14,10 @@
   .mini-grid { display: grid; grid-template-columns: 190px 1fr; gap: .3rem .8rem; }
   .mini-grid .k { color: #605e5c; }
   .meta-table td:last-child { word-break: break-word; }
+  /* clickable result rows */
+  .results-table tbody tr { cursor: pointer; transition: background .15s; }
+  .results-table tbody tr:hover { background: #e8f0fa; }
+  .results-table tbody tr.active-row { background: #d0e2f4; font-weight: 500; }
   .kpi-grid { display:grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap:.5rem; }
   .kpi { border:1px solid #e1dfdd; border-radius:6px; padding:.45rem .55rem; background:#faf9f8; }
   .kpi .lbl { font-size:.8rem; color:#605e5c; }
@@ -162,7 +166,7 @@
 <form method="post" action="/search/run" class="search-form">
 
   <label>Kind (primary)</label>
-  <div class="kind-row">
+  <div class="kind-row" style="grid-template-columns: 220px 1fr;">
     <select id="kindPreset" style="min-width: 0;">
       <option value="">Select kind from repo manifests…</option>
       {% for opt in kind_options or [] %}
@@ -170,7 +174,6 @@
       {% endfor %}
     </select>
     <input type="text" id="kindInput" name="kind" value="{{ kind or '' }}" list="kindCatalog" placeholder="osdu:wks:...">
-    <button type="button" id="useSelectedKind">Use</button>
   </div>
   <datalist id="kindCatalog">
     {% for opt in kind_options or [] %}
@@ -195,13 +198,11 @@
   (function () {
     const preset = document.getElementById('kindPreset');
     const input = document.getElementById('kindInput');
-    const btn = document.getElementById('useSelectedKind');
     function applyPreset() {
       if (!preset || !input || !preset.value) return;
       input.value = preset.value;
     }
     preset?.addEventListener('change', applyPreset);
-    btn?.addEventListener('click', applyPreset);
   })();
 </script>
 
@@ -233,7 +234,8 @@
     <p>No records matched your query.</p>
   {% else %}
     <div class="table-scroll">
-    <table>
+    <table class="results-table">
+      <thead>
       <tr>
         <th>Name</th>
         <th>Description</th>
@@ -245,11 +247,13 @@
         <th>Children</th>
         <th>Action</th>
       </tr>
+      </thead>
+      <tbody>
       {% for rec in results.results or [] %}
         {% set name = (rec.data or {}).get('Name') %}
         {% set desc = (rec.data or {}).get('Description') %}
         {% set parentObj = (rec.data or {}).get('ParentObjectID') %}
-        <tr>
+        <tr data-rec-idx="{{ loop.index }}"{% if loop.first %} class="active-row"{% endif %}>
           <td>{{ name or '—' }}</td>
           <td>{{ desc or '—' }}</td>
           <td>{{ rec.kind or '—' }}</td>
@@ -269,18 +273,8 @@
           <td><a href="/search/view/{{ rec.id }}">View Details</a></td>
         </tr>
       {% endfor %}
+      </tbody>
     </table>
-    </div>
-
-    <h4 style="margin-top:1rem">Select a result</h4>
-    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
-      <label for="recSelect">Record:</label>
-      <select id="recSelect">
-        {% for rec in results.results or [] %}
-          {% set label = (rec.data or {}).get('Name') or rec.id %}
-          <option value="{{ loop.index }}">{{ label }} — {{ rec.id }}</option>
-        {% endfor %}
-      </select>
     </div>
 
     {% macro esc_label(s) -%}
@@ -1870,7 +1864,6 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
       mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
 
-      const sel = document.getElementById('recSelect');
       const blocks = Array.from(document.querySelectorAll('.rec-block'));
 
       // Cache original diagram source for every <pre.mermaid> (for clean re-parsing)
@@ -1944,9 +1937,20 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
         blocks.forEach(b => { b.style.display = 'none'; });
         const el = document.getElementById('rec-' + idx);
         if (el) { el.style.display = ''; renderMermaidIn(el); renderProdChart(el); }
+        // Highlight active row in results table
+        document.querySelectorAll('.results-table tbody tr').forEach(r => {
+          r.classList.toggle('active-row', r.dataset.recIdx === String(idx));
+        });
       }
-      if (sel && sel.options.length > 0) sel.value = sel.options[0].value;
-      sel?.addEventListener('change', (e) => { const idx = e.target.value; if (idx) showBlock(idx); });
+
+      // Click on a result row to show its detail block
+      document.querySelectorAll('.results-table tbody tr[data-rec-idx]').forEach(row => {
+        row.addEventListener('click', (e) => {
+          // Don't intercept clicks on the "View Details" link
+          if (e.target.closest('a')) return;
+          showBlock(row.dataset.recIdx);
+        });
+      });
 
       // Initial render of first visible block's charts
       blocks.forEach(b => { if (b.style.display !== 'none') renderProdChart(b); });
