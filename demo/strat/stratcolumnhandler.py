@@ -302,6 +302,124 @@ class StratColumn:
 
         return StratColumn(name=col_name, ranks=ranks, vendor={})
 
+    # ---- SMDA column-header importers (ApiStratColumn) ----
+
+    # 15 canonical SMDA column-header fields
+    SMDA_COLUMN_FIELDS = [
+        "identifier", "strat_column_type", "strat_column_status",
+        "strat_column_area_type", "country", "area", "field", "source",
+        "update_date", "update_user", "insert_date", "insert_user",
+        "description", "interpreter", "uuid",
+    ]
+
+    @staticmethod
+    def from_smda_column_csv(
+        csv_path: str,
+        delimiter: str = ";",
+    ) -> List["StratColumn"]:
+        """Import SMDA column headers from a CSV export.
+
+        Each row becomes one StratColumn (no ranks/units — just header metadata).
+        All 15 SMDA fields are preserved in StratColumn.vendor.
+
+        Returns
+        -------
+        list[StratColumn]
+            One StratColumn per row, with vendor dict containing all fields.
+        """
+        import csv as _csv
+
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = _csv.DictReader(f, delimiter=delimiter)
+            rows = list(reader)
+
+        columns: List[StratColumn] = []
+        for row in rows:
+            name = (row.get("identifier") or "").strip()
+            if not name:
+                continue
+            vendor = {}
+            for k in StratColumn.SMDA_COLUMN_FIELDS:
+                v = row.get(k)
+                # Preserve original value exactly (including trailing spaces)
+                # Only normalise truly empty strings to None
+                if v is None or v == "":
+                    vendor[k] = None
+                else:
+                    vendor[k] = v
+            columns.append(StratColumn(name=name, ranks=[], vendor=vendor))
+        return columns
+
+    @staticmethod
+    def from_smda_column_xlsx(
+        xlsx_path: str,
+        sheet: str = "ApiStratColumn",
+    ) -> List["StratColumn"]:
+        """Import SMDA column headers from an XLSX export.
+
+        Each row becomes one StratColumn (no ranks/units — just header metadata).
+        All 15 SMDA fields are preserved in StratColumn.vendor.
+
+        Returns
+        -------
+        list[StratColumn]
+            One StratColumn per row, with vendor dict containing all fields.
+        """
+        if openpyxl is None:
+            raise RuntimeError("openpyxl is required to read .xlsx files")
+
+        wb = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
+        if sheet not in wb.sheetnames:
+            raise ValueError(f"Sheet '{sheet}' not found in {xlsx_path}")
+        ws = wb[sheet]
+
+        headers = [
+            str(h).strip() if h is not None else ""
+            for h in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+        ]
+        h2i = {h: i for i, h in enumerate(headers)}
+
+        columns: List[StratColumn] = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if all(c is None for c in row):
+                continue
+            name_idx = h2i.get("identifier")
+            name = str(row[name_idx]).strip() if name_idx is not None and row[name_idx] else ""
+            if not name:
+                continue
+
+            vendor: Dict[str, Any] = {}
+            for fld in StratColumn.SMDA_COLUMN_FIELDS:
+                idx = h2i.get(fld)
+                val = row[idx] if idx is not None and idx < len(row) else None
+                # Preserve original value exactly (convert to str for consistency)
+                if val is None:
+                    vendor[fld] = None
+                else:
+                    s = str(val)
+                    vendor[fld] = s if s else None
+            columns.append(StratColumn(name=name, ranks=[], vendor=vendor))
+        wb.close()
+        return columns
+
+    # ---- SMDA column-header exporter ----
+
+    def to_smda_column_dict(self) -> Dict[str, Any]:
+        """Export this StratColumn's metadata back to an SMDA column-header dict.
+
+        Returns a dict with the 15 canonical SMDA column fields, reconstructed
+        from vendor metadata.  This is the inverse of from_smda_column_csv /
+        from_smda_column_xlsx.
+        """
+        out: Dict[str, Any] = {}
+        v = self.vendor or {}
+        for fld in StratColumn.SMDA_COLUMN_FIELDS:
+            out[fld] = v.get(fld)
+        # Ensure name is always populated from self.name
+        if not out.get("identifier"):
+            out["identifier"] = self.name
+        return out
+
     # ---- OpenWorks JSON importer ----
 
     @staticmethod
@@ -717,6 +835,10 @@ class StratColumn:
                 sranks.append(StratRank(name=name, kind="litho", ordering=ordering, units=[]))
 
         cname = cols[0].get("title") if cols else "Stratigraphic Column"
+        col_vendor: Dict[str, Any] = {}
+        if cols:
+            cem = cols[0].get("extraMetadata") or {}
+            col_vendor = cem.get("vendor", {})
 
         # Horizons
         shorizons: List[StratHorizon] = []
@@ -732,7 +854,7 @@ class StratColumn:
                 vendor=extra.get("vendor", {}),
             ))
 
-        return StratColumn(name=cname or "Stratigraphic Column", ranks=sranks, horizons=shorizons, vendor={})
+        return StratColumn(name=cname or "Stratigraphic Column", ranks=sranks, horizons=shorizons, vendor=col_vendor)
 
     @staticmethod
     def from_osdu_bundle(path: str) -> "StratColumn":
@@ -837,7 +959,11 @@ class StratColumn:
             ))
 
         cname = cols[0].get("data", {}).get("Name") if cols else "Stratigraphic Column"
-        return StratColumn(name=cname or "Stratigraphic Column", ranks=sranks, horizons=shorizons, vendor={})
+        col_vendor: Dict[str, Any] = {}
+        if cols:
+            cvm = (cols[0].get("data", {}).get("VendorMetadata") or {})
+            col_vendor = cvm.get("Raw", {})
+        return StratColumn(name=cname or "Stratigraphic Column", ranks=sranks, horizons=shorizons, vendor=col_vendor)
 
     # ------------------------------- Exporters -----------------------------
     def to_resqml_json(self, chrono_rd_index: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
@@ -924,17 +1050,18 @@ class StratColumn:
             objs.append(hobj)
 
         # Column
-        objs.append(
-            {
-                "resqmlType": "resqml20:StratigraphicColumn",
-                "uuid": sanitize(self.name),
-                "title": self.name,
-                "rankInterpretationRefs": [
-                    {"uuid": ro["uuid"], "contentType": "resqml20:StratigraphicColumnRankInterpretation"}
-                    for ro in rank_objs
-                ],
-            }
-        )
+        col_obj: Dict[str, Any] = {
+            "resqmlType": "resqml20:StratigraphicColumn",
+            "uuid": self.vendor.get("uuid") or sanitize(self.name),
+            "title": self.name,
+            "rankInterpretationRefs": [
+                {"uuid": ro["uuid"], "contentType": "resqml20:StratigraphicColumnRankInterpretation"}
+                for ro in rank_objs
+            ],
+        }
+        if self.vendor:
+            col_obj["extraMetadata"] = {"vendor": dict(self.vendor)}
+        objs.append(col_obj)
         return objs
 
     def to_osdu_bundle(
@@ -1024,11 +1151,17 @@ class StratColumn:
 
         # Column
         cid = wpc_id(partition, "StratigraphicColumn", self.name)
+        col_data: Dict[str, Any] = {
+            "Name": self.name,
+            "StratigraphicColumnRankInterpretationSet": rank_ids,
+        }
+        if self.vendor:
+            col_data["VendorMetadata"] = {"SourceSystem": "SMDA", "Raw": dict(self.vendor)}
         records.append(
             {
                 "id": cid,
                 "kind": KIND_COL,
-                "data": {"Name": self.name, "StratigraphicColumnRankInterpretationSet": rank_ids},
+                "data": col_data,
             }
         )
         return {"records": records}
