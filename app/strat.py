@@ -14,8 +14,12 @@ from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, 
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from . import osdu
+from . import auth as _auth
 
 log = logging.getLogger("rddms-admin.strat")
+
+# SMDA API key (Ocp-Apim-Subscription-Key) — used when PKCE login is unavailable
+SMDA_API_KEY: str = os.getenv("SMDA_API_KEY", "")
 
 # Import the stratcolumnhandler from demo/strat/
 _handler_dir = os.path.join(os.path.dirname(__file__), "..", "demo", "strat")
@@ -119,7 +123,10 @@ def _fmt_ma(v) -> str:
 
 @router.get("/strat", response_class=HTMLResponse)
 async def strat_page(request: Request):
-    return templates.TemplateResponse("strat.html", {"request": request})
+    return templates.TemplateResponse("strat.html", {
+        "request": request,
+        "partition": osdu.DATA_PARTITION_ID or "data",
+    })
 
 @router.get("/api/strat/search.json")
 async def strat_search(
@@ -583,6 +590,28 @@ async def import_ow_json(
     })
 
 
+async def _smda_auth(request: Request) -> dict:
+    """Return SMDA auth kwargs for stratcolumnhandler calls.
+
+    Returns a dict with access_token and/or api_key.
+    The gateway needs both; the direct OPUS API needs just access_token.
+    Raises HTTPException 403 if neither is available.
+    """
+    kw: dict = {}
+    token = await _auth.smda_access_token(request)
+    if token:
+        kw["access_token"] = token
+    if SMDA_API_KEY:
+        kw["api_key"] = SMDA_API_KEY
+    if not kw:
+        raise HTTPException(
+            403,
+            "SMDA auth not available. Set SMDA_API_KEY in .env, "
+            "or visit /login/smda to sign in.",
+        )
+    return kw
+
+
 @router.post("/api/strat/import/smda")
 async def import_smda_api(
     request: Request,
@@ -590,22 +619,17 @@ async def import_smda_api(
     smda_url: str = Form("https://opus.smda.equinor.com"),
     partition: str = Form("data"),
 ):
-    """Fetch a strat column from SMDA OPUS API and convert to OSDU WPC bundle.
-
-    Uses the caller's OSDU access token (if available) to authenticate
-    against SMDA, since both use Azure AD (Equinor SSO).
-    """
+    """Fetch a strat column from SMDA API and convert to OSDU WPC bundle."""
     if _StratColumn is None:
         raise HTTPException(500, "stratcolumnhandler not available")
 
-    # Try to get access token for SMDA auth (same tenant)
-    at = getattr(request.state, "access_token", None)
+    auth_kw = await _smda_auth(request)
 
     try:
         col = _StratColumn.from_smda_api(
             column,
             base_url=smda_url,
-            access_token=at,
+            **auth_kw,
             verify_ssl=False,
         )
         bundle = col.to_osdu_bundle(partition=partition)
@@ -626,15 +650,15 @@ async def list_smda_columns(
     request: Request,
     smda_url: str = Query("https://opus.smda.equinor.com"),
 ):
-    """List available strat column identifiers from SMDA OPUS API."""
+    """List available strat column identifiers from SMDA API."""
     if _StratColumn is None:
         raise HTTPException(500, "stratcolumnhandler not available")
 
-    at = getattr(request.state, "access_token", None)
+    auth_kw = await _smda_auth(request)
     try:
         names = _StratColumn.from_smda_api_list_columns(
             base_url=smda_url,
-            access_token=at,
+            **auth_kw,
             verify_ssl=False,
         )
     except Exception as e:
@@ -912,6 +936,114 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
     return {k: v for k, v in by_type.items() if v}
 
 
+def _stratcol_to_model(col) -> dict:
+    """Convert a StratColumn object (from stratcolumnhandler) into the model
+    format expected by _osdu_column_to_resqml().
+
+    This lets us reuse the same RESQML converter for SMDA-sourced columns
+    that haven't been ingested to OSDU yet.
+    """
+    ranks_model = []
+    for ri, r in enumerate(col.ranks):
+        units_model = []
+        if r.kind == "litho":
+            for u in r.units:
+                units_model.append({
+                    "name": u.name,
+                    "topMa": u.top_age_ma,
+                    "baseMa": u.base_age_ma,
+                    "color": u.color_html,
+                    "code": None,
+                })
+        ranks_model.append({
+            "rankName": r.name,
+            "isChrono": r.kind == "chrono",
+            "unitCount": len(units_model),
+            "units": units_model,
+        })
+    return {
+        "column": {"id": col.name, "data": {"Name": col.name}},
+        "ranks": ranks_model,
+    }
+
+
+async def _push_resqml_to_rddms(
+    at: str,
+    resqml_by_type: Dict[str, List[dict]],
+    dataspace: str,
+    create_ds: bool,
+    column_name: str,
+) -> dict:
+    """Shared helper: optionally create dataspace, PUT RESQML objects, return result dict."""
+    total_objects = sum(len(v) for v in resqml_by_type.values())
+
+    if total_objects == 0:
+        raise HTTPException(422, "No RESQML objects generated - column may be empty")
+
+    # Optionally create the dataspace
+    if create_ds:
+        log.info("[RDDMS] Creating dataspace %s", dataspace)
+        try:
+            await osdu.create_dataspace(
+                at, dataspace,
+                legal_tag=osdu.DEFAULT_LEGAL_TAG,
+                owners=osdu.DEFAULT_OWNERS,
+                viewers=osdu.DEFAULT_VIEWERS,
+                countries=osdu.DEFAULT_COUNTRIES,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 409:
+                log.info("[RDDMS] Dataspace %s already exists (409)", dataspace)
+            else:
+                raise HTTPException(
+                    502,
+                    f"Dataspace creation failed: {e.response.status_code} "
+                    f"{e.response.text[:500]}",
+                )
+
+    # PUT objects type by type
+    put_order = [
+        "resqml20.obj_RockVolumeFeature",
+        "resqml20.obj_OrganizationFeature",
+        "resqml20.obj_StratigraphicUnitInterpretation",
+        "resqml20.obj_StratigraphicColumnRankInterpretation",
+        "resqml20.obj_StratigraphicColumn",
+    ]
+    results: Dict[str, Any] = {}
+    errors: List[dict] = []
+
+    for typ in put_order:
+        objects = resqml_by_type.get(typ)
+        if not objects:
+            continue
+        try:
+            resp = await osdu.put_resources(at, dataspace, typ, objects)
+            results[typ] = {"count": len(objects), "response": resp}
+            log.info("[RDDMS] PUT %d %s objects -> OK", len(objects), typ)
+        except httpx.HTTPStatusError as e:
+            err = {
+                "type": typ,
+                "count": len(objects),
+                "httpStatus": e.response.status_code,
+                "detail": e.response.text[:1000],
+            }
+            errors.append(err)
+            log.error("[RDDMS] PUT %s failed: %s", typ, err)
+        except Exception as e:
+            errors.append({"type": typ, "error": str(e)})
+            log.error("[RDDMS] PUT %s exception: %s", typ, e)
+
+    status = "ok" if not errors else ("partial" if results else "error")
+    return {
+        "status": status,
+        "dataspace": dataspace,
+        "columnName": column_name,
+        "totalObjects": total_objects,
+        "types": {k: v["count"] for k, v in results.items()},
+        "errors": errors,
+    }
+
+
 async def _fetch_column_model(request: Request, column_id: str) -> dict:
     """Fetch a strat column model (reuses the same logic as column.json)."""
     col = await _osdu_get_record(request, column_id)
@@ -1025,75 +1157,70 @@ async def ingest_strat_to_rddms(request: Request):
 
     # 2) Convert to RESQML 2.0.1 objects
     resqml_by_type = _osdu_column_to_resqml(model)
-    total_objects = sum(len(v) for v in resqml_by_type.values())
     log.info("[RDDMS] Converted to %d RESQML objects across %d types",
-             total_objects, len(resqml_by_type))
+             sum(len(v) for v in resqml_by_type.values()), len(resqml_by_type))
 
-    if total_objects == 0:
-        raise HTTPException(422, "No RESQML objects generated - column may be empty")
+    # 3) Push to RDDMS (create dataspace + PUT objects)
+    col_name = ((model.get("column") or {}).get("data") or {}).get("Name", "")
+    result = await _push_resqml_to_rddms(at, resqml_by_type, dataspace, create_ds, col_name)
+    return JSONResponse(result)
 
-    # 3) Optionally create the dataspace
-    if create_ds:
-        log.info("[RDDMS] Creating dataspace %s", dataspace)
-        try:
-            await osdu.create_dataspace(
-                at, dataspace,
-                legal_tag=osdu.DEFAULT_LEGAL_TAG,
-                owners=osdu.DEFAULT_OWNERS,
-                viewers=osdu.DEFAULT_VIEWERS,
-                countries=osdu.DEFAULT_COUNTRIES,
-            )
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 409:
-                log.info("[RDDMS] Dataspace %s already exists (409)", dataspace)
-            else:
-                raise HTTPException(
-                    502,
-                    f"Dataspace creation failed: {e.response.status_code} "
-                    f"{e.response.text[:500]}",
-                )
 
-    # 4) PUT objects type by type (order: features -> interpretations -> column)
-    put_order = [
-        "resqml20.obj_RockVolumeFeature",
-        "resqml20.obj_OrganizationFeature",
-        "resqml20.obj_StratigraphicUnitInterpretation",
-        "resqml20.obj_StratigraphicColumnRankInterpretation",
-        "resqml20.obj_StratigraphicColumn",
-    ]
-    results: Dict[str, Any] = {}
-    errors: List[dict] = []
+@router.post("/api/strat/smda/push-rddms")
+async def smda_push_to_rddms(request: Request):
+    """Fetch a strat column from SMDA, convert to RESQML 2.0.1, and push
+    directly to a Reservoir DDMS v2 dataspace.
 
-    for typ in put_order:
-        objects = resqml_by_type.get(typ)
-        if not objects:
-            continue
-        try:
-            resp = await osdu.put_resources(at, dataspace, typ, objects)
-            results[typ] = {"count": len(objects), "response": resp}
-            log.info("[RDDMS] PUT %d %s objects -> OK", len(objects), typ)
-        except httpx.HTTPStatusError as e:
-            err = {
-                "type": typ,
-                "count": len(objects),
-                "httpStatus": e.response.status_code,
-                "detail": e.response.text[:1000],
-            }
-            errors.append(err)
-            log.error("[RDDMS] PUT %s failed: %s", typ, err)
-        except Exception as e:
-            errors.append({"type": typ, "error": str(e)})
-            log.error("[RDDMS] PUT %s exception: %s", typ, e)
+    Body:
+    {
+      "column": "NCS Lithostratigraphy",
+      "smdaUrl": "https://api.gateway.equinor.com",   // optional
+      "dataspace": "maap/strat",
+      "createDataspace": true   // optional
+    }
+    """
+    if _StratColumn is None:
+        raise HTTPException(500, "stratcolumnhandler not available")
 
-    status = "ok" if not errors else ("partial" if results else "error")
-    return JSONResponse({
-        "status": status,
-        "dataspace": dataspace,
-        "columnName": ((model.get("column") or {}).get("data") or {}).get("Name", ""),
-        "totalObjects": total_objects,
-        "types": {k: v["count"] for k, v in results.items()},
-        "errors": errors,
-    })
+    at = _access_token(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    column_name = (body.get("column") or "").strip()
+    smda_url = (body.get("smdaUrl") or "https://opus.smda.equinor.com").strip()
+    dataspace = (body.get("dataspace") or "").strip()
+    create_ds = body.get("createDataspace", False)
+
+    if not column_name:
+        raise HTTPException(400, "column is required")
+    if not dataspace:
+        raise HTTPException(400, "dataspace is required")
+
+    # 1) Get SMDA auth and fetch column
+    auth_kw = await _smda_auth(request)
+
+    log.info("[SMDA→RDDMS] Fetching column '%s' from SMDA", column_name)
+    try:
+        col = _StratColumn.from_smda_api(
+            column_name,
+            base_url=smda_url,
+            **auth_kw,
+            verify_ssl=False,
+        )
+    except Exception as e:
+        raise HTTPException(422, f"SMDA fetch error: {e}")
+
+    # 2) Convert StratColumn → model → RESQML
+    model = _stratcol_to_model(col)
+    resqml_by_type = _osdu_column_to_resqml(model)
+    log.info("[SMDA→RDDMS] Converted '%s' to %d RESQML objects",
+             col.name, sum(len(v) for v in resqml_by_type.values()))
+
+    # 3) Push to RDDMS
+    result = await _push_resqml_to_rddms(at, resqml_by_type, dataspace, create_ds, col.name)
+    return JSONResponse(result)
 
 
 @router.get("/api/strat/dataspaces.json")
@@ -1102,11 +1229,33 @@ async def list_strat_dataspaces(request: Request):
     at = _access_token(request)
     try:
         ds = await osdu.list_dataspaces(at)
+        log.info("[RDDMS] Raw dataspaces response type=%s len=%s",
+                 type(ds).__name__, len(ds) if isinstance(ds, (list, dict)) else "n/a")
         items = []
-        for d in (ds or []):
-            path = d.get("Path") or d.get("DataspaceId") or ""
-            if path:
-                items.append({"path": path, "label": path})
+        if isinstance(ds, list):
+            for d in ds:
+                if isinstance(d, dict):
+                    # Try multiple possible key names
+                    path = (d.get("Path") or d.get("path")
+                            or d.get("DataspaceId") or d.get("dataspaceId")
+                            or d.get("uri") or d.get("name") or "")
+                    if path:
+                        items.append({"path": path, "label": path})
+                elif isinstance(d, str):
+                    items.append({"path": d, "label": d})
+            if not items and ds:
+                # Log first element to understand the format
+                log.warning("[RDDMS] Could not parse dataspace entries. First: %s",
+                            str(ds[0])[:500])
+        elif isinstance(ds, dict):
+            # Maybe the response is wrapped
+            for key in ("value", "dataspaces", "items", "data"):
+                if key in ds and isinstance(ds[key], list):
+                    for d in ds[key]:
+                        path = (d.get("Path") or d.get("path") or str(d)) if isinstance(d, dict) else str(d)
+                        if path:
+                            items.append({"path": path, "label": path})
+                    break
         return JSONResponse({"dataspaces": items})
     except Exception as e:
         log.warning("[RDDMS] List dataspaces failed: %s", e)

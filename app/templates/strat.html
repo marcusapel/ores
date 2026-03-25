@@ -87,7 +87,7 @@
         <label for="ow-file">OW JSON File</label>
         <input id="ow-file" type="file" accept=".json" />
         <label for="ow-partition">OSDU Partition</label>
-        <input id="ow-partition" type="text" value="data" />
+        <input id="ow-partition" type="text" value="{{ partition }}" />
       </div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
         <button class="btn" id="btn-ow-convert" type="button">Convert to OSDU</button>
@@ -101,7 +101,10 @@
 
     <!-- Tab: SMDA API fetch -->
     <div class="imp-body" id="imp-smda">
-      <p class="muted" style="margin:0 0 .5rem;">Fetch a stratigraphic column from the SMDA OPUS API and convert to OSDU format.</p>
+      <p class="muted" style="margin:0 0 .5rem;">
+        Fetch a stratigraphic column from the SMDA OPUS API and convert to OSDU format.
+        <span id="smda-auth-hint" style="margin-left:.5rem;"></span>
+      </p>
       <div class="row" style="grid-template-columns:160px 1fr;">
         <label for="smda-url">SMDA Base URL</label>
         <input id="smda-url" type="text" value="https://opus.smda.equinor.com" />
@@ -111,7 +114,7 @@
           <button class="btn" id="btn-smda-list" type="button" title="List available columns">List</button>
         </div>
         <label for="smda-partition">OSDU Partition</label>
-        <input id="smda-partition" type="text" value="data" />
+        <input id="smda-partition" type="text" value="{{ partition }}" />
       </div>
       <div id="smda-columns-list" style="display:none;margin-bottom:.5rem;">
         <label>Available columns</label>
@@ -125,6 +128,33 @@
       </div>
       <div id="smda-status" class="imp-status info" style="display:none;"></div>
       <div id="smda-preview" class="imp-preview"></div>
+
+      <!-- RDDMS push (appears after successful fetch) -->
+      <div id="smda-rddms-panel" style="display:none; margin-top:.75rem; padding:.6rem; border:1px solid #cde; border-radius:6px; background:#f4f8fa;">
+        <div style="font-weight:600; font-size:13px; margin-bottom:.4rem; color:#007079;">
+          Push to Reservoir DDMS as RESQML
+        </div>
+        <div class="row" style="grid-template-columns:140px 1fr auto; gap:.3rem; align-items:center;">
+          <label for="smda-rddms-ds">Dataspace</label>
+          <div style="display:flex;gap:.3rem;align-items:center;">
+            <input id="smda-rddms-ds" type="text" value="maap/strat" style="flex:1;" placeholder="e.g. maap/strat" />
+            <button class="btn" id="btn-smda-rddms-list" type="button" title="List existing dataspaces" style="white-space:nowrap;">List</button>
+          </div>
+        </div>
+        <div id="smda-rddms-ds-picker" style="display:none; margin:.3rem 0;">
+          <select id="smda-rddms-ds-sel" size="4" style="width:100%; font-size:13px;"></select>
+        </div>
+        <div style="display:flex; gap:.5rem; align-items:center; margin-top:.4rem;">
+          <label style="font-size:13px; display:flex; align-items:center; gap:.3rem; margin:0;">
+            <input id="smda-rddms-create-ds" type="checkbox" checked /> Create dataspace if not exists
+          </label>
+        </div>
+        <div style="display:flex; gap:.5rem; align-items:center; margin-top:.4rem;">
+          <button class="btn btn-ingest" id="btn-smda-rddms-push" type="button">Push to RDDMS</button>
+          <span id="smda-rddms-status" class="muted" style="font-size:13px;"></span>
+        </div>
+        <div id="smda-rddms-result" style="display:none; margin-top:.4rem; font-size:13px; padding:.4rem; border-radius:4px;"></div>
+      </div>
     </div>
 
     <!-- Tab: OSDU Bundle file (direct upload) -->
@@ -134,7 +164,7 @@
         <label for="bundle-file">Bundle JSON</label>
         <input id="bundle-file" type="file" accept=".json" />
         <label for="bundle-partition">OSDU Partition</label>
-        <input id="bundle-partition" type="text" value="data" />
+        <input id="bundle-partition" type="text" value="{{ partition }}" />
       </div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
         <button class="btn btn-ingest" id="btn-bundle-ingest" type="button">Ingest to OSDU</button>
@@ -719,6 +749,23 @@
   const btnSmdaStorage = document.getElementById('btn-smda-storage');
   const btnSmdaDownload= document.getElementById('btn-smda-download');
 
+  // Check SMDA auth status and update hint
+  (async () => {
+    try {
+      const r = await fetch('/auth');
+      const d = await r.json();
+      const hint = document.getElementById('smda-auth-hint');
+      if (!hint) return;
+      if (d.smda_logged_in) {
+        hint.innerHTML = '<span style="color:#4caf50;">&#x2713; SMDA signed in</span>';
+      } else if (d.env_token_available && d.smda_configured) {
+        hint.innerHTML = '<span style="color:#1976d2;">&#x2713; SMDA via env token</span>';
+      } else {
+        hint.innerHTML = '<a href="/login/smda" target="_blank" style="color:#e65100;">Sign in to SMDA</a>';
+      }
+    } catch(e) {}
+  })();
+
   btnSmdaList?.addEventListener('click', async () => {
     const smdaUrl = document.getElementById('smda-url')?.value || '';
     impStatus('smda-status', 'Listing columns…', 'info');
@@ -764,6 +811,9 @@
       btnSmdaIngest.disabled = false;
       btnSmdaStorage.disabled = false;
       btnSmdaDownload.disabled = false;
+      // Show RDDMS push panel
+      const rddmsPanel = document.getElementById('smda-rddms-panel');
+      if (rddmsPanel) rddmsPanel.style.display = 'block';
     } catch(e) {
       smdaBundle = null;
       impStatus('smda-status', 'Fetch failed: ' + e.message, 'err');
@@ -777,6 +827,105 @@
   });
   btnSmdaDownload?.addEventListener('click', () => {
     if (smdaBundle) downloadJSON(smdaBundle, 'smda_strat_osdu_bundle.json');
+  });
+
+  /* ---- SMDA → RDDMS push ---- */
+  const smdaRddmsDs       = document.getElementById('smda-rddms-ds');
+  const smdaRddmsDsSel    = document.getElementById('smda-rddms-ds-sel');
+  const smdaRddmsDsPicker = document.getElementById('smda-rddms-ds-picker');
+  const btnSmdaRddmsList  = document.getElementById('btn-smda-rddms-list');
+  const btnSmdaRddmsPush  = document.getElementById('btn-smda-rddms-push');
+  const smdaRddmsStatus   = document.getElementById('smda-rddms-status');
+  const smdaRddmsResult   = document.getElementById('smda-rddms-result');
+
+  function smdaRddmsSetStatus(msg, cls) {
+    if (smdaRddmsStatus) { smdaRddmsStatus.textContent = msg; smdaRddmsStatus.className = cls || 'muted'; }
+  }
+  function smdaRddmsShowResult(html, cls) {
+    if (!smdaRddmsResult) return;
+    smdaRddmsResult.innerHTML = html;
+    smdaRddmsResult.style.display = 'block';
+    smdaRddmsResult.style.background = cls === 'ok' ? '#e8f5e9' : cls === 'err' ? '#fce4ec' : '#e3f2fd';
+    smdaRddmsResult.style.border = '1px solid ' + (cls === 'ok' ? '#4caf50' : cls === 'err' ? '#e53935' : '#1976d2');
+  }
+
+  // List dataspaces (reuses same endpoint)
+  btnSmdaRddmsList?.addEventListener('click', async () => {
+    smdaRddmsSetStatus('Loading dataspaces\u2026');
+    try {
+      const r = await fetch('/api/strat/dataspaces.json', { headers:{'Cache-Control':'no-store'} });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      const items = data.dataspaces || [];
+      if (!items.length) { smdaRddmsSetStatus('No dataspaces found'); return; }
+      smdaRddmsDsSel.innerHTML = '';
+      for (const ds of items) {
+        const opt = document.createElement('option');
+        opt.value = ds.path; opt.textContent = ds.label;
+        smdaRddmsDsSel.appendChild(opt);
+      }
+      smdaRddmsDsPicker.style.display = 'block';
+      smdaRddmsSetStatus(`Found ${items.length} dataspaces`);
+    } catch(e) {
+      smdaRddmsSetStatus('List failed: ' + e.message, 'muted');
+    }
+  });
+
+  smdaRddmsDsSel?.addEventListener('change', function() {
+    if (smdaRddmsDs) smdaRddmsDs.value = this.value;
+  });
+
+  // Push SMDA column directly to RDDMS
+  btnSmdaRddmsPush?.addEventListener('click', async () => {
+    const col = document.getElementById('smda-col')?.value?.trim();
+    if (!col) { smdaRddmsSetStatus('Fetch a column first'); return; }
+    const ds = (smdaRddmsDs?.value || '').trim();
+    if (!ds) { smdaRddmsSetStatus('Enter a dataspace path'); return; }
+    const smdaUrl = document.getElementById('smda-url')?.value || '';
+    const createDs = document.getElementById('smda-rddms-create-ds')?.checked || false;
+
+    smdaRddmsSetStatus('Pushing to RDDMS\u2026');
+    if (smdaRddmsResult) smdaRddmsResult.style.display = 'none';
+    btnSmdaRddmsPush.disabled = true;
+
+    try {
+      const r = await fetch('/api/strat/smda/push-rddms', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          column: col,
+          smdaUrl: smdaUrl,
+          dataspace: ds,
+          createDataspace: createDs,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+
+      const types = data.types || {};
+      const typeList = Object.entries(types).map(([k,v]) => {
+        const short = k.replace('resqml20.obj_','');
+        return `<tr><td style="font-family:monospace;font-size:12px;">${short}</td><td style="text-align:right;">${v}</td></tr>`;
+      }).join('');
+
+      let html = `<strong>${data.status === 'ok' ? '\u2705' : '\u26a0\ufe0f'} ${data.status.toUpperCase()}</strong> &mdash; `;
+      html += `"${data.columnName}" \u2192 <code>${data.dataspace}</code><br>`;
+      html += `<strong>${data.totalObjects}</strong> RESQML objects pushed`;
+      if (typeList) {
+        html += `<table style="margin-top:.4rem;border-collapse:collapse;"><thead><tr><th style="text-align:left;">Type</th><th style="text-align:right;">Count</th></tr></thead><tbody>${typeList}</tbody></table>`;
+      }
+      if (data.errors && data.errors.length) {
+        html += `<details style="margin-top:.4rem;"><summary style="color:#c62828;">Errors (${data.errors.length})</summary>`;
+        html += `<pre style="font-size:11px;max-height:150px;overflow:auto;">${JSON.stringify(data.errors, null, 2)}</pre></details>`;
+      }
+      smdaRddmsSetStatus(data.status === 'ok' ? 'Done' : 'Completed with errors');
+      smdaRddmsShowResult(html, data.status === 'ok' ? 'ok' : 'err');
+    } catch(e) {
+      smdaRddmsSetStatus('Push failed: ' + e.message, 'muted');
+      smdaRddmsShowResult(`<strong>\u274c Push failed</strong><br>${e.message}`, 'err');
+    } finally {
+      btnSmdaRddmsPush.disabled = false;
+    }
   });
 
   /* ---- OSDU Bundle file tab ---- */

@@ -515,6 +515,17 @@ class StratColumn:
         resp = _requests.get(url, params=params, headers=headers,
                              verify=verify_ssl, timeout=60)
         resp.raise_for_status()
+
+        # Validate response is JSON before parsing
+        ct = (resp.headers.get("Content-Type") or "").lower()
+        if "application/json" not in ct and "text/json" not in ct:
+            snippet = resp.text[:300].strip()
+            raise ValueError(
+                f"SMDA returned non-JSON response (Content-Type: {ct}). "
+                f"This usually means authentication failed and the server "
+                f"returned a login page. Response preview: {snippet}"
+            )
+
         data = resp.json()
 
         # SMDA returns {"value": [...]} or just [...]
@@ -640,6 +651,17 @@ class StratColumn:
         resp = _requests.get(url, params=params, headers=headers,
                              verify=verify_ssl, timeout=60)
         resp.raise_for_status()
+
+        # Validate response is JSON before parsing
+        ct = (resp.headers.get("Content-Type") or "").lower()
+        if "application/json" not in ct and "text/json" not in ct:
+            snippet = resp.text[:300].strip()
+            raise ValueError(
+                f"SMDA returned non-JSON response (Content-Type: {ct}). "
+                f"This usually means authentication failed and the server "
+                f"returned a login page. Response preview: {snippet}"
+            )
+
         data = resp.json()
         rows = data.get("value") if isinstance(data, dict) else data
         if not isinstance(rows, list):
