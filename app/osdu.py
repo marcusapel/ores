@@ -138,12 +138,20 @@ async def get_resource(
     typ: str,
     uuid: str,
     *,
+    as_json: bool = True,
     include_refs: bool = False,  # reserved for future expansion
 ) -> Dict[str, Any]:
-    """GET /dataspaces/{dataspaceId}/resources/{dataObjectType}/{guid}"""
+    """GET /dataspaces/{dataspaceId}/resources/{dataObjectType}/{guid}
+
+    By default requests ``$format=json`` so the RDDMS returns JSON
+    instead of XML.
+    """
     url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{ds_enc}/resources/{typ}/{uuid}"
+    params: Dict[str, str] = {}
+    if as_json:
+        params["$format"] = "json"
     async with httpx.AsyncClient(timeout=60) as client:
-        r = await client.get(url, headers=headers(access_token))
+        r = await client.get(url, headers=headers(access_token), params=params)
         r.raise_for_status()
         return r.json() or {}
 
@@ -361,29 +369,87 @@ async def list_targets(access_token: str, ds_enc: str, typ: str, uuid: str) -> l
         r.raise_for_status()
         return r.json() or []
 
+# ── Transactions ──────────────────────────────────────────────────────
+
+async def begin_transaction(access_token: str, ds_path: str) -> str:
+    """POST /dataspaces/{dataspaceId}/transactions → transaction ID.
+
+    Opens a write transaction. All subsequent put_resources / put_arrays
+    calls must include this transaction ID.  Call commit_transaction to
+    finalize or cancel_transaction to rollback.
+    """
+    enc = urllib.parse.quote(ds_path, safe="")
+    url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{enc}/transactions"
+    hdr = headers(access_token)
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, headers=hdr)
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError:
+        corr = r.headers.get("x-correlation-id") or r.headers.get("x-request-id")
+        log.error("Begin transaction failed (%s) corr=%s ds=%s body=%s",
+                  r.status_code, corr, ds_path, r.text[:2000])
+        raise
+    # Response body is the transaction ID (plain text or JSON string)
+    return r.text.strip().strip('"')
+
+
+async def commit_transaction(access_token: str, ds_path: str, tx_id: str) -> None:
+    """PUT /dataspaces/{dataspaceId}/transactions/{transactionId} → commit."""
+    enc = urllib.parse.quote(ds_path, safe="")
+    url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{enc}/transactions/{tx_id}"
+    hdr = headers(access_token)
+    async with httpx.AsyncClient(timeout=120) as client:
+        r = await client.put(url, headers=hdr)
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError:
+        corr = r.headers.get("x-correlation-id") or r.headers.get("x-request-id")
+        log.error("Commit transaction failed (%s) corr=%s ds=%s tx=%s body=%s",
+                  r.status_code, corr, ds_path, tx_id, r.text[:2000])
+        raise
+
+
+async def cancel_transaction(access_token: str, ds_path: str, tx_id: str) -> None:
+    """DELETE /dataspaces/{dataspaceId}/transactions/{transactionId} → rollback."""
+    enc = urllib.parse.quote(ds_path, safe="")
+    url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{enc}/transactions/{tx_id}"
+    hdr = headers(access_token)
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.delete(url, headers=hdr)
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError:
+        log.warning("Cancel transaction failed (%s) ds=%s tx=%s",
+                    r.status_code, ds_path, tx_id)
+
+
+# ── Write operations (within a transaction) ──────────────────────────
+
 async def put_resources(
     access_token: str,
     ds_path: str,
-    typ: str,
     objects: list[dict],
+    tx_id: str,
 ) -> dict:
-    """PUT RESQML objects into a Reservoir DDMS v2 dataspace.
+    """PUT RESQML objects into a Reservoir DDMS v2 dataspace (transactional).
 
-    PUT /api/reservoir-ddms/v2/dataspaces/{dataspaceId}/resources/{dataObjectType}
-    Body: JSON array of RESQML objects.
+    PUT /api/reservoir-ddms/v2/dataspaces/{dataspaceId}/resources?transactionId={txId}
+    Body: JSON array of RESQML objects (each must have $type, Uuid, SchemaVersion, Citation).
     """
     enc = urllib.parse.quote(ds_path, safe="")
-    url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{enc}/resources/{typ}"
+    url = f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2/dataspaces/{enc}/resources"
     hdr = headers(access_token)
     async with httpx.AsyncClient(timeout=120) as client:
-        r = await client.put(url, headers=hdr, json=objects)
+        r = await client.put(url, headers=hdr, json=objects,
+                             params={"transactionId": tx_id})
     try:
         r.raise_for_status()
     except httpx.HTTPStatusError:
         corr = r.headers.get("x-correlation-id") or r.headers.get("x-request-id")
         log.error(
-            "PUT resources failed (%s) corr=%s ds=%s type=%s body=%s",
-            r.status_code, corr, ds_path, typ, r.text[:2000],
+            "PUT resources failed (%s) corr=%s ds=%s tx=%s body=%s",
+            r.status_code, corr, ds_path, tx_id, r.text[:2000],
         )
         raise
     try:

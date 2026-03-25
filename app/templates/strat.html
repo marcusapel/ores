@@ -90,11 +90,18 @@
         <input id="ow-partition" type="text" value="{{ partition }}" />
       </div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
-        <button class="btn" id="btn-ow-convert" type="button">Convert to OSDU</button>
-        <button class="btn btn-ingest" id="btn-ow-ingest" type="button" disabled>Ingest to OSDU</button>
-        <button class="btn" id="btn-ow-storage" type="button" disabled title="Direct Storage PUT (bypass workflow)">Storage PUT</button>
-        <button class="btn" id="btn-ow-download" type="button" disabled>Download Bundle</button>
+        <button class="btn" id="btn-ow-convert" type="button" title="Parse OpenWorks JSON and convert to OSDU WPC records (preview only, nothing sent yet)">Convert to OSDU</button>
+        <button class="btn btn-ingest" id="btn-ow-storage" type="button" disabled title="Send each record to the OSDU Storage API">Send to OSDU</button>
+        <button class="btn" id="btn-ow-download" type="button" disabled title="Save the OSDU WPC bundle as a local JSON file">Download Bundle</button>
       </div>
+      <details class="muted" style="font-size:.8rem;margin-top:.4rem;">
+        <summary style="cursor:pointer;">What do these buttons do?</summary>
+        <ul style="margin:.3rem 0 0 1rem;line-height:1.6;">
+          <li><strong>Convert to OSDU</strong> &mdash; Parses the uploaded OpenWorks JSON and converts it into OSDU WPC records (StratigraphicColumn + ColumnRankInterpretation + UnitInterpretation). Nothing is sent yet &mdash; preview the result first.</li>
+          <li><strong>Send to OSDU</strong> &mdash; Writes each record to the <em>OSDU Storage API</em> in batches. Creates the stratigraphic column and all its components in the OSDU records catalog.</li>
+          <li><strong>Download Bundle</strong> &mdash; Saves the OSDU WPC bundle as a <code>.json</code> file for inspection, version control, or later upload.</li>
+        </ul>
+      </details>
       <div id="ow-status" class="imp-status info" style="display:none;"></div>
       <div id="ow-preview" class="imp-preview"></div>
     </div>
@@ -111,7 +118,7 @@
         <label for="smda-col">Column Identifier</label>
         <div style="display:flex;gap:.4rem;">
           <input id="smda-col" type="text" placeholder="e.g. NCS Lithostratigraphy" style="flex:1;" />
-          <button class="btn" id="btn-smda-list" type="button" title="List available columns">List</button>
+          <button class="btn" id="btn-smda-list" type="button" title="List available columns from the SMDA API">List</button>
         </div>
         <label for="smda-partition">OSDU Partition</label>
         <input id="smda-partition" type="text" value="{{ partition }}" />
@@ -121,19 +128,31 @@
         <select id="smda-columns-sel" size="5" style="width:100%;font-size:13px;"></select>
       </div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
-        <button class="btn" id="btn-smda-fetch" type="button">Fetch &amp; Convert</button>
-        <button class="btn btn-ingest" id="btn-smda-ingest" type="button" disabled>Ingest to OSDU</button>
-        <button class="btn" id="btn-smda-storage" type="button" disabled title="Direct Storage PUT">Storage PUT</button>
-        <button class="btn" id="btn-smda-download" type="button" disabled>Download Bundle</button>
+        <button class="btn" id="btn-smda-fetch" type="button" title="Fetch strat units from the SMDA API and convert to OSDU WPC records (preview only)">Fetch &amp; Convert</button>
+        <button class="btn btn-ingest" id="btn-smda-storage" type="button" disabled title="Send each record to the OSDU Storage API">Send to OSDU</button>
+        <button class="btn" id="btn-smda-download" type="button" disabled title="Save the OSDU WPC bundle as a local JSON file">Download Bundle</button>
       </div>
+      <details class="muted" style="font-size:.8rem;margin-top:.4rem;">
+        <summary style="cursor:pointer;">What do these buttons do?</summary>
+        <ul style="margin:.3rem 0 0 1rem;line-height:1.6;">
+          <li><strong>Fetch &amp; Convert</strong> &mdash; Calls the SMDA REST API to retrieve all stratigraphic units for the selected column, then converts them to OSDU WPC records. Preview the result below &mdash; nothing is written to OSDU yet.</li>
+          <li><strong>Send to OSDU</strong> &mdash; Writes each record to the <em>OSDU Storage API</em> in batches. Creates the column, ranks, and units in the OSDU records catalog.</li>
+          <li><strong>Download Bundle</strong> &mdash; Saves the OSDU WPC bundle as a <code>.json</code> file for inspection or later upload.</li>
+        </ul>
+      </details>
       <div id="smda-status" class="imp-status info" style="display:none;"></div>
       <div id="smda-preview" class="imp-preview"></div>
 
       <!-- RDDMS push (appears after successful fetch) -->
       <div id="smda-rddms-panel" style="display:none; margin-top:.75rem; padding:.6rem; border:1px solid #cde; border-radius:6px; background:#f4f8fa;">
-        <div style="font-weight:600; font-size:13px; margin-bottom:.4rem; color:#007079;">
+        <div style="font-weight:600; font-size:13px; margin-bottom:.2rem; color:#007079;">
           Push to Reservoir DDMS as RESQML
         </div>
+        <p class="muted" style="font-size:.8rem; margin:0 0 .4rem;">
+          Converts the SMDA column to RESQML 2.0.1 objects (StratigraphicColumn, ColumnRankInterpretation, UnitInterpretation)
+          and pushes them to the Reservoir DDMS dataspace. This is a separate path from OSDU ingestion &mdash; it stores the
+          stratigraphic model in the RESQML-native reservoir data store.
+        </p>
         <div class="row" style="grid-template-columns:140px 1fr auto; gap:.3rem; align-items:center;">
           <label for="smda-rddms-ds">Dataspace</label>
           <div style="display:flex;gap:.3rem;align-items:center;">
@@ -159,7 +178,7 @@
 
     <!-- Tab: OSDU Bundle file (direct upload) -->
     <div class="imp-body" id="imp-file">
-      <p class="muted" style="margin:0 0 .5rem;">Upload a pre-built OSDU WPC bundle JSON (<code>{"records":[...]}</code>) for direct ingestion.</p>
+      <p class="muted" style="margin:0 0 .5rem;">Upload a pre-built OSDU WPC bundle JSON (<code>{"records":[...]}</code>) for direct ingestion. This is typically a file previously exported via "Download Bundle" from the other tabs, or hand-crafted.</p>
       <div class="row" style="grid-template-columns:160px 1fr;">
         <label for="bundle-file">Bundle JSON</label>
         <input id="bundle-file" type="file" accept=".json" />
@@ -167,9 +186,14 @@
         <input id="bundle-partition" type="text" value="{{ partition }}" />
       </div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
-        <button class="btn btn-ingest" id="btn-bundle-ingest" type="button">Ingest to OSDU</button>
-        <button class="btn" id="btn-bundle-storage" type="button" title="Direct Storage PUT">Storage PUT</button>
+        <button class="btn btn-ingest" id="btn-bundle-storage" type="button" title="Send each record to the OSDU Storage API">Send to OSDU</button>
       </div>
+      <details class="muted" style="font-size:.8rem;margin-top:.4rem;">
+        <summary style="cursor:pointer;">What does this do?</summary>
+        <ul style="margin:.3rem 0 0 1rem;line-height:1.6;">
+          <li><strong>Send to OSDU</strong> &mdash; Writes each record from the uploaded bundle to the <em>OSDU Storage API</em> in batches. Creates stratigraphic columns, ranks, and units in the OSDU records catalog.</li>
+        </ul>
+      </details>
       <div id="bundle-status" class="imp-status info" style="display:none;"></div>
       <div id="bundle-preview" class="imp-preview"></div>
     </div>
@@ -189,9 +213,13 @@
 
   <!-- RDDMS Ingest Panel (shown after column is loaded) -->
   <div id="rddms-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #cde; border-radius:6px; background:#f4f8fa;">
-    <div style="font-weight:600; font-size:14px; margin-bottom:.5rem; color:#007079;">
+    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#007079;">
       Push to Reservoir DDMS as RESQML
     </div>
+    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
+      Re-fetch this column from OSDU, convert to RESQML 2.0.1 objects, and push to a Reservoir DDMS dataspace.
+      This stores the stratigraphic model in the RESQML-native reservoir data store (separate from the OSDU WPC records above).
+    </p>
     <div class="row" style="grid-template-columns:140px 1fr auto; gap:.4rem; align-items:center;">
       <label for="rddms-ds">Dataspace</label>
       <div style="display:flex;gap:.4rem;align-items:center;">
@@ -682,28 +710,26 @@
     URL.revokeObjectURL(a.href);
   }
 
-  // Shared ingest function
-  async function doIngest(bundle, partition, statusId, endpoint) {
-    impStatus(statusId, 'Ingesting…', 'info');
+  // Shared ingest function — sends records to OSDU Storage API
+  async function doIngest(bundle, partition, statusId) {
+    impStatus(statusId, 'Sending to OSDU…', 'info');
     try {
-      const url = endpoint || '/api/strat/ingest';
-      const r = await fetch(url, {
+      const r = await fetch('/api/strat/storage/put', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({bundle, partition}),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || r.statusText);
-      impStatus(statusId, `${data.status}: ${data.recordCount || data.created || data.totalRecords || '?'} records processed`, 'ok');
+      impStatus(statusId, `${data.status}: ${data.created || data.totalRecords || '?'} records sent to OSDU`, 'ok');
     } catch(e) {
-      impStatus(statusId, 'Ingest failed: ' + e.message, 'err');
+      impStatus(statusId, 'Send failed: ' + e.message, 'err');
     }
   }
 
   /* ---- OpenWorks tab ---- */
   let owBundle = null;
   const btnOwConvert  = document.getElementById('btn-ow-convert');
-  const btnOwIngest   = document.getElementById('btn-ow-ingest');
   const btnOwStorage  = document.getElementById('btn-ow-storage');
   const btnOwDownload = document.getElementById('btn-ow-download');
 
@@ -723,7 +749,6 @@
       owBundle = data.bundle;
       impStatus('ow-status', `Converted: "${data.columnName}" — ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
       impPreview('ow-preview', owBundle);
-      btnOwIngest.disabled = false;
       btnOwStorage.disabled = false;
       btnOwDownload.disabled = false;
     } catch(e) {
@@ -731,11 +756,8 @@
       impStatus('ow-status', 'Conversion failed: ' + e.message, 'err');
     }
   });
-  btnOwIngest?.addEventListener('click', () => {
-    if (owBundle) doIngest(owBundle, document.getElementById('ow-partition')?.value, 'ow-status');
-  });
   btnOwStorage?.addEventListener('click', () => {
-    if (owBundle) doIngest(owBundle, document.getElementById('ow-partition')?.value, 'ow-status', '/api/strat/storage/put');
+    if (owBundle) doIngest(owBundle, document.getElementById('ow-partition')?.value, 'ow-status');
   });
   btnOwDownload?.addEventListener('click', () => {
     if (owBundle) downloadJSON(owBundle, 'strat_column_osdu_bundle.json');
@@ -745,7 +767,6 @@
   let smdaBundle = null;
   const btnSmdaList    = document.getElementById('btn-smda-list');
   const btnSmdaFetch   = document.getElementById('btn-smda-fetch');
-  const btnSmdaIngest  = document.getElementById('btn-smda-ingest');
   const btnSmdaStorage = document.getElementById('btn-smda-storage');
   const btnSmdaDownload= document.getElementById('btn-smda-download');
 
@@ -808,7 +829,6 @@
       smdaBundle = data.bundle;
       impStatus('smda-status', `Fetched: "${data.columnName}" — ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
       impPreview('smda-preview', smdaBundle);
-      btnSmdaIngest.disabled = false;
       btnSmdaStorage.disabled = false;
       btnSmdaDownload.disabled = false;
       // Show RDDMS push panel
@@ -819,11 +839,8 @@
       impStatus('smda-status', 'Fetch failed: ' + e.message, 'err');
     }
   });
-  btnSmdaIngest?.addEventListener('click', () => {
-    if (smdaBundle) doIngest(smdaBundle, document.getElementById('smda-partition')?.value, 'smda-status');
-  });
   btnSmdaStorage?.addEventListener('click', () => {
-    if (smdaBundle) doIngest(smdaBundle, document.getElementById('smda-partition')?.value, 'smda-status', '/api/strat/storage/put');
+    if (smdaBundle) doIngest(smdaBundle, document.getElementById('smda-partition')?.value, 'smda-status');
   });
   btnSmdaDownload?.addEventListener('click', () => {
     if (smdaBundle) downloadJSON(smdaBundle, 'smda_strat_osdu_bundle.json');
@@ -908,17 +925,24 @@
         return `<tr><td style="font-family:monospace;font-size:12px;">${short}</td><td style="text-align:right;">${v}</td></tr>`;
       }).join('');
 
-      let html = `<strong>${data.status === 'ok' ? '\u2705' : '\u26a0\ufe0f'} ${data.status.toUpperCase()}</strong> &mdash; `;
+      const pushed = data.totalPushed ?? data.totalObjects;
+      const failed = data.totalFailed ?? 0;
+      const icon = data.status === 'ok' ? '\u2705' : (data.status === 'error' ? '\u274c' : '\u26a0\ufe0f');
+      let html = `<strong>${icon} ${data.status.toUpperCase()}</strong> &mdash; `;
       html += `"${data.columnName}" \u2192 <code>${data.dataspace}</code><br>`;
-      html += `<strong>${data.totalObjects}</strong> RESQML objects pushed`;
+      html += `<strong>${pushed}</strong> RESQML objects pushed`;
+      if (failed > 0) html += `, <strong style="color:#c62828;">${failed} failed</strong>`;
+      html += ` (${data.totalObjects} generated)`;
       if (typeList) {
         html += `<table style="margin-top:.4rem;border-collapse:collapse;"><thead><tr><th style="text-align:left;">Type</th><th style="text-align:right;">Count</th></tr></thead><tbody>${typeList}</tbody></table>`;
       }
       if (data.errors && data.errors.length) {
-        html += `<details style="margin-top:.4rem;"><summary style="color:#c62828;">Errors (${data.errors.length})</summary>`;
+        const has404 = data.errors.some(e => e.httpStatus === 404);
+        html += `<details style="margin-top:.4rem;" open><summary style="color:#c62828;">Errors (${data.errors.length})</summary>`;
+        if (has404) html += `<p style="font-size:12px;color:#c62828;margin:.3rem 0;">The Reservoir DDMS v2 API does not support PUT for some RESQML types (404). These stratigraphic types may not be registered in this RDDMS deployment.</p>`;
         html += `<pre style="font-size:11px;max-height:150px;overflow:auto;">${JSON.stringify(data.errors, null, 2)}</pre></details>`;
       }
-      smdaRddmsSetStatus(data.status === 'ok' ? 'Done' : 'Completed with errors');
+      smdaRddmsSetStatus(data.status === 'ok' ? 'Done' : (data.status === 'error' ? 'All pushes failed' : 'Completed with errors'));
       smdaRddmsShowResult(html, data.status === 'ok' ? 'ok' : 'err');
     } catch(e) {
       smdaRddmsSetStatus('Push failed: ' + e.message, 'muted');
@@ -930,7 +954,6 @@
 
   /* ---- OSDU Bundle file tab ---- */
   let fileBundle = null;
-  const btnBundleIngest  = document.getElementById('btn-bundle-ingest');
   const btnBundleStorage = document.getElementById('btn-bundle-storage');
 
   document.getElementById('bundle-file')?.addEventListener('change', async function() {
@@ -948,11 +971,8 @@
       impStatus('bundle-status', 'Invalid JSON: ' + e.message, 'err');
     }
   });
-  btnBundleIngest?.addEventListener('click', () => {
-    if (fileBundle) doIngest(fileBundle, document.getElementById('bundle-partition')?.value, 'bundle-status');
-  });
   btnBundleStorage?.addEventListener('click', () => {
-    if (fileBundle) doIngest(fileBundle, document.getElementById('bundle-partition')?.value, 'bundle-status', '/api/strat/storage/put');
+    if (fileBundle) doIngest(fileBundle, document.getElementById('bundle-partition')?.value, 'bundle-status');
   });
 
   /* ================================================================ */
@@ -1036,18 +1056,25 @@
         return `<tr><td style="font-family:monospace;font-size:12px;">${short}</td><td style="text-align:right;">${v}</td></tr>`;
       }).join('');
 
-      let html = `<strong>${data.status === 'ok' ? '\u2705' : '\u26a0\ufe0f'} ${data.status.toUpperCase()}</strong> &mdash; `;
+      const pushed = data.totalPushed ?? data.totalObjects;
+      const failed = data.totalFailed ?? 0;
+      const icon = data.status === 'ok' ? '\u2705' : (data.status === 'error' ? '\u274c' : '\u26a0\ufe0f');
+      let html = `<strong>${icon} ${data.status.toUpperCase()}</strong> &mdash; `;
       html += `"${data.columnName}" \u2192 <code>${data.dataspace}</code><br>`;
-      html += `<strong>${data.totalObjects}</strong> RESQML objects pushed`;
+      html += `<strong>${pushed}</strong> RESQML objects pushed`;
+      if (failed > 0) html += `, <strong style="color:#c62828;">${failed} failed</strong>`;
+      html += ` (${data.totalObjects} generated)`;
       if (typeList) {
         html += `<table style="margin-top:.4rem;border-collapse:collapse;"><thead><tr><th style="text-align:left;">Type</th><th style="text-align:right;">Count</th></tr></thead><tbody>${typeList}</tbody></table>`;
       }
       if (data.errors && data.errors.length) {
-        html += `<details style="margin-top:.4rem;"><summary style="color:#c62828;">Errors (${data.errors.length})</summary>`;
+        const has404 = data.errors.some(e => e.httpStatus === 404);
+        html += `<details style="margin-top:.4rem;" open><summary style="color:#c62828;">Errors (${data.errors.length})</summary>`;
+        if (has404) html += `<p style="font-size:12px;color:#c62828;margin:.3rem 0;">The Reservoir DDMS v2 API does not support PUT for some RESQML types (404). These stratigraphic types may not be registered in this RDDMS deployment.</p>`;
         html += `<pre style="font-size:11px;max-height:150px;overflow:auto;">${JSON.stringify(data.errors, null, 2)}</pre></details>`;
       }
 
-      rddmsSetStatus(data.status === 'ok' ? 'Done' : 'Completed with errors');
+      rddmsSetStatus(data.status === 'ok' ? 'Done' : (data.status === 'error' ? 'All pushes failed' : 'Completed with errors'));
       rddmsShowResult(html, data.status === 'ok' ? 'ok' : 'err');
     } catch(e) {
       rddmsSetStatus('Push failed: ' + e.message, 'muted');

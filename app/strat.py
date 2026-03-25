@@ -667,79 +667,6 @@ async def list_smda_columns(
     return JSONResponse({"columns": names, "total": len(names)})
 
 
-@router.post("/api/strat/ingest")
-async def ingest_strat_bundle(
-    request: Request,
-):
-    """Ingest an OSDU WPC bundle (strat column records) via the OSDU Workflow Service.
-
-    Body:
-    {
-      "bundle": {"records": [...]},
-      "partition": "data"  // optional
-    }
-    """
-    at = _access_token(request)
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(400, "Invalid JSON body")
-
-    bundle = body.get("bundle")
-    if not isinstance(bundle, dict) or "records" not in bundle:
-        raise HTTPException(400, "Body must include 'bundle' with 'records' array")
-
-    partition = body.get("partition") or osdu.DATA_PARTITION_ID or "data"
-    base = f"https://{osdu.OSDU_BASE_URL}"
-
-    # Build manifest envelope for the Osdu_ingest workflow
-    records = bundle["records"]
-    ref_data = [r for r in records if "reference-data--" in (r.get("kind") or "")]
-    wpc_data = [r for r in records if "work-product-component--" in (r.get("kind") or "")]
-
-    manifest = {
-        "kind": "osdu:wks:Manifest:1.0.0",
-        "ReferenceData": ref_data,
-        "MasterData": [],
-        "Data": {
-            "Datasets": [],
-            "WorkProductComponents": wpc_data,
-            "WorkProduct": {},
-        },
-    }
-
-    # POST to workflow service
-    url = f"{base}/api/workflow/v1/workflow/Osdu_ingest/workflowRun"
-    hdr = osdu.headers(at)
-    payload = {
-        "executionContext": {
-            "Payload": {"data-partition-id": partition},
-            "manifest": manifest,
-        }
-    }
-
-    async with httpx.AsyncClient(timeout=60) as client:
-        try:
-            r = await client.post(url, headers=hdr, json=payload)
-            if r.status_code >= 400:
-                return JSONResponse({
-                    "status": "error",
-                    "httpStatus": r.status_code,
-                    "detail": r.text[:2000],
-                }, status_code=502)
-            result = r.json()
-        except Exception as e:
-            raise HTTPException(502, f"Workflow ingestion failed: {e}")
-
-    return JSONResponse({
-        "status": "submitted",
-        "recordCount": len(records),
-        "refDataCount": len(ref_data),
-        "wpcCount": len(wpc_data),
-        "workflowResponse": result,
-    })
-
-
 @router.post("/api/strat/storage/put")
 async def storage_put_strat_records(
     request: Request,
@@ -810,9 +737,10 @@ def _det_uuid(seed: str) -> str:
 def _resqml_citation(title: str) -> dict:
     """Standard RESQML Citation block."""
     return {
+        "$type": "eml20.Citation",
         "Title": title,
         "Originator": "ORES Strat Column Converter",
-        "Creation": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "Creation": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         "Format": "ORES [strat-to-rddms v1.0]",
     }
 
@@ -823,6 +751,7 @@ _CONTENT_TYPE_PREFIX = "application/x-resqml+xml;version=2.0;type="
 def _resqml_ref(typ_short: str, uid: str, title: str) -> dict:
     """Build a RESQML DataObjectReference."""
     return {
+        "$type": "eml20.DataObjectReference",
         "ContentType": f"{_CONTENT_TYPE_PREFIX}{typ_short}",
         "UUID": uid,
         "Title": title,
@@ -858,6 +787,8 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
 
         # OrganizationFeature for this rank
         by_type["resqml20.obj_OrganizationFeature"].append({
+            "$type": "resqml20.obj_OrganizationFeature",
+            "SchemaVersion": "2.0",
             "Uuid": rank_feat_uuid,
             "Citation": _resqml_citation(rank_name),
             "OrganizationKind": "stratigraphic",
@@ -875,12 +806,16 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
 
             # RockVolumeFeature (the feature this unit interprets)
             by_type["resqml20.obj_RockVolumeFeature"].append({
+                "$type": "resqml20.obj_RockVolumeFeature",
+                "SchemaVersion": "2.0",
                 "Uuid": feat_uuid,
                 "Citation": _resqml_citation(name),
             })
 
             # StratigraphicUnitInterpretation
             unit_obj: Dict[str, Any] = {
+                "$type": "resqml20.obj_StratigraphicUnitInterpretation",
+                "SchemaVersion": "2.0",
                 "Uuid": unit_uuid,
                 "Citation": _resqml_citation(name),
                 "Domain": "depth",
@@ -909,6 +844,8 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
 
         # StratigraphicColumnRankInterpretation
         rank_obj: Dict[str, Any] = {
+            "$type": "resqml20.obj_StratigraphicColumnRankInterpretation",
+            "SchemaVersion": "2.0",
             "Uuid": rank_uuid,
             "Citation": _resqml_citation(rank_name),
             "Domain": "depth",
@@ -927,6 +864,8 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
     # StratigraphicColumn
     col_uuid = _det_uuid(f"col:{col_id}")
     by_type["resqml20.obj_StratigraphicColumn"].append({
+        "$type": "resqml20.obj_StratigraphicColumn",
+        "SchemaVersion": "2.0",
         "Uuid": col_uuid,
         "Citation": _resqml_citation(col_name),
         "Ranks": rank_refs,
@@ -974,7 +913,13 @@ async def _push_resqml_to_rddms(
     create_ds: bool,
     column_name: str,
 ) -> dict:
-    """Shared helper: optionally create dataspace, PUT RESQML objects, return result dict."""
+    """Shared helper: optionally create dataspace, PUT RESQML objects via transaction, return result dict.
+
+    Uses the RDDMS v2 transactional write flow:
+    1. POST /dataspaces/{ds}/transactions → txId
+    2. PUT  /dataspaces/{ds}/resources?transactionId={txId}  (body = all objects)
+    3. PUT  /dataspaces/{ds}/transactions/{txId}  (commit)
+    """
     total_objects = sum(len(v) for v in resqml_by_type.values())
 
     if total_objects == 0:
@@ -992,8 +937,8 @@ async def _push_resqml_to_rddms(
                 countries=osdu.DEFAULT_COUNTRIES,
             )
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 409:
-                log.info("[RDDMS] Dataspace %s already exists (409)", dataspace)
+            if e.response.status_code in (400, 409):
+                log.info("[RDDMS] Dataspace %s already exists (%s)", dataspace, e.response.status_code)
             else:
                 raise HTTPException(
                     502,
@@ -1001,7 +946,7 @@ async def _push_resqml_to_rddms(
                     f"{e.response.text[:500]}",
                 )
 
-    # PUT objects type by type
+    # Flatten all objects into a single list (RDDMS accepts mixed types)
     put_order = [
         "resqml20.obj_RockVolumeFeature",
         "resqml20.obj_OrganizationFeature",
@@ -1009,37 +954,67 @@ async def _push_resqml_to_rddms(
         "resqml20.obj_StratigraphicColumnRankInterpretation",
         "resqml20.obj_StratigraphicColumn",
     ]
-    results: Dict[str, Any] = {}
-    errors: List[dict] = []
-
+    all_objects: List[dict] = []
+    type_counts: Dict[str, int] = {}
     for typ in put_order:
-        objects = resqml_by_type.get(typ)
-        if not objects:
-            continue
-        try:
-            resp = await osdu.put_resources(at, dataspace, typ, objects)
-            results[typ] = {"count": len(objects), "response": resp}
-            log.info("[RDDMS] PUT %d %s objects -> OK", len(objects), typ)
-        except httpx.HTTPStatusError as e:
-            err = {
-                "type": typ,
-                "count": len(objects),
-                "httpStatus": e.response.status_code,
-                "detail": e.response.text[:1000],
-            }
-            errors.append(err)
-            log.error("[RDDMS] PUT %s failed: %s", typ, err)
-        except Exception as e:
-            errors.append({"type": typ, "error": str(e)})
-            log.error("[RDDMS] PUT %s exception: %s", typ, e)
+        objects = resqml_by_type.get(typ, [])
+        if objects:
+            all_objects.extend(objects)
+            type_counts[typ] = len(objects)
 
-    status = "ok" if not errors else ("partial" if results else "error")
+    errors: List[dict] = []
+    tx_id: Optional[str] = None
+
+    try:
+        # 1) Begin transaction
+        log.info("[RDDMS] Beginning transaction on %s", dataspace)
+        tx_id = await osdu.begin_transaction(at, dataspace)
+        log.info("[RDDMS] Transaction started: %s", tx_id)
+
+        # 2) PUT all objects in one call within the transaction
+        log.info("[RDDMS] PUT %d objects into %s (tx=%s)", len(all_objects), dataspace, tx_id)
+        resp = await osdu.put_resources(at, dataspace, all_objects, tx_id)
+        log.info("[RDDMS] PUT resources succeeded: %s", resp)
+
+        # 3) Commit the transaction
+        await osdu.commit_transaction(at, dataspace, tx_id)
+        log.info("[RDDMS] Transaction %s committed", tx_id)
+
+    except httpx.HTTPStatusError as e:
+        err = {
+            "httpStatus": e.response.status_code,
+            "detail": e.response.text[:1000],
+        }
+        errors.append(err)
+        log.error("[RDDMS] Transaction write failed: %s", err)
+        # Attempt rollback
+        if tx_id:
+            try:
+                await osdu.cancel_transaction(at, dataspace, tx_id)
+                log.info("[RDDMS] Transaction %s rolled back", tx_id)
+            except Exception:
+                log.warning("[RDDMS] Rollback failed for tx %s", tx_id)
+    except Exception as e:
+        errors.append({"error": str(e)})
+        log.error("[RDDMS] Transaction write exception: %s", e)
+        if tx_id:
+            try:
+                await osdu.cancel_transaction(at, dataspace, tx_id)
+            except Exception:
+                pass
+
+    pushed_count = total_objects if not errors else 0
+    failed_count = 0 if not errors else total_objects
+    status = "ok" if not errors else "error"
+
     return {
         "status": status,
         "dataspace": dataspace,
         "columnName": column_name,
         "totalObjects": total_objects,
-        "types": {k: v["count"] for k, v in results.items()},
+        "totalPushed": pushed_count,
+        "totalFailed": failed_count,
+        "types": type_counts if not errors else {},
         "errors": errors,
     }
 
@@ -1260,3 +1235,175 @@ async def list_strat_dataspaces(request: Request):
     except Exception as e:
         log.warning("[RDDMS] List dataspaces failed: %s", e)
         return JSONResponse({"dataspaces": [], "error": str(e)})
+
+
+# =====================================================================
+# RDDMS READ-BACK  (JSON)
+# =====================================================================
+
+@router.get("/api/strat/rddms/resources.json")
+async def rddms_list_resources(
+    request: Request,
+    dataspace: str = Query(..., description="Dataspace path, e.g. maap/strat"),
+):
+    """List all resource types and their objects in an RDDMS dataspace."""
+    at = _access_token(request)
+    ds_enc = urllib.parse.quote(dataspace.strip(), safe="")
+    try:
+        types = await osdu.list_types(at, ds_enc)
+    except Exception as e:
+        raise HTTPException(502, f"list_types failed: {e}")
+
+    result: List[dict] = []
+    for t in (types if isinstance(types, list) else []):
+        rtype = t.get("name", "")
+        if not rtype:
+            continue
+        try:
+            resources = await osdu.list_resources(at, ds_enc, rtype)
+            for res in resources:
+                result.append({
+                    "type": rtype,
+                    "uri": res.get("uri", ""),
+                    "name": res.get("name", "(unnamed)"),
+                })
+        except Exception:
+            pass
+
+    return JSONResponse({"dataspace": dataspace, "resources": result, "count": len(result)})
+
+
+@router.get("/api/strat/rddms/resource.json")
+async def rddms_get_resource(
+    request: Request,
+    dataspace: str = Query(..., description="Dataspace path, e.g. maap/strat"),
+    type: str = Query(..., description="RESQML type, e.g. resqml20.obj_StratigraphicColumn"),
+    uuid: str = Query(..., description="Object UUID"),
+):
+    """Fetch a single RESQML object from RDDMS as JSON.
+
+    Uses ``GET /dataspaces/{ds}/resources/{type}/{uuid}?$format=json``.
+    """
+    at = _access_token(request)
+    ds_enc = urllib.parse.quote(dataspace.strip(), safe="")
+    try:
+        obj = await osdu.get_resource(at, ds_enc, type.strip(), uuid.strip())
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(e.response.status_code,
+                            f"RDDMS GET failed: {e.response.text[:500]}")
+    return JSONResponse(obj)
+
+
+@router.post("/api/strat/rddms/verify")
+async def rddms_verify_column(request: Request):
+    """Push a strat column to RDDMS then immediately fetch-back and verify.
+
+    Body:
+    {
+      "columnId": "<OSDU record id>",   // option A: from OSDU
+      "column": "<SMDA column name>",   // option B: from SMDA
+      "smdaUrl": "...",                 // optional for option B
+      "dataspace": "maap/strat",
+      "createDataspace": false
+    }
+
+    Returns the push result augmented with a ``verification`` object
+    containing per-object match status.
+    """
+    at = _access_token(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    dataspace = (body.get("dataspace") or "").strip()
+    if not dataspace:
+        raise HTTPException(400, "dataspace is required")
+
+    create_ds = body.get("createDataspace", False)
+    column_id = (body.get("columnId") or "").strip()
+    column_name_smda = (body.get("column") or "").strip()
+
+    # ── Build RESQML objects (same as the push endpoints) ──
+    if column_id:
+        model = await _fetch_column_model(request, column_id)
+        col_name = ((model.get("column") or {}).get("data") or {}).get("Name", "")
+        resqml_by_type = _osdu_column_to_resqml(model)
+    elif column_name_smda:
+        if _StratColumn is None:
+            raise HTTPException(500, "stratcolumnhandler not available")
+        smda_url = (body.get("smdaUrl") or "https://opus.smda.equinor.com").strip()
+        auth_kw = await _smda_auth(request)
+        try:
+            col = _StratColumn.from_smda_api(column_name_smda, base_url=smda_url,
+                                             **auth_kw, verify_ssl=False)
+        except Exception as e:
+            raise HTTPException(422, f"SMDA fetch error: {e}")
+        model = _stratcol_to_model(col)
+        col_name = col.name
+        resqml_by_type = _osdu_column_to_resqml(model)
+    else:
+        raise HTTPException(400, "columnId or column (SMDA name) is required")
+
+    # ── Push ──
+    push_result = await _push_resqml_to_rddms(
+        at, resqml_by_type, dataspace, create_ds, col_name)
+
+    if push_result.get("status") != "ok":
+        push_result["verification"] = {"status": "skipped", "reason": "push failed"}
+        return JSONResponse(push_result)
+
+    # ── Fetch-back & verify ──
+    ds_enc = urllib.parse.quote(dataspace, safe="")
+    verification: List[dict] = []
+    all_ok = True
+
+    for typ in [
+        "resqml20.obj_RockVolumeFeature",
+        "resqml20.obj_OrganizationFeature",
+        "resqml20.obj_StratigraphicUnitInterpretation",
+        "resqml20.obj_StratigraphicColumnRankInterpretation",
+        "resqml20.obj_StratigraphicColumn",
+    ]:
+        for sent_obj in resqml_by_type.get(typ, []):
+            uid = sent_obj["Uuid"]
+            title = (sent_obj.get("Citation") or {}).get("Title", "?")
+            entry: Dict[str, Any] = {"type": typ, "uuid": uid, "title": title}
+            try:
+                fetched = await osdu.get_resource(at, ds_enc, typ, uid)
+                if isinstance(fetched, list):
+                    fetched = fetched[0] if fetched else {}
+                # Compare key fields
+                mismatches: List[str] = []
+                for field in ("$type", "Uuid", "SchemaVersion"):
+                    if str(sent_obj.get(field)) != str(fetched.get(field)):
+                        mismatches.append(f"{field}: sent={sent_obj.get(field)!r} got={fetched.get(field)!r}")
+                s_cit = sent_obj.get("Citation") or {}
+                r_cit = fetched.get("Citation") or {}
+                for cf in ("Title", "Originator", "Format"):
+                    if s_cit.get(cf) != r_cit.get(cf):
+                        mismatches.append(f"Citation.{cf}: sent={s_cit.get(cf)!r} got={r_cit.get(cf)!r}")
+                # ExtraMetadata count
+                s_em = sent_obj.get("ExtraMetadata") or []
+                r_em = fetched.get("ExtraMetadata") or []
+                if len(s_em) != len(r_em):
+                    mismatches.append(f"ExtraMetadata count: sent={len(s_em)} got={len(r_em)}")
+
+                entry["match"] = len(mismatches) == 0
+                if mismatches:
+                    entry["mismatches"] = mismatches
+                    all_ok = False
+            except Exception as e:
+                entry["match"] = False
+                entry["error"] = str(e)
+                all_ok = False
+            verification.append(entry)
+
+    push_result["verification"] = {
+        "status": "ok" if all_ok else "mismatches",
+        "checked": len(verification),
+        "passed": sum(1 for v in verification if v.get("match")),
+        "failed": sum(1 for v in verification if not v.get("match")),
+        "objects": verification,
+    }
+    return JSONResponse(push_result)
