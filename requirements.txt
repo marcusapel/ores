@@ -20,3 +20,19 @@ itsdangerous>=2.0             # Starlette SessionMiddleware cookie signing
 # Map rendering (Grid2d depth surfaces)
 numpy>=1.24
 matplotlib>=3.7
+
+# Demo scripts (demo/ folder)
+requests>=2.31.0
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Notebook 
+ipykernel>=6.29.0
+plotly>=5.18.0
+IPython>=8.18.0
+
+# OSDU / subsurface libs 
+osdu-client
+fesapi
+fetpapi
+xtgeo
