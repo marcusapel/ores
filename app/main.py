@@ -52,15 +52,8 @@ log = logging.getLogger("rddms-admin")
 
 app = FastAPI(title="RDDMS Admin")
 
-# Session middleware — needed for per-user PKCE auth (cookie-based sessions)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.getenv("SECRET_KEY", secrets.token_hex(16)),
-    session_cookie="ores_session",
-    max_age=8 * 3600,          # 8 h session lifetime
-    same_site="lax",
-    https_only=False,           # allow http in local dev; set True behind TLS in prod
-)
+# ── Stable secret key (must be identical across workers) ─────────────────────
+_SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(16)
 
 # Security headers & cache hardening
 @app.middleware("http")
@@ -112,6 +105,17 @@ async def inject_access_token(request: Request, call_next):
     return await call_next(request)
 
 # Attach routers & static
+# Session middleware — added LAST so it is outermost and runs FIRST,
+# making request.session available to all inner middleware.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_SECRET_KEY,
+    session_cookie="ores_session",
+    max_age=8 * 3600,          # 8 h session lifetime
+    same_site="lax",
+    https_only=False,           # allow http in local dev; set True behind TLS in prod
+)
+
 app.include_router(auth_router)  # keeps /auth diagnostics
 app.include_router(ingest_router, prefix="/api")
 app.include_router(strat_router)
