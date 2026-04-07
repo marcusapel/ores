@@ -1,0 +1,159 @@
+{
+  "document": [
+    {
+      "$type": "resqml22.Grid2dRepresentation",
+      "SchemaVersion": "2.2",
+      "Uuid": "786650a4-c933-5351-b305-a5e0b617fa47",
+      "Citation": {
+        "$type": "eml23.Citation",
+        "Title": "Horizon1 Interp1 Grid2dRep",
+        "Originator": "ORES gen_structuremap_from_resqml.py",
+        "Creation": "2026-04-07T00:00:00.000Z",
+        "Format": "ORES:gen_structuremap_from_resqml:1.0"
+      },
+      "SurfaceRole": "map",
+      "FastestAxisCount": 2,
+      "SlowestAxisCount": 4,
+      "Geometry": {
+        "$type": "resqml22.PointGeometry",
+        "LocalCrs": {
+          "$type": "eml23.DataObjectReference",
+          "Uuid": "4c789ec9-0140-5a55-b42f-91d5c055f3da",
+          "QualifiedType": "eml23.LocalEngineeringCompoundCrs",
+          "Title": "Depth CRS for Horizon1 Interp1 Grid2dRep"
+        },
+        "Points": {
+          "$type": "resqml22.Point3dZValueArray",
+          "SupportingGeometry": {
+            "$type": "resqml22.Point3dLatticeArray",
+            "AllDimensionsAreOrthogonal": true,
+            "Origin": {
+              "$type": "resqml22.Point3d",
+              "Coordinate1": 5010,
+              "Coordinate2": 6020,
+              "Coordinate3": 0
+            },
+            "Dimension": [
+              {
+                "$type": "resqml22.Point3dLatticeDimension",
+                "Direction": {
+                  "$type": "resqml22.Point3d",
+                  "Coordinate1": 0.0,
+                  "Coordinate2": 1.0,
+                  "Coordinate3": 0
+                },
+                "Spacing": {
+                  "$type": "eml23.FloatingPointConstantArray",
+                  "Value": 250,
+                  "Count": 3
+                }
+              },
+              {
+                "$type": "resqml22.Point3dLatticeDimension",
+                "Direction": {
+                  "$type": "resqml22.Point3d",
+                  "Coordinate1": 1.0,
+                  "Coordinate2": 0.0,
+                  "Coordinate3": 0
+                },
+                "Spacing": {
+                  "$type": "eml23.FloatingPointConstantArray",
+                  "Value": 200,
+                  "Count": 1
+                }
+              }
+            ]
+          },
+          "ZValues": {
+            "$type": "eml23.FloatingPointXmlArray",
+            "CountPerValue": 1,
+            "Values": [
+              -2000.0,
+              -2000.5,
+              -2001.0,
+              -2001.5,
+              -2002.0,
+              -2002.5,
+              -2003.0,
+              -2003.5
+            ]
+          }
+        }
+      },
+      "OSDUIntegration": {
+        "OSDULineageAssertion": {
+          "$type": "eml23.OSDULineageAssertion",
+          "ID": "dev:work-product-component--StructureMap:677bb766-b795-573a-9f46-7131100a8388:1",
+          "LineageRelationshipKind": "direct"
+        }
+      },
+      "ExtraMetadata": [
+        {
+          "$type": "eml23.NameValuePair",
+          "Name": "osdu:DomainTypeID",
+          "Value": "dev:reference-data--DomainType:Depth:"
+        },
+        {
+          "$type": "eml23.NameValuePair",
+          "Name": "osdu:TransformationMethod",
+          "Value": "9666"
+        }
+      ],
+      "RepresentedObject": {
+        "$type": "eml23.DataObjectReference",
+        "Uuid": "dd55d040-1fc7-5029-bf2d-880c87c27c71",
+        "QualifiedType": "resqml22.HorizonInterpretation",
+        "Title": "Horizon1 Interp1 Grid2dRep"
+      }
+    },
+    {
+      "$type": "eml23.LocalEngineeringCompoundCrs",
+      "SchemaVersion": "2.3",
+      "Uuid": "4c789ec9-0140-5a55-b42f-91d5c055f3da",
+      "Citation": {
+        "$type": "eml23.Citation",
+        "Title": "Depth CRS for Horizon1 Interp1 Grid2dRep",
+        "Originator": "ORES",
+        "Creation": "2026-04-07T00:00:00.000Z",
+        "Format": "ORES:gen_structuremap_from_resqml:1.0"
+      },
+      "VerticalCrs": {
+        "$type": "eml23.DataObjectReference",
+        "Uuid": "4fa19c5f-39a6-5b80-9c38-eb92acf9cead",
+        "QualifiedType": "eml23.VerticalCrs",
+        "Title": "Vertical CRS for Horizon1 Interp1 Grid2dRep"
+      },
+      "OriginVerticalCoordinate": 0,
+      "VerticalAxis": {
+        "$type": "eml23.VerticalAxis",
+        "Direction": "down",
+        "Uom": "m",
+        "IsTime": false
+      },
+      "LocalEngineering2dCrs": {
+        "$type": "eml23.DataObjectReference",
+        "Uuid": "5fc89434-7e39-5707-bd6b-3d5a3363aa2f",
+        "QualifiedType": "eml23.LocalEngineering2dCrs",
+        "Title": "2D CRS for Horizon1 Interp1 Grid2dRep"
+      }
+    },
+    {
+      "$type": "eml23.VerticalCrs",
+      "SchemaVersion": "2.3",
+      "Uom": "m",
+      "Uuid": "4fa19c5f-39a6-5b80-9c38-eb92acf9cead",
+      "Citation": {
+        "$type": "eml23.Citation",
+        "Title": "Vertical CRS for Horizon1 Interp1 Grid2dRep",
+        "Originator": "ORES",
+        "Creation": "2026-04-07T00:00:00.000Z",
+        "Format": "ORES:gen_structuremap_from_resqml:1.0"
+      },
+      "Direction": "down",
+      "AbstractVerticalCrs": {
+        "$type": "eml23.VerticalUnknownCrs",
+        "Unknown": "Unknown"
+      }
+    }
+  ]
+}

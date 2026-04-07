@@ -13,9 +13,9 @@
 - [9) Field Alignment Across Schemas](#9-field-alignment-across-schemas)
 - [10) Supplementary Proposal: SeismicInterpretationProject](#10-supplementary-proposal-seismicinterpretationproject)
 - [11) Generating OSDU Records from RDDMS Content](#11-generating-osdu-records-from-rddms-content)
-- [12) Demo Implementation — Volantis Worked Example](#12-demo-implementation--volantis-worked-example)
-- [13) Community Context & Open Questions](#13-community-context--open-questions)
-- [14) xlsx Proposals vs Official M27 Model](#14-xlsx-proposals-vs-official-m27-model)
+- [12) StructureMap in Reservoir DDMS — RESQML 2.2 Storage & Generation](#12-structuremap-in-reservoir-ddms--resqml-22-storage--generation)
+- [13) Demo Implementation — Volantis Worked Example](#13-demo-implementation--volantis-worked-example)
+- [14) Community Context & Open Questions](#14-community-context--open-questions)
 - [15) Duplication Argument: StructureMap vs GenericRepresentation + HorizonInterpretation](#15-duplication-argument-structuremap-vs-genericrepresentation--horizoninterpretation)
 - [16) References](#16-references)
 
@@ -537,7 +537,279 @@ Every OSDU representation WPC links to its RDDMS counterpart:
 
 ---
 
-## 12) Demo Implementation — Volantis Worked Example
+## 12) StructureMap in Reservoir DDMS — RESQML 2.2 Storage & Generation
+
+The OSDU StructureMap:1.0.0 is a **catalog record** — it provides searchable metadata. The actual depth surface data (Z values on a grid) lives in the Reservoir DDMS as RESQML content. This section documents the bidirectional mapping between OSDU StructureMap and RESQML 2.2 `Grid2dRepresentation`.
+
+### 12.1 RESQML Native Representation
+
+In RESQML 2.2 (and 2.0.1), a depth structure map is stored as a **`Grid2dRepresentation`** — the same type used for TWT seismic horizons. The distinction between TWT and depth is made entirely by the **LocalCrs** (Coordinate Reference System):
+
+| Domain | CRS Property | RESQML Value |
+|---|---|---|
+| Time (TWT) | `LocalCrs → VerticalAxis.IsTime` | `true` |
+| Depth | `LocalCrs → VerticalAxis.IsTime` | `false` |
+| Mixed | Multiple patches with different CRS | — |
+
+**There is no dedicated "StructureMap" type in RESQML** — a `Grid2dRepresentation` with `SurfaceRole: "map"` and a depth CRS **is** the structure map. No RESQML extension is required.
+
+### 12.2 Grid Geometry — Two RESQML Patterns
+
+RESQML offers two grid geometry strategies that map 1:1 to the OSDU StructureMap approaches (§5.1):
+
+#### Pattern A: Inline Lattice → OSDU Inline Grid
+
+```json
+{
+  "Points": {
+    "$type": "resqml22.Point3dZValueArray",
+    "SupportingGeometry": {
+      "$type": "resqml22.Point3dLatticeArray",
+      "AllDimensionsAreOrthogonal": true,
+      "Origin": { "Coordinate1": 461000.0, "Coordinate2": 6782000.0, "Coordinate3": 0 },
+      "Dimension": [
+        { "Direction": { "Coordinate1": 0, "Coordinate2": 1, "Coordinate3": 0 },
+          "Spacing": { "Value": 25.0, "Count": 199 } },
+        { "Direction": { "Coordinate1": 1, "Coordinate2": 0, "Coordinate3": 0 },
+          "Spacing": { "Value": 25.0, "Count": 299 } }
+      ]
+    },
+    "ZValues": { "Values": [-2150.0, -2151.2, "..."] }
+  }
+}
+```
+
+| RESQML Lattice Property | OSDU StructureMap Property | Conversion |
+|---|---|---|
+| `Origin.Coordinate1` | `OriginEasting` | Direct (in projected CRS) |
+| `Origin.Coordinate2` | `OriginNorthing` | Direct (in projected CRS) |
+| `Dimension[slow].Spacing.Value` | `BinWidthOnJaxis` | Direct |
+| `Dimension[fast].Spacing.Value` | `BinWidthOnIaxis` | Direct |
+| `Dimension[slow].Direction` | `MapGridBearingOfBinGridJaxis` | `atan2(Coord1, Coord2)` |
+| `Dimension[slow].Spacing.Count + 1` | `NodeCountOnJAxis` | RESQML count = steps; OSDU count = nodes |
+| `Dimension[fast].Spacing.Count + 1` | `NodeCountOnIAxis` | Same |
+| `AllDimensionsAreOrthogonal` + axis order | `TransformationMethod` | Right-handed → EPSG 9666 |
+
+#### Pattern B: Supporting Representation → OSDU External BinGridID
+
+```json
+{
+  "Points": {
+    "$type": "resqml22.Point3dZValueArray",
+    "SupportingGeometry": {
+      "$type": "resqml22.Point3dFromRepresentationLatticeArray",
+      "SupportingRepresentation": {
+        "Uuid": "aa5b90f1-2eab-4fa6-8720-69dd4fd51a4d",
+        "QualifiedType": "resqml22.Grid2dRepresentation",
+        "Title": "Seismic BinGrid"
+      },
+      "NodeIndicesOnSupportingRepresentation": { "StartValue": 0, "Offset": ["..."] }
+    },
+    "ZValues": { "..." }
+  }
+}
+```
+
+| RESQML Property | OSDU StructureMap Property |
+|---|---|
+| `SupportingRepresentation.Uuid` | `BinGridID` → resolve UUID to OSDU GenericBinGrid or SeismicBinGrid ID |
+| Inline grid properties | Empty — grid geometry comes from the referenced BinGrid |
+
+### 12.3 Complete Property Mapping Table
+
+| OSDU StructureMap Property | RESQML Grid2dRepresentation Property | Direction | Notes |
+|---|---|---|---|
+| `data.Name` | `Citation.Title` | ↔ | Direct copy |
+| `InterpretationID` | `RepresentedObject.Uuid` (→ HorizonInterpretation) | ↔ | UUID ↔ OSDU ID resolution |
+| `DomainTypeID` = Depth | `LocalCrs.VerticalAxis.IsTime = false` | ← RESQML | CRS-based detection |
+| `DomainTypeID` = Time | `LocalCrs.VerticalAxis.IsTime = true` | ← RESQML | CRS-based detection |
+| `SeismicHorizonID` | — | OSDU only | No RESQML equivalent; provenance via Activity or ExtraMetadata |
+| `BinGridID` | `SupportingRepresentation.Uuid` | ↔ | Only when external grid pattern used |
+| `OriginEasting/Northing` | `Point3dLatticeArray.Origin` | ↔ | Only when inline grid; needs CRS-to-projected transform |
+| `BinWidthOnI/Jaxis` | `Dimension[].Spacing.Value` | ↔ | Constant spacing assumed |
+| `MapGridBearingOfBinGridJaxis` | `atan2(Dim[J].Direction.Coord1, .Coord2)` | ← RESQML | Computed from direction vector |
+| `NodeCountOnI/JAxis` | `FastestAxisCount` / `SlowestAxisCount` | ↔ | RESQML Spacing.Count = nodes−1 |
+| `TransformationMethod` | `AllDimensionsAreOrthogonal` + axis ordering | ← RESQML | 9666 if right-handed |
+| `ABCDBinGridSpatialLocation` | Computed from Origin + Dimension vectors | ← RESQML | Corner computation |
+| `DDMSDatasets[].DatasetURI` | Self-reference | → OSDU | `eml://{rddms}/dataspace('...')/resqml22.Grid2dRepresentation('{uuid}')` |
+| `ExtensionProperties` | `ExtraMetadata` | ↔ | Name-value pairs |
+
+### 12.4 RESQML 2.2.1 Extension Assessment
+
+**No formal RESQML extension is required.** RESQML 2.2 `Grid2dRepresentation` natively supports everything needed for an OSDU StructureMap:
+
+| Requirement | RESQML 2.2 Support | Status |
+|---|---|---|
+| Regular depth grid with Z values | `Grid2dRepresentation` + depth CRS | ✓ Native |
+| Inline grid geometry | `Point3dLatticeArray` | ✓ Native |
+| External bin grid reference | `Point3dFromRepresentationLatticeArray` + `SupportingRepresentation` | ✓ Native |
+| Link to interpretation | `RepresentedObject` → HorizonInterpretation | ✓ Native |
+| CRS / domain type | `LocalCrs` with vertical axis configuration | ✓ Native |
+| Z-value storage (HDF5, external) | `FloatingPointExternalArray` | ✓ Native |
+| OSDU integration metadata | `OSDUIntegration` block + `ExtraMetadata` | ✓ Via existing EML extension point |
+
+#### Recommended ExtraMetadata Conventions
+
+Three OSDU-specific properties have no direct RESQML equivalent. For lossless round-tripping, store them as **`ExtraMetadata`** name-value pairs with an `osdu:` prefix:
+
+| OSDU Property | ExtraMetadata Key | Value | Purpose |
+|---|---|---|---|
+| `SeismicHorizonID` | `osdu:SeismicHorizonID` | OSDU WPC ID | Provenance link to TWT source (no RESQML equivalent) |
+| `DomainTypeID` | `osdu:DomainTypeID` | Ref-data ID | Redundant with CRS but enables catalog sync without CRS parsing |
+| `TransformationMethod` | `osdu:TransformationMethod` | `9666` or `1049` | EPSG code — can be inferred from lattice but explicit is safer |
+
+This approach avoids the governance overhead of a formal Energistics extension proposal while keeping the RESQML object self-documenting for OSDU round-tripping.
+
+#### When Would an Actual Extension Be Needed?
+
+1. RESQML needs to store **OSDU-specific typed relationships** natively (not just ExtraMetadata strings)
+2. Validation tools need to enforce OSDU constraints at the RESQML level
+3. The `OSDUIntegration` block needs StructureMap-specific fields beyond `OSDULineageAssertion`
+
+None of these conditions are currently met. The ExtraMetadata convention approach is sufficient.
+
+### 12.5 Generating StructureMap from RDDMS RESQML Content
+
+Given RESQML objects already stored in the RDDMS, OSDU StructureMap records can be **automatically generated** via metadata extraction:
+
+```
+RDDMS Query: GET Grid2dRepresentations in dataspace
+       │
+       ▼
+Filter: LocalCrs.VerticalAxis.IsTime == false  →  depth surfaces only
+       │
+       ▼
+For each depth Grid2dRepresentation:
+   1. Citation.Title         → data.Name
+   2. RepresentedObject.Uuid → resolve to OSDU HorizonInterpretation ID
+   3. Determine grid pattern:
+      a. Point3dLatticeArray → inline grid → populate AbstractGenericBinGrid props
+      b. Point3dFromRepresentationLatticeArray → external grid:
+         - SupportingRepresentation.Uuid → resolve to OSDU GenericBinGrid/SeismicBinGrid
+         - Set BinGridID
+   4. Find TWT counterpart (same RepresentedObject, time CRS) → SeismicHorizonID
+   5. Set DomainTypeID = Depth
+   6. Build DDMSDatasets[].DatasetURI = eml://...
+   7. Emit OSDU StructureMap:1.0.0 record
+```
+
+#### Finding the TWT Counterpart (SeismicHorizonID)
+
+The `SeismicHorizonID` provenance link requires finding the TWT `Grid2dRepresentation` that shares the same `RepresentedObject` (HorizonInterpretation):
+
+```python
+# Query against RDDMS objects in the same dataspace
+twt_counterpart = [
+    rep for rep in grid2d_representations
+    if rep.RepresentedObject.Uuid == depth_rep.RepresentedObject.Uuid
+    and rep.LocalCrs.VerticalAxis.IsTime is True
+]
+# If found → resolve twt_counterpart.Uuid to OSDU SeismicHorizon WPC ID
+# If not found → leave SeismicHorizonID empty (standalone depth surface)
+```
+
+### 12.6 Example: Reference JSON → OSDU StructureMap
+
+Using `testHorizonEverythingIncluded.json` from `demo/seisint/references/` (a RESQML 2.2 JSON document with inline lattice geometry, depth CRS, and HorizonInterpretation):
+
+**Input RESQML** (key properties):
+
+```json
+{
+  "$type": "resqml22.Grid2dRepresentation",
+  "Uuid": "030a82f6-10a7-4ecf-af03-54749e098624",
+  "Citation": { "Title": "Horizon1 Interp1 Grid2dRep" },
+  "RepresentedObject": {
+    "Uuid": "ac12dc12-4951-459b-b585-90f48aa88a5a",
+    "QualifiedType": "resqml22.HorizonInterpretation"
+  },
+  "SurfaceRole": "map",
+  "FastestAxisCount": 4, "SlowestAxisCount": 2,
+  "Geometry": {
+    "Points": {
+      "SupportingGeometry": {
+        "$type": "resqml22.Point3dLatticeArray",
+        "Origin": { "Coordinate1": 5010, "Coordinate2": 6020, "Coordinate3": 0 },
+        "Dimension": [
+          { "Direction": { "Coordinate1": 0, "Coordinate2": 0, "Coordinate3": 1 }, "Spacing": { "Value": 200, "Count": 1 } },
+          { "Direction": { "Coordinate1": 0, "Coordinate2": 1, "Coordinate3": 0 }, "Spacing": { "Value": 250, "Count": 3 } }
+        ]
+      }
+    }
+  }
+}
+```
+
+**Output OSDU StructureMap** (generated by `gen_structuremap_from_resqml.py`):
+
+```json
+{
+  "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+  "data": {
+    "Name": "Horizon1 Interp1 Grid2dRep",
+    "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:76204e5b-...:1",
+    "OriginEasting": 5010,
+    "OriginNorthing": 6020,
+    "BinWidthOnIaxis": 200,
+    "BinWidthOnJaxis": 250,
+    "MapGridBearingOfBinGridJaxis": 0.0,
+    "NodeCountOnIAxis": 2,
+    "NodeCountOnJAxis": 4,
+    "TransformationMethod": 9666,
+    "DDMSDatasets": [
+      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml22.Grid2dRepresentation('030a82f6-...')"
+    ]
+  }
+}
+```
+
+### 12.7 Reverse Direction: OSDU StructureMap → RESQML Storage
+
+To store a new StructureMap in the RDDMS (e.g., from an interpretation application):
+
+1. **Create RESQML objects**: `Grid2dRepresentation` + `LocalEngineeringCompoundCrs` (depth) + optional `HorizonInterpretation` + `BoundaryFeature`
+2. **Map OSDU grid properties** to RESQML lattice geometry (see §12.3, reversed)
+3. **Store Z values** in HDF5 (production) or inline XML array (small grids)
+4. **Package as EPC** and upload via ETP to RDDMS
+5. **Register the OSDU StructureMap** record pointing to the RDDMS object via `DDMSDatasets[]`
+
+The key transformations for OSDU → RESQML direction:
+
+| OSDU Property | RESQML Construction |
+|---|---|
+| `OriginEasting/Northing` | `Point3dLatticeArray.Origin.Coordinate1/2` |
+| `MapGridBearingOfBinGridJaxis` | J-axis `Direction = (sin(bearing), cos(bearing), 0)` |
+| `TransformationMethod` 9666 | I-axis `Direction = (sin(bearing+90°), cos(bearing+90°), 0)` |
+| `BinWidthOnI/Jaxis` | `Spacing.Value` |
+| `NodeCountOnI/JAxis` | `Spacing.Count = NodeCount - 1`, `FastestAxisCount = NodeCountI`, `SlowestAxisCount = NodeCountJ` |
+| `DomainTypeID` = Depth | `LocalCrs.VerticalAxis.IsTime = false`, `Uom = "m"` |
+| `SeismicHorizonID` | `ExtraMetadata: osdu:SeismicHorizonID` |
+| `BinGridID` | `SupportingRepresentation` reference to bin grid Grid2dRepresentation |
+
+### 12.8 Demo Script
+
+The bidirectional mapping is implemented in [`demo/seisint/gen_structuremap_from_resqml.py`](../demo/seisint/gen_structuremap_from_resqml.py):
+
+```bash
+# RESQML → OSDU (from test JSON)
+python gen_structuremap_from_resqml.py --from-resqml references/testHorizonEverythingIncluded.json
+
+# OSDU → RESQML (from Volantis manifest)
+python gen_structuremap_from_resqml.py --from-osdu manifest_volantis_interp.json
+
+# Round-trip demo
+python gen_structuremap_from_resqml.py --round-trip
+```
+
+Outputs:
+- `structuremap_from_resqml.json` — OSDU StructureMap(s) generated from RESQML
+- `resqml_from_structuremap.json` — RESQML document generated from OSDU StructureMaps
+- `resqml_roundtrip.json` — Round-trip verification
+
+---
+
+## 13) Demo Implementation — Volantis Worked Example
 
 Working example records and scripts are in [`demo/seisint/`](../demo/seisint/):
 
@@ -545,11 +817,12 @@ Working example records and scripts are in [`demo/seisint/`](../demo/seisint/):
 |---|---|
 | `_shared.py` | Shared helpers: deterministic UUIDs, ID builders, grid geometry, ABCD corners |
 | `gen_volantis_interp.py` | Python generator script — produces the full manifest |
+| `gen_structuremap_from_resqml.py` | Bidirectional RESQML ↔ OSDU StructureMap mapping (§12) |
 | `manifest_volantis_interp.json` | Complete worked example: full chain for a Volantis interpretation |
 | `schema_seismicinterpretationproject.json` | SeismicInterpretationProject:1.0.0 schema (supplementary proposal) |
 | `references/` | Test horizon JSONs, discussion docs from OSDU GitLab |
 
-### 12.1 Scenario
+### 13.1 Scenario
 
 The manifest demonstrates the **Volantis 2025 Interpretation** — a synthetic scenario using realistic parameters for the Volantis field (Norwegian Sea):
 
@@ -564,7 +837,7 @@ The manifest demonstrates the **Volantis 2025 Interpretation** — a synthetic s
 | Project grouping | 1 | **`SeismicInterpretationProject:1.0.0`** (proposal) |
 | **Total** | **~18 records** | |
 
-### 12.2 Grid Strategy Demonstrated
+### 13.2 Grid Strategy Demonstrated
 
 The manifest shows both grid approaches:
 
@@ -574,7 +847,7 @@ The manifest shows both grid approaches:
 | Base Volantis Depth Map | **External ref** → GenericBinGrid | Same shared grid |
 | Top Therys Depth Map | **Inline grid** | Grid properties embedded directly on StructureMap |
 
-### 12.3 Running the Generator
+### 13.3 Running the Generator
 
 ```bash
 cd demo/seisint
@@ -585,9 +858,9 @@ Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for i
 
 ---
 
-## 13) Community Context & Open Questions
+## 14) Community Context & Open Questions
 
-### 13.1 Key Decisions (from 2026 Meeting Minutes)
+### 14.1 Key Decisions (from 2026 Meeting Minutes)
 
 | Date | Decision |
 |---|---|
@@ -596,7 +869,7 @@ Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for i
 | 2026-02-09 | SeismicHorizon:2.1.0 adds `HorizonControlPointsID` link |
 | 2026-01-26 | Oslo F2F workshop dates confirmed: April 13–17, 2026 |
 
-### 13.2 SeismicSurfaceGeneration Activity Template
+### 14.2 SeismicSurfaceGeneration Activity Template
 
 [Issue #863](https://gitlab.opengroup.org/osdu/data/data-definitions/-/issues/863) tracks the creation of a `SeismicSurfaceGeneration` activity template on branch 822. This template defines the seed-to-surface workflow:
 
@@ -606,7 +879,7 @@ Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for i
 
 When approved, it will provide standardized Activity records linking inputs to outputs — complementary to the schema-level references documented here.
 
-### 13.3 Oslo F2F Workshop (April 2026)
+### 14.3 Oslo F2F Workshop (April 2026)
 
 The Oslo F2F (April 13–17, 2026) plans two MVP workshops:
 - **MVP1**: Structure Map end-to-end demonstration (the [ddm_mvp1_structuremap](https://gitlab.opengroup.org/osdu/subcommittees/data-def/projects/seismic/ddm_mvp1_structuremap) repo)
@@ -614,7 +887,7 @@ The Oslo F2F (April 13–17, 2026) plans two MVP workshops:
 
 Our Volantis worked example is positioned as a contribution to MVP1.
 
-### 13.4 Open Questions
+### 14.4 Open Questions
 
 | Question | Status | Notes |
 |---|---|---|
@@ -622,95 +895,37 @@ Our Volantis worked example is positioned as a contribution to MVP1.
 | Multi-Z surfaces (structure map as 2D multi-z) | Deferred | Risk of duplicating what already exists in RESQML normalized model in the RDDMS |
 | SeismicInterpretationProject as official schema | Not yet proposed | Our demo includes it; could be submitted after M27 |
 | Generic Property WPCs for Z values | Under discussion | Properties on a StructureMap may be stored as separate GenericProperty WPCs |
+| `VelocityModelID` not on any M27 schema | Open | No link from StructureMap to velocity model — add via ExtensionProperties now, propose for StructureMap:1.1.0 |
+| `SeismicAttributeTypeID` ref-data missing | Parked | Useful for search ("show me all amplitude maps") but no ref-data defined yet |
 
----
+### 14.5 Proposed Improvements for StructureMap:1.1.0
 
-## 14) xlsx Proposals vs Official M27 Model
-
-Three xlsx proposal workbooks were developed during the Seismic 2.0 design phase. This section maps their proposed properties against the official M27 schemas that were ultimately approved.
-
-### 14.1 SeismicHorizon Proposals Template (p586)
-
-The `SeismicHorizon_Proposals_Template.xlsx` proposed a `SeismicHorizon:2.0.0` with 21 individual properties. Here is how each maps to the official M27 schema set:
-
-| xlsx Proposed Property | Official M27 Location | Notes |
-|---|---|---|
-| `allOf → AbstractRepresentation` | SeismicHorizon:2.1.0 (inherited) | Same — no change |
-| `Seismic3DInterpretationSetID` | SeismicHorizon:2.1.0 | Was not adopted on SeismicHorizon; moved to **HorizonControlPoints:1.0.0** |
-| `Seismic2DInterpretationSetID` | SeismicHorizon:2.1.0 | Same — moved to **HorizonControlPoints:1.0.0** |
-| `RepresentationRole` | SeismicHorizon:2.1.0 | Not on SeismicHorizon; adopted on **HorizonControlPoints:1.0.0** |
-| `RepresentationType` | SeismicHorizon:2.1.0 ✓ | Retained |
-| `DomainTypeID` | SeismicHorizon:2.1.0 ✓ | Retained (renamed from SeismicDomainTypeID) |
-| `SeismicTraceDataIDs[]` | SeismicHorizon:2.1.0 | Not on SeismicHorizon; moved to **HorizonControlPoints:1.0.0** |
-| `BinGridID` | SeismicHorizon:2.1.0 | Not on SeismicHorizon; available on **HorizonControlPoints:1.0.0** and **StructureMap:1.0.0** |
-| `SeismicLineGeometryIDs[]` | Not on SeismicHorizon | Moved to **HorizonControlPoints:1.0.0** |
-| `SeismicHorizonTypeID` | SeismicHorizon:2.1.0 ✓ | Retained |
-| `VelocityModelID` | Not adopted | Not on any M27 schema; would need to go on StructureMap or Activity |
-| `SeismicAttribute` | Not adopted | Proposed as nested object, parked — no ref-data defined yet |
-| `SubjectiveClassificationRatingIDs` | Not adopted | Quality info handled by inherited `TechnicalAssurances[]` (AbstractWPCGroupType) |
-| `InlineMin/Max, CrosslineMin/Max` | Not on SeismicHorizon | Grid extent info moved to **HorizonControlPoints:1.0.0** / BinGrid |
-| `GeologicalUnitName` | Not adopted | Available via `InterpretationID` → HorizonInterpretation → FeatureID chain |
-| `PetroleumSystemElementTypeID` | SeismicHorizon:2.1.0 ✓ | Retained |
-| `Interpreter` | SeismicHorizon:2.1.0 ✓ | Retained |
-| `Remark` | SeismicHorizon:2.1.0 ✓ (as `Remarks[]`) | Retained |
-
-**Key observation**: The xlsx proposed a "fat" SeismicHorizon with 21+ properties. The M27 design instead **split responsibilities** across three schemas:
-- **HorizonControlPoints** got the input-side properties (SeismicTraceDataIDs, BinGridID, survey refs, line geometry)
-- **SeismicHorizon** kept the surface-side properties (DomainType, Type, Interpreter)
-- **StructureMap** got the depth-output properties (BinGridID, DomainType, SeismicHorizonID)
-
-This split aligns with the RESQML pattern of separating picks (PointSetRepresentation) from surfaces (Grid2dRepresentation).
-
-### 14.2 Properties Not Present in Any M27 Schema
-
-Several xlsx-proposed properties have **no direct home** in the official M27 schemas:
-
-| Proposed Property | Gap Analysis | Improvement Suggestion |
-|---|---|---|
-| `VelocityModelID` | No link from StructureMap to velocity model | Add to StructureMap via ExtensionProperties, or propose as individual property for StructureMap:1.1.0 |
-| `SeismicAttribute` | No ref-data type defined yet | Propose as `SeismicAttributeTypeID` ref-data; useful for search "show me all amplitude maps" |
-| `GeologicalUnitName` | Derivable from HorizonInterpretation → FeatureID → Name | Could add as `x-osdu-is-derived` on SeismicHorizon for search convenience |
-| `SubjectiveClassificationRatingIDs` | Subsumed by TechnicalAssurances[] | Already covered by inherited abstract — no gap |
-
-### 14.3 Consistency Improvements for RESQML-Derived Schemas
-
-Comparing the xlsx proposals against the final M27 schemas, and considering RESQML lossless mapping, we identify these improvements:
-
-#### HorizonInterpretation improvements
-
-The current `HorizonInterpretation:1.2.0` has some mapping gaps with RESQML `obj_HorizonInterpretation`:
-
-| RESQML Property | Current OSDU Mapping | Improvement |
-|---|---|---|
-| `BoundaryRelation[]` (array of enums) | `BoundaryRelationTypeID` (single ref-data) | **Upgrade to `BoundaryRelationTypeIDs[]`** (array) — RESQML allows multiple relations on one horizon |
-| `DomainTypeID` on interpretation | Single value | Consider **`DomainTypeIDs[]`** (array) for mixed-domain interpretations — matches RESQML's domain tagging at interpretation level |
-| `SequenceStratigraphySurface` (enum) | `StratigraphicRoleTypeID` | Mapping works but RESQML has richer enum values (e.g. `transgressive`, `maximum flooding`) — need complete ref-data |
-| Cultural feature support | Only `FeatureID` → LocalBoundaryFeature | RESQML supports `GeneticBoundaryFeature` with `IsConformable` flag — OSDU has `IsConformableAbove/Below` which is richer |
-
-#### SeismicHorizon → StructureMap consistency
-
-Properties that exist on SeismicHorizon but are absent from StructureMap, creating asymmetry:
+Properties that exist on SeismicHorizon but are absent from StructureMap, creating search asymmetry:
 
 | Property | SeismicHorizon | StructureMap | Impact |
 |---|---|---|---|
 | `Interpreter` | ✓ | ✗ | Cannot search "depth maps by interpreter" without traversing SeismicHorizonID |
 | `Remarks[]` | ✓ | ✗ | Annotations lost on depth conversion |
 | `PetroleumSystemElementTypeID` | ✓ | ✗ | Cannot filter depth maps by reservoir/source/seal |
-| `RepresentationType` | ✓ | ✗ (implied Regular2DGrid) | Fine for now, but limits future extension to triangulated depth maps |
 
-**Recommendation**: Propose `StructureMap:1.1.0` adding `Interpreter`, `Remarks[]`, and `PetroleumSystemElementTypeID` as optional individual properties (non-breaking minor version bump). This makes search consistent across TWT and depth representations.
+**Recommendation**: Propose `StructureMap:1.1.0` adding these as optional individual properties (non-breaking minor version bump).
 
-#### Cross-schema field consistency
-
-Ideal end-state for lossless RESQML round-tripping:
+### 14.6 Cross-Schema Consistency for RESQML Round-Tripping
 
 | Field | Should Be On | Currently On | Status |
 |---|---|---|---|
-| `DomainTypeID` | All representations | SeismicHorizon, SeismicFault, StructureMap, HorizonControlPoints | ✓ (Good — M27 extended this) |
+| `DomainTypeID` | All representations | SeismicHorizon, SeismicFault, StructureMap, HorizonControlPoints | ✓ Good |
 | `InterpretationID` | All representations | All (via AbstractRepresentation) | ✓ |
-| `BinGridID` | All grid-based representations | SeismicFault, StructureMap, HorizonControlPoints | SeismicHorizon still uses `SeismicBinGridID` — inconsistent name |
+| `BinGridID` | All grid-based representations | SeismicFault, StructureMap, HorizonControlPoints | SeismicHorizon uses `SeismicBinGridID` — inconsistent name |
 | `Interpreter` | All representations | SeismicHorizon, SeismicFault only | **Gap** — StructureMap, HorizonControlPoints lack it |
 | `DDMSDatasets[]` | All WPCs | All (via AbstractWPCGroupType) | ✓ |
+
+HorizonInterpretation:1.2.0 also has RESQML mapping gaps worth noting:
+
+| RESQML Property | Current OSDU | Improvement |
+|---|---|---|
+| `BoundaryRelation[]` (array) | `BoundaryRelationTypeID` (single) | Upgrade to `BoundaryRelationTypeIDs[]` (array) |
+| `SequenceStratigraphySurface` | `StratigraphicRoleTypeID` | Need complete ref-data for RESQML enum values (`transgressive`, `maximum flooding`, etc.) |
 
 ---
 
