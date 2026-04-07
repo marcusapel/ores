@@ -1,0 +1,36 @@
+{
+  "id": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
+  "kind": "osdu:wks:work-product-component--SeismicHorizon:2.1.0",
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.office.global.viewers@dev.dataservices.energy"
+    ]
+  },
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "data": {
+    "Name": "BaseVolantis TWT",
+    "Description": "TWT horizon pick for Base Volantis reservoir",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+    "DomainTypeID": "dev:reference-data--DomainType:Time:",
+    "RepresentationType": "dev:reference-data--RepresentationType:Regular2DGrid:",
+    "SeismicHorizonTypeID": "dev:reference-data--SeismicHorizonType:Peak:",
+    "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Reservoir:",
+    "Interpreter": "Volantis Interpretation Team",
+    "Remarks": [
+      "Picked on Volantis3D survey, nominal TWT 2050 ms"
+    ],
+    "DDMSDatasets": [
+      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('17a8a509-bc59-5485-9ecd-11dbf68eef10')"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1",
+  "kind": "osdu:wks:master-data--LocalBoundaryFeature:1.1.0",
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.office.global.viewers@dev.dataservices.energy"
+    ]
+  },
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "data": {
+    "Name": "Base Volantis",
+    "Description": "Base Volantis reservoir",
+    "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:"
+  }
+}

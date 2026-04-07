@@ -1,0 +1,36 @@
+{
+  "id": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
+  "kind": "osdu:wks:work-product-component--SeismicHorizon:2.1.0",
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.office.global.viewers@dev.dataservices.energy"
+    ]
+  },
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "data": {
+    "Name": "TopTherys TWT",
+    "Description": "TWT horizon pick for Top Therys source rock",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
+    "DomainTypeID": "dev:reference-data--DomainType:Time:",
+    "RepresentationType": "dev:reference-data--RepresentationType:Regular2DGrid:",
+    "SeismicHorizonTypeID": "dev:reference-data--SeismicHorizonType:Peak:",
+    "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Source:",
+    "Interpreter": "Volantis Interpretation Team",
+    "Remarks": [
+      "Picked on Volantis3D survey, nominal TWT 2800 ms"
+    ],
+    "DDMSDatasets": [
+      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('40454ee2-d972-5821-a5d1-9a27868cb0f6')"
+    ]
+  }
+}

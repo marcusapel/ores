@@ -1,0 +1,31 @@
+{
+  "id": "dev:work-product-component--StructureMap:42c204ca-af9c-5b53-99cd-febc79d649da:1",
+  "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.office.global.viewers@dev.dataservices.energy"
+    ]
+  },
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "data": {
+    "Name": "BaseVolantis Depth Map",
+    "Description": "Depth-converted structure map for Base Volantis reservoir",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+    "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
+    "BinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+    "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+    "DDMSDatasets": [
+      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('b49843f0-2ec6-5ccc-a298-6c9f99ada495')"
+    ]
+  }
+}
