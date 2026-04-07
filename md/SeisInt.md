@@ -856,6 +856,64 @@ python gen_volantis_interp.py
 
 Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for ingestion via the Storage Service.
 
+### 13.4 ORES Web App — Live StructureMap Generation
+
+The ORES web app provides live StructureMap:1.0.0 generation from RDDMS content
+via three REST endpoints. The implementation lives in two modules:
+
+| Module | Purpose |
+|---|---|
+| [`app/structuremap.py`](../app/structuremap.py) | Reusable conversion logic: discover Grid2d surfaces, classify depth vs time, generate StructureMap:1.0.0 records |
+| [`app/keys_router.py`](../app/keys_router.py) | FastAPI endpoints that expose the conversion over HTTP |
+
+#### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/keys/structuremaps/surfaces.json?ds=maap/drogon` | List & classify all Grid2dRepresentations (depth vs time) |
+| `GET` | `/keys/structuremaps.json?ds=maap/drogon&prefix=dev` | Generate StructureMap:1.0.0 records for all depth surfaces |
+| `POST` | `/dataspaces/manifest/structuremaps` | Build full M27 manifest from selected or all depth surfaces |
+
+#### Pipeline Flow
+
+```
+RDDMS REST API                    ORES structuremap module         OSDU Catalog
+  ┌─────────────┐                 ┌─────────────────────┐          ┌──────────┐
+  │ list         │ ──resources──► │ discover_surfaces()  │          │          │
+  │ Grid2dReps   │                │   classify by CRS    │          │          │
+  ├─────────────┤                ├─────────────────────┤          │          │
+  │ fetch each   │ ──geometry──►  │ surface_to_          │          │          │
+  │ + CRS + z    │                │   structuremap()     │          │          │
+  └─────────────┘                │   • bearing/width    │──smaps─►│ Ingest   │
+                                  │   • ABCD corners     │          │ via      │
+                                  │   • DDMSDatasets URI  │          │ Storage  │
+                                  │   • InterpretationID  │          │ Service  │
+                                  └─────────────────────┘          └──────────┘
+```
+
+#### Example: Generate manifest for maap/drogon
+
+```bash
+# 1. List surfaces (lightweight — no z-value fetch)
+curl "$ORES_URL/keys/structuremaps/surfaces.json?ds=maap/drogon"
+
+# 2. Generate StructureMap records for all depth surfaces
+curl "$ORES_URL/keys/structuremaps.json?ds=maap/drogon&prefix=dev"
+
+# 3. Build manifest for specific surfaces only
+curl -X POST "$ORES_URL/dataspaces/manifest/structuremaps" \
+  -H "Content-Type: application/json" \
+  -d '{"ds": "maap/drogon", "uuids": ["aabb...", "ccdd..."]}'
+```
+
+#### Key Design Decisions
+
+1. **Reuses `osdu.fetch_grid2d_surface()`** — same RDDMS REST calls as the existing map rendering
+2. **CRS-based classification** — `LocalDepth3dCrs` → depth → StructureMap; `LocalTime3dCrs` → time → skipped
+3. **Bearing/width from offset vectors** — RESQML 2.0.1 lattice `Offset[]` → compass bearing + bin width
+4. **Deterministic IDs** — UUID5 from RDDMS UUID ensures same input always produces same OSDU record
+5. **DDMSDatasets link** — every StructureMap links back to its RDDMS source via EML URI
+
 ---
 
 ## 14) Community Context & Open Questions

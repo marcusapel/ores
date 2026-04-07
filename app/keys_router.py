@@ -32,6 +32,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import osdu
+from . import structuremap as smap_mod
 from .schemahandler import extract_metadata_generic
 
 router = APIRouter()
@@ -629,6 +630,155 @@ async def dataspaces_manifest_build_from_selection(
     log.info("Manifest build: ds_paths=%d items=%d raw_uris=%d → uris=%d",
              len(ds_paths), len(items), len(raw_uris), len(uris))
     return JSONResponse({"status": "ok", "countUris": len(uris), "manifest": manifest})
+
+
+# ── StructureMap:1.0.0 endpoints (M27) ───────────────────────────────────────
+
+@router.get("/keys/structuremaps/surfaces.json",
+            summary="List Grid2dRepresentations classified by domain")
+async def keys_structuremap_surfaces(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path, e.g. maap/drogon"),
+):
+    """Discover and classify all Grid2dRepresentations in a dataspace.
+
+    Returns {items: [{uuid, title, domain, dims, crs_title, interpretation, uri}, ...]}
+    where domain is 'depth', 'time', or 'unknown'.
+    """
+    at = _access_token(request)
+    try:
+        surfaces = await smap_mod.discover_surfaces(at, ds)
+    except HTTPStatusError as e:
+        r = e.response
+        return JSONResponse(
+            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
+            status_code=r.status_code or 500,
+        )
+    except Exception as e:
+        log.exception("structuremap_surfaces failed: %s", e)
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+
+    depth = [s for s in surfaces if s.get("domain") == "depth"]
+    time_ = [s for s in surfaces if s.get("domain") == "time"]
+    return JSONResponse({
+        "items": surfaces,
+        "summary": {
+            "total": len(surfaces),
+            "depth": len(depth),
+            "time": len(time_),
+        },
+    })
+
+
+@router.get("/keys/structuremaps.json",
+            summary="Generate StructureMap:1.0.0 records from RDDMS surfaces")
+async def keys_structuremaps(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path, e.g. maap/drogon"),
+    prefix: str = Query("dev", description="OSDU namespace prefix"),
+    uuids: Optional[str] = Query(
+        None,
+        description="Comma-separated Grid2d UUIDs to convert (omit for all depth surfaces)",
+    ),
+):
+    """Discover depth-domain Grid2dRepresentations and generate
+    StructureMap:1.0.0 records (OSDU M27 schema).
+
+    Returns:
+    {
+      "dataspace": "maap/drogon",
+      "grid2d_count": 12,
+      "depth_count": 8,
+      "structuremaps": [ {id, kind, acl, legal, data}, ... ],
+      "surfaces": [ {uuid, title, domain, dims}, ... ]
+    }
+    """
+    at = _access_token(request)
+    uuid_list = None
+    if uuids:
+        uuid_list = [u.strip() for u in uuids.split(",") if u.strip()]
+
+    try:
+        result = await smap_mod.generate_structuremaps(
+            at, ds, prefix=prefix, uuids=uuid_list,
+        )
+    except HTTPStatusError as e:
+        r = e.response
+        return JSONResponse(
+            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
+            status_code=r.status_code or 500,
+        )
+    except Exception as e:
+        log.exception("structuremaps generation failed: %s", e)
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+
+    return JSONResponse(result)
+
+
+@router.post("/dataspaces/manifest/structuremaps",
+             summary="Build M27 StructureMap manifest from RDDMS surfaces")
+async def dataspaces_manifest_structuremaps(
+    request: Request,
+    payload: Dict[str, Any] = Body(
+        ...,
+        description=(
+            "JSON: { ds: 'maap/drogon', prefix?: 'dev', "
+            "uuids?: ['uuid1','uuid2'] }"
+        ),
+    ),
+):
+    """Generate StructureMap:1.0.0 records and wrap them in an OSDU manifest.
+
+    If 'uuids' is provided, only those Grid2d surfaces are converted.
+    Otherwise, all depth-domain surfaces in the dataspace are converted.
+
+    Returns a complete OSDU manifest ready for ingestion.
+    """
+    at = _access_token(request)
+    ds = str(payload.get("ds") or "").strip()
+    if not ds:
+        return JSONResponse(
+            {"status": "error", "detail": "Missing 'ds' (dataspace path)"},
+            status_code=400,
+        )
+    prefix = str(payload.get("prefix") or "dev").strip()
+    uuids = payload.get("uuids")
+    if isinstance(uuids, str):
+        uuids = [u.strip() for u in uuids.split(",") if u.strip()]
+
+    try:
+        result = await smap_mod.generate_structuremaps(
+            at, ds, prefix=prefix, uuids=uuids,
+        )
+    except HTTPStatusError as e:
+        r = e.response
+        return JSONResponse(
+            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
+            status_code=r.status_code or 500,
+        )
+    except Exception as e:
+        log.exception("structuremap manifest failed: %s", e)
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+
+    # Strip _source metadata before wrapping in manifest
+    smaps = result.get("structuremaps", [])
+    clean_smaps = []
+    for s in smaps:
+        rec = {k: v for k, v in s.items() if not k.startswith("_")}
+        clean_smaps.append(rec)
+
+    manifest = smap_mod.wrap_as_manifest(clean_smaps, dataspace=ds)
+
+    # Stash for the front-end
+    request.app.state.last_manifest = manifest
+
+    return JSONResponse({
+        "status": "ok",
+        "dataspace": ds,
+        "depth_count": result.get("depth_count", 0),
+        "structuremap_count": len(clean_smaps),
+        "manifest": manifest,
+    })
 
 
 # ── References graph/preview for a selected object ────────────────────────────
