@@ -251,10 +251,11 @@ def _infer_type_path(item: Dict[str, Any]) -> str:
 
     # (3) URI fallback
     uri = item.get("uri") or ""
-    if "dataspace('" in uri and ")/" in uri and "('" in uri:
+    if "dataspace('" in uri and ")/" in uri:
         try:
             after = uri.split(")/", 1)[1]
-            type_part = after.split("('", 1)[0].strip()
+            # Strip UUID suffix: resqml20.obj_TypeName(uuid) -> resqml20.obj_TypeName
+            type_part = after.split("(", 1)[0].strip()
             if type_part:
                 return type_part
         except Exception:

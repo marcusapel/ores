@@ -240,36 +240,28 @@
         <th>Name</th>
         <th>Description</th>
         <th>Kind</th>
+        <th>Dataspace / Dataset</th>
         <th>ID</th>
-        <th>Version</th>
-        <th>ParentObjectID</th>
-        <th>Parents</th>
-        <th>Children</th>
         <th>Action</th>
       </tr>
       </thead>
       <tbody>
       {% for rec in results.results or [] %}
-        {% set name = (rec.data or {}).get('Name') %}
-        {% set desc = (rec.data or {}).get('Description') %}
-        {% set parentObj = (rec.data or {}).get('ParentObjectID') %}
+        {% set d = rec.data or {} %}
+        {% set raw_name = d.get('Name') or '' %}
+        {# Fall back to FeatureName when Name is missing or |UNNAMED| #}
+        {% set feature_name = d.get('FeatureName') or '' %}
+        {% set display_name = raw_name if (raw_name and raw_name != '|UNNAMED|') else (feature_name or raw_name or '—') %}
+        {% set desc = d.get('Description') %}
+        {# Extract dataspace from DDMSDatasets array #}
+        {% set ddms_ds = d.get('DDMSDatasets', []) %}
+        {% set ds_label = ddms_ds[0] if ddms_ds else '—' %}
         <tr data-rec-idx="{{ loop.index }}"{% if loop.first %} class="active-row"{% endif %}>
-          <td>{{ name or '—' }}</td>
+          <td title="Name={{ raw_name }}  FeatureName={{ feature_name }}">{{ display_name }}</td>
           <td>{{ desc or '—' }}</td>
           <td>{{ rec.kind or '—' }}</td>
-          <td>{{ rec.id or '—' }}</td>
-          <td>{{ rec.version if rec.version is not none else '—' }}</td>
-          <td>{{ parentObj or '—' }}</td>
-          <td>
-            {% if rec.ancestry_parents %}
-              {% for p in rec.ancestry_parents %}<div>{{ p }}</div>{% endfor %}
-            {% else %}—{% endif %}
-          </td>
-          <td>
-            {% if rec.ancestry_children %}
-              {% for ch in rec.ancestry_children %}<div>{{ ch }}</div>{% endfor %}
-            {% else %}—{% endif %}
-          </td>
+          <td style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ ds_label }}">{{ ds_label }}</td>
+          <td style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;" title="{{ rec.id }}">{{ rec.id or '—' }}</td>
           <td><a href="/search/view/{{ rec.id }}">View Details</a></td>
         </tr>
       {% endfor %}
@@ -292,7 +284,9 @@
 
     {% for rec in results.results or [] %}
       {% set rec_index = loop.index %}
-      {% set name = (rec.data or {}).get('Name') %}
+      {% set raw_name = (rec.data or {}).get('Name') or '' %}
+      {% set feature_name = (rec.data or {}).get('FeatureName') or '' %}
+      {% set name = raw_name if (raw_name and raw_name != '|UNNAMED|') else (feature_name or raw_name) %}
       {% set label = name or rec.id %}
 
       {# Volumes helpers #}
@@ -1369,6 +1363,14 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
               </table>
               <div class="muted" style="font-size:.85rem;margin-top:.25rem;">Tabular volume arrays are intentionally hidden here and shown only in the reconstructed table below.</div>
             </div>
+          </section>
+
+          {# ── Full record JSON viewer ── #}
+          <section class="section-card">
+            <details>
+              <summary style="cursor:pointer;font-weight:600;color:#004578;">Metadata JSON (full record)</summary>
+              <pre style="max-height:24rem;overflow:auto;border:1px solid #ddd;padding:.5rem;font-size:.82rem;background:#faf9f8;margin-top:.4rem;white-space:pre-wrap;word-break:break-word;">{{ rec.data | tojson(indent=2) }}</pre>
+            </details>
           </section>
 
           {% if has_volumes %}

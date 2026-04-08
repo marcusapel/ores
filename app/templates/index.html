@@ -307,9 +307,11 @@
 <hr />
 
 <style>
-  .manifest-compact { max-width: 32rem; margin-top: 0.75rem; }
+  .manifest-compact { max-width: 64rem; margin-top: 0.75rem; }
   .manifest-compact .row { display:flex; gap:0.5rem; align-items:center; margin:0.35rem 0; }
   .manifest-compact select, .manifest-compact input[type="text"] { flex:1 1 auto; padding:0.25rem 0.4rem; }
+  .manifest-compact select#obj-select { font-family: monospace; font-size: 0.85em; min-width: 40rem; }
+  .manifest-compact select#ds-select  { min-width: 30rem; }
   .manifest-compact button { padding:0.25rem 0.6rem; }
   .muted { color:#666; font-size:0.9em; }
   .error { color:#b00020; font-size:0.9em; }
@@ -355,7 +357,7 @@
   <!-- Objects dropdown (from /keys/objects.json?ds=... & typ=...) -->
   <div class="row">
     <label for="obj-select" class="label">Objects</label>
-    <select id="obj-select" class="input" multiple size="8">
+    <select id="obj-select" class="input" multiple size="10">
       <option value="">— select dataspace/type —</option>
     </select>
     <span id="obj-error" class="muted"></span>
@@ -385,11 +387,11 @@
 
 
 <style>
-  #manifest-section { max-width: 48rem; margin: 1rem 0; }
+  #manifest-section { max-width: 64rem; margin: 1rem 0; }
   #manifest-section .row { display: flex; align-items: center; gap: .75rem; margin: .5rem 0; }
   #manifest-section .label { flex: 0 0 8rem; color: #555; }
   #manifest-section .label-right { margin-left: auto; color: #555; }
-  #manifest-section .input { flex: 1 1 auto; max-width: 32rem; }
+  #manifest-section .input { flex: 1 1 auto; max-width: 56rem; }
   #manifest-section .btn-row { display: flex; gap: .5rem; }
   #manifest-section .btn-primary { background: #0d6efd; color: #fff; border: 0; padding: .4rem .75rem; border-radius: .25rem; }
   #manifest-section .btn-secondary { background: #6c757d; color: #fff; border: 0; padding: .4rem .75rem; border-radius: .25rem; }

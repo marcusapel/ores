@@ -928,19 +928,25 @@ def _collect_manifest_kinds() -> List[Dict[str, Any]]:
     alphabetically.
     """
     # ── Priority kinds (displayed first, in this order) ──
+    # 1. BusinessDecision
+    # 2. master-data — alphabetically
+    # 3. work-product-component / dataset / dev — alphabetically
     _PRIORITY_KINDS = [
+        # BusinessDecision first
         "osdu:wks:master-data--BusinessDecision:1.0.0",
-        "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
-        "osdu:wks:work-product-component--ColumnBasedTable:1.4.0",
-        "osdu:wks:work-product-component--GeoLabelSet:1.0.0",
-        "dev:wks:work-product-component--DevelopmentConcept:1.0.0",
-        "osdu:wks:master-data--Risk:1.2.0",
+        # master-data (alpha)
         "osdu:wks:master-data--Reservoir:2.0.0",
         "osdu:wks:master-data--ReservoirSegment:2.0.0",
+        "osdu:wks:master-data--Risk:1.2.0",
+        # wpc / dataset / dev (alpha)
         "osdu:wks:work-product-component--Activity:1.0.0",
-        "osdu:wks:work-product-component--Document:1.2.0",
-        "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
+        "osdu:wks:work-product-component--ColumnBasedTable:1.4.0",
         "osdu:wks:dataset--ETPDataspace:1.0.0",
+        "dev:wks:work-product-component--DevelopmentConcept:1.0.0",
+        "osdu:wks:work-product-component--Document:1.2.0",
+        "osdu:wks:work-product-component--GeoLabelSet:1.0.0",
+        "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
+        "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
     ]
 
     # ── Scan manifests for counts and extra kinds ──
@@ -1120,6 +1126,49 @@ async def dataspaces_create(
 # Shared record enrichment — used by both search_run() and view_record()
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Keys whose values are large arrays / blobs — shown separately, not in metadata pairs
+_HEAVY_DATA_KEYS = frozenset({
+    "ColumnBasedTable", "Columns", "ColumnValues", "ColumnNames",
+    "SpatialPoint.AsIngestedCoordinates.persistableReferenceCrs",
+    "VirtualProperties.DefaultLocation.AsIngestedCoordinates.persistableReferenceCrs",
+    "SpatialPoint.Wgs84Coordinates",
+    "VirtualProperties.DefaultLocation.Wgs84Coordinates",
+})
+
+
+def _flatten_osdu_data(
+    data: Dict[str, Any],
+    max_str: int = 400,
+) -> list:
+    """Flatten an OSDU data{} block into [{name, value}, ...] pairs.
+
+    Skips heavy array/blob keys and truncates long values.
+    Nested dicts/lists are JSON-stringified (compact).
+    """
+    pairs = []
+    for k in sorted(data.keys()):
+        if k in _HEAVY_DATA_KEYS:
+            continue
+        v = data[k]
+        if v is None:
+            pairs.append({"name": k, "value": None})
+        elif isinstance(v, (str, int, float, bool)):
+            sv = v if not isinstance(v, str) or len(v) <= max_str else v[:max_str] + "…"
+            pairs.append({"name": k, "value": sv})
+        elif isinstance(v, list):
+            if len(v) <= 5 and all(isinstance(x, (str, int, float, bool, type(None))) for x in v):
+                pairs.append({"name": k, "value": ", ".join(str(x) for x in v)})
+            else:
+                s = json.dumps(v, ensure_ascii=False)
+                pairs.append({"name": k, "value": s[:max_str] + "…" if len(s) > max_str else s})
+        elif isinstance(v, dict):
+            s = json.dumps(v, ensure_ascii=False)
+            pairs.append({"name": k, "value": s[:max_str] + "…" if len(s) > max_str else s})
+        else:
+            pairs.append({"name": k, "value": str(v)[:max_str]})
+    return pairs
+
+
 async def _enrich_record(
     full: Dict[str, Any],
     client: httpx.AsyncClient,
@@ -1201,19 +1250,26 @@ async def _enrich_record(
         log.warning("[ENRICH] Linked record name hydration failed: %s", e)
 
     # Compact metadata pairs from data{}
+    # For OSDU Storage records, flatten all data{} key-value pairs directly.
+    # For RDDMS objects (with Citation etc.), fall back to extract_metadata_generic.
     metadata_pairs: list = []
     try:
-        md = extract_metadata_generic(
-            data_block, ds="",
-            typ=full.get("kind", "") or "",
-            uuid=full.get("id", "") or "",
-            arrays=None, max_string_len=300, max_preview_items=5,
-        )
-        metadata_pairs = [
-            p for p in (md.get("pairs", []) or [])
-            if not (str(p.get("name")).lower() == "uri"
-                    and str(p.get("value") or "").startswith("eml:///"))
-        ]
+        if "Citation" in data_block or "$type" in data_block:
+            # RDDMS/RESQML object — use schema-aware extractor
+            md = extract_metadata_generic(
+                data_block, ds="",
+                typ=full.get("kind", "") or "",
+                uuid=full.get("id", "") or "",
+                arrays=None, max_string_len=300, max_preview_items=5,
+            )
+            metadata_pairs = [
+                p for p in (md.get("pairs", []) or [])
+                if not (str(p.get("name")).lower() == "uri"
+                        and str(p.get("value") or "").startswith("eml:///"))
+            ]
+        else:
+            # OSDU Storage record — flatten data{} directly
+            metadata_pairs = _flatten_osdu_data(data_block)
     except Exception as e:
         log.warning("[ENRICH] metadata_pairs extraction failed for %s: %s", rid, e)
 

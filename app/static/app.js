@@ -150,8 +150,11 @@
         const typ2 = x.typePath || x.type || '';
         const uuid = x.uuid || '';
         opt.value = JSON.stringify({ ds, typ: typ2, uuid });
-        const labelType = (typ2.split('obj_').pop() || typ2);
-        opt.textContent = `[${labelType}] ${(x.title || uuid || x.uri)} — ${uuid}`;
+        // Short type label: strip resqml20.obj_ prefix and any (uuid) suffix
+        let labelType = (typ2.split('obj_').pop() || typ2).split('(')[0];
+        const shortUuid = uuid.length > 13 ? uuid.slice(0, 8) + '…' : uuid;
+        opt.textContent = `[${labelType}] ${(x.title || uuid || x.uri)}  (${shortUuid})`;
+        opt.title = `${typ2}  uuid=${uuid}`;  // full info on hover
         objSel.appendChild(opt);
       }
       objSel.disabled = false;
@@ -263,15 +266,20 @@ async function buildManifest() {
   async function ingestManifest() {
     const mfText = manifestBox.textContent || '';
     if (!mfText.trim()) { setText(buildSummary, 'No manifest to ingest.'); return; }
+    setText(buildSummary, 'Ingesting…');
     try {
+      const manifest = JSON.parse(mfText);
       const r = await fetch('/api/manifest/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: mfText
+        body: JSON.stringify({ manifest })
       });
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '');
+        throw new Error(`${r.status} ${r.statusText}: ${errText.slice(0, 200)}`);
+      }
       const res = await r.json();
-      setText(buildSummary, `Ingest OK: ${res.status || 'ok'}`);
+      setText(buildSummary, `Ingest OK: ${res.status || 'ok'} (run=${res.runId || '?'})`);
     } catch (e) {
       console.warn('ingest error:', e);
       setText(buildSummary, `Ingest failed: ${e.message}`);

@@ -27,7 +27,7 @@ def _partition_suffix() -> str:
     return f"{DATA_PARTITION_ID}.dataservices.energy" if DATA_PARTITION_ID else "partition.dataservices.energy"
 
 # Sensible defaults for the "Create Dataspace" form (can be overridden in env)
-DEFAULT_LEGAL_TAG: str = os.getenv("DEFAULT_LEGAL_TAG", f"{DATA_PARTITION_ID}-RDDMS-Legal-Tag" if DATA_PARTITION_ID else "dp1-RDDMS-Legal-Tag")
+DEFAULT_LEGAL_TAG: str = os.getenv("DEFAULT_LEGAL_TAG", f"{DATA_PARTITION_ID}-equinor-private-default" if DATA_PARTITION_ID else "dev-equinor-private-default")
 
 _default_owners = os.getenv("DEFAULT_OWNERS", f"data.default.owners@{_partition_suffix()}")
 DEFAULT_OWNERS: List[str] = [x.strip() for x in _default_owners.split(",") if x.strip()]
@@ -35,7 +35,7 @@ DEFAULT_OWNERS: List[str] = [x.strip() for x in _default_owners.split(",") if x.
 _default_viewers = os.getenv("DEFAULT_VIEWERS", f"data.default.viewers@{_partition_suffix()}")
 DEFAULT_VIEWERS: List[str] = [x.strip() for x in _default_viewers.split(",") if x.strip()]
 
-_default_countries = os.getenv("DEFAULT_COUNTRIES", "US")
+_default_countries = os.getenv("DEFAULT_COUNTRIES", "NO")
 DEFAULT_COUNTRIES: List[str] = [x.strip() for x in _default_countries.split(",") if x.strip()]
 
 # ----------------------------------------------------------------------
