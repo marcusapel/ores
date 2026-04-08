@@ -162,16 +162,24 @@ def _access_token(request: Request) -> str:
 
 def _normalize_volumes(data_block: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalize OSDU ColumnBasedTable in data_block['Volumes'] to a structure:
+    Normalize OSDU ColumnBasedTable / ReservoirEstimatedVolumes data to:
     {
       "KeyColumns": [ {ColumnName, ColumnRole, ValueType, ...}, ... ],
       "Columns":    [ {ColumnName, ColumnRole, ValueType, ...}, ... ],
       "ColumnValues": { "<ColumnName>": [v0, v1, ...], ... }
     }
+    Handles two layouts:
+      - REV/GLS records: table nested under data['Volumes']
+      - ColumnBasedTable records: table at the top level of data{}
     Handles cases where ColumnValues may arrive as a dict or a list of objects.
     Leaves other shapes untouched (best-effort).
     """
+    # Look for the table in data['Volumes'] (REV), data['Table'] (CBT), or top-level
     vol = (data_block or {}).get("Volumes", {}) or {}
+    if not vol.get("ColumnValues"):
+        vol = (data_block or {}).get("Table", {}) or {}
+    if not vol.get("ColumnValues") and (data_block or {}).get("ColumnValues"):
+        vol = data_block
     key_cols = vol.get("KeyColumns", []) or []
     value_cols = vol.get("Columns", []) or []
     raw_vals = vol.get("ColumnValues", {}) or {}
@@ -1163,19 +1171,28 @@ async def _enrich_record(
     bd_activity: Dict[str, Any] = {}
     bd_maps: Dict[str, Any] = {"maps": [], "all": []}
     if "businessdecision" in (full.get("kind") or "").lower():
-        if not (volumes or {}).get("ColumnValues"):
-            volumes = await _enrich_bd_volumes(
-                data_block, client, storage_url, hdr)
-        bd_geolabel = await _enrich_bd_geolabel(
-            data_block, client, storage_url, hdr)
-        bd_production = await _enrich_bd_production(
-            data_block, client, storage_url, hdr)
-        await _enrich_bd_developmentconcept(
-            data_block, client, storage_url, hdr)
-        bd_activity = await _enrich_bd_activity(
-            data_block, client, storage_url, hdr)
-        bd_maps = await _enrich_bd_maps(
-            data_block, client, storage_url, hdr)
+        # Run all BD sub-enrichments in parallel
+        vol_task = _enrich_bd_volumes(data_block, client, storage_url, hdr) \
+            if not (volumes or {}).get("ColumnValues") else asyncio.sleep(0)
+        gl_task = _enrich_bd_geolabel(data_block, client, storage_url, hdr)
+        prod_task = _enrich_bd_production(data_block, client, storage_url, hdr)
+        dc_task = _enrich_bd_developmentconcept(data_block, client, storage_url, hdr)
+        act_task = _enrich_bd_activity(data_block, client, storage_url, hdr)
+        map_task = _enrich_bd_maps(data_block, client, storage_url, hdr)
+        vol_r, gl_r, prod_r, _, act_r, map_r = await asyncio.gather(
+            vol_task, gl_task, prod_task, dc_task, act_task, map_task,
+            return_exceptions=True,
+        )
+        if isinstance(vol_r, dict) and vol_r.get("ColumnValues"):
+            volumes = vol_r
+        if isinstance(gl_r, dict):
+            bd_geolabel = gl_r
+        if isinstance(prod_r, dict):
+            bd_production = prod_r
+        if isinstance(act_r, dict):
+            bd_activity = act_r
+        if isinstance(map_r, dict):
+            bd_maps = map_r
 
     # Generic WPC/master-data links (exclude reference-data)
     links = extract_osdu_links(data_block) or []
@@ -1245,6 +1262,22 @@ async def _enrich_record(
     except Exception as e:
         log.warning("[ENRICH] metadata_pairs extraction failed for %s: %s", rid, e)
 
+    # Parse DDMSDatasets URIs for direct RDDMS visualisation (non-BD records)
+    ddms_refs: list[dict[str, str]] = []
+    for duri in (data_block.get("DDMSDatasets") or []):
+        if not isinstance(duri, str):
+            continue
+        ds_m = re.search(r"dataspace\(['\"]?([^'\")\s]+)['\"]?\)", duri)
+        uuid_m = re.search(r"\(([0-9a-f-]{36})\)", duri)
+        if ds_m and uuid_m:
+            rtype = "map" if "Grid2dRepresentation" in duri else "other"
+            ddms_refs.append({
+                "ds": ds_m.group(1),
+                "uuid": uuid_m.group(1),
+                "uri": duri,
+                "rtype": rtype,
+            })
+
     return {
         "id": full.get("id"),
         "kind": full.get("kind"),
@@ -1260,6 +1293,7 @@ async def _enrich_record(
         "bd_production": bd_production,
         "bd_activity": bd_activity,
         "bd_maps": bd_maps,
+        "ddms_refs": ddms_refs,
     }
 
 
@@ -1322,6 +1356,8 @@ async def search_run(
         seen_record_ids: Set[str] = set()
         merged_total_count = 0
         async with httpx.AsyncClient(timeout=60) as client:
+            # ── Phase 1: Search all kinds (sequential — each is one API call) ──
+            all_hit_ids: List[str] = []
             for current_kind in search_kinds:
                 payload = {
                     "kind": current_kind,
@@ -1330,8 +1366,6 @@ async def search_run(
                     "returnedFields": ["id", "kind", "version"],
                     "trackTotalCount": True,
                 }
-
-                # 1) Search for one kind
                 r = await client.post(search_url, headers=hdr, json=payload)
                 r.raise_for_status()
                 res = r.json()
@@ -1342,33 +1376,35 @@ async def search_run(
                     r.status_code,
                     len(res.get("results", [])),
                 )
-
-                # 2) Enrich each hit (de-duplicate by record id)
                 for rec in res.get("results", []):
-                    if len(enriched_results) >= int(limit):
-                        break
-
                     rid = rec.get("id")
-                    if not rid or rid in seen_record_ids:
-                        continue
-                    seen_record_ids.add(rid)
-
-                    try:
-                        # Fetch full storage record
-                        r_full = await client.get(f"{storage_url}/{rid}", headers=hdr)
-                        if r_full.status_code != 200:
-                            log.warning("[SEARCH] Full record fetch failed for %s: %d", rid, r_full.status_code)
-                            continue
-                        full = r_full.json()
-
-                        enriched_results.append(
-                            await _enrich_record(full, client, storage_url, search_url, hdr)
-                        )
-                    except Exception as e:
-                        log.warning("[SEARCH] Exception enriching %s: %s", rid, e)
-
-                if len(enriched_results) >= int(limit):
+                    if rid and rid not in seen_record_ids:
+                        seen_record_ids.add(rid)
+                        all_hit_ids.append(rid)
+                    if len(all_hit_ids) >= int(limit):
+                        break
+                if len(all_hit_ids) >= int(limit):
                     break
+
+            # ── Phase 2: Fetch full storage records in parallel ──────────────
+            async def _fetch_full(rid: str):
+                try:
+                    r_full = await client.get(f"{storage_url}/{rid}", headers=hdr)
+                    if r_full.status_code == 200:
+                        return r_full.json()
+                    log.warning("[SEARCH] Full record fetch failed for %s: %d", rid, r_full.status_code)
+                except Exception as e:
+                    log.warning("[SEARCH] Exception fetching %s: %s", rid, e)
+                return None
+
+            full_records = await asyncio.gather(*[_fetch_full(rid) for rid in all_hit_ids])
+            valid_records = [f for f in full_records if f is not None]
+
+            # ── Phase 3: Enrich all records in parallel ──────────────────────
+            enriched_results = list(await asyncio.gather(*[
+                _enrich_record(full, client, storage_url, search_url, hdr)
+                for full in valid_records
+            ]))
 
         return templates.TemplateResponse(
             "search.html",

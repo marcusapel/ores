@@ -714,6 +714,7 @@ def render_grid2d_png(
     nan_sentinel: float = 1e30,
     unit: str = "m",
     show_crs_info: bool = True,
+    max_render_dim: int = 500,
 ) -> bytes:
     """
     Render a Grid2dRepresentation depth surface as a PNG image.
@@ -724,6 +725,7 @@ def render_grid2d_png(
       - Colour bar with depth range
       - UTM coordinate axes with grid lines
       - NaN masking
+      - Auto-downsampling for grids larger than max_render_dim per axis
 
     Returns PNG bytes.
     """
@@ -745,6 +747,18 @@ def render_grid2d_png(
     Z[np.abs(Z) > nan_sentinel] = np.nan
 
     X, Y = build_xy_mesh(geometry, crs)
+
+    # Downsample large grids to keep rendering fast
+    step_i = max(1, n_slow // max_render_dim)
+    step_j = max(1, n_fast // max_render_dim)
+    if step_i > 1 or step_j > 1:
+        log.info("render_grid2d_png: downsampling %dx%d → %dx%d (step %d×%d)",
+                 n_slow, n_fast,
+                 n_slow // step_i, n_fast // step_j,
+                 step_i, step_j)
+        Z = Z[::step_i, ::step_j]
+        X = X[::step_i, ::step_j]
+        Y = Y[::step_i, ::step_j]
 
     # Determine if Z should be negated (ZIncreasingDownward means positive Z is deeper)
     z_down = True

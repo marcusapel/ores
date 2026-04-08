@@ -195,17 +195,19 @@
       const ox = Math.abs(parseFloat(origin.Coordinate1 || 0));
       const oy = Math.abs(parseFloat(origin.Coordinate2 || 0));
 
-      // Check ExtraMetadata for table markers
+      // Check ExtraMetadata for table markers (resqpy DataFrame convention)
       const em = content.ExtraMetadata || [];
       const emKeys = em.map(e => (e.Name || e.name || '').toLowerCase());
       const hasStlMarkers = emKeys.some(k => k.startsWith('stl_'));
 
-      // Spatial origin: UTM coords are typically > 100 000
+      // Spatial origin: UTM coords are typically > 1000
       const hasSpatialOrigin = ox > 1000 || oy > 1000;
 
+      // Tables are rare — only when explicit STL markers exist and no spatial origin
       if (hasStlMarkers && !hasSpatialOrigin) return 'table';
-      if (hasSpatialOrigin && !hasStlMarkers) return 'map';
-      return 'both';  // ambiguous — offer both options
+      if (hasStlMarkers && hasSpatialOrigin) return 'both';
+      // Default: treat as map (spatial surface) — the common case
+      return 'map';
     }
 
     async function loadDataspaces() {

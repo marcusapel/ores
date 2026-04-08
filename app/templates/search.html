@@ -1362,7 +1362,9 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
                   {% endif %}
                 </tbody>
               </table>
+              {% if has_volumes %}
               <div class="muted" style="font-size:.85rem;margin-top:.25rem;">Tabular volume arrays are intentionally hidden here and shown only in the reconstructed table below.</div>
+              {% endif %}
             </div>
           </section>
 
@@ -1575,12 +1577,75 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
           </section>
           {% endif %}
 
+          {# ── DDMS-linked depth map (non-BD records with Grid2d DDMSDatasets) ── #}
+          {% if not is_business_decision %}
+          {% set ddms_maps = [] %}
+          {% for ref in (rec.ddms_refs or []) %}
+            {% if ref.rtype == 'map' %}{% set _ = ddms_maps.append(ref) %}{% endif %}
+          {% endfor %}
+          {% for ref in ddms_maps %}
+            <section class="section-card ddms-map-section" data-ds="{{ ref.ds }}" data-uuid="{{ ref.uuid }}">
+              <h5>RDDMS Depth Map</h5>
+              <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem;">
+                <span style="font-weight:600;font-size:.88rem;color:#2d3748;">{{ label }}</span>
+                <span style="font-size:.72rem;background:#e2e8f0;border-radius:999px;padding:.1rem .4rem;color:#4a5568;">{{ ref.ds }}</span>
+              </div>
+              <div class="ddms-map-placeholder" style="margin-bottom:.3rem;text-align:center;">
+                <button type="button" class="btn-load-ddms-map" style="padding:.35rem .8rem;font-size:.85rem;cursor:pointer;" onclick="loadDdmsMap(this)">Load depth map</button>
+                <span class="ddms-map-status muted" style="margin-left:.5rem;"></span>
+              </div>
+              <div style="font-size:.72rem;color:#a0aec0;word-break:break-all;">
+                <a href="/keys/object/map.json?ds={{ ref.ds }}&amp;uuid={{ ref.uuid }}" target="_blank" style="font-size:.72rem;">Map JSON ↗</a>
+                <a href="/keys?ds={{ ref.ds }}" style="margin-left:.5rem;font-size:.72rem;">Browse dataspace →</a>
+              </div>
+            </section>
+          {% endfor %}
+          {% endif %}
+
         </div>
       </div>
     {% endfor %}
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script>
+    /* ── DDMS depth map lazy loader ── */
+    window.loadDdmsMap = function(btn) {
+      const section = btn.closest('.ddms-map-section');
+      if (!section) return;
+      const ds = section.dataset.ds;
+      const uuid = section.dataset.uuid;
+      const status = section.querySelector('.ddms-map-status');
+      const placeholder = section.querySelector('.ddms-map-placeholder');
+      status.textContent = 'Fetching surface from RDDMS (may take 30-60s for large grids)…';
+      btn.disabled = true;
+
+      const img = new Image();
+      const src = '/keys/object/map.png?ds=' + encodeURIComponent(ds) + '&uuid=' + encodeURIComponent(uuid) + '&w=12&h=8&dpi=100';
+
+      // Timeout: abort after 90s
+      const timer = setTimeout(function() {
+        img.src = '';
+        status.textContent = 'Timed out after 90s — the grid may be too large. Try from the Resources page with lower DPI.';
+        btn.disabled = false;
+      }, 90000);
+
+      img.src = src;
+      img.alt = 'Depth map';
+      img.style.cssText = 'max-width:100%;border-radius:6px;border:1px solid #e2e8f0;';
+      img.loading = 'lazy';
+      img.onload = function() {
+        clearTimeout(timer);
+        placeholder.innerHTML = '';
+        placeholder.appendChild(img);
+        status.textContent = '';
+      };
+      img.onerror = function() {
+        clearTimeout(timer);
+        status.textContent = 'Failed to load map — the RDDMS surface may not have z-values or an unsupported CRS.';
+        btn.disabled = false;
+      };
+    };
+
     /* ── Volume histogram popup ── */
     (function(){
       let activeModal = null;

@@ -57,17 +57,10 @@ def _access_token(request: Request) -> str:
 
 @router.get("/keys", response_class=HTMLResponse)
 async def keys_page(request: Request):
-    prefill_ds = []
-    try:
-        at = _access_token(request)
-        rows = await osdu.list_dataspaces(at)
-        prefill_ds = [{"path": x.get("path", ""), "uri": x.get("uri", "")} for x in (rows or []) if x.get("path")]
-    except Exception as e:
-        log.warning("keys_page list_dataspaces failed: %s", e)
-        prefill_ds = []
+    # Render immediately — dataspaces loaded async via JS /keys/dataspaces.json
     return templates.TemplateResponse(
         "keys.html",
-        {"request": request, "prefill_ds": prefill_ds},
+        {"request": request, "prefill_ds": []},
         media_type="text/html",
     )
 
