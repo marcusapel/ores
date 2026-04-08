@@ -37,19 +37,11 @@ A structure map (or any interpretation surface) lives in **two places**, each se
 
 The OSDU record **never contains the Z-value arrays** (the depth/time surface data). It intentionally duplicates only the grid geometry parameters (origin, bearing, spacing, node counts) so the surface can be discovered spatially without hitting the RDDMS. For visualisation or computation, the `DDMSDatasets[]` URI on the OSDU record points to the RDDMS object where the actual data lives:
 
-```
-┌─────────────────────────────────┐      DDMSDatasets[] URI       ┌────────────────────────────────┐
-│  OSDU Catalog Record            │ ─────────────────────────────►│  Reservoir DDMS (RESQML)       │
-│                                 │                               │                                │
-│  • Name, Description            │                               │  Grid2dRepresentation          │
-│  • InterpretationID             │                               │   • Z-values array (depth/TWT) │
-│  • Grid geometry (summary)      │                               │   • Full lattice geometry      │
-│  • SpatialArea (for search)     │                               │   • LocalCrs (CRS object)      │
-│  • DomainTypeID (Depth/Time)    │                               │   • ExtraMetadata              │
-│  • DDMSDatasets[] ──────────────┼──► eml://reservoir-ddms1/     │                                │
-│                                 │    dataspace('maap/volve')/   │                                │
-│  NO depth/time values here      │    resqml20.Grid2dRepr(uuid)  │  ALL depth/time values here    │
-└─────────────────────────────────┘                               └────────────────────────────────┘
+```mermaid
+flowchart LR
+    OSDU["**OSDU Catalog Record**<br/>Name · InterpretationID<br/>Grid geometry (origin, spacing)<br/>SpatialArea · DomainTypeID<br/>❌ No Z-values"]
+    RDDMS["**Reservoir DDMS**<br/>Grid2dRepresentation<br/>Z-values array (depth/TWT)<br/>Full lattice geometry<br/>LocalCrs · ✅ All data here"]
+    OSDU -- "DDMSDatasets[] URI" --> RDDMS
 ```
 
 There is **no dedicated "StructureMap" type in RESQML** — a `Grid2dRepresentation` with a depth CRS **is** the structure map. The distinction between depth and TWT is made entirely by the CRS (`VerticalAxis.IsTime = false` for depth, `true` for TWT). The OSDU StructureMap:1.0.0 schema is a catalog wrapper that makes this RESQML object discoverable.
@@ -139,23 +131,9 @@ No additional individual properties — all grid geometry comes from `AbstractGe
 
 **Role**: Seed picks used for horizon interpretation. Links to seismic input data, well markers, and carries tabular control point data.
 
-**Individual properties**:
+**Key individual properties**: `SeismicTraceDataIDs[]`, `BinGridID`, `WellboreMarkerSetIDs[]`, `DomainTypeID`, `HorizonControlPoints` (AbstractColumnBasedTable with I, J, X, Y, Z columns), `ExtensionProperties`.
 
-| Property | Type | Description |
-|---|---|---|
-| `RepresentationRole` | ref-data | Role of the representation |
-| `RepresentationType` | ref-data | Type (PointSet, etc.) |
-| `SeismicTraceDataIDs[]` | rel → SeismicTraceData | Seismic cubes used for picking |
-| `BinGridID` | rel → GenericBinGrid \| SeismicBinGrid | Grid context for picks |
-| `SeismicLineGeometryIDs[]` | rel → SeismicLineGeometry | 2D line geometry refs |
-| `Seismic3DInterpretationSetID` | rel → Seismic3DInterpretationSet | 3D survey context |
-| `Seismic2DInterpretationSetID` | rel → Seismic2DInterpretationSet | 2D survey context |
-| `DomainTypeID` | ref-data → DomainType | Depth / Time |
-| `HorizontalCRSID` | rel → CoordinateReferenceSystem | CRS for pick coordinates |
-| `VerticalDatum` | AbstractFacilityVerticalMeasurement | Vertical reference |
-| `WellboreMarkerSetIDs[]` | rel → WellboreMarkerSet | Well tie markers |
-| `HorizonControlPoints` | AbstractColumnBasedTable | Tabular pick data (I, J, X, Y, Z) |
-| `ExtensionProperties` | object | Operator extensions |
+> Full property list: [HorizonControlPoints:1.0.0 schema](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/HorizonControlPoints.1.0.0.md)
 
 ### 2.4 SeismicHorizon:2.1.0
 
@@ -170,31 +148,66 @@ This single addition creates the **traceability link** from the interpolated sur
 
 ## 3) Schema Inheritance Architecture
 
+```mermaid
+classDiagram
+    direction TB
+
+    AbstractCommonResources <|-- AbstractWPCGroupType
+    AbstractWPCGroupType <|-- AbstractWorkProductComponent
+
+    AbstractWorkProductComponent <|-- AbstractInterpretation
+    AbstractInterpretation <|-- HorizonInterpretation
+    AbstractInterpretation <|-- FaultInterpretation
+
+    AbstractWorkProductComponent <|-- AbstractRepresentation
+    AbstractRepresentation <|-- SeismicHorizon
+    AbstractRepresentation <|-- SeismicFault
+    AbstractRepresentation <|-- GenericRepresentation
+    AbstractRepresentation <|-- VelocityModeling
+    AbstractRepresentation <|-- HorizonControlPoints
+    AbstractRepresentation <|-- StructureMap
+    AbstractGenericBinGrid <|-- StructureMap
+
+    AbstractWorkProductComponent <|-- AbstractBinGrid
+    AbstractBinGrid <|-- SeismicBinGrid
+
+    AbstractWorkProductComponent <|-- AbstractGenericBinGrid
+    AbstractGenericBinGrid <|-- GenericBinGrid
+
+    class AbstractWPCGroupType {
+        DDMSDatasets[]
+        Datasets[]
+        NameAliases[]
+    }
+    class AbstractInterpretation {
+        DomainTypeID
+        FeatureID
+        FeatureName
+    }
+    class AbstractRepresentation {
+        InterpretationID
+        CrsID
+        IndexableElementCount[]
+    }
+    class AbstractGenericBinGrid {
+        Origin, Bearing
+        BinWidth, NodeCount
+    }
+    class StructureMap {
+        BinGridID
+        SeismicHorizonID
+        DomainTypeID
+        «dual inheritance»
+    }
+    class HorizonControlPoints {
+        «M27 new»
+    }
+    class GenericBinGrid {
+        «M27 new»
+    }
 ```
-AbstractCommonResources:1.0.1          (id, kind, acl, legal, meta, tags)
-    └─ AbstractWPCGroupType:1.2.0      (Datasets[], DDMSDatasets[], Artefacts[], NameAliases[])
-        └─ AbstractWorkProductComponent:1.1.0  (Name, SpatialArea, SpatialPoint, GeoContexts[],
-        │                                        LineageAssertions[], AuthorIDs[])
-        ├─ AbstractInterpretation:1.1.0        (DomainTypeID, FeatureID, FeatureName)
-        │   ├─ HorizonInterpretation:1.2.0     (StratigraphicRoleTypeID, BoundaryRelationTypeID, ...)
-        │   └─ FaultInterpretation:1.1.0       (FaultThrowDescriptions[], IsListric, ...)
-        │
-        ├─ AbstractRepresentation:1.0.0        (InterpretationID, LocalModelCompoundCrsID,
-        │   │                                    TimeSeries, RealizationIndex, IndexableElementCount[])
-        │   ├─ SeismicHorizon:2.1.0            (DomainTypeID, SeismicHorizonTypeID, Interpreter, ...)
-        │   ├─ SeismicFault:2.0.0              (DomainTypeID, BinGridID, Interpreter, ...)
-        │   ├─ GenericRepresentation:1.2.0     (Role, Type)
-        │   ├─ VelocityModeling:1.4.0          (...)
-        │   ├─ HorizonControlPoints:1.0.0      (seed picks — M27)
-        │   └─ StructureMap:1.0.0              (depth/time grid surface — M27)
-        │       └─ also inherits AbstractGenericBinGrid:1.0.0 (dual inheritance)
-        │
-        ├─ AbstractBinGrid:1.1.0               (ABCDBinGridSpatialLocation)
-        │   └─ SeismicBinGrid:1.3.0            (P6 properties, inline/crossline ranges)
-        │
-        └─ AbstractGenericBinGrid:1.0.0        (Origin, Bearing, Width, NodeCount — M27)
-            └─ GenericBinGrid:1.0.0            (standalone grid entity — M27)
-```
+
+> 🟢 StructureMap, HorizonControlPoints, GenericBinGrid = **new M27** schemas. 🟠 SeismicHorizon = **updated in M27**.
 
 **Key design principles**:
 - Schemas inheriting **AbstractInterpretation** carry geologic meaning (the "what") — no geometry data
@@ -295,31 +308,20 @@ StructureMap supports two mutually exclusive approaches to grid definition:
 
 The schema explicitly states: *"Mutually exclusive with inline bin grid definition via the AbstractGenericBinGrid properties. Only one approach should be populated."*
 
-### 5.2 Complete Property Summary
+### 5.2 Key Properties (Individual)
 
-| Source | Property | Type | Description |
-|---|---|---|---|
-| AbstractRepresentation | `InterpretationID` | rel → HorizonInterpretation (and others) | Geologic interpretation link |
-| AbstractRepresentation | `InterpretationName` | string (derived) | Name from linked interpretation |
-| AbstractRepresentation | `LocalModelCompoundCrsID` | rel → LocalModelCompoundCrs | CRS context |
-| AbstractRepresentation | `TimeSeries` | object | Time-step reference for geomechanics |
-| AbstractRepresentation | `RealizationIndex` | integer | Stochastic realization index |
-| AbstractRepresentation | `IndexableElementCount[]` | array | Element counts |
-| AbstractGenericBinGrid | `BinGridName` | string | Name of the bin grid |
-| AbstractGenericBinGrid | `ABCDBinGridSpatialLocation` | AbstractSpatialLocation | ABCD corner coordinates |
-| AbstractGenericBinGrid | `OriginEasting` | number | Grid origin easting |
-| AbstractGenericBinGrid | `OriginNorthing` | number | Grid origin northing |
-| AbstractGenericBinGrid | `ScaleFactor` | number | Scale factor (default 1) |
-| AbstractGenericBinGrid | `BinWidthOnIaxis` | number | Node spacing on I axis |
-| AbstractGenericBinGrid | `BinWidthOnJaxis` | number | Node spacing on J axis |
-| AbstractGenericBinGrid | `MapGridBearingOfBinGridJaxis` | number (0–360°) | Clockwise from grid north to J axis |
-| AbstractGenericBinGrid | `NodeCountOnIAxis` | number | Number of nodes on I axis |
-| AbstractGenericBinGrid | `NodeCountOnJAxis` | number | Number of nodes on J axis |
-| AbstractGenericBinGrid | `TransformationMethod` | integer | EPSG code: 9666 (right-handed) or 1049 (left-handed) |
-| **Individual** | **`BinGridID`** | rel → GenericBinGrid \| SeismicBinGrid | External grid reference (mutex with inline) |
-| **Individual** | **`SeismicHorizonID`** | rel → SeismicHorizon:2.1.0 | Source TWT surface |
-| **Individual** | **`DomainTypeID`** | ref-data → DomainType | Depth / Time / Mixed |
-| **Individual** | **`ExtensionProperties`** | object | Operator-specific extensions |
+StructureMap inherits standard representation metadata from [AbstractRepresentation](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/abstract/AbstractRepresentation.1.0.0.md) (`InterpretationID`, `CrsID`, `IndexableElementCount[]`) and grid geometry from [AbstractGenericBinGrid](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/abstract/AbstractGenericBinGrid.1.0.0.md) (`Origin`, `Bearing`, `BinWidth`, `NodeCount`, `TransformationMethod`, `ABCDBinGridSpatialLocation`).
+
+Its **own** individual properties are:
+
+| Property | Type | Description |
+|---|---|---|
+| `BinGridID` | rel → GenericBinGrid \| SeismicBinGrid | External grid reference (mutex with inline) |
+| `SeismicHorizonID` | rel → SeismicHorizon:2.1.0 | Source TWT surface (provenance) |
+| `DomainTypeID` | ref-data → DomainType | Depth / Time / Mixed |
+| `ExtensionProperties` | object | Operator-specific extensions |
+
+> Full schema: [StructureMap:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/StructureMap.1.0.0.md)
 
 ### 5.3 Design Notes
 
@@ -332,23 +334,13 @@ The schema explicitly states: *"Mutually exclusive with inline bin grid definiti
 
 ## 6) GenericBinGrid:1.0.0 & AbstractGenericBinGrid:1.0.0
 
-### 6.1 AbstractGenericBinGrid Properties
+### 6.1 Overview
 
-All properties below are inherited by both `GenericBinGrid:1.0.0` and `StructureMap:1.0.0`:
+All grid geometry properties (OriginEasting, OriginNorthing, BinWidthOnI/Jaxis, MapGridBearingOfBinGridJaxis, NodeCountOnI/JAxis, ScaleFactor, TransformationMethod, ABCDBinGridSpatialLocation) are defined on [AbstractGenericBinGrid:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/abstract/AbstractGenericBinGrid.1.0.0.md) and inherited by both GenericBinGrid:1.0.0 and StructureMap:1.0.0.
 
-| Property | Type | Description |
-|---|---|---|
-| `BinGridName` | string | Name of the bin grid |
-| `ABCDBinGridSpatialLocation` | AbstractSpatialLocation:1.1.0 | Corner coordinates: A=(i=0,j=0), B=(i=0,j=jMax), C=(i=Imax,j=0), D=(i=Imax,j=Jmax) |
-| `OriginEasting` | number | Easting of origin point (A point) |
-| `OriginNorthing` | number | Northing of origin point (A point) |
-| `ScaleFactor` | number | Scale factor for bin grid (default 1) |
-| `BinWidthOnIaxis` | number | Distance between nodes on I axis |
-| `BinWidthOnJaxis` | number | Distance between nodes on J axis |
-| `MapGridBearingOfBinGridJaxis` | number (0–360°) | Clockwise angle from grid north to J axis direction |
-| `NodeCountOnIAxis` | number | Count of nodes on I axis |
-| `NodeCountOnJAxis` | number | Count of nodes on J axis |
-| `TransformationMethod` | integer | EPSG 9666 (right-handed) or 1049 (left-handed) |
+GenericBinGrid:1.0.0 adds no individual properties — it exists solely as a standalone, referenceable grid entity (the non-seismic counterpart to SeismicBinGrid:1.3.0).
+
+> Full schema: [GenericBinGrid:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/GenericBinGrid.1.0.0.md)
 
 ### 6.2 ABCD Corner Convention
 
@@ -399,22 +391,17 @@ The `HorizonControlPoints` tabular data uses `AbstractColumnBasedTable` — a co
 
 ### 7.2 Key Relationships
 
-```
-HorizonControlPoints
-    ├─ InterpretationID    → HorizonInterpretation  (same geologic meaning)
-    ├─ SeismicTraceDataIDs → SeismicTraceData[]      (input cubes)
-    ├─ BinGridID           → GenericBinGrid | SeismicBinGrid  (grid context)
-    ├─ WellboreMarkerSetIDs → WellboreMarkerSet[]    (well tie points)
-    └─ Seismic3D/2DInterpretationSetID → survey context
+```mermaid
+flowchart LR
+    HCP[HorizonControlPoints] -->|InterpretationID| HI[HorizonInterpretation]
+    HCP -->|BinGridID| Grid[GenericBinGrid / SeismicBinGrid]
+    HCP -->|SeismicTraceDataIDs| STD[SeismicTraceData]
+    HCP -->|WellboreMarkerSetIDs| WMS[WellboreMarkerSet]
+    SH[SeismicHorizon] -->|HorizonControlPointsID| HCP
+    SM[StructureMap] -->|SeismicHorizonID| SH
 ```
 
-### 7.3 Downstream Link
-
-SeismicHorizon:2.1.0 references HorizonControlPoints via `HorizonControlPointsID`, creating full lineage:
-
-```
-Picks (HorizonControlPoints) → Surface (SeismicHorizon) → Depth Map (StructureMap)
-```
+The chain provides full lineage: **Picks → TWT Surface → Depth Map**.
 
 ---
 
@@ -422,23 +409,9 @@ Picks (HorizonControlPoints) → Surface (SeismicHorizon) → Depth Map (Structu
 
 ### 8.1 Change from 2.0.0
 
-Only one addition:
+Single addition: **`HorizonControlPointsID`** (rel → HorizonControlPoints:1.0.0) — links the interpolated surface back to its seed picks. All other properties remain unchanged.
 
-| New Property | Type | Description |
-|---|---|---|
-| `HorizonControlPointsID` | rel → HorizonControlPoints:1.0.0 | Links the interpolated surface back to its seed picks |
-
-All other properties remain the same as 2.0.0:
-
-| Property | Type | Description |
-|---|---|---|
-| `DomainTypeID` | ref-data → DomainType | Depth / Time / Mixed |
-| `RepresentationType` | ref-data → RepresentationType | Regular2DGrid, PolylineSet, etc. |
-| `SeismicHorizonTypeID` | ref-data | Peak, Trough, Zero Crossing |
-| `PetroleumSystemElementTypeID` | ref-data | Reservoir, Source, Seal |
-| `Interpreter` | string | Person/team name |
-| `Remarks[]` | array | Annotation remarks |
-| `HorizonControlPointsID` | rel → HorizonControlPoints | **NEW in 2.1.0** — seed picks link |
+> Full schema: [SeismicHorizon:2.1.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/SeismicHorizon.2.1.0.md)
 
 ### 8.2 DomainTypeID vs SeismicDomainTypeID
 
@@ -448,46 +421,19 @@ Issue [#12 (Seismic Domain vs Domain)](https://gitlab.opengroup.org/osdu/subcomm
 
 ## 9) Field Alignment Across Schemas
 
-### 9.1 Representation Schemas
+The key design differences between representation schemas (what each schema adds beyond the shared AbstractRepresentation base) are summarised below. For complete property lists, see the individual schema links in [§16 References](#16-references).
 
-| Field | SeismicHorizon:2.1.0 | SeismicFault:2.0.0 | StructureMap:1.0.0 | GenericRep:1.2.0 |
-|---|---|---|---|---|
-| `InterpretationID` | ✓ (inherited) | ✓ (inherited) | ✓ (inherited) | ✓ (inherited) |
+| Capability | SeismicHorizon | SeismicFault | StructureMap | GenericRep |
+|---|:---:|:---:|:---:|:---:|
 | `DomainTypeID` | ✓ | ✓ | ✓ | ✗ |
-| `RepresentationType` | ✓ | ✓ | ✗ (always Regular2DGrid) | ✓ (as `Type`) |
-| `Interpreter` | ✓ | ✓ | ✗ | ✗ |
-| `Remarks[]` | ✓ | ✓ | ✗ | ✗ |
-| `PetroleumSystemElementTypeID` | ✓ | ✗ | ✗ | ✗ |
-| `BinGridID` ref | ✗ (SeismicBinGridID) | ✓ | ✓ (GenericBinGrid \| SeismicBinGrid) | ✗ |
-| `SeismicHorizonID` | ✗ | ✗ | ✓ | ✗ |
+| `Interpreter` / `Remarks[]` | ✓ | ✓ | ✗ | ✗ |
+| `BinGridID` reference | SeismicBinGridID | ✓ | ✓ (Generic or Seismic) | ✗ |
+| Inline grid geometry | ✗ | ✗ | ✓ (AbstractGenericBinGrid) | ✗ |
+| `SeismicHorizonID` provenance | ✗ | ✗ | ✓ | ✗ |
 | `HorizonControlPointsID` | ✓ (M27) | ✗ | ✗ | ✗ |
-| Inline grid properties | ✗ | ✗ | ✓ (AbstractGenericBinGrid) | ✗ |
-| `LocalModelCompoundCrsID` | ✓ (inherited) | ✓ (inherited) | ✓ (inherited) | ✓ (inherited) |
-| `DDMSDatasets[]` | ✓ (inherited) | ✓ (inherited) | ✓ (inherited) | ✓ (inherited) |
 | `ExtensionProperties` | ✗ | ✗ | ✓ | ✗ |
 
-### 9.2 Grid Schemas
-
-| Field | SeismicBinGrid:1.3.0 | GenericBinGrid:1.0.0 | StructureMap:1.0.0 (inline mode) |
-|---|---|---|---|
-| `ABCDBinGridSpatialLocation` | ✓ | ✓ | ✓ |
-| Origin Easting/Northing | ✓ (P6BinGridOrigin...) | ✓ (Origin...) | ✓ (Origin...) |
-| Axis widths | ✓ (P6BinNodeIncrement vector) | ✓ (BinWidthOnI/Jaxis scalar) | ✓ (BinWidthOnI/Jaxis scalar) |
-| Axis direction | ✓ (P6 increment vectors) | ✓ (MapGridBearingOfBinGridJaxis + TransformationMethod) | ✓ (same) |
-| Node/range count | ✓ (InlineMin/Max, CrosslineMin/Max) | ✓ (NodeCountOnI/JAxis) | ✓ (NodeCountOnI/JAxis) |
-| `BinGridName` | ✗ | ✓ | ✓ |
-| `ScaleFactor` | ✗ | ✓ | ✓ |
-| `TransformationMethod` | P6TransformationMethod | TransformationMethod (EPSG 9666/1049) | TransformationMethod |
-
-### 9.3 Consistent Reference Data
-
-| Ref-Data Type | Used By |
-|---|---|
-| `DomainType` (Depth/Time/Mixed) | HorizonInterpretation, SeismicHorizon, SeismicFault, StructureMap, HorizonControlPoints |
-| `RepresentationType` | SeismicHorizon, SeismicFault, GenericRepresentation, HorizonControlPoints |
-| `StratigraphicRoleType` | HorizonInterpretation |
-| `BoundaryRelationType` | HorizonInterpretation |
-| `PetroleumSystemElementType` | SeismicHorizon |
+All share `InterpretationID`, `CrsID`, `DDMSDatasets[]` via inheritance.
 
 ---
 
@@ -528,18 +474,41 @@ OSDU catalog records are generated from RESQML content already stored in the RDD
 
 ### 11.1 Pipeline Pattern
 
+```mermaid
+flowchart LR
+    subgraph RDDMS["RDDMS Dataspace (RESQML)"]
+        R1[GeneticBoundaryFeature]
+        R2[HorizonInterpretation]
+        R3[seed picks / markers]
+        R4[Grid2dRep — TWT]
+        R5[Grid2dRep — Depth]
+        R6[FaultInterpretation]
+        R7[TriangulatedSetRep]
+        R8[lattice geometry]
+    end
+
+    subgraph OSDU["OSDU Catalog Records"]
+        O1[LocalBoundaryFeature]
+        O2[HorizonInterpretation WPC]
+        O3[HorizonControlPoints 🆕]
+        O4[SeismicHorizon WPC]
+        O5[StructureMap 🆕]
+        O6[FaultInterpretation WPC]
+        O7[SeismicFault WPC]
+        O8[GenericBinGrid 🆕]
+    end
+
+    R1 --> O1
+    R2 --> O2
+    R3 --> O3
+    R4 --> O4
+    R5 --> O5
+    R6 --> O6
+    R7 --> O7
+    R8 --> O8
 ```
-RDDMS Dataspace
-    │
-    ├─ obj_GeneticBoundaryFeature      ──►  LocalBoundaryFeature (master-data)
-    ├─ obj_HorizonInterpretation       ──►  HorizonInterpretation (WPC)
-    ├─ seed picks / markers            ──►  HorizonControlPoints (WPC)       ◄── M27
-    ├─ obj_Grid2dRepresentation (TWT)  ──►  SeismicHorizon (WPC)
-    ├─ obj_Grid2dRepresentation (Depth)──►  StructureMap (WPC)               ◄── M27
-    ├─ obj_FaultInterpretation         ──►  FaultInterpretation (WPC)
-    ├─ obj_TriangulatedSetRep (fault)  ──►  SeismicFault (WPC)
-    └─ (lattice geometry, non-seismic) ──►  GenericBinGrid (WPC)             ◄── M27
-```
+
+> 🆕 = M27 additions.
 
 ### 11.2 Key Mapping Rules
 
@@ -706,25 +675,20 @@ None of these conditions are currently met. The ExtraMetadata convention approac
 
 Given RESQML objects already stored in the RDDMS, OSDU StructureMap records can be **automatically generated** via metadata extraction:
 
-```
-RDDMS Query: GET Grid2dRepresentations in dataspace
-       │
-       ▼
-Filter: LocalCrs.VerticalAxis.IsTime == false  →  depth surfaces only
-       │
-       ▼
-For each depth Grid2dRepresentation:
-   1. Citation.Title         → data.Name
-   2. RepresentedObject.Uuid → resolve to OSDU HorizonInterpretation ID
-   3. Determine grid pattern:
-      a. Point3dLatticeArray → inline grid → populate AbstractGenericBinGrid props
-      b. Point3dFromRepresentationLatticeArray → external grid:
-         - SupportingRepresentation.Uuid → resolve to OSDU GenericBinGrid/SeismicBinGrid
-         - Set BinGridID
-   4. Find TWT counterpart (same RepresentedObject, time CRS) → SeismicHorizonID
-   5. Set DomainTypeID = Depth
-   6. Build DDMSDatasets[].DatasetURI = eml://...
-   7. Emit OSDU StructureMap:1.0.0 record
+```mermaid
+flowchart TD
+    A["RDDMS: GET Grid2dRepresentations"] --> B{"CRS check:\nIsTime == false?"}
+    B -->|Yes — depth| C["For each depth surface"]
+    B -->|No — TWT| skip[Skip]
+    C --> D["Citation.Title → Name"]
+    D --> E["RepresentedObject → InterpretationID"]
+    E --> F{"Grid pattern?"}
+    F -->|Inline lattice| G["Populate inline grid props\n(origin, bearing, spacing, nodes)"]
+    F -->|External ref| H["Resolve SupportingRepresentation\n→ BinGridID"]
+    G --> I["Find TWT counterpart → SeismicHorizonID"]
+    H --> I
+    I --> J["Build DDMSDatasets[] URI"]
+    J --> K["Emit StructureMap:1.0.0 record"]
 ```
 
 #### Finding the TWT Counterpart (SeismicHorizonID)
@@ -910,19 +874,26 @@ via three REST endpoints. The implementation lives in two modules:
 
 #### Pipeline Flow
 
-```
-RDDMS REST API                    ORES structuremap module         OSDU Catalog
-  ┌─────────────┐                 ┌─────────────────────┐          ┌──────────┐
-  │ list         │ ──resources──► │ discover_surfaces()  │          │          │
-  │ Grid2dReps   │                │   classify by CRS    │          │          │
-  ├─────────────┤                ├─────────────────────┤          │          │
-  │ fetch each   │ ──geometry──►  │ surface_to_          │          │          │
-  │ + CRS + z    │                │   structuremap()     │          │          │
-  └─────────────┘                │   • bearing/width    │──smaps─►│ Ingest   │
-                                  │   • ABCD corners     │          │ via      │
-                                  │   • DDMSDatasets URI  │          │ Storage  │
-                                  │   • InterpretationID  │          │ Service  │
-                                  └─────────────────────┘          └──────────┘
+```mermaid
+flowchart LR
+    subgraph RDDMS["RDDMS REST API"]
+        L["list Grid2dReps"]
+        F["fetch geometry + CRS + z"]
+    end
+
+    subgraph ORES["ORES structuremap module"]
+        D["discover_surfaces()\nclassify by CRS"]
+        S["surface_to_structuremap()\nbearing, width, ABCD corners\nDDMSDatasets URI"]
+    end
+
+    subgraph Catalog["OSDU Catalog"]
+        I["Ingest via\nStorage Service"]
+    end
+
+    L --> D
+    F --> S
+    D --> S
+    S --> I
 ```
 
 #### Example: Generate manifest for maap/drogon
@@ -992,32 +963,14 @@ Our Volantis worked example is positioned as a contribution to MVP1.
 
 ### 14.5 Proposed Improvements for StructureMap:1.1.0
 
-Properties that exist on SeismicHorizon but are absent from StructureMap, creating search asymmetry:
+Properties present on SeismicHorizon but absent from StructureMap (`Interpreter`, `Remarks[]`, `PetroleumSystemElementTypeID`) create search asymmetry. Recommend proposing `StructureMap:1.1.0` adding these as optional individual properties (non-breaking minor version bump).
 
-| Property | SeismicHorizon | StructureMap | Impact |
-|---|---|---|---|
-| `Interpreter` | ✓ | ✗ | Cannot search "depth maps by interpreter" without traversing SeismicHorizonID |
-| `Remarks[]` | ✓ | ✗ | Annotations lost on depth conversion |
-| `PetroleumSystemElementTypeID` | ✓ | ✗ | Cannot filter depth maps by reservoir/source/seal |
+### 14.6 Cross-Schema Consistency
 
-**Recommendation**: Propose `StructureMap:1.1.0` adding these as optional individual properties (non-breaking minor version bump).
-
-### 14.6 Cross-Schema Consistency for RESQML Round-Tripping
-
-| Field | Should Be On | Currently On | Status |
-|---|---|---|---|
-| `DomainTypeID` | All representations | SeismicHorizon, SeismicFault, StructureMap, HorizonControlPoints | ✓ Good |
-| `InterpretationID` | All representations | All (via AbstractRepresentation) | ✓ |
-| `BinGridID` | All grid-based representations | SeismicFault, StructureMap, HorizonControlPoints | SeismicHorizon uses `SeismicBinGridID` — inconsistent name |
-| `Interpreter` | All representations | SeismicHorizon, SeismicFault only | **Gap** — StructureMap, HorizonControlPoints lack it |
-| `DDMSDatasets[]` | All WPCs | All (via AbstractWPCGroupType) | ✓ |
-
-HorizonInterpretation:1.2.0 also has RESQML mapping gaps worth noting:
-
-| RESQML Property | Current OSDU | Improvement |
-|---|---|---|
-| `BoundaryRelation[]` (array) | `BoundaryRelationTypeID` (single) | Upgrade to `BoundaryRelationTypeIDs[]` (array) |
-| `SequenceStratigraphySurface` | `StratigraphicRoleTypeID` | Need complete ref-data for RESQML enum values (`transgressive`, `maximum flooding`, etc.) |
+Key consistency gaps worth tracking:
+- `BinGridID` naming: SeismicHorizon uses `SeismicBinGridID` while StructureMap/SeismicFault use `BinGridID`
+- `Interpreter` is on SeismicHorizon and SeismicFault but not StructureMap or HorizonControlPoints
+- HorizonInterpretation's `BoundaryRelationTypeID` (single) vs RESQML's `BoundaryRelation[]` (array)
 
 ---
 
@@ -1054,16 +1007,15 @@ This section evaluates the argument systematically.
 
 The diagram below shows what is actually "duplicated":
 
-```
-GenericRepresentation (existing)
-      inherits: AbstractRepresentation
-      individual: Role (string), Type (string)
-      → total individual properties: 2 (both free-text-like)
+```mermaid
+flowchart TD
+    AR[AbstractRepresentation\nInterpretationID, CRS, DDMSDatasets]
 
-StructureMap (M27)
-      inherits: AbstractRepresentation + AbstractGenericBinGrid
-      individual: BinGridID, SeismicHorizonID, DomainTypeID, ExtensionProperties
-      → total individual properties: 4 (all typed/referenced)
+    AR --> GR["GenericRepresentation\nRole (string), Type (string)\n→ 2 free-text properties"]
+    AR --> SM["StructureMap\n+ AbstractGenericBinGrid (10 grid props)\n+ BinGridID, SeismicHorizonID,\n  DomainTypeID, ExtensionProperties\n→ 4 typed + 10 grid properties"]
+
+    style GR fill:#fff3e0,stroke:#ff9800,color:#000
+    style SM fill:#e8f5e9,stroke:#4caf50,color:#000
 ```
 
 **What overlaps**: Both inherit `AbstractRepresentation` (InterpretationID, CRS, DDMSDatasets). This is by design — all OSDU representations share a common base. This is inheritance, not duplication.
@@ -1078,9 +1030,12 @@ StructureMap (M27)
 
 HorizonInterpretation is an **interpretation** (the "what"), not a **representation** (the "how"). The OSDU model explicitly separates these:
 
-```
-Interpretation (1) ──► Representations (N)
-   "Top Volantis"        "TWT SeismicHorizon"  +  "Depth StructureMap"  +  "TriangulatedSet GenericRep"
+```mermaid
+flowchart LR
+    I["Interpretation (1)\n'Top Volantis'"]
+    I --> R1["TWT SeismicHorizon"]
+    I --> R2["Depth StructureMap"]
+    I --> R3["TriangulatedSet GenericRep"]
 ```
 
 HorizonInterpretation already links to StructureMap via the inherited `InterpretationID` on StructureMap. Creating StructureMap does not duplicate HorizonInterpretation — it provides the **representation-side record** that HorizonInterpretation references.
@@ -1144,7 +1099,7 @@ The question is whether this representation should be typed (StructureMap) or ge
 
 ---
 
-> **Document version**: 3.0 — 2026-04-07
+> **Document version**: 4.0 — 2026-04-08
 > **Authors**: ORES project team
-> **Status**: Updated for M27 — documents official schemas + worked example
-> **Previous versions**: 2.0 (pre-M27 gap analysis), 1.0 (initial RESQML comparison)
+> **Status**: Updated for M27 — streamlined with Mermaid diagrams; verbose inherited-property tables replaced by schema links
+> **Previous versions**: 3.0 (catalog-vs-data concept), 2.0 (pre-M27 gap analysis), 1.0 (initial RESQML comparison)
