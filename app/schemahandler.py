@@ -118,7 +118,7 @@ def extract_osdu_links(data_block: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------
-# Generic metadata extractor for RESQML/EML objects
+# Metadata extractor for RESQML / EML objects
 # ---------------------------------------------------------------------
 
 def _is_scalar(x: Any) -> bool:
@@ -126,10 +126,10 @@ def _is_scalar(x: Any) -> bool:
     return isinstance(x, (str, int, float, bool)) or x is None
 
 
-def _shorten(s: str, max_len: int = 300) -> str:
-    """Truncate long strings for compact metadata views."""
+def _shorten(s: Any, max_len: int = 300) -> Any:
+    """Truncate long strings for compact metadata views.  Non-strings pass through."""
     if not isinstance(s, str):
-        return s  # type: ignore[return-value]
+        return s
     return s if len(s) <= max_len else (s[:max_len] + "…")
 
 
@@ -149,7 +149,7 @@ def extract_metadata_generic(
     ),
 ) -> Dict[str, Any]:
     """
-    Generic, safe metadata extractor for RESQML/EML objects.
+    Metadata extractor for RESQML/EML objects (those with Citation, $type, etc.).
 
     Collects:
       • Identity/classification (uuid, typePath, $type/contentType, SchemaVersion,
@@ -183,7 +183,7 @@ def extract_metadata_generic(
         }
     )
 
-    # Name/value pairs for easy HTML tables
+    # Identity pairs (added first — no duplication with curated_keys below)
     pairs: List[Dict[str, Any]] = [
         {"name": "Title", "value": title},
         {"name": "UUID", "value": uuid},
@@ -194,34 +194,44 @@ def extract_metadata_generic(
         {"name": "Arrays", "value": len(arrays)},
     ]
 
+    # Track which names are already in pairs to avoid duplicates
+    _pairs_names: Set[str] = {p["name"] for p in pairs}
+
     # Recursive walk producing dot-path keys
     def visit(path: str, value: Any) -> None:
         base = path.rsplit(".", 1)[-1] if path else ""
         if base in exclude_keys:
             return
         if _is_scalar(value):
-            md[path] = _shorten(value, max_len=max_string_len) if isinstance(value, str) else value
+            if path:
+                md[path] = _shorten(value, max_len=max_string_len) if isinstance(value, str) else value
             return
         if isinstance(value, dict):
-            md[f"{path}.keys" if path else "keys"] = len(value.keys())
+            if path:
+                md[f"{path}.keys"] = len(value.keys())
             for k, v in value.items():
                 subpath = f"{path}.{k}" if path else k
                 visit(subpath, v)
             return
         if isinstance(value, list):
-            md[f"{path}.count" if path else "count"] = len(value)
-            # preview first few scalar items
+            if path:
+                md[f"{path}.count"] = len(value)
+            # Recurse into list items (dicts and nested lists)
             preview: List[Scalar] = []
-            for itm in value[:max_preview_items]:
+            for i, itm in enumerate(value):
                 if _is_scalar(itm):
-                    preview.append(
-                        _shorten(itm, max_len=max_string_len) if isinstance(itm, str) else itm
-                    )
-            if preview:
-                md[f"{path}.preview" if path else "preview"] = preview
+                    if len(preview) < max_preview_items:
+                        preview.append(
+                            _shorten(itm, max_len=max_string_len) if isinstance(itm, str) else itm
+                        )
+                elif isinstance(itm, (dict, list)):
+                    visit(f"{path}[{i}]" if path else f"[{i}]", itm)
+            if preview and path:
+                md[f"{path}.preview"] = preview
             return
         # fallback for other JSON-ish types
-        md[path] = _shorten(str(value), max_len=max_string_len)
+        if path:
+            md[path] = _shorten(str(value), max_len=max_string_len)
 
     visit("", obj)
 
@@ -234,18 +244,14 @@ def extract_metadata_generic(
     if isinstance(slow, int):
         md["Grid2dPatch.SlowestAxisCount"] = slow
 
-    # Curated identity subset into pairs (keeps tables short & readable)
+    # Curated keys → pairs (skip if already present under that name)
     curated_keys = [
-        "Citation.Title",
-        "SchemaVersion",
-        "$type",
-        "contentType",
-        "uri",
         "Grid2dPatch.FastestAxisCount",
         "Grid2dPatch.SlowestAxisCount",
     ]
     for ck in curated_keys:
-        if ck in md:
+        if ck in md and ck not in _pairs_names:
             pairs.append({"name": ck, "value": md[ck]})
+            _pairs_names.add(ck)
 
     md["pairs"] = pairs
