@@ -4,7 +4,7 @@
 
 {% block head %}
 <style>
-  .search-form { width: 58rem; max-width: 100%; }
+  .search-form { width: 100%; max-width: 100%; }
   .kind-row { display: grid; grid-template-columns: 220px 1fr auto; gap: .5rem; align-items: center; }
   .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
   .chip { background: #e1dfdd; border-radius: 999px; padding: .15rem .6rem; font-size: .85rem; }
@@ -15,9 +15,13 @@
   .mini-grid .k { color: #605e5c; }
   .meta-table td:last-child { word-break: break-word; }
   /* clickable result rows */
+  .results-table { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
+  .results-table th, .results-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: .3rem .5rem; font-size: .88rem; line-height: 1.3; }
   .results-table tbody tr { cursor: pointer; transition: background .15s; }
   .results-table tbody tr:hover { background: #e8f0fa; }
   .results-table tbody tr.active-row { background: #d0e2f4; font-weight: 500; }
+  .results-scroll { max-height: 28rem; overflow-y: auto; overflow-x: auto; border: 1px solid #e1dfdd; border-radius: 6px; width: 100%; }
+  .results-scroll thead th { position: sticky; top: 0; background: #f5f5f5; z-index: 1; border-bottom: 2px solid #d1d1d1; }
   .kpi-grid { display:grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap:.5rem; }
   .kpi { border:1px solid #e1dfdd; border-radius:6px; padding:.45rem .55rem; background:#faf9f8; }
   .kpi .lbl { font-size:.8rem; color:#605e5c; }
@@ -234,16 +238,16 @@
   {% if total == 0 %}
     <p>No records matched your query.</p>
   {% else %}
-    <div class="table-scroll">
+    <div class="results-scroll">
     <table class="results-table">
       <thead>
       <tr>
         <th>Name</th>
         <th>Description</th>
         <th>Kind</th>
-        <th>Dataspace / Dataset</th>
-        <th>ID</th>
+        <th>Dataspace</th>
         <th>Action</th>
+        <th>ID</th>
       </tr>
       </thead>
       <tbody>
@@ -254,16 +258,23 @@
         {% set feature_name = d.get('FeatureName') or '' %}
         {% set display_name = raw_name if (raw_name and raw_name != '|UNNAMED|') else (feature_name or raw_name or '—') %}
         {% set desc = d.get('Description') %}
-        {# Extract dataspace from DDMSDatasets array #}
+        {# Extract short dataspace name from DDMSDatasets URI #}
         {% set ddms_ds = d.get('DDMSDatasets', []) %}
-        {% set ds_label = ddms_ds[0] if ddms_ds else '—' %}
+        {% set ds_raw = ddms_ds[0] if ddms_ds else '' %}
+        {% if "dataspace('" in ds_raw %}
+          {% set ds_label = ds_raw.split("dataspace('")[1].split("')")[0] %}
+        {% elif 'dataspace(' in ds_raw %}
+          {% set ds_label = ds_raw.split('dataspace(')[1].split(')')[0] %}
+        {% else %}
+          {% set ds_label = ds_raw or '—' %}
+        {% endif %}
         <tr data-rec-idx="{{ loop.index }}"{% if loop.first %} class="active-row"{% endif %}>
           <td title="Name={{ raw_name }}  FeatureName={{ feature_name }}">{{ display_name }}</td>
           <td>{{ desc or '—' }}</td>
-          <td>{{ rec.kind or '—' }}</td>
-          <td style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ ds_label }}">{{ ds_label }}</td>
-          <td style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;" title="{{ rec.id }}">{{ rec.id or '—' }}</td>
+          <td title="{{ rec.kind or '' }}">{{ rec.kind or '—' }}</td>
+          <td title="{{ ds_raw }}">{{ ds_label }}</td>
           <td><a href="/search/view/{{ rec.id }}">View Details</a></td>
+          <td title="{{ rec.id }}">{{ rec.id or '—' }}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -1616,34 +1627,44 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
       const uuid = section.dataset.uuid;
       const status = section.querySelector('.ddms-map-status');
       const placeholder = section.querySelector('.ddms-map-placeholder');
-      status.textContent = 'Fetching surface from RDDMS (may take 30-60s for large grids)…';
+      status.textContent = 'Fetching surface from RDDMS (may take a few seconds)…';
       btn.disabled = true;
 
-      const img = new Image();
       const src = '/keys/object/map.png?ds=' + encodeURIComponent(ds) + '&uuid=' + encodeURIComponent(uuid) + '&w=12&h=8&dpi=100';
+      const ctrl = new AbortController();
+      const timer = setTimeout(function() { ctrl.abort(); }, 90000);
 
-      // Timeout: abort after 90s
-      const timer = setTimeout(function() {
-        img.src = '';
-        status.textContent = 'Timed out after 90s — the grid may be too large. Try from the Resources page with lower DPI.';
-        btn.disabled = false;
-      }, 90000);
-
-      img.src = src;
-      img.alt = 'Depth map';
-      img.style.cssText = 'max-width:100%;border-radius:6px;border:1px solid #e2e8f0;';
-      img.loading = 'lazy';
-      img.onload = function() {
-        clearTimeout(timer);
-        placeholder.innerHTML = '';
-        placeholder.appendChild(img);
-        status.textContent = '';
-      };
-      img.onerror = function() {
-        clearTimeout(timer);
-        status.textContent = 'Failed to load map — the RDDMS surface may not have z-values or an unsupported CRS.';
-        btn.disabled = false;
-      };
+      fetch(src, { signal: ctrl.signal })
+        .then(function(resp) {
+          clearTimeout(timer);
+          if (!resp.ok) {
+            return resp.text().then(function(body) {
+              /* Try to extract JSON detail */
+              try { body = JSON.parse(body).detail || body; } catch(_){}
+              throw new Error('Server ' + resp.status + ': ' + body);
+            });
+          }
+          return resp.blob();
+        })
+        .then(function(blob) {
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.src = url;
+          img.alt = 'Depth map';
+          img.style.cssText = 'max-width:100%;border-radius:6px;border:1px solid #e2e8f0;';
+          placeholder.innerHTML = '';
+          placeholder.appendChild(img);
+          status.textContent = '';
+        })
+        .catch(function(err) {
+          clearTimeout(timer);
+          if (err.name === 'AbortError') {
+            status.textContent = 'Timed out after 90s — try from the Resources page with lower DPI.';
+          } else {
+            status.textContent = 'Map failed: ' + err.message;
+          }
+          btn.disabled = false;
+        });
     };
 
     /* ── Volume histogram popup ── */

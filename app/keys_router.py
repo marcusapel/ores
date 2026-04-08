@@ -1148,10 +1148,14 @@ async def keys_object_map_png(
     at = _access_token(request)
 
     try:
+        import time as _time
+        _t0 = _time.monotonic()
         surface = await osdu.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+        _t1 = _time.monotonic()
+        log.info("map.png: fetch ds=%s uuid=%s took %.1fs", ds, uuid, _t1 - _t0)
     except Exception as e:
-        log.exception("map.png: fetch_grid2d_surface failed: %s", e)
-        raise HTTPException(502, f"Failed to fetch surface: {e}")
+        log.exception("map.png: fetch_grid2d_surface failed for ds=%s uuid=%s: %s", ds, uuid, e)
+        raise HTTPException(502, f"Failed to fetch surface from RDDMS (ds={ds}, uuid={uuid}): {e}")
 
     grid = surface["grid"]
     title = (grid.get("Citation") or {}).get("Title") or uuid
@@ -1178,6 +1182,7 @@ async def keys_object_map_png(
         unit = crs.get("VerticalUom") or crs.get("ProjectedUom") or "m"
 
     try:
+        _t2 = _time.monotonic()
         png_bytes = osdu.render_grid2d_png(
             zvalues, dims, geometry, crs,
             title=title,
@@ -1186,9 +1191,11 @@ async def keys_object_map_png(
             dpi=dpi,
             unit=unit,
         )
+        _t3 = _time.monotonic()
+        log.info("map.png: render %dx%d took %.1fs (%d bytes)", dims[0], dims[1], _t3 - _t2, len(png_bytes))
     except Exception as e:
-        log.exception("map.png: render failed: %s", e)
-        raise HTTPException(500, f"Render failed: {e}")
+        log.exception("map.png: render failed for %dx%d grid: %s", dims[0], dims[1], e)
+        raise HTTPException(500, f"Render failed ({dims[0]}x{dims[1]} grid): {e}")
 
     return Response(content=png_bytes, media_type="image/png")
 
