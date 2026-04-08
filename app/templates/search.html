@@ -219,8 +219,9 @@
 {% endif %}
 
 {% if results %}
-  {% set total = results.totalCount or (results.results | length) %}
-  <h4>Results ({{ total }})</h4>
+  {% set shown = results.results | length %}
+  {% set total = results.totalCount or shown %}
+  <h4>Results ({{ shown }}{% if total > shown %} of {{ total }}{% endif %})</h4>
 
   {% if selected_kinds and (selected_kinds|length) > 1 %}
     <div class="chips" title="Kinds included in this run">

@@ -1280,7 +1280,7 @@ async def search_page(request: Request):
             "kinds_extra": "",
             "kind_options": kind_options,
             "q": "*",
-            "limit": 10,
+            "limit": 50,
             "returnedFields": "id,kind,version",
         },
     )
@@ -1291,7 +1291,7 @@ async def search_run(
     kind: str = Form("osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0"),
     kinds_extra: str = Form(""),
     query: str = Form("*"),
-    limit: int = Form(5),
+    limit: int = Form(50),
 ):
     """
     Run an OSDU Search v2 query, then enrich each hit:

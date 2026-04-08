@@ -16,6 +16,14 @@
   .badge { display: inline-block; background: #e1dfdd; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-left: 6px; }
   .tag { display: inline-block; background: #deecf9; color: #004578; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-right: 4px; }
   .truncation-notice { background: #fff4ce; padding: 6px 10px; border-left: 3px solid #ffb900; margin-bottom: 8px; font-size: 13px; }
+  .grid2d-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grid2d-btns .btn { min-width: 130px; text-align: center; }
+  .grid2d-btns .btn.active { background: #004578; color: #fff; }
+  .map-wrap { text-align: center; margin-top: 8px; }
+  .map-wrap img { max-width: 100%; border: 1px solid #e1dfdd; border-radius: 4px; }
+  .map-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: 13px; }
+  .map-controls label { font-weight: 500; }
+  .map-controls select, .map-controls input { font-size: 13px; }
 </style>
 {% endblock %}
 
@@ -82,17 +90,15 @@
     <div id="arrays"></div>
   </div>
 
-  <!-- Table View (for Grid2dRepresentation) -->
-  <div class="section" id="table-section" style="display:none;">
-    <h3>Table View <span class="badge" id="table-badge"></span></h3>
-    <div id="table-controls" class="row" style="margin-bottom: 8px;">
-      <label></label>
-      <span>
-        <span class="btn" id="load-table">Reconstruct table</span>
-        <span class="muted" id="table-status"></span>
-      </span>
+  <!-- Grid2d View (table OR depth map, auto-detected) -->
+  <div class="section" id="grid2d-section" style="display:none;">
+    <h3>Grid2d View <span class="badge" id="grid2d-badge"></span></h3>
+    <div class="grid2d-btns" id="grid2d-controls">
+      <span class="btn" id="btn-table" style="display:none;">Reconstruct table</span>
+      <span class="btn" id="btn-map" style="display:none;">Show depth map</span>
+      <span class="muted" id="grid2d-status"></span>
     </div>
-    <div id="table-view" style="overflow:auto; max-height:600px;"></div>
+    <div id="grid2d-view" style="overflow:auto; max-height:700px; margin-top: 8px;"></div>
   </div>
 
   <!-- Raw JSON (collapsed) -->
@@ -114,9 +120,10 @@
           metadataSection = $('metadata-section'), metadataPairs = $('metadata-pairs'),
           extrametaSection = $('extrameta-section'), extrametaEl = $('extrameta'),
           aliasesSection = $('aliases-section'), aliasesEl = $('aliases'),
-          tableSection = $('table-section'), tableControls = $('table-controls'),
-          tableView = $('table-view'), tableStatus = $('table-status'),
-          tableBadge = $('table-badge');
+          grid2dSection = $('grid2d-section'), grid2dControls = $('grid2d-controls'),
+          grid2dView = $('grid2d-view'), grid2dStatus = $('grid2d-status'),
+          grid2dBadge = $('grid2d-badge'),
+          btnTable = $('btn-table'), btnMap = $('btn-map');
 
     // Escape HTML to prevent XSS
     function esc(s) {
@@ -141,9 +148,11 @@
       extrametaEl.innerHTML = '';
       aliasesSection.style.display = 'none';
       aliasesEl.innerHTML = '';
-      tableSection.style.display = 'none';
-      tableView.innerHTML = '';
-      tableStatus.textContent = '';
+      grid2dSection.style.display = 'none';
+      grid2dView.innerHTML = '';
+      grid2dStatus.textContent = '';
+      btnTable.style.display = 'none';
+      btnMap.style.display = 'none';
     }
 
     function populateDataspaces(items) {
@@ -164,10 +173,39 @@
       }</tbody></table>`;
     }
 
-    // Detect if the current type supports table reconstruction
-    function isTableType(typ) {
+    // Detect if the current type is a Grid2dRepresentation
+    function isGrid2dType(typ) {
       const t = (typ || '').toLowerCase();
       return t.includes('grid2drepresentation') || t.includes('grid2d');
+    }
+
+    /**
+     * Classify a Grid2dRepresentation as 'map', 'table', or 'both'.
+     *
+     * Map (spatial surface): real-world origin coords (large X/Y from UTM),
+     *   real offset vectors with spatial spacing, linked CRS.
+     * Table (resqpy DataFrame): origin at (0,0), ExtraMetadata with
+     *   stl_columns/stl_uoms keys, linked StringTableLookup targets.
+     */
+    function classifyGrid2d(content) {
+      const patch = content.Grid2dPatch || {};
+      const geom = (patch.Geometry || {}).Points || {};
+      const support = geom.SupportingGeometry || {};
+      const origin = support.Origin || geom.Origin || {};
+      const ox = Math.abs(parseFloat(origin.Coordinate1 || 0));
+      const oy = Math.abs(parseFloat(origin.Coordinate2 || 0));
+
+      // Check ExtraMetadata for table markers
+      const em = content.ExtraMetadata || [];
+      const emKeys = em.map(e => (e.Name || e.name || '').toLowerCase());
+      const hasStlMarkers = emKeys.some(k => k.startsWith('stl_'));
+
+      // Spatial origin: UTM coords are typically > 100 000
+      const hasSpatialOrigin = ox > 1000 || oy > 1000;
+
+      if (hasStlMarkers && !hasSpatialOrigin) return 'table';
+      if (hasSpatialOrigin && !hasStlMarkers) return 'map';
+      return 'both';  // ambiguous — offer both options
     }
 
     async function loadDataspaces() {
@@ -339,12 +377,20 @@
             }</ul>`
           : '<p class="muted">No arrays.</p>';
 
-        // --- Table section (show button for Grid2dRepresentation) ---
-        if (isTableType(typ) && arr.length > 0) {
-          tableSection.style.display = '';
-          tableBadge.textContent = 'Grid2dRepresentation';
-          tableStatus.textContent = '';
-          tableView.innerHTML = '<p class="muted">Click "Reconstruct table" to decode the RESQML grid as a data table.</p>';
+        // --- Grid2d section (auto-detect table vs depth map) ---
+        if (isGrid2dType(typ) && arr.length > 0) {
+          grid2dSection.style.display = '';
+          const mode = classifyGrid2d(js.content || {});
+          grid2dBadge.textContent = mode === 'table' ? 'Data Table'
+                                 : mode === 'map'   ? 'Depth Map'
+                                 : 'Grid2dRepresentation';
+          grid2dStatus.textContent = '';
+          btnTable.style.display = (mode === 'table' || mode === 'both') ? '' : 'none';
+          btnMap.style.display   = (mode === 'map'   || mode === 'both') ? '' : 'none';
+          const hint = mode === 'table' ? 'Detected as a data table (resqpy DataFrame).'
+                     : mode === 'map'   ? 'Detected as a spatial depth surface.'
+                     : 'Could not auto-detect — try either view.';
+          grid2dView.innerHTML = `<p class="muted">${hint}</p>`;
         }
 
         // --- Raw JSON ---
@@ -357,11 +403,66 @@
       }
     }
 
+    async function loadMap() {
+      const ds = dsSel.value, uuid = objSel.value;
+      if (!ds || !uuid) return;
+      grid2dStatus.textContent = 'Loading map…';
+      grid2dView.innerHTML = '';
+      try {
+        // First fetch metadata to show stats while PNG loads
+        const metaUrl = `/keys/object/map.json?ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}`;
+        const metaRes = await fetch(metaUrl, { credentials: 'same-origin' });
+        let statsHtml = '';
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          const s = meta.stats || {};
+          const c = meta.crs || {};
+          const d = meta.dims || [0,0];
+          statsHtml = `<div style="font-size:13px;color:#605e5c;margin-bottom:6px;">`
+            + `<b>${esc(meta.title || '')}</b> — ${d[0]}×${d[1]}`
+            + (s.min !== undefined ? ` — z: ${s.min} … ${s.max} ${c.verticalUom || 'm'}` : '')
+            + (c.projectedUom ? ` — xy: ${c.projectedUom}` : '')
+            + `</div>`;
+        }
+
+        // Build PNG URL with controls
+        let cmap = 'viridis_r', dpi = 120, w = 12, h = 9;
+        const pngUrl = () => `/keys/object/map.png?ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}&cmap=${cmap}&dpi=${dpi}&w=${w}&h=${h}`;
+
+        grid2dView.innerHTML = statsHtml
+          + `<div class="map-controls">`
+          + `<label>Colormap</label><select id="map-cmap">`
+          + ['viridis_r','terrain','coolwarm','RdYlBu_r','plasma_r','cividis_r','Spectral_r']
+              .map(c => `<option${c==='viridis_r'?' selected':''}>${c}</option>`).join('')
+          + `</select>`
+          + `<label>DPI</label><select id="map-dpi"><option>96</option><option selected>120</option><option>150</option><option>200</option></select>`
+          + `</div>`
+          + `<div class="map-wrap"><img id="map-img" alt="Loading depth map…" /></div>`;
+
+        const img = $('map-img');
+        img.src = pngUrl();
+        img.onload = () => { grid2dStatus.textContent = 'Done'; };
+        img.onerror = () => {
+          grid2dStatus.textContent = 'Failed';
+          grid2dView.innerHTML += '<p style="color:red;">Failed to render depth map. The server may not have z-values or CRS data for this surface.</p>';
+        };
+
+        // Wire controls
+        $('map-cmap').onchange = function() { cmap = this.value; img.src = pngUrl(); grid2dStatus.textContent = 'Refreshing…'; };
+        $('map-dpi').onchange = function() { dpi = parseInt(this.value); img.src = pngUrl(); grid2dStatus.textContent = 'Refreshing…'; };
+
+      } catch (e) {
+        grid2dStatus.textContent = 'Failed';
+        grid2dView.innerHTML = `<p style="color:red;">${esc(e.message)}</p>`;
+        console.error(e);
+      }
+    }
+
     async function loadTable() {
       const ds = dsSel.value, typ = typSel.value, uuid = objSel.value;
       if (!ds || !typ || !uuid) return;
-      tableStatus.textContent = 'Reconstructing…';
-      tableView.innerHTML = '';
+      grid2dStatus.textContent = 'Reconstructing…';
+      grid2dView.innerHTML = '';
       try {
         const url = `/keys/object/table.json?ds=${encodeURIComponent(ds)}&typ=${encodeURIComponent(typ)}&uuid=${encodeURIComponent(uuid)}`;
         const r = await fetch(url, { credentials: 'same-origin' });
@@ -417,16 +518,16 @@
           }</ul></details>`;
         }
 
-        tableView.innerHTML =
+        grid2dView.innerHTML =
           notice +
           `<p class="muted">${nRows} rows × ${nCols} columns</p>` +
           `<table class="data-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>` +
           lookupInfo;
 
-        tableStatus.textContent = truncated ? `Showing ${rows.length}/${nRows} rows` : `${nRows} rows`;
+        grid2dStatus.textContent = truncated ? `Showing ${rows.length}/${nRows} rows` : `${nRows} rows`;
       } catch (e) {
-        tableStatus.textContent = 'Failed';
-        tableView.innerHTML = `<p style="color:red;">${esc(e.message)}</p>`;
+        grid2dStatus.textContent = 'Failed';
+        grid2dView.innerHTML = `<p style="color:red;">${esc(e.message)}</p>`;
         console.error(e);
       }
     }
@@ -435,7 +536,8 @@
     dsSel.addEventListener('change', loadTypes);
     typSel.addEventListener('change', loadObjects);
     $('load-details').addEventListener('click', loadDetails);
-    $('load-table').addEventListener('click', loadTable);
+    btnTable.addEventListener('click', loadTable);
+    btnMap.addEventListener('click', loadMap);
 
     // Delegate navigation for span[data-href]
     document.addEventListener('click', (ev) => {
