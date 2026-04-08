@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [1) Executive Summary](#1-executive-summary)
+  - [Catalog Record vs Actual Data](#catalog-record-vs-actual-data--the-core-concept)
 - [2) M27 Official Schemas](#2-m27-official-schemas)
 - [3) Schema Inheritance Architecture](#3-schema-inheritance-architecture)
 - [4) Interpretation Chain — Seed to Surface](#4-interpretation-chain--seed-to-surface)
@@ -24,6 +25,34 @@
 ## 1) Executive Summary
 
 Seismic interpretation workflows produce **horizon surfaces**, **fault interpretations**, **velocity models**, and **bin grid definitions**. These objects live as RESQML content in the Reservoir DDMS (RDDMS), where they are accessed computationally. To make them **discoverable** — searchable by name, domain, spatial area, petroleum system element, interpreter — they must also be registered as OSDU catalog records (WPCs) in the search index.
+
+### Catalog Record vs Actual Data — The Core Concept
+
+A structure map (or any interpretation surface) lives in **two places**, each serving a different purpose:
+
+| Layer | What is stored | Where | Access pattern |
+|---|---|---|---|
+| **OSDU Catalog Record** (e.g. StructureMap:1.0.0, GenericRepresentation:1.2.0) | Searchable metadata — name, interpretation link, grid geometry parameters, CRS info, spatial area | OSDU Storage + Search index | REST: Search API → Storage API |
+| **Reservoir DDMS (RDDMS)** | Actual surface data — Z-value arrays (depth or TWT), full grid geometry, CRS objects | RESQML objects in the Reservoir DDMS | REST: RDDMS API → `Grid2dRepresentation` |
+
+The OSDU record **never contains the Z-value arrays** (the depth/time surface data). It intentionally duplicates only the grid geometry parameters (origin, bearing, spacing, node counts) so the surface can be discovered spatially without hitting the RDDMS. For visualisation or computation, the `DDMSDatasets[]` URI on the OSDU record points to the RDDMS object where the actual data lives:
+
+```
+┌─────────────────────────────────┐      DDMSDatasets[] URI       ┌────────────────────────────────┐
+│  OSDU Catalog Record            │ ─────────────────────────────►│  Reservoir DDMS (RESQML)       │
+│                                 │                               │                                │
+│  • Name, Description            │                               │  Grid2dRepresentation          │
+│  • InterpretationID             │                               │   • Z-values array (depth/TWT) │
+│  • Grid geometry (summary)      │                               │   • Full lattice geometry      │
+│  • SpatialArea (for search)     │                               │   • LocalCrs (CRS object)      │
+│  • DomainTypeID (Depth/Time)    │                               │   • ExtraMetadata              │
+│  • DDMSDatasets[] ──────────────┼──► eml://reservoir-ddms1/     │                                │
+│                                 │    dataspace('maap/volve')/   │                                │
+│  NO depth/time values here      │    resqml20.Grid2dRepr(uuid)  │  ALL depth/time values here    │
+└─────────────────────────────────┘                               └────────────────────────────────┘
+```
+
+There is **no dedicated "StructureMap" type in RESQML** — a `Grid2dRepresentation` with a depth CRS **is** the structure map. The distinction between depth and TWT is made entirely by the CRS (`VerticalAxis.IsTime = false` for depth, `true` for TWT). The OSDU StructureMap:1.0.0 schema is a catalog wrapper that makes this RESQML object discoverable.
 
 ### What changed with M27
 
@@ -173,7 +202,7 @@ AbstractCommonResources:1.0.1          (id, kind, acl, legal, meta, tags)
 - Schemas inheriting **AbstractBinGrid** define seismic acquisition lattice geometry
 - Schemas inheriting **AbstractGenericBinGrid** define non-seismic lattice geometry (new in M27)
 - StructureMap has **dual inheritance**: AbstractRepresentation + AbstractGenericBinGrid (can define grid inline or reference via BinGridID)
-- `DDMSDatasets[]` (from AbstractWPCGroupType) links the OSDU catalog record to the RDDMS object where the actual data lives
+- `DDMSDatasets[]` (from AbstractWPCGroupType) links the OSDU catalog record to the RDDMS object where the actual surface data (Z-value arrays, full geometry, CRS) lives — **no OSDU schema carries the actual depth/time values**
 
 ### AbstractGenericBinGrid vs AbstractBinGrid
 
@@ -238,6 +267,9 @@ graph TD
     SM -.->|DDMSDatasets| DS
     HCP -.->|DDMSDatasets| DS
 ```
+
+**Solid arrows** = OSDU record-to-record references (metadata linkage, all within the OSDU catalog).  
+**Dashed arrows** = `DDMSDatasets[]` links pointing out to the Reservoir DDMS where the actual Z-value arrays, grid geometry, and CRS objects are stored as RESQML content. Every representation schema (SeismicHorizon, StructureMap, HorizonControlPoints) has this link — the OSDU record is the catalog entry; the RDDMS object is the data.
 
 **The complete chain** for a single horizon:
 
@@ -539,7 +571,9 @@ Every OSDU representation WPC links to its RDDMS counterpart:
 
 ## 12) StructureMap in Reservoir DDMS — RESQML 2.2 Storage & Generation
 
-The OSDU StructureMap:1.0.0 is a **catalog record** — it provides searchable metadata. The actual depth surface data (Z values on a grid) lives in the Reservoir DDMS as RESQML content. This section documents the bidirectional mapping between OSDU StructureMap and RESQML 2.2 `Grid2dRepresentation`.
+As described in the [Catalog vs Data concept](#catalog-record-vs-actual-data--the-core-concept), the OSDU StructureMap:1.0.0 is a **catalog record** — it provides searchable metadata. The actual depth surface data (Z-value arrays on a grid) lives exclusively in the Reservoir DDMS as RESQML content. There is no mechanism to store Z-values in the OSDU record itself — `DDMSDatasets[]` is the bridge.
+
+This section documents the bidirectional mapping between OSDU StructureMap and RESQML 2.2 `Grid2dRepresentation`, and how to generate one from the other.
 
 ### 12.1 RESQML Native Representation
 
