@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "md", "md", "{4500CAB3-24C4-2D95-C87A-875F4FAC439D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "amata", "amata", "{76490358-FCA0-E9B1-D16F-273D686A433C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SolidWorksAutomation", "md\amata\SolidWorksAutomation\SolidWorksAutomation.csproj", "{30CB7D6D-F94F-544E-8979-077F1513AA65}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{30CB7D6D-F94F-544E-8979-077F1513AA65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30CB7D6D-F94F-544E-8979-077F1513AA65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30CB7D6D-F94F-544E-8979-077F1513AA65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30CB7D6D-F94F-544E-8979-077F1513AA65}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{76490358-FCA0-E9B1-D16F-273D686A433C} = {4500CAB3-24C4-2D95-C87A-875F4FAC439D}
+		{30CB7D6D-F94F-544E-8979-077F1513AA65} = {76490358-FCA0-E9B1-D16F-273D686A433C}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {314540B6-D331-497F-B5E3-BA7593467E21}
+	EndGlobalSection
+EndGlobal
