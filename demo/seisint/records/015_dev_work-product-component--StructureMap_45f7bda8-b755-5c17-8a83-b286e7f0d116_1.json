@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "TopTherys Depth Map (standalone)",
-    "Description": "Depth structure map with inline grid for Top Therys source rock",
+    "Description": "Depth structure map for Top Therys source rock - self-contained grid geometry, no external BinGrid reference",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
     "InterpretationName": "TopTherys Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
@@ -78,9 +78,6 @@
         "Count": 15251,
         "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
       }
-    ],
-    "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('b5274807-83d6-53fa-97e1-ac774771c688')"
     ],
     "ancestry": {
       "parents": [

@@ -84,11 +84,27 @@ THERYS_INLINE_GRID = {
     "transform": 9666,
 }
 
-DATASPACE = "demo/volantis-interp"
+DATASPACE = "maap/drogon"
 RDDMS_HOST = "rddms-1"
 
 # CRS: EPSG 23031 / ED50 UTM31N + EPSG 5714 / MSL height
 CRS_ID = "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:"
+
+# ── Real RDDMS Grid2dRepresentation UUIDs (maap/drogon dataspace) ──────
+# These are actual RESQML objects stored in the Reservoir DDMS, exported
+# from Aspen SKUA.  The OSDU catalog records point here via DDMSDatasets[].
+#
+# Depth surfaces (for StructureMap)
+RDDMS_DEPTH = {
+    "TopVolantis":  "f857c36c-3939-4ff3-9125-a11cf2af105c",  # CRS: obj_LocalDepth3dCrs
+    "BaseVolantis": "0c6ab8e7-c793-4ab5-a88c-ccf457d9266d",  # CRS: obj_LocalDepth3dCrs
+}
+# TWT surfaces (for SeismicHorizon)
+RDDMS_TWT = {
+    "TopVolantis":  "9deb9074-c4eb-44ff-990a-229bb545d442",  # TS_interp, CRS: obj_LocalTime3dCrs
+    "BaseVolantis": "efcf91f9-6e56-4bed-9e23-f0e9350a0b91",  # TS_interp, CRS: obj_LocalTime3dCrs
+}
+# TopTherys has no dedicated Grid2dRep in the RDDMS (no DDMSDatasets link)
 
 
 def ancestry(parents: list[str] | None = None) -> dict:
@@ -253,13 +269,17 @@ def make_generic_bin_grid(prefix: str) -> dict:
     }
 
 
+def _ddms_uri(resqml_uuid: str) -> str:
+    """Build an EML URI pointing to a Grid2dRepresentation in the RDDMS."""
+    return f"eml://{RDDMS_HOST}/dataspace('{DATASPACE}')/resqml20.obj_Grid2dRepresentation('{resqml_uuid}')"
+
+
 def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
-    """SeismicHorizon:2.1.0 — TWT surface pick."""
+    """SeismicHorizon:2.1.0 — TWT surface pick (metadata only, geometry in RDDMS)."""
     u = uid(f"seishz:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
     sbg_u = uid("seisbingrid:Volantis3D")
-    resqml_twt_uuid = uid(f"resqml:twt:{hz_key}")
 
     interp_id = wpc_id(prefix, "HorizonInterpretation", interp_u)
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
@@ -270,6 +290,11 @@ def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
     nj = g["xl_max"] - g["xl_min"] + 1
     n_cells = ni * nj
     n_nodes = (ni + 1) * (nj + 1)
+
+    # DDMSDatasets → real Grid2dRep in RDDMS (TWT domain) if available
+    ddms = []
+    if hz_key in RDDMS_TWT:
+        ddms.append(_ddms_uri(RDDMS_TWT[hz_key]))
 
     return {
         "id": wpc_id(prefix, "SeismicHorizon", u),
@@ -293,22 +318,24 @@ def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
-            "DDMSDatasets": [
-                f"eml://{RDDMS_HOST}/dataspace('{DATASPACE}')/resqml20.obj_Grid2dRepresentation('{resqml_twt_uuid}')"
-            ],
+            **({
+                "DDMSDatasets": ddms,
+            } if ddms else {}),
             "ancestry": ancestry([interp_id, sbg_id, feat_id]),
         },
     }
 
 
 def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
-    """StructureMap:1.0.0 using external GenericBinGrid ref (M27)."""
+    """StructureMap:1.0.0 using external GenericBinGrid ref (M27).
+
+    Metadata only — actual Z-values live in the RDDMS Grid2dRepresentation.
+    """
     u = uid(f"smap:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
     sh_u = uid(f"seishz:{hz_key}")
     gbg_u = uid("genericbingrid:VolantisDepth25m")
-    resqml_depth_uuid = uid(f"resqml:depth:{hz_key}")
 
     interp_id = wpc_id(prefix, "HorizonInterpretation", interp_u)
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
@@ -319,6 +346,11 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
     n_cells = g["count_i"] * g["count_j"]
     n_nodes = (g["count_i"] + 1) * (g["count_j"] + 1)
 
+    # DDMSDatasets → real Grid2dRep in RDDMS (depth domain) if available
+    ddms = []
+    if hz_key in RDDMS_DEPTH:
+        ddms.append(_ddms_uri(RDDMS_DEPTH[hz_key]))
+
     return {
         "id": wpc_id(prefix, "StructureMap", u),
         "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
@@ -326,7 +358,7 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
         "legal": legal_block(),
         "data": {
             "Name": f"{hz_key} Depth Map",
-            "Description": f"Depth-converted structure map for {hz['desc']}",
+            "Description": f"Depth-converted structure map for {hz['desc']} - references shared external GenericBinGrid",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
@@ -337,22 +369,25 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
-            "DDMSDatasets": [
-                f"eml://{RDDMS_HOST}/dataspace('{DATASPACE}')/resqml20.obj_Grid2dRepresentation('{resqml_depth_uuid}')"
-            ],
+            **({
+                "DDMSDatasets": ddms,
+            } if ddms else {}),
             "ancestry": ancestry([sh_id, interp_id, gbg_id, feat_id]),
         },
     }
 
 
 def make_structure_map_inline(prefix: str, hz_key: str, hz: dict) -> dict:
-    """StructureMap:1.0.0 with inline grid geometry (M27)."""
+    """StructureMap:1.0.0 with inline grid geometry (M27).
+
+    Metadata only — actual Z-values live in the RDDMS Grid2dRepresentation.
+    TopTherys has no dedicated RDDMS object, so DDMSDatasets is omitted.
+    """
     g = THERYS_INLINE_GRID
     u = uid(f"smap:inline:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
     sh_u = uid(f"seishz:{hz_key}")
-    resqml_depth_uuid = uid(f"resqml:depth:inline:{hz_key}")
 
     interp_id = wpc_id(prefix, "HorizonInterpretation", interp_u)
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
@@ -375,7 +410,7 @@ def make_structure_map_inline(prefix: str, hz_key: str, hz: dict) -> dict:
         "legal": legal_block(),
         "data": {
             "Name": f"{hz_key} Depth Map (standalone)",
-            "Description": f"Depth structure map with inline grid for {hz['desc']}",
+            "Description": f"Depth structure map for {hz['desc']} - self-contained grid geometry, no external BinGrid reference",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
@@ -414,9 +449,7 @@ def make_structure_map_inline(prefix: str, hz_key: str, hz: dict) -> dict:
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
-            "DDMSDatasets": [
-                f"eml://{RDDMS_HOST}/dataspace('{DATASPACE}')/resqml20.obj_Grid2dRepresentation('{resqml_depth_uuid}')"
-            ],
+            # TopTherys: no dedicated Grid2dRep in RDDMS — DDMSDatasets omitted
             "ancestry": ancestry([sh_id, interp_id, feat_id]),
         },
     }
@@ -428,13 +461,13 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
     Uses the same DEPTH_GRID parameters but embeds them on the record
     instead of referencing GenericBinGrid.  Demonstrates the alternative
     to make_structure_map_external (Pattern B).
+    Metadata only — actual Z-values live in the RDDMS Grid2dRepresentation.
     """
     g = DEPTH_GRID
     u = uid(f"smap:inlineA:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
     sh_u = uid(f"seishz:{hz_key}")
-    resqml_depth_uuid = uid(f"resqml:depth:inlineA:{hz_key}")
 
     interp_id = wpc_id(prefix, "HorizonInterpretation", interp_u)
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
@@ -457,7 +490,7 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
         "legal": legal_block(),
         "data": {
             "Name": f"{hz_key} Depth Map (inline grid — Pattern A)",
-            "Description": f"Depth structure map with inline grid for {hz['desc']} — demonstrates Pattern A (self-contained grid geometry, no external BinGrid reference)",
+            "Description": f"Depth structure map for {hz['desc']} - self-contained grid geometry, no external BinGrid reference",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
@@ -496,9 +529,10 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
-            "DDMSDatasets": [
-                f"eml://{RDDMS_HOST}/dataspace('{DATASPACE}')/resqml20.obj_Grid2dRepresentation('{resqml_depth_uuid}')"
-            ],
+            # DDMSDatasets → same real Grid2dRep as Pattern B (same underlying data)
+            **({
+                "DDMSDatasets": [_ddms_uri(RDDMS_DEPTH[hz_key])],
+            } if hz_key in RDDMS_DEPTH else {}),
             "ancestry": ancestry([sh_id, interp_id, feat_id]),
         },
     }

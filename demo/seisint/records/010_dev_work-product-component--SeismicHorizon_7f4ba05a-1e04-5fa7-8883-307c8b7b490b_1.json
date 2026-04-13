@@ -42,9 +42,6 @@
         "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
       }
     ],
-    "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('40454ee2-d972-5821-a5d1-9a27868cb0f6')"
-    ],
     "ancestry": {
       "parents": [
         "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",

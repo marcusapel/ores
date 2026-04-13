@@ -43,7 +43,7 @@
       }
     ],
     "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('2fd5c877-4952-5d6f-a684-6f5b655396f6')"
+      "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('9deb9074-c4eb-44ff-990a-229bb545d442')"
     ],
     "ancestry": {
       "parents": [

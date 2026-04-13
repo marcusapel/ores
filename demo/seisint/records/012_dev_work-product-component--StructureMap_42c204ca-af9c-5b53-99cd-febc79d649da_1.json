@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "BaseVolantis Depth Map",
-    "Description": "Depth-converted structure map for Base Volantis reservoir",
+    "Description": "Depth-converted structure map for Base Volantis reservoir - references shared external GenericBinGrid",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
     "InterpretationName": "BaseVolantis Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
@@ -37,7 +37,7 @@
       }
     ],
     "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('b49843f0-2ec6-5ccc-a298-6c9f99ada495')"
+      "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('0c6ab8e7-c793-4ab5-a88c-ccf457d9266d')"
     ],
     "ancestry": {
       "parents": [

@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "BaseVolantis Depth Map (inline grid — Pattern A)",
-    "Description": "Depth structure map with inline grid for Base Volantis reservoir — demonstrates Pattern A (self-contained grid geometry, no external BinGrid reference)",
+    "Description": "Depth structure map for Base Volantis reservoir - self-contained grid geometry, no external BinGrid reference",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
     "InterpretationName": "BaseVolantis Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
@@ -80,7 +80,7 @@
       }
     ],
     "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('022a12e4-5ed0-55e7-9af5-f6dfd1797ab0')"
+      "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('0c6ab8e7-c793-4ab5-a88c-ccf457d9266d')"
     ],
     "ancestry": {
       "parents": [
