@@ -24,7 +24,6 @@
       "data": {
         "Name": "Top Volantis",
         "Description": "Top Volantis reservoir",
-        "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:",
         "ancestry": {
           "parents": []
         }
@@ -52,7 +51,6 @@
       "data": {
         "Name": "Base Volantis",
         "Description": "Base Volantis reservoir",
-        "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:",
         "ancestry": {
           "parents": []
         }
@@ -80,7 +78,6 @@
       "data": {
         "Name": "Top Therys",
         "Description": "Top Therys source rock",
-        "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:",
         "ancestry": {
           "parents": []
         }
@@ -260,11 +257,6 @@
             "X": 12.5,
             "Y": 0.0
           },
-          "InlineMin": 1000,
-          "InlineMax": 1599,
-          "CrosslineMin": 2000,
-          "CrosslineMax": 2399,
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
           "ancestry": {
             "parents": []
           }
@@ -336,7 +328,77 @@
           "NodeCountOnIAxis": 300,
           "NodeCountOnJAxis": 200,
           "TransformationMethod": 9666,
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+          "ancestry": {
+            "parents": []
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
+        "kind": "osdu:wks:work-product-component--GenericBinGrid:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Therys Depth 20m",
+          "Description": "Depth grid for Therys horizon, 20.0m × 20.0m, 350×550 nodes, bearing 150.0°",
+          "BinGridName": "Therys Depth 20m",
+          "ABCDBinGridSpatialLocation": {
+            "AsIngestedCoordinates": {
+              "type": "FeatureCollection",
+              "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [
+                        461500.0,
+                        5926500.0
+                      ],
+                      [
+                        455455.14,
+                        5923010.0
+                      ],
+                      [
+                        460945.14,
+                        5913501.04
+                      ],
+                      [
+                        466990.0,
+                        5916991.04
+                      ]
+                    ]
+                  },
+                  "properties": {
+                    "name": "ABCD corners"
+                  }
+                }
+              ]
+            }
+          },
+          "OriginEasting": 461500.0,
+          "OriginNorthing": 5926500.0,
+          "BinWidthOnIaxis": 20.0,
+          "BinWidthOnJaxis": 20.0,
+          "MapGridBearingOfBinGridJaxis": 150.0,
+          "NodeCountOnIAxis": 350,
+          "NodeCountOnJAxis": 550,
+          "TransformationMethod": 9666,
           "ancestry": {
             "parents": []
           }
@@ -366,15 +428,16 @@
           "Description": "TWT horizon pick for Top Volantis reservoir",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
-          "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+          "BinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
           "DomainTypeID": "dev:reference-data--DomainType:Time:",
           "RepresentationType": "dev:reference-data--RepresentationType:Regular2DGrid:",
           "SeismicHorizonTypeID": "dev:reference-data--SeismicHorizonType:Peak:",
           "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Reservoir:",
           "Interpreter": "Volantis Interpretation Team",
-          "Remarks": [
-            "Picked on Volantis3D survey, nominal TWT 1850 ms"
+          "Remark": [
+            {
+              "Remark": "Picked on Volantis3D survey, nominal TWT 1850 ms"
+            }
           ],
           "IndexableElementCount": [
             {
@@ -422,15 +485,16 @@
           "Description": "TWT horizon pick for Base Volantis reservoir",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",
-          "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+          "BinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
           "DomainTypeID": "dev:reference-data--DomainType:Time:",
           "RepresentationType": "dev:reference-data--RepresentationType:Regular2DGrid:",
           "SeismicHorizonTypeID": "dev:reference-data--SeismicHorizonType:Peak:",
           "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Reservoir:",
           "Interpreter": "Volantis Interpretation Team",
-          "Remarks": [
-            "Picked on Volantis3D survey, nominal TWT 2050 ms"
+          "Remark": [
+            {
+              "Remark": "Picked on Volantis3D survey, nominal TWT 2050 ms"
+            }
           ],
           "IndexableElementCount": [
             {
@@ -478,15 +542,16 @@
           "Description": "TWT horizon pick for Top Therys source rock",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
           "InterpretationName": "TopTherys Interpretation",
-          "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+          "BinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
           "DomainTypeID": "dev:reference-data--DomainType:Time:",
           "RepresentationType": "dev:reference-data--RepresentationType:Regular2DGrid:",
           "SeismicHorizonTypeID": "dev:reference-data--SeismicHorizonType:Peak:",
           "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Source:",
           "Interpreter": "Volantis Interpretation Team",
-          "Remarks": [
-            "Picked on Volantis3D survey, nominal TWT 2800 ms"
+          "Remark": [
+            {
+              "Remark": "Picked on Volantis3D survey, nominal TWT 2800 ms"
+            }
           ],
           "IndexableElementCount": [
             {
@@ -527,13 +592,12 @@
           ]
         },
         "data": {
-          "Name": "TopVolantis Depth Map",
-          "Description": "Depth-converted structure map for Top Volantis reservoir - references shared external GenericBinGrid",
+          "Name": "TopVolantis Depth Map (shared grid ref)",
+          "Description": "Depth structure map for Top Volantis reservoir — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabe28f7-a859-5651-a736-02815f8b9385:1",
           "BinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
           "DomainTypeID": "dev:reference-data--DomainType:Depth:",
           "IndexableElementCount": [
             {
@@ -578,13 +642,12 @@
           ]
         },
         "data": {
-          "Name": "BaseVolantis Depth Map",
-          "Description": "Depth-converted structure map for Base Volantis reservoir - references shared external GenericBinGrid",
+          "Name": "BaseVolantis Depth Map (shared grid ref)",
+          "Description": "Depth structure map for Base Volantis reservoir — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
           "BinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
           "DomainTypeID": "dev:reference-data--DomainType:Depth:",
           "IndexableElementCount": [
             {
@@ -610,6 +673,56 @@
         }
       },
       {
+        "id": "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TopTherys Depth Map (own 20 m grid)",
+          "Description": "Depth structure map for Top Therys source rock — references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
+          "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
+          "InterpretationName": "TopTherys Interpretation",
+          "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
+          "BinGridID": "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "IndexableElementCount": [
+            {
+              "Count": 192500,
+              "IndexableElementID": "dev:reference-data--IndexableElement:Cells:"
+            },
+            {
+              "Count": 193401,
+              "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
+            }
+          ],
+          "DDMSDatasets": [
+            "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('0ce9278d-979c-450a-a3db-08ea96517463')"
+          ],
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
+              "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
+              "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
+              "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1"
+            ]
+          }
+        }
+      },
+      {
         "id": "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
         "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
         "acl": {
@@ -629,12 +742,11 @@
           ]
         },
         "data": {
-          "Name": "TopVolantis Depth Map (inline grid — Pattern A)",
-          "Description": "Depth structure map for Top Volantis reservoir - self-contained grid geometry, no external BinGrid reference",
+          "Name": "TopVolantis Depth Map (inline 25 m grid)",
+          "Description": "Depth structure map for Top Volantis reservoir — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabe28f7-a859-5651-a736-02815f8b9385:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
           "DomainTypeID": "dev:reference-data--DomainType:Depth:",
           "BinGridName": "TopVolantis inline depth grid",
           "ABCDBinGridSpatialLocation": {
@@ -722,12 +834,11 @@
           ]
         },
         "data": {
-          "Name": "BaseVolantis Depth Map (inline grid — Pattern A)",
-          "Description": "Depth structure map for Base Volantis reservoir - self-contained grid geometry, no external BinGrid reference",
+          "Name": "BaseVolantis Depth Map (inline 25 m grid)",
+          "Description": "Depth structure map for Base Volantis reservoir — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
           "DomainTypeID": "dev:reference-data--DomainType:Depth:",
           "BinGridName": "BaseVolantis inline depth grid",
           "ABCDBinGridSpatialLocation": {
@@ -796,96 +907,6 @@
         }
       },
       {
-        "id": "dev:work-product-component--StructureMap:45f7bda8-b755-5c17-8a83-b286e7f0d116:1",
-        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "TopTherys Depth Map (standalone)",
-          "Description": "Depth structure map for Top Therys source rock - self-contained grid geometry, no external BinGrid reference",
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
-          "InterpretationName": "TopTherys Interpretation",
-          "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
-          "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "BinGridName": "TopTherys inline grid",
-          "ABCDBinGridSpatialLocation": {
-            "AsIngestedCoordinates": {
-              "type": "FeatureCollection",
-              "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
-              "features": [
-                {
-                  "type": "Feature",
-                  "geometry": {
-                    "type": "MultiPoint",
-                    "coordinates": [
-                      [
-                        461500.0,
-                        6782500.0
-                      ],
-                      [
-                        461500.0,
-                        6775050.0
-                      ],
-                      [
-                        466450.0,
-                        6775050.0
-                      ],
-                      [
-                        466450.0,
-                        6782500.0
-                      ]
-                    ]
-                  },
-                  "properties": {
-                    "name": "ABCD corners"
-                  }
-                }
-              ]
-            }
-          },
-          "OriginEasting": 461500.0,
-          "OriginNorthing": 6782500.0,
-          "BinWidthOnIaxis": 50.0,
-          "BinWidthOnJaxis": 50.0,
-          "MapGridBearingOfBinGridJaxis": 90.0,
-          "NodeCountOnIAxis": 150,
-          "NodeCountOnJAxis": 100,
-          "TransformationMethod": 9666,
-          "IndexableElementCount": [
-            {
-              "Count": 15000,
-              "IndexableElementID": "dev:reference-data--IndexableElement:Cells:"
-            },
-            {
-              "Count": 15251,
-              "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
-            }
-          ],
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
-              "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
-              "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1"
-            ]
-          }
-        }
-      },
-      {
         "id": "dev:work-product-component--SeismicInterpretationProject:525b8e8c-d97e-569f-82bd-f56eff5479c0:1",
         "kind": "dev:wks:work-product-component--SeismicInterpretationProject:1.0.0",
         "acl": {
@@ -920,9 +941,9 @@
           "StructureMapIDs": [
             "dev:work-product-component--StructureMap:6e47def8-43fc-5da2-8e5f-1dffa29fb4eb:1",
             "dev:work-product-component--StructureMap:42c204ca-af9c-5b53-99cd-febc79d649da:1",
+            "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
             "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
-            "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1",
-            "dev:work-product-component--StructureMap:45f7bda8-b755-5c17-8a83-b286e7f0d116:1"
+            "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1"
           ],
           "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
           "GenericBinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
@@ -943,10 +964,11 @@
               "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
               "dev:work-product-component--StructureMap:6e47def8-43fc-5da2-8e5f-1dffa29fb4eb:1",
               "dev:work-product-component--StructureMap:42c204ca-af9c-5b53-99cd-febc79d649da:1",
+              "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
               "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
               "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1",
-              "dev:work-product-component--StructureMap:45f7bda8-b755-5c17-8a83-b286e7f0d116:1",
               "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+              "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
               "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1"
             ]
           }

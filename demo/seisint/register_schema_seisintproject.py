@@ -14,10 +14,10 @@ records.  Re-running is safe — the Schema Service returns 409 if the
 version already exists.
 
 NOTE: The M27 schemas (StructureMap:1.0.0, GenericBinGrid:1.0.0,
-      HorizonControlPoints:1.0.0, SeismicHorizon:2.1.0) are official
-      OSDU community schemas and do NOT need registration — they are
-      already deployed to the platform.  Only this supplementary
-      proposal schema requires manual registration.
+      HorizonControlPoints:1.0.0, SeismicHorizon:2.1.0) must be
+      registered separately via ``register_m27_schemas.py`` before
+      first use.  Only this supplementary proposal schema requires
+      its own registration step.
 
 Usage:
   python register_schema_seisintproject.py

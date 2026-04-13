@@ -1,5 +1,5 @@
 {
-  "id": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
+  "id": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
   "kind": "osdu:wks:work-product-component--SeismicHorizon:2.1.0",
   "acl": {
     "owners": [
@@ -18,19 +18,20 @@
     ]
   },
   "data": {
-    "Name": "TopTherys TWT",
-    "Description": "TWT horizon pick for Top Therys source rock",
-    "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
-    "InterpretationName": "TopTherys Interpretation",
-    "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
-    "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+    "Name": "BaseVolantis TWT",
+    "Description": "TWT horizon pick for Base Volantis reservoir",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+    "InterpretationName": "BaseVolantis Interpretation",
+    "BinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
     "DomainTypeID": "dev:reference-data--DomainType:Time:",
     "RepresentationType": "dev:reference-data--RepresentationType:Regular2DGrid:",
     "SeismicHorizonTypeID": "dev:reference-data--SeismicHorizonType:Peak:",
-    "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Source:",
+    "PetroleumSystemElementTypeID": "dev:reference-data--PetroleumSystemElementType:Reservoir:",
     "Interpreter": "Volantis Interpretation Team",
-    "Remarks": [
-      "Picked on Volantis3D survey, nominal TWT 2800 ms"
+    "Remark": [
+      {
+        "Remark": "Picked on Volantis3D survey, nominal TWT 2050 ms"
+      }
     ],
     "IndexableElementCount": [
       {
@@ -42,11 +43,14 @@
         "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
       }
     ],
+    "DDMSDatasets": [
+      "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('efcf91f9-6e56-4bed-9e23-f0e9350a0b91')"
+    ],
     "ancestry": {
       "parents": [
-        "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
+        "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
         "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
-        "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1"
+        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1"
       ]
     }
   }

@@ -72,23 +72,30 @@ DEPTH_GRID = {
     "transform": 9666,    # right-handed (EPSG 9666)
 }
 
-# Inline grid for TopTherys standalone map (different grid)
-THERYS_INLINE_GRID = {
+# Therys depth grid — derived from real RDDMS Grid2dRep geometry.
+# The RDDMS object (DS_extract_postprocess) uses a rotated 20 m lattice
+# with origin at (461500, 5926500) in projected coordinates and a J-axis
+# bearing of ~150° (azimuth of the slow-axis direction vector).
+THERYS_DEPTH_GRID = {
+    "name":      "Therys Depth 20m",
     "origin_e":  461500.0,
-    "origin_n":  6782500.0,
-    "width_i":   50.0,
-    "width_j":   50.0,
-    "bearing_j": 90.0,
-    "count_i":   150,
-    "count_j":   100,
-    "transform": 9666,
+    "origin_n":  5926500.0,
+    "width_i":   20.0,
+    "width_j":   20.0,
+    "bearing_j": 150.0,   # J-axis ≈ N30W (from RDDMS offset direction)
+    "count_i":   350,
+    "count_j":   550,
+    "transform": 9666,    # right-handed (EPSG 9666)
 }
 
 DATASPACE = "maap/drogon"
 RDDMS_HOST = "rddms-1"
 
 # CRS: EPSG 23031 / ED50 UTM31N + EPSG 5714 / MSL height
-CRS_ID = "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:"
+# NOTE: M27 schemas removed the top-level CrsID property.  The CRS
+# is now conveyed only inside ABCDBinGridSpatialLocation ▸
+# AsIngestedCoordinates.CoordinateReferenceSystemID.
+CRS_REFERENCE = "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:"
 
 # ── Real RDDMS Grid2dRepresentation UUIDs (maap/drogon dataspace) ──────
 # These are actual RESQML objects stored in the Reservoir DDMS, exported
@@ -98,13 +105,14 @@ CRS_ID = "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPS
 RDDMS_DEPTH = {
     "TopVolantis":  "f857c36c-3939-4ff3-9125-a11cf2af105c",  # CRS: obj_LocalDepth3dCrs
     "BaseVolantis": "0c6ab8e7-c793-4ab5-a88c-ccf457d9266d",  # CRS: obj_LocalDepth3dCrs
+    "TopTherys":    "0ce9278d-979c-450a-a3db-08ea96517463",  # DS_extract_postprocess, 550×350 @ 20m
 }
 # TWT surfaces (for SeismicHorizon)
 RDDMS_TWT = {
     "TopVolantis":  "9deb9074-c4eb-44ff-990a-229bb545d442",  # TS_interp, CRS: obj_LocalTime3dCrs
     "BaseVolantis": "efcf91f9-6e56-4bed-9e23-f0e9350a0b91",  # TS_interp, CRS: obj_LocalTime3dCrs
 }
-# TopTherys has no dedicated Grid2dRep in the RDDMS (no DDMSDatasets link)
+# TopTherys has no TWT counterpart in RDDMS (only depth)
 
 
 def ancestry(parents: list[str] | None = None) -> dict:
@@ -130,7 +138,6 @@ def make_boundary_feature(prefix: str, hz_key: str, hz: dict) -> dict:
         "data": {
             "Name": hz_key.replace("Top", "Top ").replace("Base", "Base ").strip(),
             "Description": hz["desc"],
-            "FeatureTypeID": f"{prefix}:reference-data--FeatureType:BoundaryFeature:",
             "ancestry": ancestry(),
         },
     }
@@ -206,11 +213,6 @@ def make_seismic_bin_grid(prefix: str) -> dict:
             "P6BinGridOriginJ": g["xl_min"],
             "P6BinNodeIncrementOnIaxis": {"X": di[0], "Y": di[1]},
             "P6BinNodeIncrementOnJaxis": {"X": dj[0], "Y": dj[1]},
-            "InlineMin": g["il_min"],
-            "InlineMax": g["il_max"],
-            "CrosslineMin": g["xl_min"],
-            "CrosslineMax": g["xl_max"],
-            "CrsID": CRS_ID,
             "ancestry": ancestry(),
         },
     }
@@ -263,7 +265,62 @@ def make_generic_bin_grid(prefix: str) -> dict:
             "NodeCountOnIAxis": g["count_i"],
             "NodeCountOnJAxis": g["count_j"],
             "TransformationMethod": g["transform"],
-            "CrsID": CRS_ID,
+            "ancestry": ancestry(),
+        },
+    }
+
+
+def make_generic_bin_grid_therys(prefix: str) -> dict:
+    """GenericBinGrid:1.0.0 — Therys depth grid (M27).
+
+    Separate from the Volantis 25 m grid because Therys uses a different
+    lattice (20 m spacing, 550×350 nodes, rotated ~30°).  Derived from the
+    real RDDMS Grid2dRepresentation geometry in maap/drogon.
+    """
+    g = THERYS_DEPTH_GRID
+    u = uid("genericbingrid:TherysDepth20m")
+    bearing_i = (g["bearing_j"] + 90.0) % 360
+    corners = abcd_corners(
+        g["origin_e"], g["origin_n"],
+        bearing_i, g["width_i"], g["count_i"],
+        g["bearing_j"], g["width_j"], g["count_j"],
+    )
+    return {
+        "id": wpc_id(prefix, "GenericBinGrid", u),
+        "kind": "osdu:wks:work-product-component--GenericBinGrid:1.0.0",
+        "acl": acl_block(),
+        "legal": legal_block(),
+        "data": {
+            "Name": g["name"],
+            "Description": f"Depth grid for Therys horizon, {g['width_i']}m × {g['width_j']}m, {g['count_i']}×{g['count_j']} nodes, bearing {g['bearing_j']}°",
+            "BinGridName": g["name"],
+            "ABCDBinGridSpatialLocation": {
+                "AsIngestedCoordinates": {
+                    "type": "FeatureCollection",
+                    "CoordinateReferenceSystemID": f"{prefix}:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+                    "features": [{
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "MultiPoint",
+                            "coordinates": [
+                                [corners["A"]["Easting"], corners["A"]["Northing"]],
+                                [corners["B"]["Easting"], corners["B"]["Northing"]],
+                                [corners["C"]["Easting"], corners["C"]["Northing"]],
+                                [corners["D"]["Easting"], corners["D"]["Northing"]],
+                            ],
+                        },
+                        "properties": {"name": "ABCD corners"},
+                    }],
+                },
+            },
+            "OriginEasting": g["origin_e"],
+            "OriginNorthing": g["origin_n"],
+            "BinWidthOnIaxis": g["width_i"],
+            "BinWidthOnJaxis": g["width_j"],
+            "MapGridBearingOfBinGridJaxis": g["bearing_j"],
+            "NodeCountOnIAxis": g["count_i"],
+            "NodeCountOnJAxis": g["count_j"],
+            "TransformationMethod": g["transform"],
             "ancestry": ancestry(),
         },
     }
@@ -306,14 +363,13 @@ def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
             "Description": f"TWT horizon pick for {hz['desc']}",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
-            "SeismicBinGridID": sbg_id,
-            "CrsID": CRS_ID,
+            "BinGridID": sbg_id,
             "DomainTypeID": f"{prefix}:reference-data--DomainType:Time:",
             "RepresentationType": f"{prefix}:reference-data--RepresentationType:Regular2DGrid:",
             "SeismicHorizonTypeID": f"{prefix}:reference-data--SeismicHorizonType:Peak:",
             "PetroleumSystemElementTypeID": f"{prefix}:reference-data--PetroleumSystemElementType:{hz['pse']}:",
             "Interpreter": "Volantis Interpretation Team",
-            "Remarks": [f"Picked on Volantis3D survey, nominal TWT {hz['twt_ms']} ms"],
+            "Remark": [{"Remark": f"Picked on Volantis3D survey, nominal TWT {hz['twt_ms']} ms"}],
             "IndexableElementCount": [
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
@@ -357,13 +413,12 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
         "acl": acl_block(),
         "legal": legal_block(),
         "data": {
-            "Name": f"{hz_key} Depth Map",
-            "Description": f"Depth-converted structure map for {hz['desc']} - references shared external GenericBinGrid",
+            "Name": f"{hz_key} Depth Map (shared grid ref)",
+            "Description": f"Depth structure map for {hz['desc']} — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
             "BinGridID": gbg_id,
-            "CrsID": CRS_ID,
             "DomainTypeID": f"{prefix}:reference-data--DomainType:Depth:",
             "IndexableElementCount": [
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
@@ -377,31 +432,31 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
     }
 
 
-def make_structure_map_inline(prefix: str, hz_key: str, hz: dict) -> dict:
-    """StructureMap:1.0.0 with inline grid geometry (M27).
+def make_structure_map_therys_external(prefix: str, hz_key: str, hz: dict) -> dict:
+    """StructureMap:1.0.0 for TopTherys — Pattern B with own GenericBinGrid (M27).
 
-    Metadata only — actual Z-values live in the RDDMS Grid2dRepresentation.
-    TopTherys has no dedicated RDDMS object, so DDMSDatasets is omitted.
+    References the Therys-specific 20 m GenericBinGrid and links to the
+    real RDDMS Grid2dRepresentation (DS_extract_postprocess) via DDMSDatasets[].
     """
-    g = THERYS_INLINE_GRID
-    u = uid(f"smap:inline:{hz_key}")
+    g = THERYS_DEPTH_GRID
+    u = uid(f"smap:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
     sh_u = uid(f"seishz:{hz_key}")
+    gbg_u = uid("genericbingrid:TherysDepth20m")
 
     interp_id = wpc_id(prefix, "HorizonInterpretation", interp_u)
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
     sh_id = wpc_id(prefix, "SeismicHorizon", sh_u)
+    gbg_id = wpc_id(prefix, "GenericBinGrid", gbg_u)
 
     n_cells = g["count_i"] * g["count_j"]
     n_nodes = (g["count_i"] + 1) * (g["count_j"] + 1)
 
-    bearing_i = (g["bearing_j"] + 90.0) % 360
-    corners = abcd_corners(
-        g["origin_e"], g["origin_n"],
-        bearing_i, g["width_i"], g["count_i"],
-        g["bearing_j"], g["width_j"], g["count_j"],
-    )
+    # DDMSDatasets → real Grid2dRep in RDDMS (depth domain)
+    ddms = []
+    if hz_key in RDDMS_DEPTH:
+        ddms.append(_ddms_uri(RDDMS_DEPTH[hz_key]))
 
     return {
         "id": wpc_id(prefix, "StructureMap", u),
@@ -409,48 +464,21 @@ def make_structure_map_inline(prefix: str, hz_key: str, hz: dict) -> dict:
         "acl": acl_block(),
         "legal": legal_block(),
         "data": {
-            "Name": f"{hz_key} Depth Map (standalone)",
-            "Description": f"Depth structure map for {hz['desc']} - self-contained grid geometry, no external BinGrid reference",
+            "Name": f"{hz_key} Depth Map (own 20 m grid)",
+            "Description": f"Depth structure map for {hz['desc']} — references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
-            "CrsID": CRS_ID,
+            "BinGridID": gbg_id,
             "DomainTypeID": f"{prefix}:reference-data--DomainType:Depth:",
-            # Inline grid (AbstractGenericBinGrid properties) — no BinGridID
-            "BinGridName": f"{hz_key} inline grid",
-            "ABCDBinGridSpatialLocation": {
-                "AsIngestedCoordinates": {
-                    "type": "FeatureCollection",
-                    "CoordinateReferenceSystemID": f"{prefix}:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
-                    "features": [{
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "MultiPoint",
-                            "coordinates": [
-                                [corners["A"]["Easting"], corners["A"]["Northing"]],
-                                [corners["B"]["Easting"], corners["B"]["Northing"]],
-                                [corners["C"]["Easting"], corners["C"]["Northing"]],
-                                [corners["D"]["Easting"], corners["D"]["Northing"]],
-                            ],
-                        },
-                        "properties": {"name": "ABCD corners"},
-                    }],
-                },
-            },
-            "OriginEasting": g["origin_e"],
-            "OriginNorthing": g["origin_n"],
-            "BinWidthOnIaxis": g["width_i"],
-            "BinWidthOnJaxis": g["width_j"],
-            "MapGridBearingOfBinGridJaxis": g["bearing_j"],
-            "NodeCountOnIAxis": g["count_i"],
-            "NodeCountOnJAxis": g["count_j"],
-            "TransformationMethod": g["transform"],
             "IndexableElementCount": [
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
-            # TopTherys: no dedicated Grid2dRep in RDDMS — DDMSDatasets omitted
-            "ancestry": ancestry([sh_id, interp_id, feat_id]),
+            **({
+                "DDMSDatasets": ddms,
+            } if ddms else {}),
+            "ancestry": ancestry([sh_id, interp_id, gbg_id, feat_id]),
         },
     }
 
@@ -489,12 +517,11 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
         "acl": acl_block(),
         "legal": legal_block(),
         "data": {
-            "Name": f"{hz_key} Depth Map (inline grid — Pattern A)",
-            "Description": f"Depth structure map for {hz['desc']} - self-contained grid geometry, no external BinGrid reference",
+            "Name": f"{hz_key} Depth Map (inline 25 m grid)",
+            "Description": f"Depth structure map for {hz['desc']} — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
-            "CrsID": CRS_ID,
             "DomainTypeID": f"{prefix}:reference-data--DomainType:Depth:",
             # Inline grid (AbstractGenericBinGrid properties) — no BinGridID
             "BinGridName": f"{hz_key} inline depth grid",
@@ -547,23 +574,22 @@ def make_interpretation_project(prefix: str, horizon_keys: list) -> dict:
     hi_ids = [wpc_id(prefix, "HorizonInterpretation", uid(f"interp:{k}")) for k in horizon_keys]
     sh_ids = [wpc_id(prefix, "SeismicHorizon", uid(f"seishz:{k}")) for k in horizon_keys]
 
-    # StructureMap IDs: Pattern B (external grid) + Pattern A (inline grid) + TopTherys inline
+    # StructureMap IDs: Pattern B (external grid) for all 3 horizons + Pattern A (inline) for Volantis pair
     sm_ids_b = [
         wpc_id(prefix, "StructureMap", uid("smap:TopVolantis")),
         wpc_id(prefix, "StructureMap", uid("smap:BaseVolantis")),
+        wpc_id(prefix, "StructureMap", uid("smap:TopTherys")),
     ]
     sm_ids_a = [
         wpc_id(prefix, "StructureMap", uid("smap:inlineA:TopVolantis")),
         wpc_id(prefix, "StructureMap", uid("smap:inlineA:BaseVolantis")),
     ]
-    sm_ids_therys = [
-        wpc_id(prefix, "StructureMap", uid("smap:inline:TopTherys")),
-    ]
-    sm_ids = sm_ids_b + sm_ids_a + sm_ids_therys
+    sm_ids = sm_ids_b + sm_ids_a
     gbg_id = wpc_id(prefix, "GenericBinGrid", uid("genericbingrid:VolantisDepth25m"))
+    gbg_therys_id = wpc_id(prefix, "GenericBinGrid", uid("genericbingrid:TherysDepth20m"))
     sbg_id = wpc_id(prefix, "SeismicBinGrid", sbg_u)
 
-    all_parents = bf_ids + hi_ids + sh_ids + sm_ids + [gbg_id, sbg_id]
+    all_parents = bf_ids + hi_ids + sh_ids + sm_ids + [gbg_id, gbg_therys_id, sbg_id]
 
     return {
         "id": wpc_id(prefix, "SeismicInterpretationProject", u),
@@ -612,8 +638,9 @@ def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
     records.append(make_seismic_bin_grid(prefix))
 
     # 4. GenericBinGrid:1.0.0 (M27) — before SeismicHorizon so grids exist first
-    print("Generating generic bin grid (depth)...")
+    print("Generating generic bin grids (depth)...")
     records.append(make_generic_bin_grid(prefix))
+    records.append(make_generic_bin_grid_therys(prefix))
 
     # 5. SeismicHorizon:2.1.0
     print("Generating seismic horizons (TWT)...")
@@ -624,15 +651,15 @@ def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
     print("Generating structure maps — Pattern B (external BinGridID)...")
     for k in ["TopVolantis", "BaseVolantis"]:
         records.append(make_structure_map_external(prefix, k, HORIZONS[k]))
+    # TopTherys — own 20 m GenericBinGrid + real RDDMS depth data
+    records.append(make_structure_map_therys_external(prefix, "TopTherys", HORIZONS["TopTherys"]))
 
     # 7. StructureMap:1.0.0 (M27) — Pattern A: inline grid geometry
     print("Generating structure maps — Pattern A (inline grid)...")
     for k in ["TopVolantis", "BaseVolantis"]:
         records.append(make_structure_map_inline_from_depth_grid(prefix, k, HORIZONS[k]))
-    # TopTherys → inline grid (different grid params)
-    records.append(make_structure_map_inline(prefix, "TopTherys", HORIZONS["TopTherys"]))
 
-    # 7. SeismicInterpretationProject (proposal)
+    # 8. SeismicInterpretationProject (proposal)
     print("Generating interpretation project...")
     records.append(make_interpretation_project(prefix, hz_keys))
 

@@ -33,9 +33,9 @@
     "StructureMapIDs": [
       "dev:work-product-component--StructureMap:6e47def8-43fc-5da2-8e5f-1dffa29fb4eb:1",
       "dev:work-product-component--StructureMap:42c204ca-af9c-5b53-99cd-febc79d649da:1",
+      "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
       "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
-      "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1",
-      "dev:work-product-component--StructureMap:45f7bda8-b755-5c17-8a83-b286e7f0d116:1"
+      "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1"
     ],
     "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
     "GenericBinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
@@ -56,10 +56,11 @@
         "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
         "dev:work-product-component--StructureMap:6e47def8-43fc-5da2-8e5f-1dffa29fb4eb:1",
         "dev:work-product-component--StructureMap:42c204ca-af9c-5b53-99cd-febc79d649da:1",
+        "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
         "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
         "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1",
-        "dev:work-product-component--StructureMap:45f7bda8-b755-5c17-8a83-b286e7f0d116:1",
         "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+        "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
         "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1"
       ]
     }

@@ -1,5 +1,5 @@
 {
-  "id": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+  "id": "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
   "kind": "osdu:wks:work-product-component--GenericBinGrid:1.0.0",
   "acl": {
     "owners": [
@@ -18,9 +18,9 @@
     ]
   },
   "data": {
-    "Name": "Volantis Depth 25m",
-    "Description": "Shared depth grid for Volantis interpretation, 25.0m × 25.0m, 300×200 nodes",
-    "BinGridName": "Volantis Depth 25m",
+    "Name": "Therys Depth 20m",
+    "Description": "Depth grid for Therys horizon, 20.0m × 20.0m, 350×550 nodes, bearing 150.0°",
+    "BinGridName": "Therys Depth 20m",
     "ABCDBinGridSpatialLocation": {
       "AsIngestedCoordinates": {
         "type": "FeatureCollection",
@@ -32,20 +32,20 @@
               "type": "MultiPoint",
               "coordinates": [
                 [
-                  461000.0,
-                  6782000.0
+                  461500.0,
+                  5926500.0
                 ],
                 [
-                  461000.0,
-                  6774525.0
+                  455455.14,
+                  5923010.0
                 ],
                 [
-                  465975.0,
-                  6774525.0
+                  460945.14,
+                  5913501.04
                 ],
                 [
-                  465975.0,
-                  6782000.0
+                  466990.0,
+                  5916991.04
                 ]
               ]
             },
@@ -56,13 +56,13 @@
         ]
       }
     },
-    "OriginEasting": 461000.0,
-    "OriginNorthing": 6782000.0,
-    "BinWidthOnIaxis": 25.0,
-    "BinWidthOnJaxis": 25.0,
-    "MapGridBearingOfBinGridJaxis": 90.0,
-    "NodeCountOnIAxis": 300,
-    "NodeCountOnJAxis": 200,
+    "OriginEasting": 461500.0,
+    "OriginNorthing": 5926500.0,
+    "BinWidthOnIaxis": 20.0,
+    "BinWidthOnJaxis": 20.0,
+    "MapGridBearingOfBinGridJaxis": 150.0,
+    "NodeCountOnIAxis": 350,
+    "NodeCountOnJAxis": 550,
     "TransformationMethod": 9666,
     "ancestry": {
       "parents": []

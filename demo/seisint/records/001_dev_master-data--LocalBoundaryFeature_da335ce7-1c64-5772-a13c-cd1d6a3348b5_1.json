@@ -20,7 +20,6 @@
   "data": {
     "Name": "Base Volantis",
     "Description": "Base Volantis reservoir",
-    "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:",
     "ancestry": {
       "parents": []
     }

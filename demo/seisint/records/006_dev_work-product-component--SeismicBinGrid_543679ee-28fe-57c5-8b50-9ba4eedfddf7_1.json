@@ -67,11 +67,6 @@
       "X": 12.5,
       "Y": 0.0
     },
-    "InlineMin": 1000,
-    "InlineMax": 1599,
-    "CrosslineMin": 2000,
-    "CrosslineMax": 2399,
-    "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
     "ancestry": {
       "parents": []
     }

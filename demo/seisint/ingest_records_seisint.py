@@ -11,9 +11,9 @@ manifest2records_seisint.py.  Files are ingested in sorted order
 Prerequisites:
   1. Run gen_volantis_interp.py           → manifest_volantis_interp.json
   2. Run manifest2records_seisint.py      → records/*.json
-  3. Run register_schema_seisintproject.py (only if SeismicInterpretationProject
-     records are included — M27 official schemas are pre-deployed)
-  4. Run THIS script                      → records ingested to OSDU
+  3. Run register_m27_schemas.py          (M27 schemas — one-time, safe to re-run)
+  4. Run register_schema_seisintproject.py (SeismicInterpretationProject proposal)
+  5. Run THIS script                      → records ingested to OSDU
 
 Usage:
   python ingest_records_seisint.py
