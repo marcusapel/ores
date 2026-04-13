@@ -172,6 +172,19 @@
             "StringParameterKey": "GeoLabelSet"
           }
         ]
+      },
+      {
+        "Title": "DG2 Evidence Package (persisted collection)",
+        "Selection": "WorkProduct bundling all DG2 input/output artifacts — volumes, parameters, forecast, risks, documents, GeoLabelSet, activity, and ETP dataspace reference",
+        "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
+        "ParameterRoleID": "dev:reference-data--ParameterRole:InputReference:1",
+        "DataObjectParameter": "dev:work-product-component--PersistedCollection:Drogon-DG2-EvidencePackage:1",
+        "Keys": [
+          {
+            "ParameterKey": "artifact",
+            "StringParameterKey": "PersistedCollection"
+          }
+        ]
       }
     ],
     "Personnel": [

@@ -34,6 +34,8 @@ from .auth import (
     AUTH_MODE,
     PUBLIC_PATHS,
 )
+import markdown as _md
+from pathlib import Path as _Path
 from .strat import router as strat_router
 from .analyse import router as analyse_router
 from .addgate import router as addgate_router
@@ -1515,4 +1517,138 @@ async def view_record(request: Request, record_id: str):
             },
             status_code=500,
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HowTo — rendered markdown articles from the md/ directory
+# ──────────────────────────────────────────────────────────────────────────────
+
+_MD_DIR = _Path(__file__).resolve().parent.parent / "md"
+
+# ── HowTo article catalog ────────────────────────────────────────────────
+# Grouped structure for the HowTo index page.
+# Each section has a title and a list of items.
+# Items can optionally carry ``children`` (sub-articles shown indented).
+_HOWTO_SECTIONS: list[dict] = [
+    {
+        "title": "Ores Design and Usage",
+        "items": [
+            {
+                "slug": "ores-overview",
+                "file": "readme.md",
+                "title": "ORES Overview",
+                "desc": "Web client capabilities, project layout & pipeline guide",
+            },
+            {
+                "slug": "business-decision",
+                "file": "BusinessDecision.md",
+                "title": "Business Decision",
+                "desc": "Model DG1–DG4 decisions as BusinessDecision records",
+                "children": [
+                    {"slug": "bd-demo",      "file": "BdDemo.md",       "title": "BD Demo",       "desc": "Drogon DG2 worked example"},
+                    {"slug": "geolabelset",  "file": "GeoLabelSet.md",  "title": "GeoLabelSet",   "desc": "Reservoir volumes & statistics manifests"},
+                    {"slug": "risk",         "file": "Risk.md",         "title": "Risk",           "desc": "Subsurface risk data management"},
+                    {"slug": "uncertainty",  "file": "Uncertainty.md",  "title": "Uncertainty",    "desc": "FMU ensemble / Monte Carlo in OSDU"},
+                ],
+            },
+            {
+                "slug": "seismic-interp",
+                "file": "SeisInt.md",
+                "title": "Seismic Interpretation",
+                "desc": "M27 schema landscape & worked example",
+            },
+            {
+                "slug": "crs-guide",
+                "file": "CrsGuide.md",
+                "title": "CRS Guide",
+                "desc": "RESQML ⇄ OSDU coordinate reference systems",
+            },
+            {
+                "slug": "strat-column",
+                "file": "StratColumn.md",
+                "title": "Stratigraphic Column",
+                "desc": "Data model, tooling & workflow",
+            },
+        ],
+    },
+]
+
+# Flat lookup: slug → (filename, title)  — used by the article route
+_HOWTO_FLAT: dict[str, tuple[str, str]] = {}
+for _sec in _HOWTO_SECTIONS:
+    for _item in _sec["items"]:
+        _HOWTO_FLAT[_item["slug"]] = (_item["file"], _item["title"])
+        for _child in _item.get("children", []):
+            _HOWTO_FLAT[_child["slug"]] = (_child["file"], _child["title"])
+
+_md_extensions = [
+    "tables",
+    "fenced_code",
+    "toc",
+    "attr_list",
+    "md_in_html",
+    "pymdownx.superfences",
+]
+
+
+def _render_md(filename: str) -> tuple[str, str]:
+    """Read a markdown file and return (html_body, toc_html)."""
+    md_path = _MD_DIR / filename
+    if not md_path.is_file():
+        raise HTTPException(404, f"Article not found: {filename}")
+    source = md_path.read_text(encoding="utf-8")
+    converter = _md.Markdown(extensions=_md_extensions, extension_configs={
+        "toc": {"permalink": True, "toc_depth": "2-4"},
+        "pymdownx.superfences": {
+            "custom_fences": [{
+                "name": "mermaid",
+                "class": "mermaid",
+                "format": lambda source, language, class_name, options, md, **kw: (
+                    f'<pre class="mermaid">{source}</pre>'
+                ),
+            }],
+        },
+    })
+    html_body = converter.convert(source)
+    toc_html = getattr(converter, "toc", "")
+    return html_body, toc_html
+
+
+@app.get("/howto", response_class=HTMLResponse, summary="HowTo — documentation articles")
+async def howto_index(request: Request):
+    return templates.TemplateResponse(
+        "howto.html",
+        {
+            "request": request,
+            "sections": _HOWTO_SECTIONS,
+        },
+    )
+
+
+@app.get("/howto/{slug}", response_class=HTMLResponse, summary="HowTo article")
+async def howto_article(request: Request, slug: str):
+    entry = _HOWTO_FLAT.get(slug)
+    if not entry:
+        raise HTTPException(404, f"Unknown article: {slug}")
+    filename, title = entry
+    html_body, toc_html = _render_md(filename)
+    # Find children for this slug (if it's a parent article)
+    children: list[dict] = []
+    for sec in _HOWTO_SECTIONS:
+        for item in sec["items"]:
+            if item["slug"] == slug:
+                children = item.get("children", [])
+                break
+    return templates.TemplateResponse(
+        "howto_article.html",
+        {
+            "request": request,
+            "title": title,
+            "slug": slug,
+            "toc_html": toc_html,
+            "article_html": html_body,
+            "sections": _HOWTO_SECTIONS,
+            "children": children,
+        },
+    )
 

@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — HowTo — ORES{% endblock %}
+
+{% block head %}
+<style>
+/* ── Article layout: sidebar + content ── */
+.article-wrap {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .article-wrap { grid-template-columns: 1fr; }
+  .article-sidebar { display: none; }
+}
+
+/* ── Sidebar ── */
+.article-sidebar {
+  position: sticky;
+  top: 68px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.sidebar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--eq-grey);
+  margin-bottom: 12px;
+  text-decoration: none;
+}
+.sidebar-back:hover { color: var(--eq-link); }
+.sidebar-nav h5 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--eq-grey);
+  margin: 14px 0 6px;
+}
+.sidebar-nav a {
+  display: block;
+  font-size: 13px;
+  padding: 3px 0 3px 8px;
+  color: var(--eq-slate);
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  transition: color .1s, border-color .1s;
+}
+.sidebar-nav a:hover {
+  color: var(--eq-link);
+  border-left-color: var(--eq-link);
+}
+.sidebar-nav a.active {
+  color: var(--eq-red);
+  border-left-color: var(--eq-red);
+  font-weight: 600;
+}
+.sidebar-nav .child-link {
+  padding-left: 18px;
+  font-size: 12.5px;
+}
+
+/* ── In-page TOC (from markdown [TOC]) ── */
+.article-toc {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--eq-border);
+}
+.article-toc h5 {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--eq-grey);
+  margin: 0 0 6px;
+}
+.article-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.article-toc li { margin: 0; }
+.article-toc a {
+  display: block;
+  font-size: 12.5px;
+  padding: 2px 0 2px 8px;
+  color: var(--eq-slate);
+  border-left: 2px solid transparent;
+  text-decoration: none;
+}
+.article-toc a:hover {
+  color: var(--eq-link);
+  border-left-color: var(--eq-link);
+}
+.article-toc ul ul a { padding-left: 18px; font-size: 12px; }
+.article-toc ul ul ul a { padding-left: 28px; }
+
+/* ── Article body ── */
+.article-body {
+  background: var(--eq-white);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--radius);
+  padding: 2rem 2.5rem;
+  box-shadow: var(--shadow-sm);
+  min-width: 0;   /* prevent grid blowout */
+}
+.article-body h1 { font-size: 24px; margin: 0 0 .5rem; color: var(--eq-charcoal); }
+.article-body h2 { font-size: 19px; margin: 1.8rem 0 .6rem; padding-bottom: .25rem; border-bottom: 1px solid var(--eq-border); }
+.article-body h3 { font-size: 16px; margin: 1.4rem 0 .5rem; }
+.article-body h4 { font-size: 14px; margin: 1.2rem 0 .4rem; }
+.article-body p  { margin: 0 0 .75rem; }
+.article-body ul, .article-body ol { margin: 0 0 .75rem; padding-left: 1.5rem; }
+.article-body li { margin-bottom: .25rem; }
+.article-body img { max-width: 100%; border-radius: var(--radius); }
+.article-body blockquote {
+  margin: 0 0 1rem;
+  padding: 10px 16px;
+  border-left: 4px solid var(--eq-warn-border);
+  background: var(--eq-warn-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 13.5px;
+  color: var(--eq-slate);
+}
+.article-body blockquote p:last-child { margin-bottom: 0; }
+.article-body table { margin: 0 0 1rem; }
+.article-body pre {
+  overflow-x: auto;
+}
+.article-body pre.mermaid {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: center;
+}
+/* permalink anchors from toc extension */
+.article-body .headerlink {
+  color: var(--eq-border);
+  font-size: .8em;
+  margin-left: .3em;
+  text-decoration: none;
+}
+.article-body .headerlink:hover { color: var(--eq-link); }
+
+/* ── Sub-topic cards at bottom of parent articles ── */
+.article-children { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 2px solid var(--eq-border); }
+.article-children h2 { border-bottom: none; font-size: 17px; margin: 0 0 .75rem; }
+.children-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.child-card {
+  display: block;
+  background: var(--eq-light);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.child-card:hover {
+  border-color: var(--eq-link);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+}
+.child-card strong { display: block; font-size: 14px; color: var(--eq-link); margin-bottom: 3px; }
+.child-card:hover strong { color: var(--eq-link-hover); }
+.child-card span { font-size: 12.5px; color: var(--eq-grey); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="article-wrap">
+  <!-- Sidebar: article navigation + in-page TOC -->
+  <aside class="article-sidebar">
+    <a class="sidebar-back" href="/howto">← All articles</a>
+    <nav class="sidebar-nav">
+      {% for section in sections %}
+      <h5>{{ section.title }}</h5>
+      {% for item in section["items"] %}
+      <a href="/howto/{{ item.slug }}" class="{{ 'active' if item.slug == slug else '' }}">{{ item.title }}</a>
+      {% for child in item.children|default([]) %}
+      <a href="/howto/{{ child.slug }}" class="child-link {{ 'active' if child.slug == slug else '' }}">{{ child.title }}</a>
+      {% endfor %}
+      {% endfor %}
+      {% endfor %}
+    </nav>
+
+    {% if toc_html %}
+    <div class="article-toc">
+      <h5>On this page</h5>
+      {{ toc_html | safe }}
+    </div>
+    {% endif %}
+  </aside>
+
+  <!-- Article content -->
+  <article class="article-body">
+    {{ article_html | safe }}
+
+    {% if children %}
+    <div class="article-children">
+      <h2>Related sub-topics</h2>
+      <div class="children-grid">
+        {% for child in children %}
+        <a class="child-card" href="/howto/{{ child.slug }}">
+          <strong>{{ child.title }}</strong>
+          {% if child.desc %}<span>{{ child.desc }}</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </article>
+</div>
+{% endblock %}

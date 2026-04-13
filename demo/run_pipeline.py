@@ -105,6 +105,7 @@ STEP_CONVENTIONS: List[Tuple[float, str, str]] = [
     (5,   "gen_risk_*.py",               "Risks"),
     (6,   "gen_documents_*.py",          "Documents"),
     (6.1, "gen_devconcept_*.py",         "DevelopmentConcept"),
+    (6.5, "gen_collection_*.py",         "Evidence Package (PersistedCollection)"),
     (7,   "gen_businessdecision_*.py",   "Business Decision"),
     # Infrastructure steps (records + ingest)
     (8,   "manifest2records*.py",        "Manifests → records"),
@@ -266,6 +267,8 @@ PROFILES: Dict[str, Dict[str, Any]] = {
                  "demo/drogon_dg2/gen_documents_dg2.py"),
             Step(6.1, "DG2 DevelopmentConcept WPC",
                  "demo/drogon_dg2/gen_devconcept_dg2.py"),
+            Step(6.5, "DG2 Evidence Package (WorkProduct)",
+                 "demo/drogon_dg2/gen_collection_dg2.py"),
             Step(7,  "DG2 Business Decision",
                  "demo/drogon_dg2/gen_businessdecision_dg2.py"),
             Step(8,  "Manifests → records",

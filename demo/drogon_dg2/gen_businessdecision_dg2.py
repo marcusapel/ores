@@ -93,6 +93,7 @@ def main():
     ap.add_argument("--production", default=str(SCRIPT_DIR / "manifest_wpc_production_dg2.json"))
     ap.add_argument("--devconcept", default=str(SCRIPT_DIR / "manifest_devconcept_dg2.json"))
     ap.add_argument("--geolabelset-id", default="dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1")
+    ap.add_argument("--collection", default=str(SCRIPT_DIR / "manifest_collection_dg2.json"))
     ap.add_argument("--manifest",  default=str(SCRIPT_DIR / "manifest_bd_dg2.json"))
     ap.add_argument("--id-prefix", default="dev")
     args = ap.parse_args()
@@ -146,6 +147,15 @@ def main():
     # Reference to DG1 BD (prior decision gate)
     dg1_bd_id = f"{pfx}:master-data--BusinessDecision:Drogon-DG1-Identify:1"
 
+    # PersistedCollection WPC (evidence package)
+    collection_id = ""
+    if Path(args.collection).exists():
+        coll_man = load_json(args.collection)
+        for wpc in coll_man.get("Data", {}).get("WorkProductComponents", []):
+            if "PersistedCollection" in wpc.get("kind", ""):
+                collection_id = wpc["id"]
+                break
+
     # ETP dataspace for RESQML artefacts
     dataspace_id = f"{pfx}:dataset--ETPDataspace:maap-drogon_dg:1"
 
@@ -195,6 +205,7 @@ def main():
                 reservoir_id, dataspace_id, dg1_bd_id, doc_ids,
                 pp_wpc_id, devconcept_wpc_id,
                 gls_id=args.geolabelset_id,
+                collection_id=collection_id,
             ),
             # ── Canonical fields (survive OSDU ingestion) ──
             **_build_canonical_fields(pfx),
@@ -229,6 +240,7 @@ def main():
     print(f"  Params ref   : {params_wpc_id}")
     print(f"  Risk refs    : {risk_ids}")
     print(f"  Doc refs     : {list(doc_ids.values())}")
+    print(f"  Collection   : {collection_id or '(none)'}")
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -243,6 +255,7 @@ def _build_parameters(
     pp_wpc_id: str = "",
     devconcept_wpc_id: str = "",
     gls_id: str = "",
+    collection_id: str = "",
 ) -> List[Dict[str, Any]]:
     params: List[Dict[str, Any]] = [
         {
@@ -338,6 +351,20 @@ def _build_parameters(
             "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
             "DataObjectParameter": gls_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "GeoLabelSet"}],
+        })
+    # Persisted collection (WorkProduct evidence package)
+    if collection_id:
+        params.append({
+            "Title": "DG2 Evidence Package (persisted collection)",
+            "Selection": (
+                "WorkProduct bundling all DG2 input/output artifacts — "
+                "volumes, parameters, forecast, risks, documents, "
+                "GeoLabelSet, activity, and ETP dataspace reference"
+            ),
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:1",
+            "DataObjectParameter": collection_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "PersistedCollection"}],
         })
     return params
 

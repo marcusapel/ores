@@ -36,9 +36,12 @@ MANIFEST_ORDER = [
     (SCRIPT_DIR, "manifest_wpc_production_dg2.json"),
     # DG2-specific activity (links to DG2 WPCs)
     (SCRIPT_DIR, "manifest_activity_dg2.json"),
-    # DG2-specific risks, documents, BD
+    # DG2-specific risks, documents, GeoLabelSet, devconcept, collection, BD
     (SCRIPT_DIR, "manifest_risk_dg2.json"),
     (SCRIPT_DIR, "manifest_documents_dg2.json"),
+    (SCRIPT_DIR, "manifest_geolabelset_dg2.json"),
+    (SCRIPT_DIR, "manifest_devconcept_dg2.json"),
+    (SCRIPT_DIR, "manifest_collection_dg2.json"),
     (SCRIPT_DIR, "manifest_bd_dg2.json"),
 ]
 
