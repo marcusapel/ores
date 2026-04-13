@@ -525,16 +525,17 @@ flowchart LR
 
 ### 11.3 DDMSDatasets[] — The RDDMS Link
 
-Every OSDU representation WPC links to its RDDMS counterpart:
+Every OSDU representation WPC links to its RDDMS counterpart via `DDMSDatasets[]`. The OSDU record carries **only metadata** (grid parameters, interpretation links, CRS) — the actual Z-value arrays live in the RDDMS as `Grid2dRepresentation` objects:
 
 ```json
 {
-  "DDMSDatasets": [{
-    "SchemaFormatTypeID": "dev:reference-data--SchemaFormatType:RESQML20:Grid2dRepresentation:",
-    "DatasetURI": "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('aabbccdd-1122-3344-5566-778899aabb01')"
-  }]
+  "DDMSDatasets": [
+    "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('f857c36c-3939-4ff3-9125-a11cf2af105c')"
+  ]
 }
 ```
+
+The URI encodes the RDDMS host, dataspace path, RESQML type, and UUID — enough for any ETP-aware client to fetch the full object.
 
 ---
 
@@ -756,7 +757,7 @@ Using `testHorizonEverythingIncluded.json` from `demo/seisint/references/` (a RE
     "NodeCountOnJAxis": 4,
     "TransformationMethod": 9666,
     "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml22.Grid2dRepresentation('030a82f6-...')"
+      "eml://rddms-1/dataspace('maap/drogon')/resqml22.Grid2dRepresentation('030a82f6-...')"
     ]
   }
 }
@@ -824,7 +825,7 @@ Working example records and scripts are in [`demo/seisint/`](../demo/seisint/):
 
 ### 13.1 Scenario
 
-The manifest demonstrates the **Volantis 2025 Interpretation** — a synthetic scenario using realistic parameters for the Volantis field (Norwegian Sea):
+The manifest demonstrates the **Volantis 2025 Interpretation** — a consistent end-to-end demo using the Volantis field (Norwegian Sea). All `DDMSDatasets[]` links point to **real** RESQML `Grid2dRepresentation` objects stored in the Reservoir DDMS dataspace **`maap/drogon`** (exported from Aspen SKUA).
 
 | Layer | Records | Schema |
 |---|---|---|
@@ -839,7 +840,26 @@ The manifest demonstrates the **Volantis 2025 Interpretation** — a synthetic s
 | Project grouping | 1 | **`SeismicInterpretationProject:1.0.0`** (proposal) |
 | **Total** | **17 records** | |
 
-### 13.2 Grid Strategy Comparison — Pattern A vs Pattern B
+### 13.2 RDDMS Data Source — `maap/drogon`
+
+The demo references real RESQML objects living in the `maap/drogon` RDDMS dataspace. SeismicHorizon and StructureMap records are **pure catalog/metadata** — they carry no grid geometry or Z-value arrays themselves, only descriptive properties and a `DDMSDatasets[]` link to the data:
+
+| OSDU Record | Domain | RDDMS Grid2dRep UUID | RDDMS Name | CRS |
+|---|---|---|---|---|
+| TopVolantis TWT | Time | `9deb9074-c4eb-44ff-990a-229bb545d442` | TS_interp | `LocalTime3dCrs` |
+| BaseVolantis TWT | Time | `efcf91f9-6e56-4bed-9e23-f0e9350a0b91` | TS_interp | `LocalTime3dCrs` |
+| TopTherys TWT | Time | — (no RDDMS object) | — | — |
+| TopVolantis Depth Map | Depth | `f857c36c-3939-4ff3-9125-a11cf2af105c` | TopVolantis | `LocalDepth3dCrs` |
+| BaseVolantis Depth Map | Depth | `0c6ab8e7-c793-4ab5-a88c-ccf457d9266d` | BaseVolantis | `LocalDepth3dCrs` |
+| TopVolantis Pattern A | Depth | `f857c36c-3939-4ff3-9125-a11cf2af105c` | (same) | `LocalDepth3dCrs` |
+| BaseVolantis Pattern A | Depth | `0c6ab8e7-c793-4ab5-a88c-ccf457d9266d` | (same) | `LocalDepth3dCrs` |
+| TopTherys standalone | Depth | — (no RDDMS object) | — | — |
+
+The RDDMS dataspace `maap/drogon` contains **51 Grid2dRepresentation** objects total (depth + time surfaces from the Drogon FMU workflow, including the two named Volantis horizons). Pattern A and Pattern B records for the same horizon point to the **same** RDDMS object — they differ only in how the OSDU catalog record describes the grid.
+
+TopTherys has no dedicated Grid2dRepresentation in the RDDMS, so those records omit `DDMSDatasets[]` entirely.
+
+### 13.3 Grid Strategy Comparison — Pattern A vs Pattern B
 
 The demo ingests both patterns **for the same horizons** (TopVolantis and BaseVolantis), making direct comparison possible:
 
@@ -856,7 +876,7 @@ The demo ingests both patterns **for the same horizons** (TopVolantis and BaseVo
 #### Pattern A: Inline Grid (RESQML `Point3dLatticeArray`)
 
 ```
-StructureMap
+StructureMap                    (OSDU catalog — metadata only)
   ├── InterpretationID  → HorizonInterpretation
   ├── SeismicHorizonID  → SeismicHorizon (TWT)
   ├── CrsID             → CoordinateReferenceSystem
@@ -866,29 +886,31 @@ StructureMap
   ├── BinWidthOnJaxis:   25.0
   ├── NodeCountOnIAxis:  300
   ├── NodeCountOnJAxis:  200
-  └── DDMSDatasets[]    → eml://rddms-1/.../Grid2dRepresentation('{uuid}')
+  └── DDMSDatasets[]    → eml://rddms-1/dataspace('maap/drogon')/...Grid2dRep('{uuid}')
+                          ^^^^ actual Z-values live here in the RDDMS
 ```
 
-**Grid geometry is embedded directly on the StructureMap record.** No separate BinGrid record needed. The RESQML counterpart uses `Point3dLatticeArray` with inline origin and direction vectors.
+**Grid geometry is embedded on the StructureMap record as metadata.** No separate BinGrid record needed. The RDDMS Grid2dRepresentation holds the actual data. The RESQML counterpart uses `Point3dLatticeArray` with inline origin and direction vectors.
 
 #### Pattern B: External BinGrid Reference (RESQML `SupportingRepresentation`)
 
 ```
-StructureMap
+StructureMap                    (OSDU catalog — metadata only)
   ├── InterpretationID  → HorizonInterpretation
   ├── SeismicHorizonID  → SeismicHorizon (TWT)
   ├── CrsID             → CoordinateReferenceSystem
-  ├── BinGridID         → GenericBinGrid:1.0.0  (carries all grid geometry)
-  └── DDMSDatasets[]    → eml://rddms-1/.../Grid2dRepresentation('{uuid}')
+  ├── BinGridID         → GenericBinGrid:1.0.0  (carries grid geometry metadata)
+  └── DDMSDatasets[]    → eml://rddms-1/dataspace('maap/drogon')/...Grid2dRep('{uuid}')
+                          ^^^^ actual Z-values live here in the RDDMS
 
-GenericBinGrid (shared, referenced by multiple StructureMaps)
+GenericBinGrid (shared metadata, referenced by multiple StructureMaps)
   ├── OriginEasting:     461000.0
   ├── BinWidthOnIaxis:   25.0
   ├── NodeCountOnIAxis:  300
   └── ...
 ```
 
-**Grid geometry lives on a separate GenericBinGrid record.** Multiple StructureMaps can reference the same grid. The RESQML counterpart uses `SupportingRepresentation` pointing to a shared `Grid2dRepresentation`.
+**Grid geometry metadata lives on a separate GenericBinGrid record.** Multiple StructureMaps can reference the same grid. The RESQML counterpart uses `SupportingRepresentation` pointing to a shared `Grid2dRepresentation`.
 
 #### Comparison
 
@@ -908,7 +930,7 @@ Use **Pattern B** (external BinGridID) when surfaces share a common grid — typ
 
 The demo includes both patterns for TopVolantis and BaseVolantis specifically so that consumers can see the structural difference side-by-side.
 
-### 13.3 Relationship Chain — What Gets Indexed
+### 13.4 Relationship Chain — What Gets Indexed
 
 Every record carries `data.ancestry.parents[]`, making the full provenance chain visible to OSDU Search:
 
@@ -943,7 +965,7 @@ flowchart TD
     SBG --> PROJ
 ```
 
-### 13.4 Running the Demo
+### 13.5 Running the Demo
 
 ```bash
 cd demo/seisint
@@ -963,7 +985,7 @@ python ingest_records_seisint.py --dry-run
 
 Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for ingestion via the Storage Service.
 
-### 13.4 ORES Web App — Live StructureMap Generation
+### 13.6 ORES Web App — Live StructureMap Generation
 
 The ORES web app provides live StructureMap:1.0.0 generation from RDDMS content
 via three REST endpoints. The implementation lives in two modules:
