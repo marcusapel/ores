@@ -817,6 +817,8 @@ Working example records and scripts are in [`demo/seisint/`](../demo/seisint/):
 | `gen_volantis_interp.py` | Python generator script — produces the full manifest |
 | `gen_structuremap_from_resqml.py` | Bidirectional RESQML ↔ OSDU StructureMap mapping (§12) |
 | `manifest_volantis_interp.json` | Complete worked example: full chain for a Volantis interpretation |
+| `ingest_records_seisint.py` | Sequential Storage API ingestion with retry logic |
+| `manifest2records_seisint.py` | Splits manifest into individual record files for ingestion |
 | `schema_seismicinterpretationproject.json` | SeismicInterpretationProject:1.0.0 schema (supplementary proposal) |
 | `references/` | Test horizon JSONs, discussion docs from OSDU GitLab |
 
@@ -829,27 +831,134 @@ The manifest demonstrates the **Volantis 2025 Interpretation** — a synthetic s
 | Features | 3 (Top Volantis, Base Volantis, Top Therys) | `LocalBoundaryFeature:1.1.0` |
 | Interpretations | 3 horizon interpretations | `HorizonInterpretation:1.2.0` |
 | Seismic grid | 1 (Volantis3D, 12.5m × 12.5m) | `SeismicBinGrid:1.3.0` |
-| TWT picks | 3 horizons | `SeismicHorizon:2.1.0` |
 | Depth grid | 1 shared 25m grid | **`GenericBinGrid:1.0.0`** (M27) |
-| Depth surfaces | 3 (2 on shared grid, 1 inline) | **`StructureMap:1.0.0`** (M27) |
+| TWT picks | 3 horizons | `SeismicHorizon:2.1.0` |
+| Depth surfaces — Pattern B | 2 (TopVolantis, BaseVolantis via external BinGridID) | **`StructureMap:1.0.0`** (M27) |
+| Depth surfaces — Pattern A | 2 (TopVolantis, BaseVolantis with inline grid) | **`StructureMap:1.0.0`** (M27) |
+| Depth surfaces — Pattern A (different grid) | 1 (TopTherys standalone, 50m grid) | **`StructureMap:1.0.0`** (M27) |
 | Project grouping | 1 | **`SeismicInterpretationProject:1.0.0`** (proposal) |
-| **Total** | **~18 records** | |
+| **Total** | **17 records** | |
 
-### 13.2 Grid Strategy Demonstrated
+### 13.2 Grid Strategy Comparison — Pattern A vs Pattern B
 
-The manifest shows both grid approaches:
+The demo ingests both patterns **for the same horizons** (TopVolantis and BaseVolantis), making direct comparison possible:
 
-| StructureMap Record | Grid Approach | Details |
+#### Records Ingested
+
+| StructureMap Record | Grid Pattern | BinGridID | Inline Grid Props | ancestry.parents |
+|---|---|---|---|---|
+| TopVolantis Depth Map | **B — external ref** | → GenericBinGrid (25m) | ✗ empty | 4 (SH + HI + GBG + BF) |
+| BaseVolantis Depth Map | **B — external ref** | → GenericBinGrid (25m) | ✗ empty | 4 (SH + HI + GBG + BF) |
+| TopVolantis Depth Map (inline — Pattern A) | **A — inline lattice** | ✗ empty | ✓ origin, bearing, spacing, nodes | 3 (SH + HI + BF) |
+| BaseVolantis Depth Map (inline — Pattern A) | **A — inline lattice** | ✗ empty | ✓ origin, bearing, spacing, nodes | 3 (SH + HI + BF) |
+| TopTherys Depth Map (standalone) | **A — inline lattice** | ✗ empty | ✓ different 50m grid | 3 (SH + HI + BF) |
+
+#### Pattern A: Inline Grid (RESQML `Point3dLatticeArray`)
+
+```
+StructureMap
+  ├── InterpretationID  → HorizonInterpretation
+  ├── SeismicHorizonID  → SeismicHorizon (TWT)
+  ├── CrsID             → CoordinateReferenceSystem
+  ├── OriginEasting:     461000.0
+  ├── OriginNorthing:    6782000.0
+  ├── BinWidthOnIaxis:   25.0
+  ├── BinWidthOnJaxis:   25.0
+  ├── NodeCountOnIAxis:  300
+  ├── NodeCountOnJAxis:  200
+  └── DDMSDatasets[]    → eml://rddms-1/.../Grid2dRepresentation('{uuid}')
+```
+
+**Grid geometry is embedded directly on the StructureMap record.** No separate BinGrid record needed. The RESQML counterpart uses `Point3dLatticeArray` with inline origin and direction vectors.
+
+#### Pattern B: External BinGrid Reference (RESQML `SupportingRepresentation`)
+
+```
+StructureMap
+  ├── InterpretationID  → HorizonInterpretation
+  ├── SeismicHorizonID  → SeismicHorizon (TWT)
+  ├── CrsID             → CoordinateReferenceSystem
+  ├── BinGridID         → GenericBinGrid:1.0.0  (carries all grid geometry)
+  └── DDMSDatasets[]    → eml://rddms-1/.../Grid2dRepresentation('{uuid}')
+
+GenericBinGrid (shared, referenced by multiple StructureMaps)
+  ├── OriginEasting:     461000.0
+  ├── BinWidthOnIaxis:   25.0
+  ├── NodeCountOnIAxis:  300
+  └── ...
+```
+
+**Grid geometry lives on a separate GenericBinGrid record.** Multiple StructureMaps can reference the same grid. The RESQML counterpart uses `SupportingRepresentation` pointing to a shared `Grid2dRepresentation`.
+
+#### Comparison
+
+| Criterion | Pattern A (inline) | Pattern B (external BinGridID) |
 |---|---|---|
-| Top Volantis Depth Map | **External ref** → GenericBinGrid | `BinGridID` points to shared 25m grid |
-| Base Volantis Depth Map | **External ref** → GenericBinGrid | Same shared grid |
-| Top Therys Depth Map | **Inline grid** | Grid properties embedded directly on StructureMap |
+| **Self-contained** | ✓ One record has everything | ✗ Requires BinGrid record to exist |
+| **Grid reuse** | ✗ Grid duplicated on each record | ✓ One grid, many surfaces |
+| **Record count** | Fewer (no separate BinGrid) | More (+1 GenericBinGrid per shared grid) |
+| **Search by grid** | Must compare grid params field-by-field | `BinGridID` gives exact grid identity |
+| **Consistency** | Risk of drift if grid params copied | Single source of truth |
+| **RESQML mapping** | `Point3dLatticeArray` — direct | `SupportingRepresentation` — UUID resolution needed |
+| **When to use** | Surface has unique grid, or one-off export | Multiple surfaces share acquisition/depth grid |
 
-### 13.3 Running the Generator
+#### Recommendation
+
+Use **Pattern B** (external BinGridID) when surfaces share a common grid — typical for multi-horizon interpretation projects where all depth maps are on the same depth conversion grid. Use **Pattern A** (inline) for one-off surfaces or when the grid is unique to that surface (e.g., a different-resolution regional map).
+
+The demo includes both patterns for TopVolantis and BaseVolantis specifically so that consumers can see the structural difference side-by-side.
+
+### 13.3 Relationship Chain — What Gets Indexed
+
+Every record carries `data.ancestry.parents[]`, making the full provenance chain visible to OSDU Search:
+
+```mermaid
+flowchart TD
+    BF1["LocalBoundaryFeature<br/>Top Volantis"]
+    BF2["LocalBoundaryFeature<br/>Base Volantis"]
+    HI1["HorizonInterpretation<br/>TopVolantis"]
+    HI2["HorizonInterpretation<br/>BaseVolantis"]
+    SBG["SeismicBinGrid<br/>Volantis3D"]
+    GBG["GenericBinGrid<br/>Volantis Depth 25m"]
+    SH1["SeismicHorizon<br/>TopVolantis TWT"]
+    SH2["SeismicHorizon<br/>BaseVolantis TWT"]
+    SMB1["StructureMap<br/>TopVolantis Depth<br/>(Pattern B)"]
+    SMA1["StructureMap<br/>TopVolantis Depth<br/>(Pattern A)"]
+    PROJ["SeismicInterpretation<br/>Project"]
+
+    BF1 --> HI1
+    BF2 --> HI2
+    HI1 --> SH1
+    HI2 --> SH2
+    SBG --> SH1
+    SBG --> SH2
+    SH1 --> SMB1
+    HI1 --> SMB1
+    GBG --> SMB1
+    SH1 --> SMA1
+    HI1 --> SMA1
+    SMB1 --> PROJ
+    SMA1 --> PROJ
+    GBG --> PROJ
+    SBG --> PROJ
+```
+
+### 13.4 Running the Demo
 
 ```bash
 cd demo/seisint
+
+# 1. Generate manifest (17 records)
 python gen_volantis_interp.py
+
+# 2. Split into individual record files
+python manifest2records_seisint.py
+
+# 3. Ingest to OSDU (sequential with 3s delay for indexing)
+python ingest_records_seisint.py --env-file ../../.env --delay 3
+
+# 4. Verify (dry-run shows all records without sending)
+python ingest_records_seisint.py --dry-run
 ```
 
 Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for ingestion via the Storage Service.

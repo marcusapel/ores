@@ -20,6 +20,9 @@
   "data": {
     "Name": "Top Volantis",
     "Description": "Top Volantis reservoir",
-    "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:"
+    "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:",
+    "ancestry": {
+      "parents": []
+    }
   }
 }

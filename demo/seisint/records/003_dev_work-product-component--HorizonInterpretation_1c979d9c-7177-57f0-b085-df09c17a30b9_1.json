@@ -21,8 +21,14 @@
     "Name": "TopVolantis Interpretation",
     "Description": "Top Volantis reservoir",
     "FeatureID": "dev:master-data--LocalBoundaryFeature:804f5d22-1412-57a7-9074-9271bea930e7:1",
+    "FeatureName": "Top Volantis",
     "DomainTypeID": "dev:reference-data--DomainType:Mixed:",
     "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Unconformity:",
-    "MeanPossibleAge": 65.0
+    "MeanPossibleAge": 65.0,
+    "ancestry": {
+      "parents": [
+        "dev:master-data--LocalBoundaryFeature:804f5d22-1412-57a7-9074-9271bea930e7:1"
+      ]
+    }
   }
 }

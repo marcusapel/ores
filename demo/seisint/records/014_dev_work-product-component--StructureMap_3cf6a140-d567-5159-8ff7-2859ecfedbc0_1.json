@@ -1,5 +1,5 @@
 {
-  "id": "dev:work-product-component--StructureMap:45f7bda8-b755-5c17-8a83-b286e7f0d116:1",
+  "id": "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1",
   "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
   "acl": {
     "owners": [
@@ -18,14 +18,14 @@
     ]
   },
   "data": {
-    "Name": "TopTherys Depth Map (standalone)",
-    "Description": "Depth structure map with inline grid for Top Therys source rock",
-    "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
-    "InterpretationName": "TopTherys Interpretation",
-    "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
+    "Name": "BaseVolantis Depth Map (inline grid — Pattern A)",
+    "Description": "Depth structure map with inline grid for Base Volantis reservoir — demonstrates Pattern A (self-contained grid geometry, no external BinGrid reference)",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+    "InterpretationName": "BaseVolantis Interpretation",
+    "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
     "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
     "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-    "BinGridName": "TopTherys inline grid",
+    "BinGridName": "BaseVolantis inline depth grid",
     "ABCDBinGridSpatialLocation": {
       "AsIngestedCoordinates": {
         "type": "FeatureCollection",
@@ -37,20 +37,20 @@
               "type": "MultiPoint",
               "coordinates": [
                 [
-                  461500.0,
-                  6782500.0
+                  461000.0,
+                  6782000.0
                 ],
                 [
-                  461500.0,
-                  6775050.0
+                  461000.0,
+                  6774525.0
                 ],
                 [
-                  466450.0,
-                  6775050.0
+                  465975.0,
+                  6774525.0
                 ],
                 [
-                  466450.0,
-                  6782500.0
+                  465975.0,
+                  6782000.0
                 ]
               ]
             },
@@ -61,32 +61,32 @@
         ]
       }
     },
-    "OriginEasting": 461500.0,
-    "OriginNorthing": 6782500.0,
-    "BinWidthOnIaxis": 50.0,
-    "BinWidthOnJaxis": 50.0,
+    "OriginEasting": 461000.0,
+    "OriginNorthing": 6782000.0,
+    "BinWidthOnIaxis": 25.0,
+    "BinWidthOnJaxis": 25.0,
     "MapGridBearingOfBinGridJaxis": 90.0,
-    "NodeCountOnIAxis": 150,
-    "NodeCountOnJAxis": 100,
+    "NodeCountOnIAxis": 300,
+    "NodeCountOnJAxis": 200,
     "TransformationMethod": 9666,
     "IndexableElementCount": [
       {
-        "Count": 15000,
+        "Count": 60000,
         "IndexableElementID": "dev:reference-data--IndexableElement:Cells:"
       },
       {
-        "Count": 15251,
+        "Count": 60501,
         "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
       }
     ],
     "DDMSDatasets": [
-      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('b5274807-83d6-53fa-97e1-ac774771c688')"
+      "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('022a12e4-5ed0-55e7-9af5-f6dfd1797ab0')"
     ],
     "ancestry": {
       "parents": [
-        "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
-        "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
-        "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1"
+        "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
+        "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1"
       ]
     }
   }

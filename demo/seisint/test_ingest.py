@@ -16,7 +16,7 @@ base = f'https://{env["host"].replace("https://","")}'
 part = env['partition']
 h = {'Authorization': f'Bearer {tok}', 'data-partition-id': part, 'Content-Type': 'application/json'}
 
-manifest_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'manifest_rddms_drogon.json')
+manifest_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'manifest_rddms_drogon_dg_seismic.json')
 with open(manifest_path) as f:
     manifest = json.load(f)
 

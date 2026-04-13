@@ -63,6 +63,10 @@
     "MapGridBearingOfBinGridJaxis": 90.0,
     "NodeCountOnIAxis": 300,
     "NodeCountOnJAxis": 200,
-    "TransformationMethod": 9666
+    "TransformationMethod": 9666,
+    "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
+    "ancestry": {
+      "parents": []
+    }
   }
 }

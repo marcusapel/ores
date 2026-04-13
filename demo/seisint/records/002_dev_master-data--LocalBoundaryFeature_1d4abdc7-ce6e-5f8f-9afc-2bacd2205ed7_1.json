@@ -20,6 +20,9 @@
   "data": {
     "Name": "Top Therys",
     "Description": "Top Therys source rock",
-    "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:"
+    "FeatureTypeID": "dev:reference-data--FeatureType:BoundaryFeature:",
+    "ancestry": {
+      "parents": []
+    }
   }
 }

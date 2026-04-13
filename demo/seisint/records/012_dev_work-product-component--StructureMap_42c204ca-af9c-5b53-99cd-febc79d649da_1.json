@@ -21,11 +21,31 @@
     "Name": "BaseVolantis Depth Map",
     "Description": "Depth-converted structure map for Base Volantis reservoir",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+    "InterpretationName": "BaseVolantis Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
     "BinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+    "CrsID": "dev:reference-data--CoordinateReferenceSystem:BoundCRS:EPSG::23031_EPSG::5714:",
     "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+    "IndexableElementCount": [
+      {
+        "Count": 60000,
+        "IndexableElementID": "dev:reference-data--IndexableElement:Cells:"
+      },
+      {
+        "Count": 60501,
+        "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
+      }
+    ],
     "DDMSDatasets": [
       "eml://rddms-1/dataspace('demo/volantis-interp')/resqml20.obj_Grid2dRepresentation('b49843f0-2ec6-5ccc-a298-6c9f99ada495')"
-    ]
+    ],
+    "ancestry": {
+      "parents": [
+        "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
+        "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+        "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1"
+      ]
+    }
   }
 }

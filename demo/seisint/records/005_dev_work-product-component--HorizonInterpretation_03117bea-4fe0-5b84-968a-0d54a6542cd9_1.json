@@ -21,8 +21,14 @@
     "Name": "TopTherys Interpretation",
     "Description": "Top Therys source rock",
     "FeatureID": "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1",
+    "FeatureName": "Top Therys",
     "DomainTypeID": "dev:reference-data--DomainType:Mixed:",
     "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:MFS:",
-    "MeanPossibleAge": 155.0
+    "MeanPossibleAge": 155.0,
+    "ancestry": {
+      "parents": [
+        "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1"
+      ]
+    }
   }
 }

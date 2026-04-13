@@ -21,8 +21,14 @@
     "Name": "BaseVolantis Interpretation",
     "Description": "Base Volantis reservoir",
     "FeatureID": "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1",
+    "FeatureName": "Base Volantis",
     "DomainTypeID": "dev:reference-data--DomainType:Mixed:",
     "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Conformable:",
-    "MeanPossibleAge": 70.0
+    "MeanPossibleAge": 70.0,
+    "ancestry": {
+      "parents": [
+        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1"
+      ]
+    }
   }
 }
