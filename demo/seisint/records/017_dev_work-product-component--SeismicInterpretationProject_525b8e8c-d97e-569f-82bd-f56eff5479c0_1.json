@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "Volantis 2025 Interpretation",
-    "Description": "Complete horizon interpretation for the Volantis field — 3 horizons (TWT + depth), seismic + depth grids",
+    "Description": "Complete horizon interpretation for the Volantis field — 3 horizons (TWT + depth), seismic + depth grids, GenericRepresentation catalog layer",
     "HorizonInterpretationIDs": [
       "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
       "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
@@ -36,6 +36,13 @@
       "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
       "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
       "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1"
+    ],
+    "GenericRepresentationIDs": [
+      "dev:work-product-component--GenericRepresentation:f857c36c-3939-4ff3-9125-a11cf2af105c:1",
+      "dev:work-product-component--GenericRepresentation:0c6ab8e7-c793-4ab5-a88c-ccf457d9266d:1",
+      "dev:work-product-component--GenericRepresentation:0ce9278d-979c-450a-a3db-08ea96517463:1",
+      "dev:work-product-component--GenericRepresentation:9deb9074-c4eb-44ff-990a-229bb545d442:1",
+      "dev:work-product-component--GenericRepresentation:efcf91f9-6e56-4bed-9e23-f0e9350a0b91:1"
     ],
     "SeismicBinGridID": "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1",
     "GenericBinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
@@ -59,6 +66,11 @@
         "dev:work-product-component--StructureMap:6bb2e811-28db-57d8-9779-498f10604fbd:1",
         "dev:work-product-component--StructureMap:60659fb4-8f12-5521-bfc9-39ccde2e9360:1",
         "dev:work-product-component--StructureMap:3cf6a140-d567-5159-8ff7-2859ecfedbc0:1",
+        "dev:work-product-component--GenericRepresentation:f857c36c-3939-4ff3-9125-a11cf2af105c:1",
+        "dev:work-product-component--GenericRepresentation:0c6ab8e7-c793-4ab5-a88c-ccf457d9266d:1",
+        "dev:work-product-component--GenericRepresentation:0ce9278d-979c-450a-a3db-08ea96517463:1",
+        "dev:work-product-component--GenericRepresentation:9deb9074-c4eb-44ff-990a-229bb545d442:1",
+        "dev:work-product-component--GenericRepresentation:efcf91f9-6e56-4bed-9e23-f0e9350a0b91:1",
         "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
         "dev:work-product-component--GenericBinGrid:22fb805f-9925-5c7f-8d61-48cd73cde920:1",
         "dev:work-product-component--SeismicBinGrid:543679ee-28fe-57c5-8b50-9ba4eedfddf7:1"

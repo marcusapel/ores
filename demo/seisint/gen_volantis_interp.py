@@ -89,7 +89,7 @@ THERYS_DEPTH_GRID = {
 }
 
 DATASPACE = "maap/drogon"
-RDDMS_HOST = "rddms-1"
+RDDMS_HOST = "reservoir-ddms1"
 
 # CRS: EPSG 23031 / ED50 UTM31N + EPSG 5714 / MSL height
 # NOTE: M27 schemas removed the top-level CrsID property.  The CRS
@@ -374,10 +374,14 @@ def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
                 {"Count": n_cells, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Cells:"},
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
+            # GenericRepresentation parent → visible RDDMS link in Search
+            **({
+                "GenericRepresentationID": _grep_id(prefix, RDDMS_TWT[hz_key]),
+            } if hz_key in RDDMS_TWT else {}),
             **({
                 "DDMSDatasets": ddms,
             } if ddms else {}),
-            "ancestry": ancestry([interp_id, sbg_id, feat_id]),
+            "ancestry": ancestry([interp_id, sbg_id, feat_id] + ([_grep_id(prefix, RDDMS_TWT[hz_key])] if hz_key in RDDMS_TWT else [])),
         },
     }
 
@@ -404,8 +408,14 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
 
     # DDMSDatasets → real Grid2dRep in RDDMS (depth domain) if available
     ddms = []
+    grep_id = None
     if hz_key in RDDMS_DEPTH:
         ddms.append(_ddms_uri(RDDMS_DEPTH[hz_key]))
+        grep_id = _grep_id(prefix, RDDMS_DEPTH[hz_key])
+
+    parents = [sh_id, interp_id, gbg_id, feat_id]
+    if grep_id:
+        parents.append(grep_id)
 
     return {
         "id": wpc_id(prefix, "StructureMap", u),
@@ -425,9 +435,10 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
             **({
-                "DDMSDatasets": ddms,
-            } if ddms else {}),
-            "ancestry": ancestry([sh_id, interp_id, gbg_id, feat_id]),
+                "GenericRepresentationID": grep_id,
+            } if grep_id else {}),
+            **({"DDMSDatasets": ddms} if ddms else {}),
+            "ancestry": ancestry(parents),
         },
     }
 
@@ -455,8 +466,14 @@ def make_structure_map_therys_external(prefix: str, hz_key: str, hz: dict) -> di
 
     # DDMSDatasets → real Grid2dRep in RDDMS (depth domain)
     ddms = []
+    grep_id = None
     if hz_key in RDDMS_DEPTH:
         ddms.append(_ddms_uri(RDDMS_DEPTH[hz_key]))
+        grep_id = _grep_id(prefix, RDDMS_DEPTH[hz_key])
+
+    parents = [sh_id, interp_id, gbg_id, feat_id]
+    if grep_id:
+        parents.append(grep_id)
 
     return {
         "id": wpc_id(prefix, "StructureMap", u),
@@ -476,9 +493,10 @@ def make_structure_map_therys_external(prefix: str, hz_key: str, hz: dict) -> di
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
             **({
-                "DDMSDatasets": ddms,
-            } if ddms else {}),
-            "ancestry": ancestry([sh_id, interp_id, gbg_id, feat_id]),
+                "GenericRepresentationID": grep_id,
+            } if grep_id else {}),
+            **({"DDMSDatasets": ddms} if ddms else {}),
+            "ancestry": ancestry(parents),
         },
     }
 
@@ -557,10 +575,66 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
                 {"Count": n_nodes, "IndexableElementID": f"{prefix}:reference-data--IndexableElement:Nodes:"},
             ],
             # DDMSDatasets → same real Grid2dRep as Pattern B (same underlying data)
+            # GenericRepresentation parent → visible RDDMS link in Search
+            **({"GenericRepresentationID": _grep_id(prefix, RDDMS_DEPTH[hz_key])} if hz_key in RDDMS_DEPTH else {}),
             **({
                 "DDMSDatasets": [_ddms_uri(RDDMS_DEPTH[hz_key])],
             } if hz_key in RDDMS_DEPTH else {}),
-            "ancestry": ancestry([sh_id, interp_id, feat_id]),
+            "ancestry": ancestry([sh_id, interp_id, feat_id] + ([_grep_id(prefix, RDDMS_DEPTH[hz_key])] if hz_key in RDDMS_DEPTH else [])),
+        },
+    }
+
+
+# ── GenericRepresentation — universal RDDMS catalog layer ──────────────
+
+def _grep_id(prefix: str, rddms_uuid: str) -> str:
+    """GenericRepresentation record ID — uses the RDDMS UUID directly (1:1)."""
+    return f"{prefix}:work-product-component--GenericRepresentation:{rddms_uuid}:1"
+
+
+def make_generic_representation(
+    prefix: str,
+    hz_key: str,
+    hz: dict,
+    rddms_uuid: str,
+    domain: str,            # "Depth" or "Time"
+) -> dict:
+    """GenericRepresentation:1.2.0 — thin catalog entry for one RDDMS Grid2dRep.
+
+    Every RDDMS Grid2dRepresentation should be mirrored as a
+    GenericRepresentation WPC so it is discoverable via OSDU Search
+    independently of any specialised schema (StructureMap, SeismicHorizon).
+
+    The record ID uses the RDDMS UUID directly, creating a deterministic
+    1:1 mapping (same pattern used by RDDMS manifests/build).
+    """
+    interp_u = uid(f"interp:{hz_key}")
+    feat_u = uid(f"feature:{hz_key}")
+
+    interp_id = wpc_id(prefix, "HorizonInterpretation", interp_u)
+    feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
+
+    domain_label = "Depth" if domain == "Depth" else "TWT"
+    name = f"{hz_key} {domain_label} — Grid2dRepresentation"
+
+    return {
+        "id": _grep_id(prefix, rddms_uuid),
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": acl_block(),
+        "legal": legal_block(),
+        "data": {
+            "Name": name,
+            "Description": (
+                f"RDDMS catalog entry for {hz_key} ({domain_label}) — "
+                f"Grid2dRepresentation {rddms_uuid} in dataspace {DATASPACE}"
+            ),
+            "ExistenceKind": f"{prefix}:reference-data--ExistenceKind:Prototype:",
+            "InterpretationID": interp_id,
+            "InterpretationName": f"{hz_key} Interpretation",
+            "Role": f"{prefix}:reference-data--RepresentationRole:Map:",
+            "Type": f"{prefix}:reference-data--RepresentationType:Grid2dRepresentation:",
+            "DDMSDatasets": [_ddms_uri(rddms_uuid)],
+            "ancestry": ancestry([interp_id, feat_id]),
         },
     }
 
@@ -589,7 +663,16 @@ def make_interpretation_project(prefix: str, horizon_keys: list) -> dict:
     gbg_therys_id = wpc_id(prefix, "GenericBinGrid", uid("genericbingrid:TherysDepth20m"))
     sbg_id = wpc_id(prefix, "SeismicBinGrid", sbg_u)
 
-    all_parents = bf_ids + hi_ids + sh_ids + sm_ids + [gbg_id, gbg_therys_id, sbg_id]
+    # GenericRepresentation IDs — one per RDDMS Grid2dRep (1:1 mirror)
+    grep_ids = [
+        _grep_id(prefix, uuid)
+        for uuid in list(RDDMS_DEPTH.values()) + list(RDDMS_TWT.values())
+    ]
+
+    all_parents = (
+        bf_ids + hi_ids + sh_ids + sm_ids + grep_ids
+        + [gbg_id, gbg_therys_id, sbg_id]
+    )
 
     return {
         "id": wpc_id(prefix, "SeismicInterpretationProject", u),
@@ -598,10 +681,11 @@ def make_interpretation_project(prefix: str, horizon_keys: list) -> dict:
         "legal": legal_block(),
         "data": {
             "Name": "Volantis 2025 Interpretation",
-            "Description": "Complete horizon interpretation for the Volantis field — 3 horizons (TWT + depth), seismic + depth grids",
+            "Description": "Complete horizon interpretation for the Volantis field — 3 horizons (TWT + depth), seismic + depth grids, GenericRepresentation catalog layer",
             "HorizonInterpretationIDs": hi_ids,
             "SeismicHorizonIDs": sh_ids,
             "StructureMapIDs": sm_ids,
+            "GenericRepresentationIDs": grep_ids,
             "SeismicBinGridID": sbg_id,
             "GenericBinGridID": gbg_id,
             "InterpreterName": "Volantis Interpretation Team",
@@ -659,7 +743,17 @@ def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
     for k in ["TopVolantis", "BaseVolantis"]:
         records.append(make_structure_map_inline_from_depth_grid(prefix, k, HORIZONS[k]))
 
-    # 8. SeismicInterpretationProject (proposal)
+    # 8. GenericRepresentation:1.2.0 — universal RDDMS catalog layer
+    #    One record per RDDMS Grid2dRep, using RDDMS UUID as record ID (1:1).
+    #    Parallels the output of RDDMS manifests/build but with our own
+    #    interpretation chain (RDDMS manifests/build uses RDDMS-native UUIDs).
+    print("Generating generic representations (RDDMS catalog)...")
+    for k, ruuid in RDDMS_DEPTH.items():
+        records.append(make_generic_representation(prefix, k, HORIZONS[k], ruuid, "Depth"))
+    for k, ruuid in RDDMS_TWT.items():
+        records.append(make_generic_representation(prefix, k, HORIZONS[k], ruuid, "Time"))
+
+    # 9. SeismicInterpretationProject (proposal)
     print("Generating interpretation project...")
     records.append(make_interpretation_project(prefix, hz_keys))
 

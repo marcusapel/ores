@@ -1,0 +1,61 @@
+{
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.default.viewers@dev.dataservices.energy"
+    ]
+  },
+  "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.2.0",
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "createTime": "2024-11-26T11:29:57.000Z",
+  "createUser": "knutm",
+  "id": "dev:work-product-component--HorizonInterpretation:68b2675f-0a6a-48a8-a3bb-39c4aad3b58a",
+  "modifyTime": "2024-12-10T15:54:04.000Z",
+  "modifyUser": "knutm",
+  "version": 1,
+  "data": {
+    "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+    "DDMSDatasets": [
+      "eml://reservoir-ddms1/dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation(68b2675f-0a6a-48a8-a3bb-39c4aad3b58a)"
+    ],
+    "IsDiscoverable": true,
+    "IsExtendedLoad": false,
+    "CreationDateTime": "2024-11-26T11:29:57.000Z",
+    "Name": "|UNNAMED|",
+    "SpatialPoint": {
+      "AsIngestedCoordinates": {
+        "features": [
+          {
+            "type": "AnyCrsFeature",
+            "geometry": {
+              "type": "AnyCrsPoint",
+              "coordinates": [
+                6421.150390625,
+                -3119.97998046875
+              ]
+            },
+            "properties": {}
+          }
+        ],
+        "persistableReferenceCrs": "",
+        "type": "AnyCrsFeatureCollection"
+      }
+    },
+    "SubmitterName": "MAAP@equinor.com",
+    "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+    "FeatureID": "dev:work-product-component--LocalBoundaryFeature:6f33b337-7dbc-4614-ab01-0f2e6d359456:",
+    "FeatureName": "TopVolantis",
+    "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:",
+    "isConformableAbove": true,
+    "isConformableBelow": true
+  }
+}

@@ -35,15 +35,17 @@
         "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
       }
     ],
+    "GenericRepresentationID": "dev:work-product-component--GenericRepresentation:0c6ab8e7-c793-4ab5-a88c-ccf457d9266d:1",
     "DDMSDatasets": [
-      "eml://rddms-1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('0c6ab8e7-c793-4ab5-a88c-ccf457d9266d')"
+      "eml://reservoir-ddms1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('0c6ab8e7-c793-4ab5-a88c-ccf457d9266d')"
     ],
     "ancestry": {
       "parents": [
         "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
         "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
         "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
-        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1"
+        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1",
+        "dev:work-product-component--GenericRepresentation:0c6ab8e7-c793-4ab5-a88c-ccf457d9266d:1"
       ]
     }
   }

@@ -1,0 +1,37 @@
+{
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.default.viewers@dev.dataservices.energy"
+    ]
+  },
+  "kind": "osdu:wks:dataset--ETPDataspace:1.0.1",
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "createTime": "2025-11-25T11:17:25.430Z",
+  "id": "dev:dataset--ETPDataspace:maap-drogon",
+  "modifyTime": "2026-03-15T15:37:25.468Z",
+  "version": 1,
+  "data": {
+    "ExistenceKind": "dev:reference-data--ExistenceKind:Actual:",
+    "DatasetProperties": {
+      "URI": "eml:///dataspace('maap/drogon')"
+    },
+    "Name": "maap/drogon",
+    "ExtensionProperties": {
+      "legaltags": "[\"dev-equinor-private-default\"]",
+      "otherRelevantDataCountries": "[\"NO\"]",
+      "owners": "[\"data.default.owners@dev.dataservices.energy\"]",
+      "viewers": "[\"data.default.viewers@dev.dataservices.energy\"]"
+    },
+    "TotalSize": "115343360"
+  }
+}

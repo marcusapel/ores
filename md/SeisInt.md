@@ -996,6 +996,7 @@ Working example records and scripts are in [`demo/seisint/`](../demo/seisint/):
 | `schema_seismicinterpretationproject.json` | SeismicInterpretationProject:1.0.0 schema (supplementary proposal) |
 | `schemas/` | M27 JSON Schema definitions (downloaded + resolved for Schema Service) |
 | `peek_rddms_grid2d.py` | Fetch & display RDDMS Grid2dRepresentations — shows the Z-value data behind DDMSDatasets[] (§12.9) |
+| `build_rddms_catalog.py` | Fetch GenericRepresentation:1.2.0 records from RDDMS manifests/build API — the universal RDDMS catalog layer (§13.6) |
 | `references/` | Test horizon JSONs, discussion docs from OSDU GitLab |
 
 ### 13.1 Scenario
@@ -1011,8 +1012,11 @@ The manifest demonstrates the **Volantis 2025 Interpretation** — a consistent 
 | TWT picks | 3 horizons | `SeismicHorizon:2.1.0` |
 | Depth surfaces — Pattern B | 3 (TopVolantis, BaseVolantis — shared 25 m grid; TopTherys — own 20 m grid) | **`StructureMap:1.0.0`** (M27) |
 | Depth surfaces — Pattern A | 2 (TopVolantis, BaseVolantis — inline 25 m grid) | **`StructureMap:1.0.0`** (M27) |
+| RDDMS catalog | 5 (3 depth + 2 TWT Grid2dReps) | `GenericRepresentation:1.2.0` |
 | Project grouping | 1 | **`SeismicInterpretationProject:1.0.0`** (proposal) |
-| **Total** | **18 records** | |
+| **Total** | **23 records** | |
+
+Every StructureMap and SeismicHorizon that has a `DDMSDatasets[]` link also carries `GenericRepresentationID` and includes the corresponding GenericRepresentation in `ancestry.parents[]`, making the RDDMS data relationship visible in the OSDU Search relationship graph.
 
 ### 13.2 RDDMS Data Source — `maap/drogon`
 
@@ -1043,10 +1047,10 @@ The demo ingests both patterns **for the same horizons** (TopVolantis and BaseVo
 
 | StructureMap Record | Grid Pattern | BinGridID | Inline Grid Props | ancestry.parents |
 |---|---|---|---|---|
-| TopVolantis Depth Map (shared grid ref) | **B — external ref** | → GenericBinGrid (25 m) | ✗ empty | 4 (SH + HI + GBG + BF) |
-| BaseVolantis Depth Map (shared grid ref) | **B — external ref** | → GenericBinGrid (25 m) | ✗ empty | 4 (SH + HI + GBG + BF) |
-| TopTherys Depth Map (own 20 m grid) | **B — external ref** | → GenericBinGrid (20 m) | ✗ empty | 4 (SH + HI + GBG + BF) |
-| TopVolantis Depth Map (inline 25 m grid) | **A — inline lattice** | ✗ empty | ✓ same 25 m grid as GenericBinGrid, embedded | 3 (SH + HI + BF) |
+| TopVolantis Depth Map (shared grid ref) | **B — external ref** | → GenericBinGrid (25 m) | ✗ empty | 5 (SH + HI + GBG + BF + GR) |
+| BaseVolantis Depth Map (shared grid ref) | **B — external ref** | → GenericBinGrid (25 m) | ✗ empty | 5 (SH + HI + GBG + BF + GR) |
+| TopTherys Depth Map (own 20 m grid) | **B — external ref** | → GenericBinGrid (20 m) | ✗ empty | 5 (SH + HI + GBG + BF + GR) |
+| TopVolantis Depth Map (inline 25 m grid) | **A — inline lattice** | ✗ empty | ✓ same 25 m grid as GenericBinGrid, embedded | 4 (SH + HI + BF + GR) |
 | BaseVolantis Depth Map (inline 25 m grid) | **A — inline lattice** | ✗ empty | ✓ same 25 m grid as GenericBinGrid, embedded | 3 (SH + HI + BF) |
 
 #### Pattern A: Inline Grid (RESQML `Point3dLatticeArray`)
@@ -1061,7 +1065,7 @@ StructureMap                    (OSDU catalog — metadata only)
   ├── BinWidthOnJaxis:   25.0
   ├── NodeCountOnIAxis:  300
   ├── NodeCountOnJAxis:  200
-  └── DDMSDatasets[]    → eml://rddms-1/dataspace('maap/drogon')/...Grid2dRep('{uuid}')
+  └── DDMSDatasets[]    → eml://reservoir-ddms1/dataspace('maap/drogon')/...Grid2dRep('{uuid}')
                           ^^^^ actual Z-values live here in the RDDMS
 ```
 
@@ -1074,7 +1078,8 @@ StructureMap                    (OSDU catalog — metadata only)
   ├── InterpretationID  → HorizonInterpretation
   ├── SeismicHorizonID  → SeismicHorizon (TWT)
   ├── BinGridID         → GenericBinGrid:1.0.0  (carries grid geometry metadata)
-  └── DDMSDatasets[]    → eml://rddms-1/dataspace('maap/drogon')/...Grid2dRep('{uuid}')
+  └── DDMSDatasets[]    → eml://reservoir-ddms1/dataspace('maap/drogon')/...Grid2dRep('{uuid}')
+                          ^^^^ actual Z-values live here in the RDDMS
                           ^^^^ actual Z-values live here in the RDDMS
 
 GenericBinGrid (shared metadata, referenced by multiple StructureMaps)
@@ -1112,40 +1117,90 @@ Every record carries `data.ancestry.parents[]`, making the full provenance chain
 flowchart TD
     BF1["LocalBoundaryFeature<br/>Top Volantis"]
     BF2["LocalBoundaryFeature<br/>Base Volantis"]
+    BF3["LocalBoundaryFeature<br/>Top Therys"]
     HI1["HorizonInterpretation<br/>TopVolantis"]
     HI2["HorizonInterpretation<br/>BaseVolantis"]
+    HI3["HorizonInterpretation<br/>TopTherys"]
     SBG["SeismicBinGrid<br/>Volantis3D"]
     GBG["GenericBinGrid<br/>Volantis Depth 25m"]
     GBG2["GenericBinGrid<br/>Therys Depth 20m"]
     SH1["SeismicHorizon<br/>TopVolantis TWT"]
     SH2["SeismicHorizon<br/>BaseVolantis TWT"]
     SH3["SeismicHorizon<br/>TopTherys TWT"]
+    GR_D1["GenericRepresentation<br/>TopVolantis Depth"]
+    GR_D2["GenericRepresentation<br/>BaseVolantis Depth"]
+    GR_D3["GenericRepresentation<br/>TopTherys Depth"]
+    GR_T1["GenericRepresentation<br/>TopVolantis TWT"]
+    GR_T2["GenericRepresentation<br/>BaseVolantis TWT"]
     SMB1["StructureMap<br/>TopVolantis Depth<br/>(Pattern B)"]
+    SMB2["StructureMap<br/>BaseVolantis Depth<br/>(Pattern B)"]
     SMB3["StructureMap<br/>TopTherys Depth<br/>(Pattern B, own grid)"]
     SMA1["StructureMap<br/>TopVolantis Depth<br/>(Pattern A)"]
+    SMA2["StructureMap<br/>BaseVolantis Depth<br/>(Pattern A)"]
     PROJ["SeismicInterpretation<br/>Project"]
 
     BF1 --> HI1
     BF2 --> HI2
+    BF3 --> HI3
     HI1 --> SH1
     HI2 --> SH2
+    HI3 --> SH3
     SBG --> SH1
     SBG --> SH2
     SBG --> SH3
+
+    %% TWT GenericRepresentation in SeismicHorizon ancestry
+    GR_T1 --> SH1
+    GR_T2 --> SH2
+
+    %% Pattern B StructureMaps
     SH1 --> SMB1
     HI1 --> SMB1
     GBG --> SMB1
+    GR_D1 --> SMB1
+
+    SH2 --> SMB2
+    HI2 --> SMB2
+    GBG --> SMB2
+    GR_D2 --> SMB2
+
     SH3 --> SMB3
+    HI3 --> SMB3
     GBG2 --> SMB3
+    GR_D3 --> SMB3
+
+    %% Pattern A StructureMaps
     SH1 --> SMA1
     HI1 --> SMA1
+    GR_D1 --> SMA1
+
+    SH2 --> SMA2
+    HI2 --> SMA2
+    GR_D2 --> SMA2
+
+    %% Project parents
     SMB1 --> PROJ
+    SMB2 --> PROJ
     SMB3 --> PROJ
     SMA1 --> PROJ
+    SMA2 --> PROJ
     GBG --> PROJ
     GBG2 --> PROJ
     SBG --> PROJ
+    GR_D1 --> PROJ
+    GR_D2 --> PROJ
+    GR_D3 --> PROJ
+    GR_T1 --> PROJ
+    GR_T2 --> PROJ
+
+    style GR_D1 fill:#fff3e0,stroke:#ff9800,color:#000
+    style GR_D2 fill:#fff3e0,stroke:#ff9800,color:#000
+    style GR_D3 fill:#fff3e0,stroke:#ff9800,color:#000
+    style GR_T1 fill:#fff3e0,stroke:#ff9800,color:#000
+    style GR_T2 fill:#fff3e0,stroke:#ff9800,color:#000
 ```
+
+The orange **GenericRepresentation** nodes are the RDDMS catalog layer — each one has a 1:1 `DDMSDatasets[]` link to the corresponding RDDMS Grid2dRepresentation. StructureMaps and SeismicHorizons include their GenericRepresentation in `ancestry.parents[]`, making the link visible in the OSDU relationship graph.
 
 ### 13.5 Running the Demo
 
@@ -1156,7 +1211,7 @@ cd demo/seisint
 python register_m27_schemas.py
 python register_schema_seisintproject.py
 
-# 2. Generate manifest (18 records)
+# 2. Generate manifest (23 records)
 python gen_volantis_interp.py
 
 # 3. Split into individual record files
@@ -1168,7 +1223,12 @@ python ingest_records_seisint.py --env-file ../../.env --delay 3
 # 5. Verify (dry-run shows all records without sending)
 python ingest_records_seisint.py --dry-run
 
-# 6. Peek at the RDDMS data behind DDMSDatasets[] (§12.9)
+# 6. Fetch GenericRepresentation records from RDDMS manifests/build (§13.6)
+python build_rddms_catalog.py                    # fetch & save to records/rddms_*.json
+python build_rddms_catalog.py --ingest            # fetch, save, and ingest to OSDU
+python build_rddms_catalog.py --dry-run            # preview only
+
+# 7. Peek at the RDDMS data behind DDMSDatasets[] (§12.9)
 python peek_rddms_grid2d.py                     # all 5 demo surfaces
 python peek_rddms_grid2d.py --no-zvalues         # metadata only (faster)
 python peek_rddms_grid2d.py --list                # list all Grid2dReps in dataspace
@@ -1176,7 +1236,73 @@ python peek_rddms_grid2d.py --list                # list all Grid2dReps in datas
 
 Output: `manifest_volantis_interp.json` — a complete OSDU manifest ready for ingestion via the Storage Service.
 
-### 13.6 ORES Web App — Live StructureMap Generation
+### 13.6 Dual-Catalog Pattern — GenericRepresentation + Specialised WPCs
+
+Each RDDMS Grid2dRepresentation referenced by `DDMSDatasets[]` should also exist as a **GenericRepresentation:1.2.0** WPC — the universal RDDMS catalog layer.  The RDDMS `manifests/build` API (`POST /api/reservoir-ddms/v2/manifests/build`) produces these records authoritatively.
+
+#### Why Two Records for the Same RDDMS Object?
+
+```mermaid
+flowchart LR
+    subgraph RDDMS["RDDMS (actual data)"]
+        G2D["Grid2dRepresentation<br/>uuid: f857c36c-...<br/>Z-values, CRS, grid geometry"]
+    end
+    subgraph OSDU["OSDU Catalog (searchable metadata)"]
+        GR["GenericRepresentation:1.2.0<br/>Name: TopVolantis<br/>Role: Map, Type: Grid2dRep<br/>SpatialArea, InterpretationID"]
+        SM["StructureMap:1.0.0<br/>Name: TopVolantis Depth Map<br/>BinGridID, SeismicHorizonID<br/>DomainTypeID, grid geometry"]
+    end
+    GR -->|DDMSDatasets| G2D
+    SM -->|DDMSDatasets| G2D
+    style GR fill:#fff3e0,stroke:#ff9800,color:#000
+    style SM fill:#e8f5e9,stroke:#4caf50,color:#000
+```
+
+| Catalog Layer | Schema | Source | Purpose | Key Properties |
+|---|---|---|---|---|
+| **Universal** | `GenericRepresentation:1.2.0` | RDDMS `manifests/build` | "This RDDMS object exists" — discoverable by name, spatial area, interpretation | `Role`, `Type`, `SpatialArea`, `InterpretationID` |
+| **Specialised** | `StructureMap:1.0.0` | Hand-curated generator | "This is a depth map on a known grid" — searchable by grid, domain, horizon | `BinGridID`, `SeismicHorizonID`, `DomainTypeID`, grid geometry |
+| **Specialised** | `SeismicHorizon:2.1.0` | Hand-curated generator | "This is a TWT pick on a seismic grid" — searchable by seismic survey | `BinGridID` (→ SeismicBinGrid), `DomainTypeID`, `RepresentationType` |
+
+#### Reference Patterns
+
+Both layers carry `DDMSDatasets[]` pointing to the **same** RDDMS EML URI. The DDMSDatasets URI authority is `reservoir-ddms1` (the canonical RDDMS form):
+
+```
+eml://reservoir-ddms1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation(f857c36c-...)
+```
+
+Key differences:
+
+| Aspect | GenericRepresentation | StructureMap / SeismicHorizon |
+|---|---|---|
+| **Record ID** | RDDMS UUID directly (`dev:...GenericRepresentation:f857c36c-...`) | Deterministic UUID5 from semantic name (`dev:...StructureMap:6e47def8-...`) |
+| **InterpretationID** | RDDMS-native HorizonInterpretation (`68b2675f-...`) | Demo-generated HorizonInterpretation (`1c979d9c-...`) |
+| **Grid geometry** | None (opaque to catalog) | Inline or via BinGridID (searchable) |
+| **SpatialArea** | Real bounding box from RDDMS grid | Not populated (could be added) |
+| **IndexableElementCount** | Real node/cell counts from RDDMS | Computed from grid params |
+
+The two records are **complementary, not redundant**:
+- GenericRepresentation is the *baseline* — every RDDMS object gets one, automatically
+- StructureMap/SeismicHorizon adds *domain-specific search precision* — `kind:*StructureMap*` returns only depth maps, with grid geometry for spatial queries
+
+#### When to Use Each
+
+| Scenario | Records Needed |
+|---|---|
+| Bulk RDDMS catalog (hundreds of surfaces) | `build_rddms_catalog.py` → GenericRepresentation only |
+| Curated interpretation project | `gen_volantis_interp.py` → StructureMap + SeismicHorizon + GenericBinGrid |
+| Full dual-layer catalog | Both scripts — GenericRepresentation + specialised WPCs |
+
+#### Demo Implementation
+
+The demo generates both layers:
+
+1. **`gen_volantis_interp.py`** → 23 records: 5 StructureMap, 3 SeismicHorizon, 2 GenericBinGrid, 5 GenericRepresentation, etc.
+2. **`build_rddms_catalog.py`** → 19 records from RDDMS `manifests/build`: 5 GenericRepresentation, 5 HorizonInterpretation (RDDMS-native), 5 LocalBoundaryFeature, 3 LocalModelCompoundCrs, 1 ETPDataspace
+
+The RDDMS-produced HorizonInterpretation/LocalBoundaryFeature records (with RDDMS UUIDs) exist alongside our demo-generated ones (with semantic UUID5s). This is intentional: the RDDMS creates its own interpretation chain from the RESQML content, while our curated records add richer metadata (strat role, age, petroleum system element).
+
+### 13.7 ORES Web App — Live StructureMap Generation
 
 The ORES web app provides live StructureMap:1.0.0 generation from RDDMS content
 via three REST endpoints. The implementation lives in two modules:
@@ -1204,12 +1330,12 @@ flowchart LR
     end
 
     subgraph ORES["ORES structuremap module"]
-        D["discover_surfaces()\nclassify by CRS"]
-        S["surface_to_structuremap()\nbearing, width, ABCD corners\nDDMSDatasets URI"]
+        D["discover_surfaces, classify by CRS"]
+        S["surface_to_structuremap, bearing, width, ABCD corners, DDMSDatasets URI"]
     end
 
     subgraph Catalog["OSDU Catalog"]
-        I["Ingest via\nStorage Service"]
+        I["Ingest"]
     end
 
     L --> D

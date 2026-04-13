@@ -1,0 +1,38 @@
+{
+  "id": "dev:work-product-component--GenericRepresentation:efcf91f9-6e56-4bed-9e23-f0e9350a0b91:1",
+  "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.office.global.viewers@dev.dataservices.energy"
+    ]
+  },
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "data": {
+    "Name": "BaseVolantis TWT — Grid2dRepresentation",
+    "Description": "RDDMS catalog entry for BaseVolantis (TWT) — Grid2dRepresentation efcf91f9-6e56-4bed-9e23-f0e9350a0b91 in dataspace maap/drogon",
+    "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+    "InterpretationName": "BaseVolantis Interpretation",
+    "Role": "dev:reference-data--RepresentationRole:Map:",
+    "Type": "dev:reference-data--RepresentationType:Grid2dRepresentation:",
+    "DDMSDatasets": [
+      "eml://reservoir-ddms1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation('efcf91f9-6e56-4bed-9e23-f0e9350a0b91')"
+    ],
+    "ancestry": {
+      "parents": [
+        "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
+        "dev:master-data--LocalBoundaryFeature:da335ce7-1c64-5772-a13c-cd1d6a3348b5:1"
+      ]
+    }
+  }
+}

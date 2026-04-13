@@ -1,0 +1,55 @@
+{
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.default.viewers@dev.dataservices.energy"
+    ]
+  },
+  "kind": "osdu:wks:work-product-component--LocalBoundaryFeature:1.2.0",
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "createTime": "2025-11-18T14:16:00.000Z",
+  "createUser": "maap",
+  "id": "dev:work-product-component--LocalBoundaryFeature:d05363c6-8e12-420f-b7aa-0290093fe441",
+  "modifyTime": "2025-11-18T14:16:00.000Z",
+  "modifyUser": "maap",
+  "version": 1,
+  "data": {
+    "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+    "DDMSDatasets": [
+      "eml://reservoir-ddms1/dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature(d05363c6-8e12-420f-b7aa-0290093fe441)"
+    ],
+    "IsDiscoverable": true,
+    "IsExtendedLoad": false,
+    "CreationDateTime": "2025-11-18T14:16:00.000Z",
+    "Name": "TopTherys",
+    "SpatialPoint": {
+      "AsIngestedCoordinates": {
+        "features": [
+          {
+            "type": "AnyCrsFeature",
+            "geometry": {
+              "type": "AnyCrsPoint",
+              "coordinates": [
+                6421.150390625,
+                -3119.97998046875
+              ]
+            },
+            "properties": {}
+          }
+        ],
+        "persistableReferenceCrs": "",
+        "type": "AnyCrsFeatureCollection"
+      }
+    },
+    "SubmitterName": "MAAP@equinor.com"
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "acl": {
+    "owners": [
+      "data.default.owners@dev.dataservices.energy"
+    ],
+    "viewers": [
+      "data.default.viewers@dev.dataservices.energy"
+    ]
+  },
+  "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+  "legal": {
+    "legaltags": [
+      "dev-equinor-private-default"
+    ],
+    "otherRelevantDataCountries": [
+      "NO"
+    ]
+  },
+  "createTime": "2025-11-18T14:16:00.000Z",
+  "createUser": "maap",
+  "id": "dev:work-product-component--GenericRepresentation:0ce9278d-979c-450a-a3db-08ea96517463",
+  "modifyTime": "2025-11-18T14:16:00.000Z",
+  "modifyUser": "maap",
+  "version": 1,
+  "meta": [
+    {
+      "kind": "CRS",
+      "persistableReference": ""
+    }
+  ],
+  "data": {
+    "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+    "DDMSDatasets": [
+      "eml://reservoir-ddms1/dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation(0ce9278d-979c-450a-a3db-08ea96517463)"
+    ],
+    "IsDiscoverable": true,
+    "IsExtendedLoad": false,
+    "CreationDateTime": "2025-11-18T14:16:00.000Z",
+    "Name": "DS_extract_postprocess",
+    "SpatialArea": {
+      "AsIngestedCoordinates": {
+        "type": "AnyCrsFeatureCollection",
+        "persistableReferenceCrs": "",
+        "features": [
+          {
+            "type": "AnyCrsFeature",
+            "properties": {},
+            "geometry": {
+              "type": "AnyCrsPolygon",
+              "coordinates": [
+                [
+                  [
+                    456000.0002884438,
+                    5926499.999511719
+                  ],
+                  [
+                    467562.17820274056,
+                    5926499.999511719
+                  ],
+                  [
+                    467562.17820274056,
+                    5939526.278961538
+                  ],
+                  [
+                    456000.0002884438,
+                    5939526.278961538
+                  ],
+                  [
+                    456000.0002884438,
+                    5926499.999511719
+                  ]
+                ]
+              ]
+            }
+          }
+        ],
+        "bbox": [
+          456000.0002884438,
+          5926499.999511719,
+          467562.17820274056,
+          5939526.278961538
+        ]
+      }
+    },
+    "SpatialPoint": {
+      "AsIngestedCoordinates": {
+        "features": [
+          {
+            "type": "AnyCrsFeature",
+            "geometry": {
+              "type": "AnyCrsPoint",
+              "coordinates": [
+                456000.0002884438,
+                5926499.999511719
+              ]
+            },
+            "properties": {}
+          }
+        ],
+        "persistableReferenceCrs": "",
+        "type": "AnyCrsFeatureCollection"
+      }
+    },
+    "SubmitterName": "MAAP@equinor.com",
+    "IndexableElementCount": [
+      {
+        "Count": 191601,
+        "IndexableElementID": "dev:reference-data--IndexableElement:Cells:"
+      },
+      {
+        "Count": 193401,
+        "IndexableElementID": "dev:reference-data--IndexableElement:Nodes:"
+      }
+    ],
+    "InterpretationID": "dev:work-product-component--HorizonInterpretation:969f9e77-cbea-495f-a7ab-72a56e13c265:",
+    "InterpretationName": "TopTherys",
+    "LocalModelCompoundCrsID": "dev:work-product-component--LocalModelCompoundCrs:d33b3140-54ae-4686-98d2-0b396f52f64b:",
+    "Role": "dev:reference-data--RepresentationRole:Map:",
+    "Type": "dev:reference-data--RepresentationType:Grid2dRepresentation:"
+  }
+}
