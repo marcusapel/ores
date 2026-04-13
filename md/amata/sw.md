@@ -72,32 +72,43 @@ Before starting, set your units:
 
 #### Step 3 — Draw the H Cross-Section
 
-You'll draw the H (I-beam) profile. Here are the dimensions:
+You'll draw the H (I-beam) profile. The H is **wide and short** (flanges are the
+long horizontal plates, web is the short vertical connector).
 
 | Dimension | Value |
 |-----------|-------|
-| Total height (H) | **95 mm** |
-| Total width (W) | **70 mm** |
-| Inner opening width | **60 mm** |
-| Flange thickness (tf) | **5 mm** |
-| Web thickness (tw) | **10 mm** (= 70 − 60) |
+| Total width (W) | **95 mm** (horizontal) |
+| Total height (H) | **70 mm** (vertical) |
+| Inner gap between flanges | **60 mm** (on each side of web) |
+| Flange thickness (tf) | **5 mm** (top & bottom plates) |
+| Web thickness (tw) | **5 mm** (centre vertical plate) |
+| All plate thicknesses | **5 mm** (uniform) |
 | Beam length | **1000 mm** |
 
 ```
-    ├────────── 70 ────────────┤
-    ┌──────────────────────────┐  ─┐
-    │       top flange          │   │ 5
-    └───────┐        ┌─────────┘  ─┘
-            │        │  ← 10
-     30     │  web   │    30          gaps on each side
-            │        │
-    ┌───────┘        └─────────┐  ─┐
-    │       bottom flange       │   │ 5
-    └──────────────────────────┘  ─┘
-    ├────────── 70 ────────────┤
+    |<─────────────────── 95 mm ──────────────────>|
 
-    Total height = 95 mm
-    Inner height (web) = 95 − 5 − 5 = 85 mm
+    ┌──────────────────────────────────────────────┐ ──
+    │                 TOP FLANGE                    │  5 mm
+    └──────────────────┐          ┌────────────────┘ ──
+                       │          │
+                       │          │
+          45 mm        │  5 mm    │        45 mm
+         (gap)         │  (web)   │       (gap)          60 mm
+                       │          │
+                       │          │
+    ┌──────────────────┘          └────────────────┐ ──
+    │                BOTTOM FLANGE                  │  5 mm
+    └──────────────────────────────────────────────┘ ──
+
+    |<─────────────────── 95 mm ──────────────────>|
+
+    W  = 95 mm  (total horizontal width)
+    H  = 70 mm  (total vertical height = 5 + 60 + 5)
+    tf =  5 mm  (flange thickness, top & bottom)
+    tw =  5 mm  (web thickness, centre vertical plate)
+    Gap = 60 mm (vertical space between flanges)
+    Overhang = 45 mm each side (flange extends past web)
 ```
 
 **Drawing approach:**
@@ -124,10 +135,11 @@ Draw the H using **rectangles**:
 
 1. Click **Smart Dimension** (keyboard: **D**)
 2. Click on each line segment and type the correct dimension:
-   - Click the **top edge** of the top flange → type the flange width: `70`
-   - Click the **left edge** of the whole cross-section → type the total height: `95`
+   - Click the **top edge** of the top flange → type the total width: `95`
+   - Click the **left edge** of the whole cross-section → type the total height: `70`
    - Click the **top flange thickness** edge → type: `5`
-   - Click the **web thickness** → type: `10`
+   - Click the **web thickness** → type: `5`
+   - Or: dimension the inner gap between flanges → type: `60`
 3. Use **relations** to ensure symmetry:
    - Select the **origin point** and the vertical web → right-click → **Add Relation → Midpoint**
    - Or: select two symmetric edges → **Add Relation → Equal**

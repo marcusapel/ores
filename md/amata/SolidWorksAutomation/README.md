@@ -34,7 +34,7 @@ manually. Open `D6-Øving.pdf` and update:
 
 | File | Constants | PDF page |
 |------|-----------|----------|
-| `Task1_HBeam.cs` | `W=70`, `H=95`, `tf=5`, `tw=10` (filled in) | Page 3 |
+| `Task1_HBeam.cs` | `W=95`, `H=70`, `tf=5`, `tw=5` (filled in) | Page 3 |
 | `Task2_PressureTank.cs` | `CylinderH=600`, `DomeHoleDia=20`, `BottomThick=5` (filled in) | Page 6 |
 
 ## Build & Run

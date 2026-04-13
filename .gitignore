@@ -15,6 +15,7 @@ __pycache__/
 *.lock
 .env
 .venv/
+amata/
 
 # eqn demo data (generated manifests & scripts)
 demo/eqn/

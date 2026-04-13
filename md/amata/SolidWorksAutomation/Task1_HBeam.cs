@@ -27,23 +27,24 @@ public static class Task1_HBeam
     // Read these from the figure on PDF page 3 and update accordingly.
     //
     //          ┌──────────── W ────────────┐
-    //          ┌──────────────────────────┐ ─┐
-    //          │        top flange        │  │ tf
-    //          └─────────┐    ┌──────────┘ ─┘
-    //                    │    │
-    //                    │    │ ← tw (web thickness)
-    //                    │    │
-    //          ┌─────────┘    └──────────┐ ─┐
-    //          │       bottom flange      │  │ tf
-    //          └──────────────────────────┘ ─┘
-    //          ├──────────── W ────────────┤
+    //          ├──────────────── W = 95 ────────────────┤
+    //          ┌────────────────────────────────────────┐ ─┐
+    //          │            top flange                  │  │ tf = 5
+    //          └─────────────────┐    ┌────────────────┘ ─┘
+    //                 45         │    │  ← tw = 5     45
+    //            (each side)     │    │ inner gap = 60
+    //                            │    │
+    //          ┌─────────────────┘    └────────────────┐ ─┐
+    //          │            bottom flange               │  │ tf = 5
+    //          └────────────────────────────────────────┘ ─┘
+    //          ├──────────────── W = 95 ────────────────┤
     //
-    //    Total height H = tf + web_height + tf
+    //    Total height H = 70 = tf + inner_gap + tf = 5 + 60 + 5
 
-    const double W          = 0.070;   // Flange width 70 mm (total width)
-    const double H          = 0.095;   // Total beam height 95 mm
-    const double tf         = 0.005;   // Flange thickness 5 mm
-    const double tw         = 0.010;   // Web thickness 10 mm (W − inner width: 70 − 60 = 10)
+    const double W          = 0.095;   // Total width 95 mm (horizontal)
+    const double H          = 0.070;   // Total height 70 mm (vertical = 5 + 60 + 5)
+    const double tf         = 0.005;   // Flange thickness 5 mm (top & bottom plates)
+    const double tw         = 0.005;   // Web thickness 5 mm (vertical connecting plate)
     const double Length     = 1.000;   // Beam length 1000 mm
 
     // ── Load ───────────────────────────────────────────────────────
