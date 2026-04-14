@@ -86,22 +86,22 @@ long horizontal plates, web is the short vertical connector).
 | Beam length | **1000 mm** |
 
 ```
-    |<─────────────────── 95 mm ──────────────────>|
+         <============== 95 mm ==============>
 
-    ┌──────────────────────────────────────────────┐ ──
-    │                 TOP FLANGE                    │  5 mm
-    └──────────────────┐          ┌────────────────┘ ──
-                       │          │
-                       │          │
-          45 mm        │  5 mm    │        45 mm
-         (gap)         │  (web)   │       (gap)          60 mm
-                       │          │
-                       │          │
-    ┌──────────────────┘          └────────────────┐ ──
-    │                BOTTOM FLANGE                  │  5 mm
-    └──────────────────────────────────────────────┘ ──
+         +------------------------------------+  ---
+         |          TOP FLANGE                |   5 mm
+         +-----------+          +-------------+  ---
+                     |          |
+                     |          |
+        45 mm        |   5 mm   |       45 mm
+        (gap)        |  (web)   |      (gap)       60 mm
+                     |          |
+                     |          |
+         +-----------+          +-------------+  ---
+         |          BOTTOM FLANGE             |   5 mm
+         +------------------------------------+  ---
 
-    |<─────────────────── 95 mm ──────────────────>|
+         <============== 95 mm ==============>
 
     W  = 95 mm  (total horizontal width)
     H  = 70 mm  (total vertical height = 5 + 60 + 5)
@@ -316,33 +316,43 @@ The tank is axisymmetric. You only draw the right half of the cross-section.
 | Bottom plate | **5 mm** thick |
 | Total inner height | 600 + 100 = **700 mm** (cylinder + dome) |
 
-The profile (looking at the right half):
+The profile (looking at the right half — axis is left, wall is right):
 
 ```
-          (axis)
-            │  ○ ← 20 mm hole at apex
-            │ ╲ ╱
-            │╱     ╲  ← outer hemisphere dome (R = 105)
-            │       │     (dome sits ON TOP of the cylinder)
-            │╲     ╱  ← inner hemisphere dome (R = 100)
-            │  ───      
-            ├─── ro=105   dome meets cylinder at Y = 605
-            │   │
-            │   │  ← outer cylindrical wall
-            │   │     600 mm tall
-            │   │
-            │   │
-    ────────┤   │  ← outer bottom corner (Y = 0)
-    ▒▒▒▒▒▒▒│   │  ← bottom plate (5 mm thick)
-    ────────┤   │  ← inner bottom corner (Y = 5)
-            │   │
-            │   │  ← inner cylindrical wall
-            │   │     600 mm tall
-            │   │
-            ├─── ri=100   inner wall meets dome at Y = 605
-            │╲     ╱
-            │  ───   ← inner dome
-            │
+    AXIS                                    NOTES
+     |
+     |   ( )  <-- 20 mm hole at apex
+     |  /   \
+     | /     \  <-- outer dome (R = 105 mm)
+     |/       \
+     |         |
+     | \     / |  <-- inner dome (R = 100 mm)
+     |  \   /  |
+     |   ---   |
+     |         |  <-- dome meets cylinder at Y = 605
+     |         |
+     |         |
+     |         |      OUTER WALL (at X = 105)
+     |         |      600 mm tall
+     |         |
+     |         |      INNER WALL (at X = 100)
+     |         |
+     |         |
+     |         |
+     +---------+  <-- outer bottom (Y = 0)
+     |/////////|  <-- bottom plate (5 mm thick)
+     +---------+  <-- inner bottom (Y = 5)
+     |         |
+     |         |
+     |         |
+
+    ri = 100 mm (inner radius)
+    ro = 105 mm (outer radius = ri + wall thickness)
+    Cylinder height = 600 mm
+    Dome = hemisphere on top only
+    Hole at apex = 20 mm diameter (10 mm from axis)
+    Bottom plate = 5 mm thick (flat, fixed to concrete)
+    Total outer height = 5 + 600 + 105 = 710 mm
 ```
 
 **Drawing steps:**
