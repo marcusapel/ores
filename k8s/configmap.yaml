@@ -6,8 +6,12 @@ metadata:
   labels:
     app.kubernetes.io/name: ores
 data:
-  # OSDU / RDDMS configuration
-  OSDU_BASE_URL: ".energy.azure.com"        # e.g. equinordev.energy.azure.com
+  # ── Server ──
+  LOG_LEVEL: "INFO"
+  DEBUG: "False"
+
+  # ── OSDU / RDDMS ──
+  OSDU_BASE_URL: "equinordev.energy.azure.com"
   DATA_PARTITION_ID: "dev"
   DEFAULT_DATASPACE: "maap/drogon"
   DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
@@ -15,5 +19,6 @@ data:
   DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
   DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
   APP_KEY: "test-app"
-  LOG_LEVEL: "INFO"
-  DEBUG: "False"
+
+  # ── Auth redirect (set when behind a reverse proxy / ingress) ──
+  # OIDC_REDIRECT_URI: "https://ores.equinor.com/auth/callback"
