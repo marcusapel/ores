@@ -72,7 +72,11 @@ async def keys_dataspaces(request: Request):
     except Exception as e:
         log.warning("keys_dataspaces failed: %s", e)
         rows = []
-    items = [{"path": x.get("path"), "uri": x.get("uri")} for x in rows if x.get("path")]
+    items = []
+    for x in rows:
+        p = x.get("path") or x.get("Path") or x.get("DataspaceId") or ""
+        if p:
+            items.append({"path": p, "uri": x.get("uri", "")})
     return JSONResponse({"items": items})
 
 @router.get("/keys/types.json")

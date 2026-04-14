@@ -25,7 +25,7 @@
   <h2>Dataspaces</h2>
   <ul id="ds-list">
     {% for ds_row in dataspaces %}
-      {% set path = ds_row.get('path') if ds_row is mapping else ds_row %}
+      {% set path = (ds_row.get('path') or ds_row.get('Path') or ds_row.get('DataspaceId', '')) if ds_row is mapping else ds_row %}
       <li data-path="{{ path }}">
         <code>{{ path }}</code>
       </li>
@@ -330,7 +330,7 @@
   <select id="ds-select" class="input">
     {% if dataspaces %}
       {% for ds_row in dataspaces %}
-        {% set path = ds_row.get('path') if ds_row is mapping else ds_row %}
+        {% set path = (ds_row.get('path') or ds_row.get('Path') or ds_row.get('DataspaceId', '')) if ds_row is mapping else ds_row %}
         {% set uri  = ds_row.get('uri')  if ds_row is mapping else '' %}
         <option value="{{ path }}">{{ uri or ("eml:///dataspace('" ~ path ~ "')") }}</option>
       {% endfor %}

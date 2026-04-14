@@ -502,3 +502,114 @@ async def rddms_index(request: Request) -> JSONResponse:
             "dataspace": dataspace,
             "storageResponse": storage_response,
         })
+
+
+# ======================================================================
+# DELETE /api/records/delete — soft-delete an OSDU record via Storage API
+# ======================================================================
+
+@router.post("/records/delete")
+async def delete_record(request: Request) -> JSONResponse:
+    """Delete (soft) one or more OSDU records via Storage API.
+
+    Body:
+    {
+      "ids": ["dev:work-product-component--PersistedCollection:dfc7b372-..."]
+    }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    ids = body.get("ids")
+    if not ids or not isinstance(ids, list):
+        raise HTTPException(status_code=400, detail="'ids' must be a non-empty list of record IDs")
+
+    access_token = _find_access_token(request)
+    if not access_token:
+        raise HTTPException(status_code=401, detail="access_token not found")
+
+    base_url = _get_env("OSDU_BASE_URL")
+    if not base_url:
+        raise HTTPException(status_code=500, detail="OSDU_BASE_URL not configured")
+    if not base_url.startswith("http"):
+        base_url = f"https://{base_url}"
+
+    partition = body.get("partition") or _get_env("DATA_PARTITION_ID", "data")
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "data-partition-id": partition,
+        "Content-Type": "application/json",
+    }
+
+    results = []
+    async with httpx.AsyncClient(timeout=60) as client:
+        for rid in ids:
+            url = f"{base_url.rstrip('/')}/api/storage/v2/records/{rid}"
+            r = await client.delete(url, headers=headers)
+            results.append({
+                "id": rid,
+                "status": r.status_code,
+                "ok": r.status_code < 400,
+                "detail": r.text[:500] if r.status_code >= 400 else "deleted",
+            })
+
+    return JSONResponse({"results": results})
+
+
+# ======================================================================
+# POST /api/records/ingest — ingest records directly via Storage PUT
+# ======================================================================
+
+@router.post("/records/ingest")
+async def ingest_records(request: Request) -> JSONResponse:
+    """PUT one or more records to OSDU Storage API.
+
+    Body:
+    {
+      "records": [ { "id": "...", "kind": "...", ... }, ... ]
+    }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    records = body.get("records")
+    if not records or not isinstance(records, list):
+        raise HTTPException(status_code=400, detail="'records' must be a non-empty list")
+
+    access_token = _find_access_token(request)
+    if not access_token:
+        raise HTTPException(status_code=401, detail="access_token not found")
+
+    base_url = _get_env("OSDU_BASE_URL")
+    if not base_url:
+        raise HTTPException(status_code=500, detail="OSDU_BASE_URL not configured")
+    if not base_url.startswith("http"):
+        base_url = f"https://{base_url}"
+
+    partition = body.get("partition") or _get_env("DATA_PARTITION_ID", "data")
+    url = f"{base_url.rstrip('/')}/api/storage/v2/records"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "data-partition-id": partition,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        r = await client.put(url, headers=headers, json=records)
+        if r.status_code >= 400:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "message": "Storage API PUT failed",
+                    "status": r.status_code,
+                    "text": r.text[:2000],
+                },
+            )
+        try:
+            return JSONResponse(r.json())
+        except Exception:
+            return JSONResponse({"status_code": r.status_code, "text": r.text[:500]})
