@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ores-config
+  namespace: ores
+  labels:
+    app.kubernetes.io/name: ores
+data:
+  # OSDU / RDDMS configuration
+  OSDU_BASE_URL: ".energy.azure.com"        # e.g. equinordev.energy.azure.com
+  DATA_PARTITION_ID: "dev"
+  DEFAULT_DATASPACE: "maap/drogon"
+  DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+  DEFAULT_COUNTRIES: "NO"
+  DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+  DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+  APP_KEY: "test-app"
+  LOG_LEVEL: "INFO"
+  DEBUG: "False"
