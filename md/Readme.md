@@ -14,6 +14,7 @@ A FastAPI-based administrative UI for an OSDU-style RDDMS (Reservoir Data / Deci
 | **Analyse** (`/analyse`) | Select a Reservoir, compare Business Decisions across decision gates (DG1→DG4) with volume/risk/economics deltas and charts |
 | **Add DG** (`/add-dg`) | Create and ingest a new BusinessDecision for an existing Reservoir, linking REV, GeoLabelSet, Activity and Risk records |
 | **Stratigraphy** (`/strat`) | Preview and ingest stratigraphic column records |
+| **HowTo** (`/howto`) | Browse grouped markdown documentation articles (BD modelling, SeisInt, CRS, Stratigraphy) |
 
 Key rendering features:
 
@@ -96,15 +97,16 @@ demo/
   run_pipeline.py      # Generic cross-platform pipeline runner
   drogon/              # Drogon DG1 pipeline (self-contained)
   drogon_dg2/          # Drogon DG2 pipeline (references drogon/ for shared data)
+  seisint/             # Volantis seismic interpretation pipeline (RDDMS)
   strat/               # Stratigraphic column manifests and tools
-md/                    # Documentation and guides
+md/                    # Documentation and guides (rendered via /howto)
 ```
 
 ---
 
 ## Pipeline guide — adding a new field / decision gate dataset
 
-See [md/DGDigest.md](md/DGDigest.md) for the full DG data model guide, including:
+See [md/BdDemo.md](md/BdDemo.md) for the full DG data model guide, including:
 
 - Data input format (CSV structure, supported units, properties)
 - Step-by-step pipeline walkthrough
@@ -167,7 +169,8 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 | Dataset | Pipeline | Records | BD |
 |---------|----------|---------|-----|
 | **Drogon DG1** | `demo/drogon/` | ~19 | Identify & Assess (7 segments, 3 facies) |
-| **Drogon DG2** | `demo/drogon_dg2/` | ~25 | Concept Select (porosity ×0.8 scenario) |
+| **Drogon DG2** | `demo/drogon_dg2/` | ~31 | Concept Select (porosity ×0.8 scenario, PersistedCollection) |
+| **Volantis SeisInt** | `demo/seisint/` | ~22 | Seismic interpretation (StructureMap, BinGrid, Horizons via RDDMS) |
 
 ---
 
@@ -184,8 +187,12 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 | Drogon pipeline | `demo/drogon/` |
 | Pipeline runner | `demo/run_pipeline.py` |
 | BD modelling guide | `md/BusinessDecision.md` |
+| BD demo (DG2) | `md/BdDemo.md` |
 | Volume schemas | `md/Volumes.md` |
+| GeoLabelSet | `md/GeoLabelSet.md` |
 | Risk guide | `md/Risk.md` |
-| DG Digest (overview) | `md/DGDigest.md` |
+| Uncertainty | `md/Uncertainty.md` |
 | FMU ↔ OSDU | `md/FmuOsdu.md` |
-| Strat column | `md/StratColumnConverter.md` |
+| Seismic interpretation | `md/SeisInt.md` |
+| CRS guide | `md/CrsGuide.md` |
+| Strat column | `md/StratColumn.md` |
