@@ -12,7 +12,6 @@ Prerequisites:
   1. Run gen_volantis_interp.py           → manifest_volantis_interp.json
   2. Run manifest2records_seisint.py      → records/*.json
   3. Run register_m27_schemas.py          (M27 schemas — one-time, safe to re-run)
-  4. Run register_schema_seisintproject.py (SeismicInterpretationProject proposal)
   5. Run THIS script                      → records ingested to OSDU
 
 Usage:

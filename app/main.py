@@ -960,7 +960,6 @@ def _collect_manifest_kinds() -> List[Dict[str, Any]]:
         "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0",
         "osdu:wks:work-product-component--StructureMap:1.0.0",
         "dev:wks:work-product-component--DevelopmentConcept:1.0.0",
-        "dev:wks:work-product-component--SeismicInterpretationProject:1.0.0",
         "osdu:wks:reference-data--ChronoStratigraphicScheme:1.0.0",
         "osdu:wks:reference-data--ChronoStratigraphy:1.0.0",
     ]
@@ -1535,7 +1534,7 @@ _HOWTO_SECTIONS: list[dict] = [
         "items": [
             {
                 "slug": "ores-overview",
-                "file": "readme.md",
+                "file": "Readme.md",
                 "title": "ORES Overview",
                 "desc": "Web client capabilities, project layout & pipeline guide",
             },
@@ -1555,7 +1554,7 @@ _HOWTO_SECTIONS: list[dict] = [
                 "slug": "seismic-interp",
                 "file": "SeisInt.md",
                 "title": "Seismic Interpretation",
-                "desc": "M27 schema landscape & worked example",
+                "desc": "M27 data model, RDDMS patterns & Volantis demo",
             },
             {
                 "slug": "crs-guide",

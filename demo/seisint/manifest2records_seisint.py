@@ -64,7 +64,6 @@ def _flatten_manifest(man: Dict[str, Any]) -> List[Dict[str, Any]]:
         "GenericBinGrid": 2,
         "SeismicHorizon": 3,
         "StructureMap": 4,
-        "SeismicInterpretationProject": 5,
     }
 
     def _wpc_sort_key(r: dict) -> int:

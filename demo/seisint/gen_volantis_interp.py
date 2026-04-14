@@ -6,7 +6,7 @@ Volantis 2025 Interpretation worked example.
 
 Demonstrates the full M27 interpretation chain:
   LocalBoundaryFeature → HorizonInterpretation → SeismicHorizon:2.1.0 → StructureMap:1.0.0
-  with GenericBinGrid:1.0.0 and SeismicInterpretationProject:1.0.0
+  with GenericBinGrid:1.0.0
 
 Output: manifest_volantis_interp.json
 
@@ -639,64 +639,6 @@ def make_generic_representation(
     }
 
 
-def make_interpretation_project(prefix: str, horizon_keys: list) -> dict:
-    """SeismicInterpretationProject:1.0.0 — groups all products (proposal)."""
-    u = uid("project:Volantis2025")
-    sbg_u = uid("seisbingrid:Volantis3D")
-
-    bf_ids = [md_id(prefix, "LocalBoundaryFeature", uid(f"feature:{k}")) for k in horizon_keys]
-    hi_ids = [wpc_id(prefix, "HorizonInterpretation", uid(f"interp:{k}")) for k in horizon_keys]
-    sh_ids = [wpc_id(prefix, "SeismicHorizon", uid(f"seishz:{k}")) for k in horizon_keys]
-
-    # StructureMap IDs: Pattern B (external grid) for all 3 horizons + Pattern A (inline) for Volantis pair
-    sm_ids_b = [
-        wpc_id(prefix, "StructureMap", uid("smap:TopVolantis")),
-        wpc_id(prefix, "StructureMap", uid("smap:BaseVolantis")),
-        wpc_id(prefix, "StructureMap", uid("smap:TopTherys")),
-    ]
-    sm_ids_a = [
-        wpc_id(prefix, "StructureMap", uid("smap:inlineA:TopVolantis")),
-        wpc_id(prefix, "StructureMap", uid("smap:inlineA:BaseVolantis")),
-    ]
-    sm_ids = sm_ids_b + sm_ids_a
-    gbg_id = wpc_id(prefix, "GenericBinGrid", uid("genericbingrid:VolantisDepth25m"))
-    gbg_therys_id = wpc_id(prefix, "GenericBinGrid", uid("genericbingrid:TherysDepth20m"))
-    sbg_id = wpc_id(prefix, "SeismicBinGrid", sbg_u)
-
-    # GenericRepresentation IDs — one per RDDMS Grid2dRep (1:1 mirror)
-    grep_ids = [
-        _grep_id(prefix, uuid)
-        for uuid in list(RDDMS_DEPTH.values()) + list(RDDMS_TWT.values())
-    ]
-
-    all_parents = (
-        bf_ids + hi_ids + sh_ids + sm_ids + grep_ids
-        + [gbg_id, gbg_therys_id, sbg_id]
-    )
-
-    return {
-        "id": wpc_id(prefix, "SeismicInterpretationProject", u),
-        "kind": "dev:wks:work-product-component--SeismicInterpretationProject:1.0.0",
-        "acl": acl_block(),
-        "legal": legal_block(),
-        "data": {
-            "Name": "Volantis 2025 Interpretation",
-            "Description": "Complete horizon interpretation for the Volantis field — 3 horizons (TWT + depth), seismic + depth grids, GenericRepresentation catalog layer",
-            "HorizonInterpretationIDs": hi_ids,
-            "SeismicHorizonIDs": sh_ids,
-            "StructureMapIDs": sm_ids,
-            "GenericRepresentationIDs": grep_ids,
-            "SeismicBinGridID": sbg_id,
-            "GenericBinGridID": gbg_id,
-            "InterpreterName": "Volantis Interpretation Team",
-            "InterpretationDate": "2025-09-15T00:00:00Z",
-            "SoftwareUsed": "Petrel 2024.1",
-            "ResqmlDataspaceID": f"{prefix}:dataset--ETPDataspace:{uid('dataspace:volantis')}:1",
-            "ancestry": ancestry(all_parents),
-        },
-    }
-
-
 # ── Main ────────────────────────────────────────────────────────────────
 
 def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
@@ -752,10 +694,6 @@ def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
         records.append(make_generic_representation(prefix, k, HORIZONS[k], ruuid, "Depth"))
     for k, ruuid in RDDMS_TWT.items():
         records.append(make_generic_representation(prefix, k, HORIZONS[k], ruuid, "Time"))
-
-    # 9. SeismicInterpretationProject (proposal)
-    print("Generating interpretation project...")
-    records.append(make_interpretation_project(prefix, hz_keys))
 
     # Build manifest
     manifest = {
