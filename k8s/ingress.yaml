@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ores
+  namespace: ores
+  labels:
+    app.kubernetes.io/name: ores
+  annotations:
+    # Adjust for your ingress controller (nginx / Azure App Gateway / Radix)
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx                    # or "azure-application-gateway" for AGIC
+  tls:
+    - hosts:
+        - ores.equinor.com                   # replace with actual hostname
+      secretName: ores-tls                   # cert-manager or manual TLS secret
+  rules:
+    - host: ores.equinor.com                 # replace with actual hostname
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ores
+                port:
+                  number: 80
