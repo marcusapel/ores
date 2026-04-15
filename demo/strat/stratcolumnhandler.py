@@ -584,15 +584,16 @@ class StratColumn:
     def from_smda_api(
         column_identifier: str,
         *,
-        base_url: str = "https://opus.smda.equinor.com",
+        base_url: str = "https://api.gateway.equinor.com",
         access_token: Optional[str] = None,
         api_key: Optional[str] = None,
         verify_ssl: bool = True,
     ) -> "StratColumn":
-        """Fetch a stratigraphic column directly from the SMDA OPUS REST API.
+        """Fetch a stratigraphic column from the SMDA REST API.
 
-        Uses the /smda/table/v2/api_strat_unit_header endpoint with OData-style
-        filtering on strat_column_identifier.
+        Supports both the Equinor API Gateway (api.gateway.equinor.com) and the
+        legacy OPUS endpoint (opus.smda.equinor.com).  The endpoint path is
+        chosen automatically based on the base_url.
 
         Parameters
         ----------
@@ -600,7 +601,7 @@ class StratColumn:
             The strat_column_identifier to query (e.g. "NCS Lithostratigraphy",
             "DIAPIRIC PROVINCE LITHOSTRATIGRAPHY").
         base_url : str
-            SMDA OPUS base URL (default: https://opus.smda.equinor.com).
+            SMDA base URL (default: https://api.gateway.equinor.com).
         access_token : str | None
             Bearer token for Azure AD auth (Equinor SSO).
         api_key : str | None
@@ -617,40 +618,95 @@ class StratColumn:
             raise RuntimeError("'requests' package is required for SMDA API access. "
                                "Install with: pip install requests")
 
-        # Build URL and params
-        url = f"{base_url.rstrip('/')}/smda/table/v2/api_strat_unit_header"
-        params = {
-            "$filter": f"strat_column_identifier eq '{column_identifier}'",
-            "$format": "json",
-            "$top": "5000",
+        headers: Dict[str, str] = {
+            "Accept": "application/json",
+            "Cache-Control": "no-cache",
         }
-        headers: Dict[str, str] = {"Accept": "application/json"}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
         if api_key:
             headers["Ocp-Apim-Subscription-Key"] = api_key
 
-        resp = _requests.get(url, params=params, headers=headers,
-                             verify=verify_ssl, timeout=60)
-        resp.raise_for_status()
+        # Choose endpoint path based on base URL
+        is_gateway = "api.gateway" in base_url.lower()
+        base = base_url.rstrip("/")
 
-        # Validate response is JSON before parsing
-        ct = (resp.headers.get("Content-Type") or "").lower()
-        if "application/json" not in ct and "text/json" not in ct:
-            snippet = resp.text[:300].strip()
-            raise ValueError(
-                f"SMDA returned non-JSON response (Content-Type: {ct}). "
-                f"This usually means authentication failed and the server "
-                f"returned a login page. Response preview: {snippet}"
-            )
+        if is_gateway:
+            # Equinor API Gateway: paginated REST endpoint
+            url = f"{base}/smda/v2.0/smda-api/strat-units"
+            all_rows: list = []
+            page = 1
+            while True:
+                params = {
+                    "_page": str(page),
+                    "_items": "500",
+                    "_order": "asc",
+                    "strat_column_identifier": column_identifier,
+                }
+                resp = _requests.get(url, params=params, headers=headers,
+                                     verify=verify_ssl, timeout=60)
+                resp.raise_for_status()
+                ct = (resp.headers.get("Content-Type") or "").lower()
+                if "json" not in ct:
+                    snippet = resp.text[:300].strip()
+                    raise ValueError(
+                        f"SMDA returned non-JSON response (Content-Type: {ct}). "
+                        f"Response preview: {snippet}")
+                data = resp.json()
+                # Gateway returns {"data": {"results": [...], "hits": N, ...}}
+                inner = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(inner, dict):
+                    rows = inner.get("results", inner.get("value", []))
+                elif isinstance(inner, list):
+                    rows = inner
+                else:
+                    rows = []
+                if not isinstance(rows, list):
+                    rows = []
+                all_rows.extend(rows)
+                # Pagination check
+                total = None
+                if isinstance(inner, dict):
+                    total = inner.get("hits", inner.get("total",
+                            inner.get("totalCount", inner.get("_total"))))
+                if total is not None:
+                    try:
+                        total = int(total)
+                    except (TypeError, ValueError):
+                        total = None
+                if total is not None and len(all_rows) >= total:
+                    break
+                if len(rows) < 500:
+                    break
+                page += 1
+                if page > 20:
+                    break
+            rows = all_rows
+        else:
+            # Legacy OPUS: OData-style endpoint
+            url = f"{base}/smda/table/v2/api_strat_unit_header"
+            params = {
+                "$filter": f"strat_column_identifier eq '{column_identifier}'",
+                "$format": "json",
+                "$top": "5000",
+            }
+            resp = _requests.get(url, params=params, headers=headers,
+                                 verify=verify_ssl, timeout=60)
+            resp.raise_for_status()
+            ct = (resp.headers.get("Content-Type") or "").lower()
+            if "json" not in ct:
+                snippet = resp.text[:300].strip()
+                raise ValueError(
+                    f"SMDA returned non-JSON response (Content-Type: {ct}). "
+                    f"Response preview: {snippet}")
+            data = resp.json()
+            rows = data.get("value") if isinstance(data, dict) else data
+            if not isinstance(rows, list):
+                rows = []
 
-        data = resp.json()
-
-        # SMDA returns {"value": [...]} or just [...]
-        rows = data.get("value") if isinstance(data, dict) else data
-        if not isinstance(rows, list) or not rows:
+        if not rows:
             raise ValueError(f"No strat units returned from SMDA for column "
-                             f"'{column_identifier}'. Response: {str(data)[:500]}")
+                             f"'{column_identifier}'.")
 
         def _float(x):
             try:
@@ -743,7 +799,7 @@ class StratColumn:
     @staticmethod
     def from_smda_api_list_columns(
         *,
-        base_url: str = "https://opus.smda.equinor.com",
+        base_url: str = "https://api.gateway.equinor.com",
         access_token: Optional[str] = None,
         api_key: Optional[str] = None,
         verify_ssl: bool = True,
@@ -751,43 +807,99 @@ class StratColumn:
         """List available stratigraphic column identifiers from SMDA.
 
         Returns a sorted list of distinct strat_column_identifier values.
+        Supports both the Equinor API Gateway and the legacy OPUS endpoint.
         """
         if _requests is None:
             raise RuntimeError("'requests' package is required")
-        url = f"{base_url.rstrip('/')}/smda/table/v2/api_strat_unit_header"
-        params = {
-            "$select": "strat_column_identifier",
-            "$format": "json",
-            "$top": "10000",
+
+        headers: Dict[str, str] = {
+            "Accept": "application/json",
+            "Cache-Control": "no-cache",
         }
-        headers: Dict[str, str] = {"Accept": "application/json"}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
         if api_key:
             headers["Ocp-Apim-Subscription-Key"] = api_key
 
-        resp = _requests.get(url, params=params, headers=headers,
-                             verify=verify_ssl, timeout=60)
-        resp.raise_for_status()
+        is_gateway = "api.gateway" in base_url.lower()
+        base = base_url.rstrip("/")
 
-        # Validate response is JSON before parsing
-        ct = (resp.headers.get("Content-Type") or "").lower()
-        if "application/json" not in ct and "text/json" not in ct:
-            snippet = resp.text[:300].strip()
-            raise ValueError(
-                f"SMDA returned non-JSON response (Content-Type: {ct}). "
-                f"This usually means authentication failed and the server "
-                f"returned a login page. Response preview: {snippet}"
-            )
+        if is_gateway:
+            url = f"{base}/smda/v2.0/smda-api/strat-column"
+            all_rows: list = []
+            page = 1
+            while True:
+                params = {
+                    "_page": str(page),
+                    "_items": "100",
+                    "_order": "asc",
+                    "_aggregation_include_buckets": "true",
+                }
+                resp = _requests.get(url, params=params, headers=headers,
+                                     verify=verify_ssl, timeout=60)
+                resp.raise_for_status()
+                ct = (resp.headers.get("Content-Type") or "").lower()
+                if "json" not in ct:
+                    snippet = resp.text[:300].strip()
+                    raise ValueError(
+                        f"SMDA returned non-JSON (Content-Type: {ct}). Preview: {snippet}")
+                data = resp.json()
+                # Gateway returns {"data": {"results": [...], "hits": N, ...}}
+                inner = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(inner, dict):
+                    rows = inner.get("results", inner.get("value", []))
+                elif isinstance(inner, list):
+                    rows = inner
+                else:
+                    rows = []
+                if not isinstance(rows, list):
+                    rows = []
+                all_rows.extend(rows)
+                total = None
+                if isinstance(inner, dict):
+                    total = inner.get("hits", inner.get("total",
+                            inner.get("totalCount", inner.get("_total"))))
+                if total is not None:
+                    try:
+                        total = int(total)
+                    except (TypeError, ValueError):
+                        total = None
+                if total is not None and len(all_rows) >= total:
+                    break
+                if len(rows) < 100:
+                    break
+                page += 1
+                if page > 50:
+                    break
+            names = sorted(set(
+                str(r.get("strat_column_identifier") or r.get("identifier", "")).strip()
+                for r in all_rows
+                if (r.get("strat_column_identifier") or r.get("identifier", "")).strip()
+            ))
+        else:
+            url = f"{base}/smda/table/v2/api_strat_unit_header"
+            params = {
+                "$select": "strat_column_identifier",
+                "$format": "json",
+                "$top": "10000",
+            }
+            resp = _requests.get(url, params=params, headers=headers,
+                                 verify=verify_ssl, timeout=60)
+            resp.raise_for_status()
+            ct = (resp.headers.get("Content-Type") or "").lower()
+            if "json" not in ct:
+                snippet = resp.text[:300].strip()
+                raise ValueError(
+                    f"SMDA returned non-JSON (Content-Type: {ct}). Preview: {snippet}")
+            data = resp.json()
+            rows = data.get("value") if isinstance(data, dict) else data
+            if not isinstance(rows, list):
+                rows = []
+            names = sorted(set(
+                str(r.get("strat_column_identifier") or "").strip()
+                for r in rows if r.get("strat_column_identifier")
+            ))
 
-        data = resp.json()
-        rows = data.get("value") if isinstance(data, dict) else data
-        if not isinstance(rows, list):
-            return []
-        names = sorted(set(
-            str(r.get("strat_column_identifier") or "").strip()
-            for r in rows if r.get("strat_column_identifier")
-        ))
         return names
 
     @staticmethod
@@ -1522,8 +1634,8 @@ def build_parser():
         help="SMDA OPUS API → OSDU WPC bundle (live fetch)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=dedent("""\
-            Fetch a stratigraphic column directly from the SMDA OPUS REST API
-            (/smda/table/v2/api_strat_unit_header) and convert to an OSDU WPC bundle.
+            Fetch a stratigraphic column directly from the SMDA API
+            (/smda-api/strat-units) and convert to an OSDU WPC bundle.
 
             Requires authentication: --token (Bearer) or --api-key (Ocp-Apim-Subscription-Key).
             Alternatively set SMDA_ACCESS_TOKEN or SMDA_API_KEY environment variables.
@@ -1534,8 +1646,8 @@ def build_parser():
         help="strat_column_identifier to fetch (e.g. 'NCS Lithostratigraphy')."
     )
     p.add_argument(
-        "--smda-url", default="https://opus.smda.equinor.com",
-        help="SMDA OPUS base URL."
+        "--smda-url", default="https://api.gateway.equinor.com",
+        help="SMDA API base URL."
     )
     p.add_argument(
         "--token", default="",
@@ -1569,8 +1681,8 @@ def build_parser():
         help="List available strat column identifiers from SMDA API",
     )
     p.add_argument(
-        "--smda-url", default="https://opus.smda.equinor.com",
-        help="SMDA OPUS base URL."
+        "--smda-url", default="https://api.gateway.equinor.com",
+        help="SMDA API base URL."
     )
     p.add_argument(
         "--token", default="",

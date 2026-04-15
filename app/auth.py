@@ -20,16 +20,8 @@ TENANT = os.getenv("AZURE_TENANT_ID", "")
 CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
 SCOPES = os.getenv("AZURE_SCOPE", "openid offline_access").split()
 
-# SMDA OPUS — same tenant, different API resource.
-# SMDA_CLIENT_ID here is the SMDA *API* resource App ID (audience).
-# We still use our own CLIENT_ID for the PKCE authorize, but request
-# SMDA-specific scopes so the resulting token targets the SMDA API.
-SMDA_CLIENT_ID = os.getenv("SMDA_CLIENT_ID", "")  # SMDA API App ID
-_smda_scope_raw = os.getenv("SMDA_SCOPE", "").split()
-# Resource-specific scopes (e.g. 691a29c5.../user_impersonation)
-SMDA_SCOPES = [s for s in _smda_scope_raw if s not in ("openid", "offline_access")] or None
-# Full scope list for authorize/token requests (includes openid + offline_access)
-SMDA_SCOPES_FULL = list(SMDA_SCOPES or []) + ["openid", "offline_access"] if SMDA_SCOPES else None
+# SMDA API resource App ID (audience) — used by az CLI to mint tokens.
+SMDA_CLIENT_ID = os.getenv("SMDA_CLIENT_ID", "")
 
 AUTH_BASE = f"https://login.microsoftonline.com/{TENANT}/oauth2/v2.0"
 AUTHORIZE_URL = f"{AUTH_BASE}/authorize"
@@ -42,7 +34,7 @@ AUTH_MODE = "env_token" if ENV_REFRESH_TOKEN else "per_user_pkce"
 router = APIRouter(tags=["auth"])
 
 # Paths that must be accessible without any token
-PUBLIC_PATHS: set[str] = {"/login", "/login-page", "/login/smda",
+PUBLIC_PATHS: set[str] = {"/login", "/login-page",
                           "/auth/callback", "/auth", "/logout"}
 
 # ─────────────────────────────────────────────────────────────
@@ -116,45 +108,9 @@ async def login(request: Request):
     return RedirectResponse(url)
 
 
-@router.get("/login/smda")
-async def login_smda(request: Request):
-    """Redirect user to Azure AD authorize endpoint with PKCE (SMDA scopes).
-
-    Uses the SAME client_id (our app registration) but requests SMDA-specific
-    scopes so the resulting token targets the SMDA API.  No .default scope.
-    Reuses /auth/callback (same redirect URI already registered).
-    """
-    if not CLIENT_ID or not SMDA_SCOPES_FULL or not TENANT:
-        return JSONResponse({"error": "SMDA_SCOPE not configured"}, status_code=500)
-
-    redirect_uri = _build_redirect_uri(request)
-    code_verifier = secrets.token_urlsafe(64)
-    state = secrets.token_urlsafe(32)
-    request.session["pkce_verifier"] = code_verifier
-    request.session["pkce_state"] = state
-    request.session["redirect_uri"] = redirect_uri
-    request.session["pkce_target"] = "smda"
-
-    async with AsyncOAuth2Client(
-        client_id=CLIENT_ID,
-        scope=" ".join(SMDA_SCOPES_FULL),
-        redirect_uri=redirect_uri,
-        code_challenge_method="S256",
-    ) as cli:
-        url, _state = cli.create_authorization_url(
-            AUTHORIZE_URL,
-            state=state,
-            code_verifier=code_verifier,
-        )
-    return RedirectResponse(url)
-
-
 @router.get("/auth/callback")
 async def auth_callback(request: Request):
-    """Exchange authorization code for tokens.
-
-    Uses session['pkce_target'] to decide whether to store as OSDU or SMDA tokens.
-    """
+    """Exchange authorization code for tokens (OSDU PKCE flow)."""
     code = request.query_params.get("code")
     state = request.query_params.get("state")
     if not code:
@@ -166,13 +122,10 @@ async def auth_callback(request: Request):
 
     code_verifier = request.session.get("pkce_verifier", "")
     redirect_uri = request.session.get("redirect_uri", _build_redirect_uri(request))
-    target = request.session.get("pkce_target", "osdu")
-
-    scopes = SMDA_SCOPES_FULL if target == "smda" else SCOPES
 
     async with AsyncOAuth2Client(
         client_id=CLIENT_ID,
-        scope=" ".join(scopes),
+        scope=" ".join(SCOPES),
         redirect_uri=redirect_uri,
         code_challenge_method="S256",
     ) as cli:
@@ -185,21 +138,13 @@ async def auth_callback(request: Request):
     # Clean up PKCE state
     request.session.pop("pkce_verifier", None)
     request.session.pop("pkce_state", None)
-    request.session.pop("pkce_target", None)
 
-    if target == "smda":
-        request.session["smda_access_token"] = token.get("access_token", "")
-        request.session["smda_refresh_token"] = token.get("refresh_token", "")
-        request.session["smda_token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
-        log.info("PKCE login successful (SMDA), redirecting to /strat")
-        return RedirectResponse("/strat")
-    else:
-        request.session["access_token"] = token.get("access_token", "")
-        request.session["refresh_token"] = token.get("refresh_token", "")
-        request.session["token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
-        request.session["user"] = token.get("id_token", "")
-        log.info("PKCE login successful (OSDU), redirecting to /")
-        return RedirectResponse("/")
+    request.session["access_token"] = token.get("access_token", "")
+    request.session["refresh_token"] = token.get("refresh_token", "")
+    request.session["token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
+    request.session["user"] = token.get("id_token", "")
+    log.info("PKCE login successful (OSDU), redirecting to /")
+    return RedirectResponse("/")
 
 
 @router.get("/logout")
@@ -244,46 +189,29 @@ async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────
 
 async def smda_access_token(request: Request) -> Optional[str]:
-    """Return SMDA access token, refreshing if expired.
+    """Return SMDA access token via Azure CLI.
 
-    Tries (in order):
-    1. Session SMDA token (from /login/smda PKCE flow)
-    2. ENV_REFRESH_TOKEN with SMDA scopes (zero-click)
+    Uses `az account get-access-token --resource <SMDA_CLIENT_ID>` which
+    leverages Microsoft's first-party app registration with broad consent
+    in Equinor's tenant.  Requires the user to have run `az login`.
 
-    Returns None if neither source is available.
+    Returns None if az CLI is unavailable or not logged in.
     """
-    if not SMDA_SCOPES_FULL or not CLIENT_ID or not TENANT:
-        log.debug("SMDA not configured (SMDA_SCOPE)")
+    if not SMDA_CLIENT_ID:
+        log.debug("SMDA_CLIENT_ID not configured")
         return None
 
-    # 1) Session token
-    if hasattr(request, "session"):
-        at = request.session.get("smda_access_token")
-        exp = request.session.get("smda_token_exp", 0)
-        if at and time.time() < exp:
-            return at
+    global _smda_cached_token, _smda_cached_exp
+    if _smda_cached_token and time.time() < _smda_cached_exp:
+        return _smda_cached_token
 
-        rt = request.session.get("smda_refresh_token")
-        if rt:
-            result = await _refresh_smda_token(rt)
-            if result:
-                request.session["smda_access_token"] = result["access_token"]
-                request.session["smda_refresh_token"] = result.get("refresh_token", rt)
-                request.session["smda_token_exp"] = result["exp"]
-                return result["access_token"]
+    result = await _smda_token_from_az_cli()
+    if result:
+        _smda_cached_token = result["access_token"]
+        _smda_cached_exp = result["exp"]
+        return result["access_token"]
 
-    # 2) ENV refresh token fallback
-    if ENV_REFRESH_TOKEN:
-        global _smda_cached_token, _smda_cached_exp
-        if _smda_cached_token and time.time() < _smda_cached_exp:
-            return _smda_cached_token
-        result = await _refresh_smda_token(ENV_REFRESH_TOKEN)
-        if result:
-            _smda_cached_token = result["access_token"]
-            _smda_cached_exp = result["exp"]
-            return result["access_token"]
-
-    log.debug("No SMDA token available (no session, no env refresh token)")
+    log.debug("No SMDA token available — run 'az login'")
     return None
 
 
@@ -291,26 +219,44 @@ _smda_cached_token: Optional[str] = None
 _smda_cached_exp: float = 0.0
 
 
-async def _refresh_smda_token(refresh_token: str) -> Optional[Dict[str, Any]]:
-    """Exchange a refresh token for an SMDA-audience access token."""
+async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
+    """Get SMDA-scoped token via Azure CLI (`az account get-access-token`).
+
+    Azure CLI uses Microsoft's first-party app registration (04b07795-...)
+    which has broad consent in most enterprise tenants.  This is the
+    "standard Equinor token" approach.
+    """
+    import asyncio
+    import json as _json
     try:
-        async with AsyncOAuth2Client(client_id=CLIENT_ID, scope=SMDA_SCOPES_FULL) as cli:
-            token = await cli.fetch_token(
-                TOKEN_URL,
-                grant_type="refresh_token",
-                refresh_token=refresh_token,
-                scope=" ".join(SMDA_SCOPES_FULL),
-            )
-        at = token.get("access_token", "")
-        if at:
-            log.info("Minted SMDA access token (expires_in=%s)", token.get("expires_in"))
-            return {
-                "access_token": at,
-                "refresh_token": token.get("refresh_token") or refresh_token,
-                "exp": time.time() + max(int(token.get("expires_in", 3600)) - 60, 60),
-            }
+        proc = await asyncio.create_subprocess_exec(
+            "az", "account", "get-access-token",
+            "--resource", SMDA_CLIENT_ID,
+            "-o", "json",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20)
+        if proc.returncode != 0:
+            err = stderr.decode(errors="replace").strip()[:200]
+            log.debug("az CLI SMDA token failed (rc=%d): %s", proc.returncode, err)
+            return None
+        data = _json.loads(stdout)
+        at = data.get("accessToken", "")
+        if not at:
+            return None
+        exp_ts = data.get("expires_on", 0)
+        if isinstance(exp_ts, str):
+            exp_ts = int(exp_ts)
+        exp = exp_ts - 60 if exp_ts > 0 else time.time() + 3000
+        log.info("Got SMDA token via az CLI (expires %s)", data.get("expiresOn", "?"))
+        return {"access_token": at, "exp": exp}
+    except FileNotFoundError:
+        log.debug("az CLI not found — skipping az token strategy")
+    except asyncio.TimeoutError:
+        log.warning("az CLI timed out getting SMDA token")
     except Exception as e:
-        log.warning("Failed to mint SMDA token: %s", e)
+        log.debug("az CLI SMDA token error: %s", e)
     return None
 
 
@@ -325,11 +271,8 @@ async def auth_info(request: Request):
         "azure_tenant": TENANT[:8] + "..." if TENANT else "",
         "client_id": CLIENT_ID[:8] + "..." if CLIENT_ID else "",
         "scopes": SCOPES,
-        "smda_scopes": SMDA_SCOPES_FULL,
         "mode": AUTH_MODE,
         "env_token_available": bool(ENV_REFRESH_TOKEN),
-        "smda_configured": bool(SMDA_SCOPES),
         "smda_api_id": SMDA_CLIENT_ID[:8] + "..." if SMDA_CLIENT_ID else "",
         "session_logged_in": logged_in,
-        "smda_logged_in": smda_logged_in,
     }

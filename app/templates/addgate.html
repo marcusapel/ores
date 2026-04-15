@@ -150,12 +150,12 @@
 
       <label for="bd-level">Decision level *</label>
       <select id="bd-level" onchange="toggleCustomLevel()">
-        <option value="DG1">DG1 — Identify & Assess</option>
-        <option value="DG2" selected>DG2 — Concept Select</option>
-        <option value="DG3">DG3 — Define & Execute</option>
-        <option value="DG4">DG4 — Operate & Improve</option>
+        {% for dl in decision_levels %}
+        <option value="{{ dl.id }}"{% if dl.id == 'DG2' %} selected{% endif %}>{{ dl.name }}</option>
+        {% endfor %}
         <option value="__custom__">Other (user-defined)…</option>
       </select>
+      <span class="hint">Populated from OSDU <code>reference-data--DecisionLevel</code></span>
 
       <label for="bd-level-custom" id="bd-level-custom-label" style="display:none;">Custom level</label>
       <input type="text" id="bd-level-custom" placeholder="e.g. DG0, DG5, Screening" style="display:none;" />
@@ -232,13 +232,19 @@
         <input type="text" id="link-dataspace" placeholder="dev:dataset--ETPDataspace:…" />
         <button class="btn" type="button" onclick="openBrowse('link-dataspace','osdu:wks:dataset--ETPDataspace:*')">Browse</button>
       </div>
-    </div>
-  </div>
 
-  <!-- ═══ 4. Custom Records ═══ -->
-  <div class="addgate-panel">
-    <h3>4. Custom Records <span class="link-badge optional" style="font-size:.7rem;vertical-align:middle;">optional</span></h3>
-    <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
+      <div class="link-row">
+        <label>Collection <span class="link-badge optional">optional</span></label>
+        <input type="text" id="link-collection" placeholder="dev:work-product-component--PersistedCollection:…" />
+        <button class="btn" type="button" onclick="openBrowse('link-collection','osdu:wks:work-product-component--PersistedCollection:*')">Browse</button>
+      </div>
+    </div>
+
+    <!-- ── User-defined additional records ── -->
+    <h4 style="margin:1rem 0 .4rem;font-size:14px;font-weight:600;color:var(--eq-charcoal);">
+      Additional records <span class="link-badge optional" style="font-size:.7rem;vertical-align:middle;">optional</span>
+    </h4>
+    <p class="muted" style="margin-top:0; font-size:.82rem;">
       Attach arbitrary additional records to this decision. Provide a label and record ID for each.
     </p>
     <div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;">
@@ -250,9 +256,9 @@
     <div class="risk-list" id="custom-rec-list"></div>
   </div>
 
-  <!-- ═══ 5. Risks ═══ -->
+  <!-- ═══ 4. Risks ═══ -->
   <div class="addgate-panel">
-    <h3>5. Risk Records</h3>
+    <h3>4. Risk Records</h3>
     <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
       Link <code>master-data--Risk</code> records to this decision.
     </p>
@@ -264,9 +270,9 @@
     <div class="risk-list" id="risk-list"></div>
   </div>
 
-  <!-- ═══ 6. Preview & submit ═══ -->
+  <!-- ═══ 5. Preview & submit ═══ -->
   <div class="addgate-panel">
-    <h3>6. Review & Ingest</h3>
+    <h3>5. Review & Ingest</h3>
     <div style="display:flex;gap:.5rem;">
       <button class="btn" type="button" onclick="previewRecord()">Preview JSON</button>
       <button class="btn btn-primary" type="button" onclick="submitRecord()">Create & Ingest to OSDU</button>
@@ -438,6 +444,7 @@
       params_id:             document.getElementById('link-params').value,
       activity_id:           document.getElementById('link-activity').value,
       dataspace_id:          document.getElementById('link-dataspace').value,
+      collection_id:         document.getElementById('link-collection').value,
       risk_ids:              riskIds.slice(),
       custom_records:        customRecords.slice(),
     };

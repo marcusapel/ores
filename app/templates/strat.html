@@ -109,12 +109,12 @@
     <!-- Tab: SMDA API fetch -->
     <div class="imp-body" id="imp-smda">
       <p class="muted" style="margin:0 0 .5rem;">
-        Fetch a stratigraphic column from the SMDA OPUS API and convert to OSDU format.
+        Fetch a stratigraphic column from the SMDA API Gateway and convert to OSDU format.
         <span id="smda-auth-hint" style="margin-left:.5rem;"></span>
       </p>
       <div class="row" style="grid-template-columns:160px 1fr;">
         <label for="smda-url">SMDA Base URL</label>
-        <input id="smda-url" type="text" value="https://opus.smda.equinor.com" />
+        <input id="smda-url" type="text" value="https://api.gateway.equinor.com" />
         <label for="smda-col">Column Identifier</label>
         <div style="display:flex;gap:.4rem;">
           <input id="smda-col" type="text" placeholder="e.g. NCS Lithostratigraphy" style="flex:1;" />
@@ -779,10 +779,8 @@
       if (!hint) return;
       if (d.smda_logged_in) {
         hint.innerHTML = '<span style="color:#4caf50;">&#x2713; SMDA signed in</span>';
-      } else if (d.env_token_available && d.smda_configured) {
-        hint.innerHTML = '<span style="color:#1976d2;">&#x2713; SMDA via env token</span>';
       } else {
-        hint.innerHTML = '<a href="/login/smda" target="_blank" style="color:#e65100;">Sign in to SMDA</a>';
+        hint.innerHTML = '<a href="/login/smda" style="color:#e65100;">&#x26A0; Sign in to SMDA first</a>';
       }
     } catch(e) {}
   })();
