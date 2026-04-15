@@ -44,15 +44,72 @@ def _access_token(request: Request) -> str:
 async def add_dg_page(request: Request):
     """Render the Add DG form page."""
     reservoirs = await _search_reservoirs(request)
+    decision_levels = await _search_decision_levels(request)
     return templates.TemplateResponse(
         "addgate.html",
-        {"request": request, "reservoirs": reservoirs},
+        {"request": request, "reservoirs": reservoirs, "decision_levels": decision_levels},
     )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # JSON APIs
 # ──────────────────────────────────────────────────────────────────────────────
+
+# ── Decision-level reference data ──────────────────────────────────────────
+
+_FALLBACK_LEVELS = [
+    {"id": "DG1", "name": "DG1 — Identify & Assess"},
+    {"id": "DG2", "name": "DG2 — Concept Select"},
+    {"id": "DG3", "name": "DG3 — Define & Execute"},
+    {"id": "DG4", "name": "DG4 — Operate & Improve"},
+]
+
+
+async def _search_decision_levels(
+    request: Request,
+) -> List[Dict[str, str]]:
+    """Fetch reference-data--DecisionLevel records from OSDU.
+
+    Returns a list of {"id": "<code>", "name": "<display label>", "record_id": "<full OSDU id>"}.
+    Falls back to a hard-coded list when the search returns nothing.
+    """
+    at = _access_token(request)
+    search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
+    hdr = osdu.headers(at)
+
+    payload = {
+        "kind": "osdu:wks:reference-data--DecisionLevel:*",
+        "query": "*",
+        "limit": 50,
+        "returnedFields": ["id", "data.Code", "data.Name", "data.Description"],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(search_url, json=payload, headers=hdr)
+            if not r.is_success:
+                log.warning("DecisionLevel search failed (%s): %s", r.status_code, r.text[:300])
+                return _FALLBACK_LEVELS
+            results = r.json().get("results", [])
+    except Exception as exc:
+        log.warning("DecisionLevel search error: %s", exc)
+        return _FALLBACK_LEVELS
+
+    if not results:
+        return _FALLBACK_LEVELS
+
+    out: List[Dict[str, str]] = []
+    for rec in results:
+        data = rec.get("data", {})
+        code = data.get("Code", "") or data.get("Name", "")
+        name = data.get("Name", "") or code
+        desc = data.get("Description", "")
+        display = f"{code} — {desc}" if desc and desc != name else name
+        out.append({"id": code, "name": display, "record_id": rec.get("id", "")})
+
+    out.sort(key=lambda x: x["id"])
+    return out
+
 
 async def _search_reservoirs(
     request: Request, query: str = "*", limit: int = 50,
@@ -197,6 +254,7 @@ async def create_bd(request: Request):
     activity_id = body.get("activity_id", "").strip()
     params_id = body.get("params_id", "").strip()
     dataspace_id = body.get("dataspace_id", "").strip()
+    collection_id = body.get("collection_id", "").strip()
     risk_ids = [r.strip() for r in body.get("risk_ids", []) if r.strip()]
     custom_records: List[Dict[str, str]] = body.get("custom_records", [])
 
@@ -271,6 +329,16 @@ async def create_bd(request: Request):
             "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:InputReference:1",
             "DataObjectParameter": dataspace_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ETPDataspace"}],
+        })
+
+    if collection_id:
+        parameters.append({
+            "Title": "PersistedCollection",
+            "Selection": "Persisted collection of related records",
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:1",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:InputReference:1",
+            "DataObjectParameter": collection_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "PersistedCollection"}],
         })
 
     # User-defined arbitrary records

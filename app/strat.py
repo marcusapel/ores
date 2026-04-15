@@ -594,8 +594,8 @@ async def _smda_auth(request: Request) -> dict:
     """Return SMDA auth kwargs for stratcolumnhandler calls.
 
     Returns a dict with access_token and/or api_key.
-    The gateway needs both; the direct OPUS API needs just access_token.
-    Raises HTTPException 403 if neither is available.
+    The API Gateway needs both a Bearer token (targeting the SMDA resource)
+    and an Ocp-Apim-Subscription-Key.
     """
     kw: dict = {}
     token = await _auth.smda_access_token(request)
@@ -607,7 +607,13 @@ async def _smda_auth(request: Request) -> dict:
         raise HTTPException(
             403,
             "SMDA auth not available. Set SMDA_API_KEY in .env, "
-            "or visit /login/smda to sign in.",
+            "or run 'az login' to authenticate.",
+        )
+    if not kw.get("access_token"):
+        raise HTTPException(
+            403,
+            "SMDA Bearer token not available. Run 'az login' to authenticate "
+            "with your Equinor Entra ID, or visit /login/smda for interactive sign-in.",
         )
     return kw
 
@@ -616,7 +622,7 @@ async def _smda_auth(request: Request) -> dict:
 async def import_smda_api(
     request: Request,
     column: str = Form(...),
-    smda_url: str = Form("https://opus.smda.equinor.com"),
+    smda_url: str = Form("https://api.gateway.equinor.com"),
     partition: str = Form("data"),
 ):
     """Fetch a strat column from SMDA API and convert to OSDU WPC bundle."""
@@ -648,21 +654,100 @@ async def import_smda_api(
 @router.get("/api/strat/smda/columns.json")
 async def list_smda_columns(
     request: Request,
-    smda_url: str = Query("https://opus.smda.equinor.com"),
+    smda_url: str = Query("https://api.gateway.equinor.com"),
 ):
-    """List available strat column identifiers from SMDA API."""
-    if _StratColumn is None:
-        raise HTTPException(500, "stratcolumnhandler not available")
+    """List available strat column identifiers from the SMDA API Gateway.
 
+    Calls GET /smda/v2.0/smda-api/strat-column with pagination and returns
+    a de-duplicated, sorted list of column identifiers.
+    """
     auth_kw = await _smda_auth(request)
+
+    url = f"{smda_url.rstrip('/')}/smda/v2.0/smda-api/strat-column"
+    headers: dict[str, str] = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache",
+    }
+    if auth_kw.get("access_token"):
+        headers["Authorization"] = f"Bearer {auth_kw['access_token']}"
+    if auth_kw.get("api_key"):
+        headers["Ocp-Apim-Subscription-Key"] = auth_kw["api_key"]
+
+    all_rows: list[dict] = []
+    page = 1
+    items_per_page = 100
+
     try:
-        names = _StratColumn.from_smda_api_list_columns(
-            base_url=smda_url,
-            **auth_kw,
-            verify_ssl=False,
-        )
-    except Exception as e:
-        raise HTTPException(502, f"SMDA API error: {e}")
+        async with httpx.AsyncClient(timeout=60, verify=False) as client:
+            while True:
+                params = {
+                    "_page": page,
+                    "_items": items_per_page,
+                    "_order": "asc",
+                    "_aggregation_include_buckets": "true",
+                }
+                r = await client.get(url, params=params, headers=headers)
+                if not r.is_success:
+                    body = r.text[:400].strip()
+                    log.warning("SMDA strat-column list failed (%s): %s",
+                                r.status_code, body or "(empty body)")
+                    if r.status_code == 401:
+                        detail = (
+                            "SMDA API returned 401 Unauthorized. "
+                            "The Bearer token may have expired or target the wrong audience. "
+                            "Visit /login/smda to re-authenticate."
+                        )
+                        if body:
+                            detail += f" Gateway response: {body[:200]}"
+                        raise HTTPException(401, detail)
+                    raise HTTPException(r.status_code,
+                                        f"SMDA API error: {body or '(empty response)'}")
+
+                data = r.json()
+                # SMDA gateway returns {"data": {"pages":N, "hits":N, "results":[...]}}
+                inner = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(inner, dict):
+                    rows = inner.get("results", inner.get("value", []))
+                    if not isinstance(rows, list):
+                        rows = []
+                elif isinstance(inner, list):
+                    rows = inner
+                else:
+                    rows = []
+
+                all_rows.extend(rows)
+
+                # Check if there are more pages
+                total = None
+                if isinstance(inner, dict):
+                    total = inner.get("hits", inner.get("total",
+                            inner.get("totalCount", inner.get("_total"))))
+                if total is not None:
+                    try:
+                        total = int(total)
+                    except (TypeError, ValueError):
+                        total = None
+
+                if total is not None and len(all_rows) >= total:
+                    break
+                if len(rows) < items_per_page:
+                    break  # last page
+                page += 1
+                if page > 50:  # safety limit
+                    break
+    except httpx.HTTPError as exc:
+        log.warning("SMDA strat-column request error: %s", exc)
+        raise HTTPException(502, f"SMDA API request failed: {exc}")
+
+    # Extract unique column identifiers
+    names = sorted(set(
+        str(row.get("strat_column_identifier", "") or row.get("identifier", "")).strip()
+        for row in all_rows
+        if (row.get("strat_column_identifier") or row.get("identifier", "")).strip()
+    ))
+
+    log.info("SMDA strat-column list: %d columns from %d rows (%d pages)",
+             len(names), len(all_rows), page)
 
     return JSONResponse({"columns": names, "total": len(names)})
 
@@ -1164,7 +1249,7 @@ async def smda_push_to_rddms(request: Request):
         raise HTTPException(400, "Invalid JSON body")
 
     column_name = (body.get("column") or "").strip()
-    smda_url = (body.get("smdaUrl") or "https://opus.smda.equinor.com").strip()
+    smda_url = (body.get("smdaUrl") or "https://api.gateway.equinor.com").strip()
     dataspace = (body.get("dataspace") or "").strip()
     create_ds = body.get("createDataspace", False)
 
@@ -1332,7 +1417,7 @@ async def rddms_verify_column(request: Request):
     elif column_name_smda:
         if _StratColumn is None:
             raise HTTPException(500, "stratcolumnhandler not available")
-        smda_url = (body.get("smdaUrl") or "https://opus.smda.equinor.com").strip()
+        smda_url = (body.get("smdaUrl") or "https://api.gateway.equinor.com").strip()
         auth_kw = await _smda_auth(request)
         try:
             col = _StratColumn.from_smda_api(column_name_smda, base_url=smda_url,
