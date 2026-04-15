@@ -159,8 +159,9 @@ async def create_bd(request: Request):
     Expects JSON body with fields:
       reservoir_id, name, description, decision_level, approval_status,
       decision_date, decision_due_date, decision_summary,
-      rev_stats_id, rev_raw_id, geolabelset_id, activity_id, risk_ids[],
-      params_id, dataspace_id
+      rev_stats_id, rev_raw_id, production_profile_id,
+      geolabelset_id, activity_id, risk_ids[], params_id, dataspace_id,
+      custom_records[{label, id}]
     """
     at = _access_token(request)
     body = await request.json()
@@ -191,11 +192,13 @@ async def create_bd(request: Request):
     # Optional linked record IDs
     rev_stats_id = body.get("rev_stats_id", "").strip()
     rev_raw_id = body.get("rev_raw_id", "").strip()
+    production_profile_id = body.get("production_profile_id", "").strip()
     geolabelset_id = body.get("geolabelset_id", "").strip()
     activity_id = body.get("activity_id", "").strip()
     params_id = body.get("params_id", "").strip()
     dataspace_id = body.get("dataspace_id", "").strip()
     risk_ids = [r.strip() for r in body.get("risk_ids", []) if r.strip()]
+    custom_records: List[Dict[str, str]] = body.get("custom_records", [])
 
     # ACL and legal from OSDU defaults
     acl = {
@@ -212,22 +215,32 @@ async def create_bd(request: Request):
 
     if rev_raw_id:
         parameters.append({
-            "Title": "Raw volumes (per realisation)",
+            "Title": "In-place volumes raw (per realisation)",
             "Selection": "Raw per-realisation volumes",
             "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:1",
             "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:Input:1",
             "DataObjectParameter": rev_raw_id,
-            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "REV-raw"}],
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "InPlaceVol-raw"}],
         })
 
     if rev_stats_id:
         parameters.append({
-            "Title": "Statistical volumes (P10/P50/P90)",
+            "Title": "In-place volume statistics (P10/P50/P90)",
             "Selection": "Aggregated statistics for the assessment",
             "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:1",
             "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:Input:1",
             "DataObjectParameter": rev_stats_id,
-            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "REV-stats"}],
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "InPlaceVol-stats"}],
+        })
+
+    if production_profile_id:
+        parameters.append({
+            "Title": "Production profile",
+            "Selection": "Production forecast / profile linked to the decision",
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:1",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:Input:1",
+            "DataObjectParameter": production_profile_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ProductionProfile"}],
         })
 
     if geolabelset_id:
@@ -259,6 +272,20 @@ async def create_bd(request: Request):
             "DataObjectParameter": dataspace_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ETPDataspace"}],
         })
+
+    # User-defined arbitrary records
+    for crec in custom_records:
+        clabel = crec.get("label", "").strip()
+        cid = crec.get("id", "").strip()
+        if clabel and cid:
+            parameters.append({
+                "Title": clabel,
+                "Selection": f"User-defined record: {clabel}",
+                "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:1",
+                "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:Input:1",
+                "DataObjectParameter": cid,
+                "Keys": [{"ParameterKey": "artifact", "StringParameterKey": clabel.replace(' ', '-')}],
+            })
 
     # Reservoir is always added as a parameter
     parameters.append({

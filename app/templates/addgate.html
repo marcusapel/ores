@@ -149,12 +149,16 @@
       <input type="text" id="bd-project" placeholder="e.g. MyField Development" />
 
       <label for="bd-level">Decision level *</label>
-      <select id="bd-level">
+      <select id="bd-level" onchange="toggleCustomLevel()">
         <option value="DG1">DG1 — Identify & Assess</option>
         <option value="DG2" selected>DG2 — Concept Select</option>
         <option value="DG3">DG3 — Define & Execute</option>
         <option value="DG4">DG4 — Operate & Improve</option>
+        <option value="__custom__">Other (user-defined)…</option>
       </select>
+
+      <label for="bd-level-custom" id="bd-level-custom-label" style="display:none;">Custom level</label>
+      <input type="text" id="bd-level-custom" placeholder="e.g. DG0, DG5, Screening" style="display:none;" />
 
       <label for="bd-status">Approval status</label>
       <select id="bd-status">
@@ -188,15 +192,21 @@
 
     <div class="link-section">
       <div class="link-row">
-        <label>REV-stats <span class="link-badge optional">optional</span></label>
+        <label>In-place vol. stats <span class="link-badge optional">optional</span></label>
         <input type="text" id="link-rev-stats" placeholder="dev:work-product-component--ReservoirEstimatedVolumes:…" />
         <button class="btn" type="button" onclick="openBrowse('link-rev-stats','osdu:wks:work-product-component--ReservoirEstimatedVolumes:*')">Browse</button>
       </div>
 
       <div class="link-row">
-        <label>REV-raw <span class="link-badge optional">optional</span></label>
+        <label>In-place vol. raw <span class="link-badge optional">optional</span></label>
         <input type="text" id="link-rev-raw" placeholder="dev:work-product-component--ReservoirEstimatedVolumes:…" />
         <button class="btn" type="button" onclick="openBrowse('link-rev-raw','osdu:wks:work-product-component--ReservoirEstimatedVolumes:*')">Browse</button>
+      </div>
+
+      <div class="link-row">
+        <label>Production profile <span class="link-badge optional">optional</span></label>
+        <input type="text" id="link-production-profile" placeholder="dev:work-product-component--ProductionProfile:…" />
+        <button class="btn" type="button" onclick="openBrowse('link-production-profile','osdu:wks:work-product-component--ColumnBasedTable:*')">Browse</button>
       </div>
 
       <div class="link-row">
@@ -225,9 +235,24 @@
     </div>
   </div>
 
-  <!-- ═══ 4. Risks ═══ -->
+  <!-- ═══ 4. Custom Records ═══ -->
   <div class="addgate-panel">
-    <h3>4. Risk Records</h3>
+    <h3>4. Custom Records <span class="link-badge optional" style="font-size:.7rem;vertical-align:middle;">optional</span></h3>
+    <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
+      Attach arbitrary additional records to this decision. Provide a label and record ID for each.
+    </p>
+    <div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;">
+      <input type="text" id="custom-rec-label" placeholder="Label (e.g. Seismic Survey)" style="width:180px;" />
+      <input type="text" id="custom-rec-id" placeholder="Record ID (e.g. dev:work-product-component--…)" style="flex:1;" />
+      <button class="btn" type="button" onclick="openBrowse('custom-rec-id','osdu:wks:*:*')">Browse</button>
+      <button class="btn" type="button" onclick="addCustomRecord()">+ Add</button>
+    </div>
+    <div class="risk-list" id="custom-rec-list"></div>
+  </div>
+
+  <!-- ═══ 5. Risks ═══ -->
+  <div class="addgate-panel">
+    <h3>5. Risk Records</h3>
     <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
       Link <code>master-data--Risk</code> records to this decision.
     </p>
@@ -239,9 +264,9 @@
     <div class="risk-list" id="risk-list"></div>
   </div>
 
-  <!-- ═══ 5. Preview & submit ═══ -->
+  <!-- ═══ 6. Preview & submit ═══ -->
   <div class="addgate-panel">
-    <h3>5. Review & Ingest</h3>
+    <h3>6. Review & Ingest</h3>
     <div style="display:flex;gap:.5rem;">
       <button class="btn" type="button" onclick="previewRecord()">Preview JSON</button>
       <button class="btn btn-primary" type="button" onclick="submitRecord()">Create & Ingest to OSDU</button>
@@ -278,6 +303,46 @@
 
 <script>
 (function() {
+  // ── Decision level toggle ──
+  window.toggleCustomLevel = function() {
+    var sel = document.getElementById('bd-level');
+    var show = sel.value === '__custom__';
+    document.getElementById('bd-level-custom').style.display = show ? '' : 'none';
+    document.getElementById('bd-level-custom-label').style.display = show ? '' : 'none';
+    if (show) document.getElementById('bd-level-custom').focus();
+  };
+
+  // ── Custom records management ──
+  var customRecords = [];
+
+  window.addCustomRecord = function() {
+    var labelInp = document.getElementById('custom-rec-label');
+    var idInp = document.getElementById('custom-rec-id');
+    var lbl = labelInp.value.trim();
+    var rid = idInp.value.trim();
+    if (!lbl || !rid) { alert('Both a label and a record ID are required.'); return; }
+    customRecords.push({label: lbl, id: rid});
+    labelInp.value = ''; idInp.value = '';
+    renderCustomRecords();
+  };
+
+  function removeCustomRecord(idx) {
+    customRecords.splice(idx, 1);
+    renderCustomRecords();
+  }
+  window.removeCustomRecord = removeCustomRecord;
+
+  function renderCustomRecords() {
+    var el = document.getElementById('custom-rec-list');
+    if (!customRecords.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No custom records added yet.</span>'; return; }
+    el.innerHTML = customRecords.map(function(rec, i) {
+      return '<div class="risk-item"><strong style="min-width:120px;font-size:12px;">' + escHtml(rec.label) + '</strong>' +
+             '<span class="risk-id">' + escHtml(rec.id) + '</span>' +
+             '<button class="remove-btn" onclick="removeCustomRecord(' + i + ')" title="Remove">&times;</button></div>';
+    }).join('');
+  }
+  renderCustomRecords();
+
   // ── Risk management ──
   var riskIds = [];
 
@@ -354,23 +419,27 @@
 
   // ── Build record payload ──
   function buildPayload() {
+    var levelSel = document.getElementById('bd-level').value;
+    var levelVal = levelSel === '__custom__' ? document.getElementById('bd-level-custom').value.trim() : levelSel;
     return {
-      reservoir_id:     document.getElementById('reservoir-select').value,
-      name:             document.getElementById('bd-name').value,
-      project_name:     document.getElementById('bd-project').value,
-      description:      document.getElementById('bd-description').value,
-      decision_level:   document.getElementById('bd-level').value,
-      approval_status:  document.getElementById('bd-status').value,
-      decision_date:    document.getElementById('bd-date').value,
-      decision_due_date:document.getElementById('bd-due-date').value,
-      decision_summary: document.getElementById('bd-summary').value,
-      rev_stats_id:     document.getElementById('link-rev-stats').value,
-      rev_raw_id:       document.getElementById('link-rev-raw').value,
-      geolabelset_id:   document.getElementById('link-geolabelset').value,
-      params_id:        document.getElementById('link-params').value,
-      activity_id:      document.getElementById('link-activity').value,
-      dataspace_id:     document.getElementById('link-dataspace').value,
-      risk_ids:         riskIds.slice(),
+      reservoir_id:          document.getElementById('reservoir-select').value,
+      name:                  document.getElementById('bd-name').value,
+      project_name:          document.getElementById('bd-project').value,
+      description:           document.getElementById('bd-description').value,
+      decision_level:        levelVal,
+      approval_status:       document.getElementById('bd-status').value,
+      decision_date:         document.getElementById('bd-date').value,
+      decision_due_date:     document.getElementById('bd-due-date').value,
+      decision_summary:      document.getElementById('bd-summary').value,
+      rev_stats_id:          document.getElementById('link-rev-stats').value,
+      rev_raw_id:            document.getElementById('link-rev-raw').value,
+      production_profile_id: document.getElementById('link-production-profile').value,
+      geolabelset_id:        document.getElementById('link-geolabelset').value,
+      params_id:             document.getElementById('link-params').value,
+      activity_id:           document.getElementById('link-activity').value,
+      dataspace_id:          document.getElementById('link-dataspace').value,
+      risk_ids:              riskIds.slice(),
+      custom_records:        customRecords.slice(),
     };
   }
 
