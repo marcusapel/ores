@@ -1096,7 +1096,7 @@ async def home(request: Request):
         log.warning("List dataspaces failed: %s", e)
         dataspaces = []
     return templates.TemplateResponse(
-        "index.html",
+        "admin.html",
         {
             "request": request,
             "view": "home",
@@ -1131,7 +1131,7 @@ async def dataspaces_create(
                 raise ValueError("Custom data must be a JSON object")
         except Exception as ex:
             return templates.TemplateResponse(
-                "index.html",
+                "admin.html",
                 {
                     "request": request,
                     "view": "home",
@@ -1160,7 +1160,7 @@ async def dataspaces_create(
     except HTTPStatusError as e:
         r = e.response
         return templates.TemplateResponse(
-            "index.html",
+            "admin.html",
             {
                 "request": request,
                 "view": "home",
