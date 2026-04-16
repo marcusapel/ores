@@ -613,7 +613,7 @@ async def _smda_auth(request: Request) -> dict:
         raise HTTPException(
             403,
             "SMDA Bearer token not available. Run 'az login' to authenticate "
-            "with your Equinor Entra ID, or visit /login/smda for interactive sign-in.",
+            "with your Equinor Entra ID.",
         )
     return kw
 
@@ -695,7 +695,7 @@ async def list_smda_columns(
                         detail = (
                             "SMDA API returned 401 Unauthorized. "
                             "The Bearer token may have expired or target the wrong audience. "
-                            "Visit /login/smda to re-authenticate."
+                            "Run 'az login' to re-authenticate."
                         )
                         if body:
                             detail += f" Gateway response: {body[:200]}"
@@ -1010,26 +1010,46 @@ async def _push_resqml_to_rddms(
     if total_objects == 0:
         raise HTTPException(422, "No RESQML objects generated - column may be empty")
 
-    # Optionally create the dataspace
+    # Optionally create the dataspace (check existence first to avoid
+    # 401 errors when the user has write-access but not PutDataspaces admin).
     if create_ds:
-        log.info("[RDDMS] Creating dataspace %s", dataspace)
+        ds_exists = False
         try:
-            await osdu.create_dataspace(
-                at, dataspace,
-                legal_tag=osdu.DEFAULT_LEGAL_TAG,
-                owners=osdu.DEFAULT_OWNERS,
-                viewers=osdu.DEFAULT_VIEWERS,
-                countries=osdu.DEFAULT_COUNTRIES,
+            existing = await osdu.list_dataspaces(at)
+            ds_exists = any(
+                d.get("Path") == dataspace or d.get("DataspaceId") == dataspace
+                for d in existing
             )
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code in (400, 409):
-                log.info("[RDDMS] Dataspace %s already exists (%s)", dataspace, e.response.status_code)
-            else:
-                raise HTTPException(
-                    502,
-                    f"Dataspace creation failed: {e.response.status_code} "
-                    f"{e.response.text[:500]}",
+        except Exception as e:
+            log.warning("[RDDMS] Could not list dataspaces: %s", e)
+
+        if ds_exists:
+            log.info("[RDDMS] Dataspace %s already exists — skipping creation", dataspace)
+        else:
+            log.info("[RDDMS] Creating dataspace %s", dataspace)
+            try:
+                await osdu.create_dataspace(
+                    at, dataspace,
+                    legal_tag=osdu.DEFAULT_LEGAL_TAG,
+                    owners=osdu.DEFAULT_OWNERS,
+                    viewers=osdu.DEFAULT_VIEWERS,
+                    countries=osdu.DEFAULT_COUNTRIES,
                 )
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (400, 409):
+                    log.info("[RDDMS] Dataspace %s already exists (%s)", dataspace, e.response.status_code)
+                elif e.response.status_code in (401, 403):
+                    log.warning(
+                        "[RDDMS] No PutDataspaces permission (%s) — "
+                        "continuing (dataspace may already exist)",
+                        e.response.status_code,
+                    )
+                else:
+                    raise HTTPException(
+                        502,
+                        f"Dataspace creation failed: {e.response.status_code} "
+                        f"{e.response.text[:500]}",
+                    )
 
     # Flatten all objects into a single list (RDDMS accepts mixed types)
     put_order = [
