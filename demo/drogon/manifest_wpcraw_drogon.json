@@ -6,7 +6,7 @@
     "Datasets": [],
     "WorkProductComponents": [
       {
-        "id": "dev:work-product-component--ReservoirEstimatedVolumes:6a436525-7f21-43ce-84f2-c0a3a130fb73:1",
+        "id": "dev:work-product-component--ReservoirEstimatedVolumes:dac100b4-4eb8-4b43-9630-9aa2d3d15837:1",
         "kind": "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
         "acl": {
           "owners": [
