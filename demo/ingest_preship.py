@@ -132,12 +132,12 @@ def get_access_token() -> str:
     if _cached_token and time.time() < _cached_exp:
         return _cached_token
 
-    url = f"https://login.microsoftonline.com/{PRESHIP['tenant']}/oauth2/v2.0/token"
+    url = f"https://login.microsoftonline.com/{TARGET['tenant']}/oauth2/v2.0/token"
     data = {
         "grant_type":    "client_credentials",
-        "client_id":     PRESHIP["client_id"],
-        "client_secret": PRESHIP["client_secret"],
-        "scope":         PRESHIP["scope"],
+        "client_id":     TARGET["client_id"],
+        "client_secret": TARGET["client_secret"],
+        "scope":         TARGET["scope"],
     }
     r = httpx.post(url, data=data, timeout=30)
     if not r.is_success:
@@ -153,7 +153,7 @@ def api_headers() -> dict:
     return {
         "Authorization": f"Bearer {get_access_token()}",
         "Content-Type":  "application/json",
-        "data-partition-id": PRESHIP["partition"],
+        "data-partition-id": TARGET["partition"],
     }
 
 
@@ -161,7 +161,7 @@ def api_headers() -> dict:
 
 def check_schema_exists(client: httpx.Client, kind: str) -> bool:
     r = client.get(
-        f"{PRESHIP['host']}/api/schema-service/v1/schema/{kind}",
+        f"{TARGET['host']}/api/schema-service/v1/schema/{kind}",
         headers=api_headers(),
     )
     return r.status_code == 200
@@ -193,7 +193,7 @@ def register_schema(client: httpx.Client, schema_body: dict,
         print(f"    [dry-run] would register {label}")
         return True
 
-    url = f"{PRESHIP['host']}/api/schema-service/v1/schema"
+    url = f"{TARGET['host']}/api/schema-service/v1/schema"
     r = client.put(url, json=payload, headers=api_headers(), timeout=60)
     if r.status_code in (200, 201):
         print(f"    ✓ registered {label}")
@@ -225,9 +225,9 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
         body = json.loads(DEVCONCEPT_SCHEMA.read_text(encoding="utf-8"))
         kind = body.get("x-osdu-schema-source", "")
         # For preship, register under "opendes" authority instead of "dev"
-        tgt_kind = kind.replace("dev:", f"{TGT_PARTITION}:") if kind.startswith("dev:") else kind
+        tgt_kind = kind.replace("dev:", f"{TARGET['partition']}:") if kind.startswith("dev:") else kind
         if not check_schema_exists(client, tgt_kind) and not check_schema_exists(client, kind):
-            register_schema(client, body, authority_override=TGT_PARTITION, dry_run=dry_run)
+            register_schema(client, body, authority_override=TARGET["partition"], dry_run=dry_run)
         else:
             print(f"    ≈ {kind} exists")
 
@@ -264,29 +264,29 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
 # ── Record transformation ────────────────────────────────────────────
 
 def transform_record(rec: dict) -> dict:
-    """Re-prefix record ID, rewrite ACL/legal for preship instance."""
+    """Re-prefix record ID, rewrite ACL/legal for target instance."""
     # 1. Re-prefix ID:  dev:master-data--X:uuid:1 → opendes:master-data--X:uuid:1
     rid = rec.get("id", "")
     if ":" in rid:
         parts = rid.split(":", 1)
         if parts[0] == SRC_PARTITION:
-            rec["id"] = f"{TGT_PARTITION}:{parts[1]}"
+            rec["id"] = f"{TARGET['partition']}:{parts[1]}"
 
     # 2. Re-prefix kind if it starts with "dev:"
     kind = rec.get("kind", "")
     if kind.startswith(f"{SRC_PARTITION}:"):
-        rec["kind"] = f"{TGT_PARTITION}:{kind[len(SRC_PARTITION)+1:]}"
+        rec["kind"] = f"{TARGET['partition']}:{kind[len(SRC_PARTITION)+1:]}"
 
     # 3. Rewrite ACL
     acl = rec.get("acl", {})
-    acl["owners"] = PRESHIP["owners"][:]
-    acl["viewers"] = PRESHIP["viewers"][:]
+    acl["owners"] = TARGET["owners"][:]
+    acl["viewers"] = TARGET["viewers"][:]
     rec["acl"] = acl
 
     # 4. Rewrite legal
     legal = rec.get("legal", {})
-    legal["legaltags"] = [PRESHIP["legal_tag"]]
-    legal["otherRelevantDataCountries"] = PRESHIP["countries"][:]
+    legal["legaltags"] = [TARGET["legal_tag"]]
+    legal["otherRelevantDataCountries"] = TARGET["countries"][:]
     rec["legal"] = legal
 
     # 5. Rewrite any embedded partition references in data.* fields
@@ -300,13 +300,13 @@ def _rewrite_partition_refs(obj: Any) -> None:
     if isinstance(obj, dict):
         for k, v in obj.items():
             if isinstance(v, str) and v.startswith(f"{SRC_PARTITION}:"):
-                obj[k] = f"{TGT_PARTITION}:{v[len(SRC_PARTITION)+1:]}"
+                obj[k] = f"{TARGET['partition']}:{v[len(SRC_PARTITION)+1:]}"
             elif isinstance(v, (dict, list)):
                 _rewrite_partition_refs(v)
     elif isinstance(obj, list):
         for i, item in enumerate(obj):
             if isinstance(item, str) and item.startswith(f"{SRC_PARTITION}:"):
-                obj[i] = f"{TGT_PARTITION}:{item[len(SRC_PARTITION)+1:]}"
+                obj[i] = f"{TARGET['partition']}:{item[len(SRC_PARTITION)+1:]}"
             elif isinstance(item, (dict, list)):
                 _rewrite_partition_refs(item)
 
@@ -331,7 +331,7 @@ def ingest_records(client: httpx.Client, records: List[dict],
 
     # Try batch first
     print(f"  Attempting batch PUT ({len(records)} records) …")
-    url = f"{PRESHIP['host']}/api/storage/v2/records"
+    url = f"{TARGET['host']}/api/storage/v2/records"
 
     for attempt in range(MAX_RETRIES + 1):
         resp = client.put(url, json=records, headers=api_headers(), timeout=120)
@@ -383,7 +383,7 @@ def ingest_records(client: httpx.Client, records: List[dict],
 
 
 def load_and_transform(records_dir: Path) -> List[dict]:
-    """Load JSON records from a directory, transform for preship."""
+    """Load JSON records from a directory, transform for target."""
     records = []
     for f in sorted(records_dir.glob("*.json")):
         rec = json.loads(f.read_text(encoding="utf-8"))
@@ -394,18 +394,32 @@ def load_and_transform(records_dir: Path) -> List[dict]:
 
 # ── Main ──────────────────────────────────────────────────────────────
 
+DATASETS = ["dg1", "dg2", "seisint"]
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Ingest demos to pre-ship OSDU")
+    global TARGET
+
+    ap = argparse.ArgumentParser(description="Ingest demo data into an OSDU instance")
+    ap.add_argument("--target", default="preship",
+                    help="Instance name (reads INSTANCE_<NAME>_* from .env)")
     ap.add_argument("--dry-run", action="store_true", help="Preview only, no changes")
     ap.add_argument("--skip-schemas", action="store_true", help="Skip schema registration")
-    ap.add_argument("--only", choices=["dg2", "seisint"], help="Only run one demo")
+    ap.add_argument("--only", nargs="+", choices=DATASETS,
+                    help="Datasets to ingest (default: all)")
     args = ap.parse_args()
 
+    selected = set(args.only) if args.only else set(DATASETS)
+
+    # Load target instance config from .env
+    TARGET = load_instance_config(args.target)
+
     print("=" * 60)
-    print("  Pre-ship OSDU Ingestion")
-    print(f"  Host:      {PRESHIP['host']}")
-    print(f"  Partition:  {PRESHIP['partition']}")
-    print(f"  Legal tag:  {PRESHIP['legal_tag']}")
+    print(f"  OSDU Demo Ingestion  →  {args.target}")
+    print(f"  Host:      {TARGET['host']}")
+    print(f"  Partition:  {TARGET['partition']}")
+    print(f"  Legal tag:  {TARGET['legal_tag']}")
+    print(f"  Datasets:   {', '.join(sorted(selected))}")
     print("=" * 60)
 
     print("\n── Authenticating ──")
@@ -419,9 +433,20 @@ def main():
 
         totals = {"created": 0, "skipped": 0, "failed": 0}
 
-        # 2. Ingest drogon_dg2 records
-        if args.only in (None, "dg2"):
-            if DG2_RECORDS.is_dir():
+        # 2. Ingest drogon DG1 records  (master data first — DG2 may reference it)
+        if "dg1" in selected:
+            if DG1_RECORDS.is_dir() and any(DG1_RECORDS.glob("*.json")):
+                recs = load_and_transform(DG1_RECORDS)
+                result = ingest_records(client, recs, "drogon_dg1", dry_run=args.dry_run)
+                for k in totals:
+                    totals[k] += result[k]
+            else:
+                print(f"\n⚠ DG1 records not found at {DG1_RECORDS}")
+                print("  Run: python demo/run_pipeline.py demo/drogon --skip-optional --skip-ingest")
+
+        # 3. Ingest drogon DG2 records
+        if "dg2" in selected:
+            if DG2_RECORDS.is_dir() and any(DG2_RECORDS.glob("*.json")):
                 recs = load_and_transform(DG2_RECORDS)
                 result = ingest_records(client, recs, "drogon_dg2", dry_run=args.dry_run)
                 for k in totals:
@@ -430,9 +455,9 @@ def main():
                 print(f"\n⚠ DG2 records not found at {DG2_RECORDS}")
                 print("  Run: python demo/run_pipeline.py demo/drogon_dg2")
 
-        # 3. Ingest seisint records
-        if args.only in (None, "seisint"):
-            if SEISINT_RECORDS.is_dir():
+        # 4. Ingest seisint records
+        if "seisint" in selected:
+            if SEISINT_RECORDS.is_dir() and any(SEISINT_RECORDS.glob("*.json")):
                 recs = load_and_transform(SEISINT_RECORDS)
                 result = ingest_records(client, recs, "seisint", dry_run=args.dry_run)
                 for k in totals:
