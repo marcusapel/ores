@@ -26,7 +26,9 @@ import json
 import os
 import re
 import sys
+import tempfile
 import time
+import zipfile
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -41,6 +43,7 @@ DG2_RECORDS       = SCRIPT_DIR / "drogon_dg2" / "records"
 SEISINT_RECORDS   = SCRIPT_DIR / "seisint" / "records"
 SEISINT_SCHEMAS   = SCRIPT_DIR / "seisint" / "schemas" / "resolved"
 DEVCONCEPT_SCHEMA = SCRIPT_DIR / "drogon" / "schema_devconcept.json"
+CHRONOSTRAT_ZIP   = SCRIPT_DIR / "strat" / "chronostrat_records.zip"
 
 # ── Instance config (populated by load_instance_config in main) ──────
 TARGET: Dict[str, Any] = {}
@@ -392,9 +395,45 @@ def load_and_transform(records_dir: Path) -> List[dict]:
     return records
 
 
+def load_and_transform_zip(zip_path: Path) -> List[dict]:
+    """Load JSON records from a zip archive, transform for target."""
+    records = []
+    with zipfile.ZipFile(zip_path) as zf:
+        for name in sorted(zf.namelist()):
+            if not name.endswith(".json"):
+                continue
+            raw = zf.read(name)
+            rec = json.loads(raw)
+            rec = transform_record(rec)
+            records.append(rec)
+    return records
+
+
+INGEST_BATCH_SIZE = 500   # Storage API limit per PUT
+
+
+def ingest_records_chunked(client: httpx.Client, records: List[dict],
+                           label: str, *, dry_run: bool = False) -> dict:
+    """Ingest records in chunks of INGEST_BATCH_SIZE."""
+    if len(records) <= INGEST_BATCH_SIZE:
+        return ingest_records(client, records, label, dry_run=dry_run)
+
+    totals = {"created": 0, "skipped": 0, "failed": 0}
+    n_chunks = (len(records) + INGEST_BATCH_SIZE - 1) // INGEST_BATCH_SIZE
+    for i in range(0, len(records), INGEST_BATCH_SIZE):
+        chunk = records[i : i + INGEST_BATCH_SIZE]
+        chunk_num = i // INGEST_BATCH_SIZE + 1
+        result = ingest_records(client, chunk,
+                                f"{label} [{chunk_num}/{n_chunks}]",
+                                dry_run=dry_run)
+        for k in totals:
+            totals[k] += result[k]
+    return totals
+
+
 # ── Main ──────────────────────────────────────────────────────────────
 
-DATASETS = ["dg1", "dg2", "seisint"]
+DATASETS = ["dg1", "dg2", "seisint", "strat"]
 
 
 def main():
@@ -465,6 +504,18 @@ def main():
             else:
                 print(f"\n⚠ SeisInt records not found at {SEISINT_RECORDS}")
                 print("  Run the seisint pipeline first.")
+
+        # 5. Ingest chronostratigraphy records (from zip)
+        if "strat" in selected:
+            if CHRONOSTRAT_ZIP.exists():
+                recs = load_and_transform_zip(CHRONOSTRAT_ZIP)
+                print(f"  Loaded {len(recs)} chronostrat records from zip")
+                result = ingest_records_chunked(client, recs, "chronostrat",
+                                               dry_run=args.dry_run)
+                for k in totals:
+                    totals[k] += result[k]
+            else:
+                print(f"\n⚠ Chronostrat zip not found at {CHRONOSTRAT_ZIP}")
 
         # Summary
         print("\n" + "=" * 60)
