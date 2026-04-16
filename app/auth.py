@@ -15,10 +15,14 @@ log = logging.getLogger("rddms-admin")
 # Azure AD / Microsoft identity platform
 # Mode 1: shared refresh_token from env  (zero-click, demo)
 # Mode 2: per-user PKCE login            (fallback when no env token)
+#
+# NOTE: These module-level vars are overwritten by instances.py
+#       _apply_instance() at startup and on every instance switch.
+#       Initial values are just safe defaults.
 # ─────────────────────────────────────────────────────────────
-TENANT = os.getenv("AZURE_TENANT_ID", "")
-CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
-SCOPES = os.getenv("AZURE_SCOPE", "openid offline_access").split()
+TENANT = os.getenv("AZURE_TENANT_ID", "") or os.getenv("INSTANCE_EQNDEV_TENANT_ID", "")
+CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "") or os.getenv("INSTANCE_EQNDEV_CLIENT_ID", "")
+SCOPES = (os.getenv("AZURE_SCOPE", "") or os.getenv("INSTANCE_EQNDEV_SCOPE", "openid offline_access")).split()
 
 # SMDA API resource App ID (audience) — used by az CLI to mint tokens.
 SMDA_CLIENT_ID = os.getenv("SMDA_CLIENT_ID", "")
@@ -27,8 +31,13 @@ AUTH_BASE = f"https://login.microsoftonline.com/{TENANT}/oauth2/v2.0"
 AUTHORIZE_URL = f"{AUTH_BASE}/authorize"
 TOKEN_URL = f"{AUTH_BASE}/token"
 
-# True when a shared refresh-token is available (env or .env)
-ENV_REFRESH_TOKEN: Optional[str] = os.getenv("REFRESH_TOKEN") or os.getenv("refresh_token") or None
+# True when a shared refresh-token is available (from active instance)
+ENV_REFRESH_TOKEN: Optional[str] = (
+    os.getenv("REFRESH_TOKEN")
+    or os.getenv("refresh_token")
+    or os.getenv("INSTANCE_EQNDEV_REFRESH_TOKEN")
+    or None
+)
 AUTH_MODE = "env_token" if ENV_REFRESH_TOKEN else "per_user_pkce"
 
 router = APIRouter(tags=["auth"])

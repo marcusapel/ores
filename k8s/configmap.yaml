@@ -6,19 +6,50 @@ metadata:
   labels:
     app.kubernetes.io/name: ores
 data:
-  # ── Server ──
+  # ── Server / global settings ──
   LOG_LEVEL: "INFO"
   DEBUG: "False"
-
-  # ── OSDU / RDDMS ──
-  OSDU_BASE_URL: "equinordev.energy.azure.com"
-  DATA_PARTITION_ID: "dev"
   DEFAULT_DATASPACE: "maap/drogon"
-  DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
-  DEFAULT_COUNTRIES: "NO"
-  DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
-  DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
   APP_KEY: "test-app"
+
+  # Which instance to activate at startup
+  DEFAULT_INSTANCE: "eqndev"
 
   # ── Auth redirect (set when behind a reverse proxy / ingress) ──
   # OIDC_REDIRECT_URI: "https://ores.equinor.com/auth/callback"
+
+  # ────────────────────────────────────────────────────────────────
+  # OSDU instances — non-secret config
+  # Pattern: INSTANCE_<NAME>_<KEY>
+  # Secrets (tenant, client, tokens) go in secret.yaml.
+  # ────────────────────────────────────────────────────────────────
+
+  # ── "eqndev" — Equinor SWE dev ──
+  INSTANCE_EQNDEV_HOSTNAME: "equinorswedev.energy.azure.com"
+  INSTANCE_EQNDEV_DATA_PARTITION_ID: "dev"
+  INSTANCE_EQNDEV_AUTHORITY: "osdu"
+  INSTANCE_EQNDEV_SCHEMA_SOURCE: "wks"
+  INSTANCE_EQNDEV_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+  INSTANCE_EQNDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+  INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+  INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
+
+  # ── "preship" — Microsoft pre-ship M26 test env ──
+  INSTANCE_PRESHIP_HOSTNAME: "osdu-ship.msft-osdu-test.org"
+  INSTANCE_PRESHIP_DATA_PARTITION_ID: "opendes"
+  INSTANCE_PRESHIP_AUTHORITY: "osdu"
+  INSTANCE_PRESHIP_SCHEMA_SOURCE: "wks"
+  INSTANCE_PRESHIP_DEFAULT_LEGAL_TAG: "opendes-RDDMS-LegalTag"
+  INSTANCE_PRESHIP_DEFAULT_OWNERS: "data.default.owners@opendes.contoso.com"
+  INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
+  INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
+
+  # ── Example: "prod" instance (uncomment to enable) ──
+  # INSTANCE_PROD_HOSTNAME: "equinor.energy.azure.com"
+  # INSTANCE_PROD_DATA_PARTITION_ID: "opendes"
+  # INSTANCE_PROD_AUTHORITY: "osdu"
+  # INSTANCE_PROD_SCHEMA_SOURCE: "wks"
+  # INSTANCE_PROD_DEFAULT_LEGAL_TAG: "opendes-equinor-private-default"
+  # INSTANCE_PROD_DEFAULT_OWNERS: "data.default.owners@opendes.dataservices.energy"
+  # INSTANCE_PROD_DEFAULT_VIEWERS: "data.default.viewers@opendes.dataservices.energy"
+  # INSTANCE_PROD_DEFAULT_COUNTRIES: "NO"

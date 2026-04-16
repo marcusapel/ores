@@ -42,21 +42,17 @@ Install all dependencies:
 pip install -r requirements.txt
 ```
 
-### Environment variables (`.env`)
+### Configuration (k8s YAML)
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `OSDU_BASE_URL` | Yes | OSDU platform hostname (e.g. `equinorswedev.energy.azure.com`) |
-| `DATA_PARTITION_ID` | Yes | OSDU data partition (e.g. `dev`) |
-| `AZURE_TENANT_ID` | Yes | Azure AD tenant ID |
-| `AZURE_CLIENT_ID` | Yes | Azure AD app registration client ID |
-| `AZURE_SCOPE` | Yes | OAuth2 scope |
-| `REFRESH_TOKEN` | Yes* | Shared refresh token for env-token auth mode |
-| `SECRET_KEY` | No | Session cookie signing key (auto-generated if absent) |
-| `APP_KEY` | No | OSDU AppKey header |
-| `LOG_LEVEL` | No | Python log level (default `INFO`) |
+Config lives in two files under `k8s/`:
 
-*When `REFRESH_TOKEN` is absent, the app falls back to per-user PKCE sign-in via Azure AD redirect.
+| File | In git? | Content |
+|------|---------|---------|
+| `k8s/configmap.yaml` | Yes | Hostnames, partitions, legal tags, app settings |
+| `k8s/secret.yaml` | **No** (gitignored) | Tenant IDs, client IDs, tokens, API keys |
+| `k8s/secret.yaml.template` | Yes | Empty template — copy to `secret.yaml` and fill in |
+
+Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars split across both files.
 
 ### Frontend (CDN — no npm install)
 
@@ -66,12 +62,14 @@ pip install -r requirements.txt
 ### Quick start
 
 ```bash
-# 1. Create .env with your Azure AD credentials
+# 1. Copy the secret template and fill in your credentials
+cp k8s/secret.yaml.template k8s/secret.yaml
+
 # 2. Install dependencies
 pip install -r requirements.txt
 
 # 3. Run the server
-python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1 --env-file ./.env
+eval "$(python k8s/env_from_k8s.py)" && python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
 ```
 
 Open <http://127.0.0.1:8000/> in a browser.
