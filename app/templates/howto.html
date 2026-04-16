@@ -3,6 +3,65 @@
 
 {% block head %}
 <style>
+/* ── Instance selector ── */
+.inst-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 1.5rem;
+  background: var(--eq-light);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.inst-bar label {
+  font-weight: 600;
+  color: var(--eq-charcoal);
+  white-space: nowrap;
+}
+.inst-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border: 1px solid var(--eq-border);
+  border-radius: 4px;
+  background: var(--eq-white);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--eq-charcoal);
+  transition: border-color .15s, background .15s;
+}
+.inst-btn:hover { border-color: var(--eq-link); background: rgba(0,112,121,.04); }
+.inst-btn.active {
+  border-color: var(--eq-link);
+  background: rgba(0,112,121,.08);
+  font-weight: 600;
+  color: var(--eq-link);
+}
+.inst-btn .inst-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--eq-border);
+}
+.inst-btn.active .inst-dot { background: #00b050; }
+.inst-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--eq-grey);
+}
+.inst-toast {
+  display: none;
+  margin-left: 10px;
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: #e6f4ea;
+  color: #1a7f37;
+}
+.inst-toast.error { background: #fde8e8; color: #c33; }
+
 .howto-hero {
   margin-bottom: 2rem;
 }
@@ -85,6 +144,28 @@
 {% endblock %}
 
 {% block content %}
+<!-- Instance selector -->
+{% if instances and instances|length > 1 %}
+<div class="inst-bar" id="inst-bar">
+  <label>OSDU Instance:</label>
+  {% for name, info in instances.items() %}
+  <button class="inst-btn{% if name == active_instance %} active{% endif %}"
+          data-name="{{ name }}"
+          onclick="switchInstance('{{ name }}')">
+    <span class="inst-dot"></span>
+    {{ name }}
+    <span style="font-size:11px;color:var(--eq-grey);">({{ info.partition }})</span>
+  </button>
+  {% endfor %}
+  <span class="inst-meta" id="inst-meta">
+    {% if instances[active_instance] %}
+      {{ instances[active_instance].hostname }}
+    {% endif %}
+  </span>
+  <span class="inst-toast" id="inst-toast"></span>
+</div>
+{% endif %}
+
 <div class="howto-hero">
   <h2>HowTo — Documentation</h2>
   <p>OSDU data-model guides, worked examples, and implementation references.</p>
@@ -110,4 +191,44 @@
   </div>
 </div>
 {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function switchInstance(name) {
+  const toast = document.getElementById('inst-toast');
+  const meta = document.getElementById('inst-meta');
+  if (!toast) return;
+  toast.style.display = 'inline-block';
+  toast.className = 'inst-toast';
+  toast.textContent = 'Switching…';
+
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    const resp = await fetch('/api/instances/switch', { method: 'POST', body: fd });
+    const data = await resp.json();
+
+    if (data.ok) {
+      // Update buttons
+      document.querySelectorAll('.inst-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.name === name);
+      });
+      meta.textContent = data.hostname;
+      toast.textContent = data.token_ok
+        ? `Switched to ${name} ✓`
+        : `Switched to ${name} (token pending)`;
+      toast.className = 'inst-toast';
+      // Fade out after 3s
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    } else {
+      toast.textContent = data.error || 'Switch failed';
+      toast.className = 'inst-toast error';
+    }
+  } catch (err) {
+    toast.textContent = err.message;
+    toast.className = 'inst-toast error';
+  }
+}
+</script>
 {% endblock %}

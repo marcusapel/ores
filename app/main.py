@@ -34,6 +34,7 @@ from .auth import (
     AUTH_MODE,
     PUBLIC_PATHS,
 )
+from .instances import get_instances, get_active, set_active, get_active_name
 import markdown as _md
 from pathlib import Path as _Path
 from .strat import router as strat_router
@@ -68,7 +69,11 @@ async def no_transform_headers(request: Request, call_next):
 async def inject_access_token(request: Request, call_next):
     """
     Resolve an access_token and attach it to request.state.
-    Priority: 1) REFRESH_TOKEN from env  2) per-user session token  3) redirect to /login
+    Priority:
+      0) Active instance token (client_credentials / instance refresh)
+      1) REFRESH_TOKEN from env (default instance)
+      2) Per-user session token (PKCE)
+      3) Redirect to /login
     """
     path = request.url.path
 
@@ -78,13 +83,23 @@ async def inject_access_token(request: Request, call_next):
 
     access_token: str | None = None
 
-    # 1. Try shared env-token (fast, no user interaction)
+    # 0. Try active instance's own token (client_credentials or refresh)
     try:
-        env_tokens = await tokens_from_env()
-        if env_tokens:
-            access_token = env_tokens.get("access_token")
+        inst = get_active()
+        inst_token = await inst.get_access_token()
+        if inst_token:
+            access_token = inst_token
     except Exception as e:
-        log.warning("Env-token mint failed: %s", e)
+        log.warning("Instance token mint failed: %s", e)
+
+    # 1. Try shared env-token (default instance, refresh_token from env)
+    if not access_token:
+        try:
+            env_tokens = await tokens_from_env()
+            if env_tokens:
+                access_token = env_tokens.get("access_token")
+        except Exception as e:
+            log.warning("Env-token mint failed: %s", e)
 
     # 2. Fallback — per-user session token (PKCE flow)
     if not access_token:
@@ -136,6 +151,59 @@ templates.env.globals["auth_mode"] = AUTH_MODE
 
 # Log routes at startup (helps when a route goes missing)
 log.info("Routes registered: %s", [getattr(r, "path", str(r)) for r in app.routes])
+
+# ──────────────────────────────────────────────────────────────────────────────
+# OSDU instance switching
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Initialise instance registry at import time (reads INSTANCE_* env vars)
+_all_instances = get_instances()
+log.info("OSDU instances loaded: %s (active=%s)", list(_all_instances.keys()), get_active_name())
+# Add /api/instances/switch to PUBLIC_PATHS so it doesn't require a token
+# (switching happens before a valid token exists for the new instance)
+PUBLIC_PATHS.add("/api/instances")
+PUBLIC_PATHS.add("/api/instances/switch")
+
+
+@app.get("/api/instances")
+async def api_instances():
+    """Return all registered OSDU instances and which is active."""
+    insts = get_instances()
+    return {
+        "active": get_active_name(),
+        "instances": {
+            name: {
+                "name": inst.name,
+                "hostname": inst.hostname,
+                "data_partition_id": inst.data_partition_id,
+                "auth_mode": inst.auth_mode,
+            }
+            for name, inst in insts.items()
+        },
+    }
+
+
+@app.post("/api/instances/switch")
+async def api_switch_instance(name: str = Form(...)):
+    """Switch the active OSDU instance."""
+    try:
+        inst = set_active(name)
+        # Try to mint a token immediately to validate connectivity
+        token = await inst.get_access_token()
+        return {
+            "ok": True,
+            "active": name,
+            "hostname": inst.hostname,
+            "partition": inst.data_partition_id,
+            "auth_mode": inst.auth_mode,
+            "token_ok": token is not None,
+        }
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    except Exception as e:
+        log.exception("Instance switch failed")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Login landing page (per-user PKCE mode)
@@ -1551,6 +1619,7 @@ _HOWTO_SECTIONS: list[dict] = [
                 "desc": "Model DG1–DG4 decisions as BusinessDecision records",
                 "children": [
                     {"slug": "bd-demo",      "file": "BdDemo.md",       "title": "BD Demo",       "desc": "Drogon DG2 worked example"},
+                    {"slug": "volumes",      "file": "Volumes.md",      "title": "Volumes",        "desc": "ReservoirEstimatedVolumes WPC & fmu-dataio mapping"},
                     {"slug": "geolabelset",  "file": "GeoLabelSet.md",  "title": "GeoLabelSet",   "desc": "Reservoir volumes & statistics manifests"},
                     {"slug": "risk",         "file": "Risk.md",         "title": "Risk",           "desc": "Subsurface risk data management"},
                     {"slug": "uncertainty",  "file": "Uncertainty.md",  "title": "Uncertainty",    "desc": "FMU ensemble / Monte Carlo in OSDU"},
@@ -1621,11 +1690,14 @@ def _render_md(filename: str) -> tuple[str, str]:
 
 @app.get("/howto", response_class=HTMLResponse, summary="HowTo — documentation articles")
 async def howto_index(request: Request):
+    insts = get_instances()
     return templates.TemplateResponse(
         "howto.html",
         {
             "request": request,
             "sections": _HOWTO_SECTIONS,
+            "instances": {n: {"hostname": i.hostname, "partition": i.data_partition_id, "auth_mode": i.auth_mode} for n, i in insts.items()},
+            "active_instance": get_active_name(),
         },
     )
 
