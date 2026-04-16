@@ -289,17 +289,29 @@ def transform_record(rec: dict) -> dict:
 
 
 def _rewrite_partition_refs(obj: Any) -> None:
-    """Recursively rewrite dev: → opendes: in nested string values."""
+    """Recursively rewrite dev: → opendes: in nested string values,
+    and patch ServerURL to point at the target OSDU instance."""
+    src_host = "equinorswedev.energy.azure.com"
+    tgt_host_raw = TARGET.get("host", "")
+    # Strip https:// to get bare hostname
+    tgt_host = tgt_host_raw.replace("https://", "").replace("http://", "").rstrip("/")
+
     if isinstance(obj, dict):
         for k, v in obj.items():
-            if isinstance(v, str) and v.startswith(f"{SRC_PARTITION}:"):
-                obj[k] = f"{TARGET['partition']}:{v[len(SRC_PARTITION)+1:]}"
+            if isinstance(v, str):
+                if v.startswith(f"{SRC_PARTITION}:"):
+                    obj[k] = f"{TARGET['partition']}:{v[len(SRC_PARTITION)+1:]}"
+                elif src_host in v and tgt_host:
+                    obj[k] = v.replace(src_host, tgt_host)
             elif isinstance(v, (dict, list)):
                 _rewrite_partition_refs(v)
     elif isinstance(obj, list):
         for i, item in enumerate(obj):
-            if isinstance(item, str) and item.startswith(f"{SRC_PARTITION}:"):
-                obj[i] = f"{TARGET['partition']}:{item[len(SRC_PARTITION)+1:]}"
+            if isinstance(item, str):
+                if item.startswith(f"{SRC_PARTITION}:"):
+                    obj[i] = f"{TARGET['partition']}:{item[len(SRC_PARTITION)+1:]}"
+                elif src_host in item and tgt_host:
+                    obj[i] = item.replace(src_host, tgt_host)
             elif isinstance(item, (dict, list)):
                 _rewrite_partition_refs(item)
 

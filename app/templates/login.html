@@ -5,22 +5,303 @@
   <title>Sign In — ORES</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: 'Equinor', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; background: #FAFAFA; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.10); padding: 52px 44px; text-align: center; max-width: 380px; width: 100%; border-top: 4px solid #FF1243; }
-    h1 { color: #333; font-size: 22px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
-    h1 span { color: #FF1243; }
-    p { color: #6F6F6F; font-size: 14px; margin: 0 0 28px; line-height: 1.5; }
-    .btn-login { display: inline-block; padding: 12px 36px; background: #FF1243; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s; }
-    .btn-login:hover { background: #D6002B; }
+    :root {
+      --eq-red: #FF1243; --eq-red-dark: #D6002B;
+      --eq-charcoal: #333; --eq-grey: #6F6F6F; --eq-border: #E6E6E6;
+      --eq-light: #F7F7F7; --eq-white: #fff; --eq-bg: #FAFAFA;
+      --eq-link: #007079; --eq-link-hover: #004F55;
+      --radius: 6px; --shadow-sm: 0 1px 3px rgba(0,0,0,.08); --shadow-md: 0 2px 8px rgba(0,0,0,.10);
+      --font: 'Equinor', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: var(--font); margin: 0; background: var(--eq-bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: var(--eq-white); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.10); padding: 52px 44px; text-align: center; max-width: 480px; width: 100%; border-top: 4px solid var(--eq-red); }
+    h1 { color: var(--eq-charcoal); font-size: 22px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
+    h1 span { color: var(--eq-red); }
+    .subtitle { color: var(--eq-grey); font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
+    .btn-login { display: inline-block; padding: 12px 36px; background: var(--eq-red); color: #fff; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s; }
+    .btn-login:hover { background: var(--eq-red-dark); }
     .note { color: #999; font-size: 12px; margin-top: 24px; line-height: 1.5; }
+
+    /* ── Instance bar ── */
+    .inst-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px 12px; margin-bottom: 22px;
+      background: var(--eq-light); border: 1px solid var(--eq-border);
+      border-radius: var(--radius); font-size: 13px; text-align: left;
+    }
+    .inst-bar label { font-weight: 600; color: var(--eq-charcoal); white-space: nowrap; }
+    .inst-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border: 1px solid var(--eq-border); border-radius: 4px;
+      background: var(--eq-white); cursor: pointer; font-size: 13px;
+      color: var(--eq-charcoal); transition: border-color .15s, background .15s;
+    }
+    .inst-btn:hover { border-color: var(--eq-link); background: rgba(0,112,121,.04); }
+    .inst-btn.active { border-color: var(--eq-link); background: rgba(0,112,121,.08); font-weight: 600; color: var(--eq-link); }
+    .inst-btn .inst-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--eq-border); }
+    .inst-btn.active .inst-dot { background: #00b050; }
+    .inst-add {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 12px; border: 1px dashed var(--eq-border); border-radius: 4px;
+      background: transparent; cursor: pointer; font-size: 13px;
+      color: var(--eq-link); transition: border-color .15s, background .15s;
+    }
+    .inst-add:hover { border-color: var(--eq-link); background: rgba(0,112,121,.06); }
+    .inst-toast {
+      display: none; margin-left: auto; padding: 3px 10px; font-size: 12px;
+      border-radius: 4px; background: #e6f4ea; color: #1a7f37;
+    }
+    .inst-toast.error { background: #fde8e8; color: #c33; }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--eq-white); border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); width: 520px; max-width: 94vw;
+      max-height: 90vh; overflow-y: auto; padding: 28px 32px;
+    }
+    .modal h2 { margin: 0 0 4px; font-size: 18px; color: var(--eq-charcoal); }
+    .modal .modal-sub { color: var(--eq-grey); font-size: 13px; margin: 0 0 20px; }
+    .modal-section { font-size: 12px; font-weight: 700; color: var(--eq-grey); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--eq-border); }
+    .modal-section:first-of-type { margin-top: 0; }
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: var(--eq-charcoal); margin-bottom: 3px; }
+    .field input {
+      width: 100%; padding: 7px 10px; font-size: 13px; font-family: var(--font);
+      border: 1px solid var(--eq-border); border-radius: 4px;
+      background: var(--eq-white); color: var(--eq-charcoal); transition: border-color .15s;
+    }
+    .field input:focus { outline: none; border-color: var(--eq-link); }
+    .field input::placeholder { color: #bbb; }
+    .field .hint { font-size: 11px; color: #999; margin-top: 2px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--eq-border); }
+    .btn-cancel { padding: 8px 20px; border: 1px solid var(--eq-border); border-radius: 4px; background: var(--eq-white); cursor: pointer; font-size: 13px; color: var(--eq-charcoal); }
+    .btn-cancel:hover { background: var(--eq-light); }
+    .btn-save { padding: 8px 24px; border: none; border-radius: 4px; background: var(--eq-link); color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-save:hover { background: var(--eq-link-hover); }
+    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    .modal-error { color: #c33; font-size: 13px; margin-top: 8px; display: none; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1><span>ORES</span> — OSDU Explorer</h1>
-    <p>Sign in with your Equinor account to continue.</p>
+    <p class="subtitle">Sign in with your Equinor account to continue.</p>
+
+    <!-- ── Instance bar ── -->
+    <div class="inst-bar" id="inst-bar">
+      <label>Instance:</label>
+      {% if instances %}
+        {% for name, info in instances.items() %}
+        <button class="inst-btn{% if name == active_instance %} active{% endif %}"
+                data-name="{{ name }}" onclick="switchInstance('{{ name }}')">
+          <span class="inst-dot"></span>
+          {{ name }}
+          <span style="font-size:11px;color:var(--eq-grey);">({{ info.partition }})</span>
+        </button>
+        {% endfor %}
+      {% endif %}
+      <button class="inst-add" onclick="openAddDialog()" title="Add instance">＋ Add</button>
+      <span class="inst-toast" id="inst-toast"></span>
+    </div>
+
     <a class="btn-login" href="/login">Sign in with Microsoft</a>
     <div class="note">Uses Azure AD with PKCE — no passwords are stored by this app.</div>
   </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- Add Instance dialog                                      -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="add-modal">
+    <div class="modal">
+      <h2>Add OSDU Instance</h2>
+      <p class="modal-sub">Appends <code>INSTANCE_&lt;NAME&gt;_*</code> entries to <code>k8s/configmap.yaml</code> and <code>secret.yaml</code>.</p>
+
+      <form id="add-form" onsubmit="return submitAdd(event)">
+        <!-- ── Name ── -->
+        <div class="field">
+          <label>Instance Name *</label>
+          <input name="name" id="f-name" required placeholder="e.g. prod, staging, mytest" pattern="[a-zA-Z0-9]+" autocomplete="off" />
+          <div class="hint">Short alphanumeric identifier — becomes INSTANCE_&lt;NAME&gt;_* prefix</div>
+        </div>
+
+        <!-- ── ConfigMap fields ── -->
+        <div class="modal-section">ConfigMap — non-secret config</div>
+
+        <div class="field">
+          <label>Hostname *</label>
+          <input name="hostname" id="f-hostname" required placeholder="e.g. equinor.energy.azure.com" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Data Partition ID</label>
+            <input name="data_partition_id" value="opendes" placeholder="opendes" />
+          </div>
+          <div class="field">
+            <label>Authority</label>
+            <input name="authority" value="osdu" placeholder="osdu" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Schema Source</label>
+            <input name="schema_source" value="wks" placeholder="wks" />
+          </div>
+          <div class="field">
+            <label>Default Countries</label>
+            <input name="default_countries" value="NO" placeholder="NO" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Default Legal Tag</label>
+          <input name="default_legal_tag" placeholder="e.g. opendes-equinor-private-default" />
+        </div>
+        <div class="field">
+          <label>Default Owners</label>
+          <input name="default_owners" placeholder="e.g. data.default.owners@opendes.dataservices.energy" />
+        </div>
+        <div class="field">
+          <label>Default Viewers</label>
+          <input name="default_viewers" placeholder="e.g. data.default.viewers@opendes.dataservices.energy" />
+        </div>
+
+        <!-- ── Secret fields ── -->
+        <div class="modal-section">Secrets — stored in secret.yaml</div>
+
+        <div class="field">
+          <label>Tenant ID</label>
+          <input name="tenant_id" placeholder="Azure AD tenant GUID" />
+        </div>
+        <div class="field">
+          <label>Client ID</label>
+          <input name="client_id" placeholder="App registration client ID" />
+        </div>
+        <div class="field">
+          <label>Scope</label>
+          <input name="scope" placeholder="e.g. &lt;client_id&gt;/.default openid offline_access" />
+        </div>
+        <div class="field">
+          <label>Client Secret</label>
+          <input name="client_secret" type="password" placeholder="(leave blank for refresh_token-only auth)" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label>Refresh Token</label>
+          <input name="refresh_token" type="password" placeholder="(leave blank for client_credentials-only auth)" autocomplete="new-password" />
+        </div>
+
+        <div class="modal-error" id="modal-error"></div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeAddDialog()">Cancel</button>
+          <button type="submit" class="btn-save" id="btn-save">Add &amp; Activate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  /* ── Instance switcher (same as ores.html) ── */
+  async function switchInstance(name) {
+    const toast = document.getElementById('inst-toast');
+    toast.style.display = 'inline-block';
+    toast.className = 'inst-toast';
+    toast.textContent = 'Switching…';
+    try {
+      const fd = new FormData();
+      fd.append('name', name);
+      const resp = await fetch('/api/instances/switch', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (data.ok) {
+        document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.dataset.name === name));
+        toast.textContent = data.token_ok ? `Switched to ${name} ✓` : `Switched to ${name} (token pending)`;
+        toast.className = 'inst-toast';
+        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+      } else {
+        toast.textContent = data.error || 'Switch failed';
+        toast.className = 'inst-toast error';
+      }
+    } catch (err) {
+      toast.textContent = err.message;
+      toast.className = 'inst-toast error';
+    }
+  }
+
+  /* ── Add dialog ── */
+  function openAddDialog() { document.getElementById('add-modal').classList.add('open'); document.getElementById('f-name').focus(); }
+  function closeAddDialog() { document.getElementById('add-modal').classList.remove('open'); document.getElementById('modal-error').style.display = 'none'; }
+  // Close on overlay click
+  document.getElementById('add-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAddDialog(); });
+  // Close on Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAddDialog(); });
+
+  /* Auto-fill owners/viewers/legal tag from partition */
+  document.querySelector('[name=data_partition_id]').addEventListener('input', function() {
+    const p = this.value.trim();
+    if (!p) return;
+    const legal = document.querySelector('[name=default_legal_tag]');
+    const owners = document.querySelector('[name=default_owners]');
+    const viewers = document.querySelector('[name=default_viewers]');
+    if (!legal.value)   legal.placeholder = `${p}-equinor-private-default`;
+    if (!owners.value)  owners.placeholder = `data.default.owners@${p}.dataservices.energy`;
+    if (!viewers.value) viewers.placeholder = `data.default.viewers@${p}.dataservices.energy`;
+  });
+
+  async function submitAdd(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save');
+    const errEl = document.getElementById('modal-error');
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
+    try {
+      const fd = new FormData(document.getElementById('add-form'));
+      const resp = await fetch('/api/instances/add', { method: 'POST', body: fd });
+      const data = await resp.json();
+
+      if (data.ok) {
+        // Add new button to the instance bar
+        const bar = document.getElementById('inst-bar');
+        const addBtn = bar.querySelector('.inst-add');
+        // Deactivate all existing buttons
+        bar.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
+        // Create new button
+        const newBtn = document.createElement('button');
+        newBtn.className = 'inst-btn active';
+        newBtn.dataset.name = data.active;
+        newBtn.onclick = () => switchInstance(data.active);
+        newBtn.innerHTML = `<span class="inst-dot"></span> ${data.active} <span style="font-size:11px;color:var(--eq-grey);">(${data.partition})</span>`;
+        bar.insertBefore(newBtn, addBtn);
+
+        // Show toast
+        const toast = document.getElementById('inst-toast');
+        toast.style.display = 'inline-block';
+        toast.className = 'inst-toast';
+        toast.textContent = data.token_ok ? `Added ${data.active} ✓` : `Added ${data.active} (token pending)`;
+        setTimeout(() => { toast.style.display = 'none'; }, 4000);
+
+        closeAddDialog();
+        document.getElementById('add-form').reset();
+      } else {
+        errEl.textContent = data.error || 'Failed to add instance';
+        errEl.style.display = 'block';
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Add & Activate';
+    }
+    return false;
+  }
+  </script>
 </body>
 </html>

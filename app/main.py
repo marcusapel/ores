@@ -161,10 +161,11 @@ log.info("OSDU instances loaded: %s (active=%s)", list(_all_instances.keys()), g
 from .auth import AUTH_MODE as _AUTH_MODE_AFTER_INIT
 templates.env.globals["auth_mode"] = _AUTH_MODE_AFTER_INIT
 
-# Add /api/instances/switch to PUBLIC_PATHS so it doesn't require a token
-# (switching happens before a valid token exists for the new instance)
+# Add /api/instances/* to PUBLIC_PATHS so they work before auth
+# (switching / adding happens before a valid token exists for the new instance)
 PUBLIC_PATHS.add("/api/instances")
 PUBLIC_PATHS.add("/api/instances/switch")
+PUBLIC_PATHS.add("/api/instances/add")
 
 
 @app.get("/api/instances")
@@ -210,6 +211,97 @@ async def api_switch_instance(name: str = Form(...)):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.post("/api/instances/add")
+async def api_add_instance(request: Request):
+    """Add a new OSDU instance to k8s YAML files, register it, and activate it."""
+    from .instances import _instances, _load_instances, OsduInstance
+
+    form = await request.form()
+    name = (form.get("name") or "").strip().lower()
+    if not name or not name.isalnum():
+        return JSONResponse({"ok": False, "error": "Name must be non-empty alphanumeric"}, status_code=400)
+    if name in _instances:
+        return JSONResponse({"ok": False, "error": f"Instance '{name}' already exists"}, status_code=409)
+
+    PREFIX = f"INSTANCE_{name.upper()}_"
+
+    # ── Collect fields from form ──
+    config_fields = {
+        "HOSTNAME": form.get("hostname", "").strip(),
+        "DATA_PARTITION_ID": form.get("data_partition_id", "opendes").strip(),
+        "AUTHORITY": form.get("authority", "osdu").strip(),
+        "SCHEMA_SOURCE": form.get("schema_source", "wks").strip(),
+        "DEFAULT_LEGAL_TAG": form.get("default_legal_tag", "").strip(),
+        "DEFAULT_OWNERS": form.get("default_owners", "").strip(),
+        "DEFAULT_VIEWERS": form.get("default_viewers", "").strip(),
+        "DEFAULT_COUNTRIES": form.get("default_countries", "NO").strip(),
+    }
+    secret_fields = {
+        "TENANT_ID": form.get("tenant_id", "").strip(),
+        "CLIENT_ID": form.get("client_id", "").strip(),
+        "CLIENT_SECRET": form.get("client_secret", "").strip(),
+        "SCOPE": form.get("scope", "").strip(),
+        "REFRESH_TOKEN": form.get("refresh_token", "").strip(),
+    }
+
+    if not config_fields["HOSTNAME"]:
+        return JSONResponse({"ok": False, "error": "Hostname is required"}, status_code=400)
+
+    k8s_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "k8s")
+    cm_path = os.path.join(k8s_dir, "configmap.yaml")
+    sec_path = os.path.join(k8s_dir, "secret.yaml")
+
+    try:
+        # ── Append to configmap.yaml ──
+        cm_lines = [f"\n  # ── \"{name}\" — added via ORES UI ──"]
+        for field, val in config_fields.items():
+            cm_lines.append(f'  {PREFIX}{field}: "{val}"')
+        with open(cm_path, "a") as f:
+            f.write("\n".join(cm_lines) + "\n")
+
+        # ── Append to secret.yaml ──
+        sec_lines = [f"\n  # ── \"{name}\" — added via ORES UI ──"]
+        for field, val in secret_fields.items():
+            if val:
+                sec_lines.append(f'  {PREFIX}{field}: "{val}"')
+            else:
+                sec_lines.append(f'  # {PREFIX}{field}: ""')
+        with open(sec_path, "a") as f:
+            f.write("\n".join(sec_lines) + "\n")
+
+        # ── Set env vars so _load_instances picks them up ──
+        for field, val in config_fields.items():
+            os.environ[f"{PREFIX}{field}"] = val
+        for field, val in secret_fields.items():
+            if val:
+                os.environ[f"{PREFIX}{field}"] = val
+
+        # ── Register and activate ──
+        _instances.clear()
+        _load_instances()
+        inst = set_active(name)
+
+        # Re-sync Jinja globals
+        from .auth import AUTH_MODE as _am
+        templates.env.globals["auth_mode"] = _am
+
+        token = await inst.get_access_token()
+        log.info("Added and activated instance '%s' → %s", name, inst.hostname)
+
+        return {
+            "ok": True,
+            "active": name,
+            "hostname": inst.hostname,
+            "partition": inst.data_partition_id,
+            "auth_mode": inst.auth_mode,
+            "token_ok": token is not None,
+        }
+
+    except Exception as e:
+        log.exception("Failed to add instance '%s'", name)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Login landing page (per-user PKCE mode)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -217,7 +309,15 @@ async def api_switch_instance(name: str = Form(...)):
 @app.get("/login-page", response_class=HTMLResponse)
 async def login_page(request: Request):
     """Serve the sign-in landing page (only reached when no env token is set)."""
-    return templates.TemplateResponse("login.html", {"request": request})
+    insts = get_instances()
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "instances": {
+            n: {"hostname": i.hostname, "partition": i.data_partition_id, "auth_mode": i.auth_mode}
+            for n, i in insts.items()
+        },
+        "active_instance": get_active_name(),
+    })
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Utilities
@@ -1087,9 +1187,9 @@ async def _reverse_lookup(
 # Pages & actions
 # ──────────────────────────────────────────────────────────────────────────────
 
-@app.get("/", response_class=RedirectResponse, summary="Redirect to HowTo")
+@app.get("/", response_class=RedirectResponse, summary="Redirect to ORES landing")
 async def root_redirect():
-    return RedirectResponse("/howto", status_code=302)
+    return RedirectResponse("/ores", status_code=302)
 
 
 @app.get("/admin", response_class=HTMLResponse, summary="Admin: list dataspaces")
@@ -1693,11 +1793,12 @@ def _render_md(filename: str) -> tuple[str, str]:
     return html_body, toc_html
 
 
-@app.get("/howto", response_class=HTMLResponse, summary="HowTo — documentation articles")
+@app.get("/ores", response_class=HTMLResponse, summary="ORES landing page")
+@app.get("/howto", response_class=HTMLResponse, include_in_schema=False)
 async def howto_index(request: Request):
     insts = get_instances()
     return templates.TemplateResponse(
-        "howto.html",
+        "ores.html",
         {
             "request": request,
             "sections": _HOWTO_SECTIONS,
