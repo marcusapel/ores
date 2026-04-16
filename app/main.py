@@ -146,6 +146,24 @@ templates = Jinja2Templates(
 # Make auth_mode available in every template (for nav Sign-out link)
 templates.env.globals["auth_mode"] = AUTH_MODE
 
+
+def _jinja_pretty_val(val):
+    """Jinja filter: prettify metadata values that may contain JSON."""
+    if val is None:
+        return "—"
+    s = str(val)
+    # Try to parse residual JSON strings and re-format them
+    if s.startswith(("[", "{")):
+        try:
+            obj = json.loads(s)
+            return _friendly_value(obj, 600)
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return s
+
+
+templates.env.filters["pretty_val"] = _jinja_pretty_val
+
 # Log routes at startup (helps when a route goes missing)
 log.info("Routes registered: %s", [getattr(r, "path", str(r)) for r in app.routes])
 
@@ -1296,6 +1314,46 @@ _HEAVY_DATA_KEYS = frozenset({
 })
 
 
+def _friendly_value(v: Any, max_str: int = 400) -> str:
+    """Convert a single value to a human-friendly string."""
+    if v is None:
+        return ""
+    if isinstance(v, (str, int, float, bool)):
+        s = str(v)
+        return s if len(s) <= max_str else s[:max_str] + "…"
+    if isinstance(v, dict):
+        # Show dict as "key: val, key: val" (flat, brief)
+        parts = []
+        for dk, dv in v.items():
+            sv = _friendly_value(dv, max_str=80)
+            parts.append(f"{dk}: {sv}")
+        s = "; ".join(parts)
+        return s if len(s) <= max_str else s[:max_str] + "…"
+    if isinstance(v, list):
+        return _friendly_list(v, max_str)
+    return str(v)[:max_str]
+
+
+def _friendly_list(lst: list, max_str: int = 400) -> str:
+    """Format a list for display: simple items joined, dicts summarised."""
+    if not lst:
+        return ""
+    # All primitives → join with ", "
+    if all(isinstance(x, (str, int, float, bool, type(None))) for x in lst):
+        return ", ".join(str(x) for x in lst)
+    # List of dicts → each dict as "key: val" on its own line-ish
+    if all(isinstance(x, dict) for x in lst):
+        items = []
+        for d in lst:
+            parts = [f"{k}: {_friendly_value(dv, 80)}" for k, dv in d.items()]
+            items.append("; ".join(parts))
+        s = " │ ".join(items)
+        return s if len(s) <= max_str else s[:max_str] + "…"
+    # Mixed → comma-join string representations
+    s = ", ".join(_friendly_value(x, 80) for x in lst)
+    return s if len(s) <= max_str else s[:max_str] + "…"
+
+
 def _flatten_osdu_data(
     data: Dict[str, Any],
     max_str: int = 400,
@@ -1303,7 +1361,7 @@ def _flatten_osdu_data(
     """Flatten an OSDU data{} block into [{name, value}, ...] pairs.
 
     Skips heavy array/blob keys and truncates long values.
-    Nested dicts/lists are JSON-stringified (compact).
+    Nested dicts/lists are formatted in a human-friendly way.
     """
     pairs = []
     for k in sorted(data.keys()):
@@ -1312,20 +1370,8 @@ def _flatten_osdu_data(
         v = data[k]
         if v is None:
             pairs.append({"name": k, "value": None})
-        elif isinstance(v, (str, int, float, bool)):
-            sv = v if not isinstance(v, str) or len(v) <= max_str else v[:max_str] + "…"
-            pairs.append({"name": k, "value": sv})
-        elif isinstance(v, list):
-            if len(v) <= 5 and all(isinstance(x, (str, int, float, bool, type(None))) for x in v):
-                pairs.append({"name": k, "value": ", ".join(str(x) for x in v)})
-            else:
-                s = json.dumps(v, ensure_ascii=False)
-                pairs.append({"name": k, "value": s[:max_str] + "…" if len(s) > max_str else s})
-        elif isinstance(v, dict):
-            s = json.dumps(v, ensure_ascii=False)
-            pairs.append({"name": k, "value": s[:max_str] + "…" if len(s) > max_str else s})
         else:
-            pairs.append({"name": k, "value": str(v)[:max_str]})
+            pairs.append({"name": k, "value": _friendly_value(v, max_str)})
     return pairs
 
 

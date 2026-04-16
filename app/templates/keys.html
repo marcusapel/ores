@@ -32,7 +32,17 @@
 
   <div class="row">
     <label>Dataspace</label>
-    <select id="ds"></select>
+    <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+      <div style="display:flex;gap:.4rem;align-items:center;">
+        <input id="ds-f1" type="text" placeholder="First segment…"
+               style="flex:1;padding:4px 8px;border:1px solid var(--eq-border,#ccc);border-radius:4px;font-size:13px;">
+        <span style="color:#999;">/</span>
+        <input id="ds-f2" type="text" placeholder="Second segment…"
+               style="flex:1;padding:4px 8px;border:1px solid var(--eq-border,#ccc);border-radius:4px;font-size:13px;">
+        <span id="ds-count" style="font-size:11px;color:#999;white-space:nowrap;"></span>
+      </div>
+      <select id="ds" size="6" style="width:100%;"></select>
+    </div>
   </div>
 
   <div class="row">
@@ -115,6 +125,7 @@
 
     const $ = (id) => document.getElementById(id);
     const dsSel = $('ds'), typSel = $('typ'), objSel = $('obj');
+    const dsF1 = $('ds-f1'), dsF2 = $('ds-f2'), dsCountEl = $('ds-count');
     const msg = $('msg'), summaryEl = $('summary'), metaEl = $('meta'),
           edgesEl = $('edges'), arraysEl = $('arrays'),
           metadataSection = $('metadata-section'), metadataPairs = $('metadata-pairs'),
@@ -124,6 +135,9 @@
           grid2dView = $('grid2d-view'), grid2dStatus = $('grid2d-status'),
           grid2dBadge = $('grid2d-badge'),
           btnTable = $('btn-table'), btnMap = $('btn-map');
+
+    // All dataspace items (cached for filtering)
+    let _allDsItems = [];
 
     // Escape HTML to prevent XSS
     function esc(s) {
@@ -156,14 +170,35 @@
     }
 
     function populateDataspaces(items) {
+      _allDsItems = (items || []).filter(x => x && x.path);
+      _applyDsFilter();
+    }
+
+    function _applyDsFilter() {
+      const q1 = (dsF1.value || '').trim().toLowerCase();
+      const q2 = (dsF2.value || '').trim().toLowerCase();
+      const prev = dsSel.value;
       dsSel.innerHTML = '';
-      (items || []).forEach(x => {
-        if (!x || !x.path) return;
+      let matched = 0;
+      _allDsItems.forEach(x => {
+        const path = x.path.toLowerCase();
+        const parts = path.split('/');
+        const seg1 = parts[0] || '';
+        const seg2 = parts.slice(1).join('/');
+        if (q1 && !seg1.includes(q1)) return;
+        if (q2 && !seg2.includes(q2)) return;
         const o = document.createElement('option');
         o.value = x.path; o.textContent = x.path;
         dsSel.appendChild(o);
+        matched++;
       });
+      // Restore previous selection if still present
+      if (prev) { for (const o of dsSel.options) { if (o.value === prev) { dsSel.value = prev; break; } } }
+      dsCountEl.textContent = (q1 || q2) ? `${matched}/${_allDsItems.length}` : `${_allDsItems.length}`;
     }
+
+    dsF1.addEventListener('input', _applyDsFilter);
+    dsF2.addEventListener('input', _applyDsFilter);
 
     // Render key-value pairs as a table
     function renderPairsTable(pairs) {
@@ -346,17 +381,31 @@
         if (graphRes && graphRes.ok) {
           try {
             const g = await graphRes.json();
-            const tgt = (g.targets || []).map(e => typeof e === 'object' ? e : {});
-            const src = (g.sources || []).map(e => typeof e === 'object' ? e : {});
+            // Parse uri → type + uuid; use 'name' for title
+            function parseEdge(e) {
+              const uri = e.uri || '';
+              let ct = e.contentType || e.$type || '';
+              let uid = e.uuid || e.UUID || e.Uuid || '';
+              let title = e.name || e.title || (e.Citation && e.Citation.Title) || '';
+              // Extract from uri: .../resqml20.obj_Foo('uuid')
+              const m = uri.match(/\/([^\/]+)\(([^)]+)\)\s*$/);
+              if (m) { if (!ct) ct = m[1]; if (!uid) uid = m[2]; }
+              return { ct, uid, title, uri };
+            }
+            const tgt = (g.targets || []).filter(e => typeof e === 'object').map(parseEdge);
+            const src = (g.sources || []).filter(e => typeof e === 'object').map(parseEdge);
             const crs = g.crs;
+            const edgeLi = (items) => items.length
+              ? `<ul>${items.map(e => `<li><code>${esc(e.ct)}</code> — <code>${esc(e.uid)}</code> — ${esc(e.title)}</li>`).join('')}</ul>`
+              : '<p class="muted">None</p>';
             edgesEl.innerHTML = `
               <details open>
                 <summary><b>Targets</b> (${tgt.length})</summary>
-                ${tgt.length ? `<ul>${tgt.map(e => `<li><code>${esc(e.contentType || e.$type || '')}</code> — <code>${esc(e.uuid || e.UUID || '')}</code> — ${esc(e.title || (e.Citation && e.Citation.Title) || '')}</li>`).join('')}</ul>` : '<p class="muted">None</p>'}
+                ${edgeLi(tgt)}
               </details>
-              <details>
+              <details open>
                 <summary><b>Sources</b> (${src.length})</summary>
-                ${src.length ? `<ul>${src.map(e => `<li><code>${esc(e.contentType || e.$type || '')}</code> — <code>${esc(e.uuid || e.UUID || '')}</code> — ${esc(e.title || (e.Citation && e.Citation.Title) || '')}</li>`).join('')}</ul>` : '<p class="muted">None</p>'}
+                ${edgeLi(src)}
               </details>
               ${crs ? `<details><summary><b>CRS</b></summary><pre>${esc(JSON.stringify(crs, null, 2))}</pre></details>` : ''}
             `;

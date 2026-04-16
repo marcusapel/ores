@@ -1364,7 +1364,7 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
                       {% set rendered_count.v = rendered_count.v + 1 %}
                       <tr>
                         <td class="meta-name">{{ n }}</td>
-                        <td>{{ p.value if p.value is not none else '—' }}</td>
+                        <td>{{ p.value|pretty_val }}</td>
                       </tr>
                     {% endif %}
                   {% endfor %}
