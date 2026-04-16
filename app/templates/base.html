@@ -159,7 +159,8 @@
     root.textContent = '';
 
     // Brand
-    var brand = el('span', { 'class': 'nav-brand', 'data-href': '/howto' }, 'ORES');
+    var brand = el('span', { 'class': 'nav-brand', 'data-href': '/howto' });
+    brand.innerHTML = '<span style="font-size:1.15em;">OR</span>ES';
     brand.addEventListener('click', function () { window.location.assign('/howto'); });
     root.appendChild(brand);
 
@@ -188,6 +189,14 @@
       root.appendChild(linkSpan('/login-page', 'Sign in', 'nav-signin'));
       root.appendChild(linkSpan('/logout', 'Sign out', 'nav-signout'));
     }
+
+    // OSDU logo (right side)
+    var logo = document.createElement('img');
+    logo.src = '/static/osdu.png';
+    logo.alt = 'OSDU';
+    logo.style.cssText = 'height:28px;margin-left:10px;cursor:pointer;';
+    logo.addEventListener('click', function () { window.open('https://community.opengroup.org/osdu', '_blank'); });
+    root.appendChild(logo);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', buildHeader);
@@ -212,5 +221,6 @@
   });
 </script>
 <script src=/static/app.js></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

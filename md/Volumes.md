@@ -1,71 +1,59 @@
+# Reservoir Estimated Volumes in OSDU
 
-# Reservoir Estimated Volumes — Raw & Aggregated in OSDU
-
-> **FMU context**: In fmu-dataio, in-place volumes are exported as a **standard result** via [`export_inplace_volumes`](https://fmu-dataio.readthedocs.io/en/latest/simple_exports/index.html). This produces Parquet tables with validated column conventions (BULK, NET, PORV, HCPV, STOIIP, GIIP, etc. keyed by ZONE, REGION, FACIES, REAL). The OSDU mapping below uses `ReservoirEstimatedVolumes` WPC to persist these same volumes with domain semantics.
+> **FMU context**: fmu-dataio exports in-place volumes as standard results (Parquet with BULK, NET, PORV, HCPV, STOIIP, GIIP keyed by ZONE, REGION, FACIES, REAL). This guide maps those to `ReservoirEstimatedVolumes` WPC in OSDU.
 >
-> **Links**: [fmu-dataio docs](https://fmu-dataio.readthedocs.io/en/latest/) · [fmu-drogon](https://github.com/equinor/fmu-drogon) · [OSDU Data Definitions](https://community.opengroup.org/osdu/data/data-definitions) · [Uncertainty guide](Uncertainty.md) · [FMU ↔ OSDU](FmuOsdu.md)
-
-This note covers the volume representation using OSDU's **ReservoirEstimatedVolumes** WPC, aligned with the fmu-dataio standard result column conventions. We also outline **alternative approaches** (pure `ColumnBasedTable` vs `ReservoirEstimatedVolumes`) and list **improvements** for search and governance.
-
-- **Raw realizations**: `work-product-component--ReservoirEstimatedVolumes:1.1.0` with a `Volumes` block keyed by `Realisation`, `Zone`, and `SegmentID`.
-- **Aggregated statistics**: `work-product-component--ReservoirEstimatedVolumes:1.1.0` with `Volumes` columns carrying Facets for P10/P50/P90, Minimum/Maximum, ArithmeticMean, StandardDeviation.
-
-`ReservoirEstimatedVolumes` is the *domain* WPC intended for in-place or technically recoverable volumes at the **Reservoir or ReservoirSegment** scope and is the recommended fit for this use case. citeturn3search51turn3search54turn3search48
-
-> **Why not only ColumnBasedTable?** CBT is excellent as a generic tabular store, but `ReservoirEstimatedVolumes` adds domain semantics (property typing, reservoir links) and clearer discoverability in Reservoir Management. Use CBT when flexibility outweighs domain structure. citeturn1search28turn3search52
+> **Links**: [fmu-dataio docs](https://fmu-dataio.readthedocs.io/en/latest/) · [Uncertainty guide](Uncertainty.md) · [FMU ↔ OSDU](FmuOsdu.md) · [BusinessDecision](BusinessDecision.md)
 
 ---
 
-## 1) Canonical structure & naming
+## 1) Why `ReservoirEstimatedVolumes`
 
-### 1.1 Keys and scope
-- **Raw** (`manifest_wpcraw.json`):
-  - `KeyColumns`: `Realisation:int`, `Zone:string`, `SegmentID:string` with `KindID = osdu:wks:master-data--ReservoirSegment:2.0.0` — this ties each row to a segment. citeturn3search2
-- **Aggregated** (`manifest_wpcstat.json`):
-  - `KeyColumns`: `Zone:string`, `SegmentID:string` (no `Realisation` because we aggregate across realizations). 
-- **ParentObject**: both records reference the Reservoir in `ParentObjectID`; children point to `ReservoirSegment` where relevant. citeturn3search2turn3search1
+| | `ReservoirEstimatedVolumes` | `ColumnBasedTable` |
+|---|---|---|
+| Domain semantics | Built-in property types, reservoir links | Generic; you enforce semantics yourself |
+| Discoverability | Shows up in Reservoir Management context | Harder to find among many CBTs |
+| Flexibility | Expects canonical properties | Any column structure |
+| **Recommendation** | **Authoritative volumes store** | Raw/intermediate analysis tables |
 
-> The `ReservoirEstimatedVolumes` kind is explicitly scoped to Field/Reservoir/ReservoirSegment via `ParentObjectID`, which matches these manifests. citeturn3search51
+Use `ReservoirEstimatedVolumes` for DG decision evidence. Use CBT only for wide or experimental tables.
 
-### 1.2 Property types (canonical)
-Use the **reference catalog** `reference-data--ReservoirEstimatedVolumePropertyType` for canonical property types:
-- `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` (as in your manifests). This ensures consistent semantics across datasets. citeturn3search1turn3search2
+---
 
-> In OSDU, reference data values provide the allowed codes for typed fields and are commonly synced and validated across tenants. citeturn1search20
+## 2) Two flavours — raw realizations & aggregated statistics
 
-### 1.3 Units of measure
-- Columns consistently use `UnitOfMeasureID = ...:m3` — alternatively switch specific metrics to `Mm3` if we want million cubic meters in the column payloads. 
+### Raw realizations
+- Keys: `Realisation` (int), `Zone` (string), `SegmentID` (string → `ReservoirSegment:2.0.0`)
+- Columns: `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` — each with `PropertyTypeID` and `UnitOfMeasureID: m3`
+- `ParentObjectID` → `master-data--Reservoir`
 
-### 1.4 Column naming for aggregated statistics
-- Use **dot notation**: `<Property>.<Statistic>` — e.g., `Bulk.P10`, `Oil.P50`, `AssociatedGas.StandardDeviation`.
-- **Canonical facet roles**: Prefer `ArithmeticMean` (not `Average`), and `StandardDeviation` (not `StDev`), matching your `FacetRoleID`s. 
+### Aggregated statistics
+- Keys: `Zone`, `SegmentID` (no Realisation — aggregated across runs)
+- Columns: dot-notation `<Property>.<Statistic>` — e.g. `Bulk.P10`, `Oil.ArithmeticMean`
+- Each column carries `FacetIDs` with `FacetType:statistics` + `FacetRole:<P10|P50|P90|ArithmeticMean|Minimum|Maximum|StandardDeviation>`
 
-### 1.5 Facets for statistics
-Each statistic column should attach a `FacetIDs` array with:
-- `FacetTypeID = ...:FacetType:statistics`
-- `FacetRoleID = ...:FacetRole:<Role>` (`P10`, `P50`, `P90`, `ArithmeticMean`, `Minimum`, `Maximum`, `StandardDeviation`). 
+---
 
-### 1.6 fmu-dataio standard result → OSDU REV column mapping
+## 3) fmu-dataio → OSDU column mapping
 
-| fmu-dataio column (standard result) | OSDU REV PropertyType | Notes |
+| fmu-dataio column | OSDU PropertyType | Notes |
 |---|---|---|
 | `BULK` | `ReservoirEstimatedVolumePropertyType:Bulk` | Bulk rock volume |
-| `NET` | `ReservoirEstimatedVolumePropertyType:Net` | Net rock volume |
-| `PORV` | `ReservoirEstimatedVolumePropertyType:Pore` | Pore volume |
-| `HCPV` | `ReservoirEstimatedVolumePropertyType:HydrocarbonPore` | HC pore volume |
-| `STOIIP` | `ReservoirEstimatedVolumePropertyType:Oil` | Stock tank oil in place |
-| `GIIP` | `ReservoirEstimatedVolumePropertyType:Gas` | Gas initially in place |
-| `ASSOCIATEDGAS` | `ReservoirEstimatedVolumePropertyType:AssociatedGas` | Associated gas |
-| `ASSOCIATEDOIL` | `ReservoirEstimatedVolumePropertyType:AssociatedOil` | Associated oil |
+| `NET` | `...:Net` | Net rock volume |
+| `PORV` | `...:Pore` | Pore volume |
+| `HCPV` | `...:HydrocarbonPore` | HC pore volume |
+| `STOIIP` | `...:Oil` | Stock tank oil in place |
+| `GIIP` | `...:Gas` | Gas initially in place |
+| `ASSOCIATEDGAS` | `...:AssociatedGas` | Associated gas |
+| `ASSOCIATEDOIL` | `...:AssociatedOil` | Associated oil |
 | `REAL` (key) | `Realisation` KeyColumn | fmu.realization.id |
 | `ZONE` (key) | `Zone` KeyColumn | Stratigraphic zone |
-| `REGION` / `FACIES` (key) | `SegmentID` KeyColumn | Maps to ReservoirSegment | 
+| `REGION`/`FACIES` (key) | `SegmentID` KeyColumn | Maps to ReservoirSegment |
 
 ---
 
-## 2) Snippets that mirror the two manifests
+## 4) Example snippets
 
-### 2.1 Raw realizations (excerpt)
+### 4.1 Raw realizations (excerpt)
 ```json
 {
   "kind": "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
@@ -74,26 +62,24 @@ Each statistic column should attach a `FacetIDs` array with:
     "Volumes": {
       "KeyColumns": [
         {"ColumnName": "Realisation", "ColumnRole": "Key", "ValueType": "integer"},
-        {"ColumnName": "Zone", "ColumnRole": "Key", "ValueType": "string"},
-        {"ColumnName": "SegmentID", "ColumnRole": "Key", "ValueType": "string",
+        {"ColumnName": "Zone",        "ColumnRole": "Key", "ValueType": "string"},
+        {"ColumnName": "SegmentID",   "ColumnRole": "Key", "ValueType": "string",
          "KindID": "osdu:wks:master-data--ReservoirSegment:2.0.0"}
       ],
       "Columns": [
         {"ColumnName": "Bulk", "ValueType": "number",
          "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"},
-        {"ColumnName": "Net",  "ValueType": "number",
-         "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Net:",
+        {"ColumnName": "Oil",  "ValueType": "number",
+         "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"}
-        // ... Pore, HydrocarbonPore, Oil, AssociatedGas
       ]
     }
   }
 }
 ```
-*Matches:* `Realisation/Zone/SegmentID` keys and property‑typed numeric columns with `m3`. citeturn3search2
 
-### 2.2 Aggregated statistics (excerpt)
+### 4.2 Aggregated statistics (excerpt)
 ```json
 {
   "kind": "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
@@ -101,7 +87,7 @@ Each statistic column should attach a `FacetIDs` array with:
     "ParentObjectID": "dev:master-data--Reservoir:...:1",
     "Volumes": {
       "KeyColumns": [
-        {"ColumnName": "Zone", "ColumnRole": "Key", "ValueType": "string"},
+        {"ColumnName": "Zone",      "ColumnRole": "Key", "ValueType": "string"},
         {"ColumnName": "SegmentID", "ColumnRole": "Key", "ValueType": "string",
          "KindID": "osdu:wks:master-data--ReservoirSegment:2.0.0"}
       ],
@@ -109,98 +95,35 @@ Each statistic column should attach a `FacetIDs` array with:
         {"ColumnName": "Bulk.P10", "ValueType": "number",
          "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
-         "FacetIDs": [{
-            "FacetTypeID": "dev:reference-data--FacetType:statistics",
-            "FacetRoleID": "dev:reference-data--FacetRole:P10"}]},
-        {"ColumnName": "Bulk.ArithmeticMean", "ValueType": "number",
-         "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
+         "FacetIDs": [{"FacetTypeID": "dev:reference-data--FacetType:statistics",
+                       "FacetRoleID": "dev:reference-data--FacetRole:P10"}]},
+        {"ColumnName": "Oil.ArithmeticMean", "ValueType": "number",
+         "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
-         "FacetIDs": [{
-            "FacetTypeID": "dev:reference-data--FacetType:statistics",
-            "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"}]}
-        // ... Net.*, Pore.*, HydrocarbonPore.*, Oil.*, AssociatedGas.* for P10/P50/P90/Minimum/Maximum/StandardDeviation
+         "FacetIDs": [{"FacetTypeID": "dev:reference-data--FacetType:statistics",
+                       "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"}]}
       ]
     }
   }
 }
 ```
-*Matches:* dot‑notation columns plus `FacetIDs` for statistics roles. 
 
 ---
 
-## 3) Mermaid views
+## 5) Naming conventions
 
-### 3.1 Raw realizations
-```mermaid
-graph LR
-  R[(Reservoir)] -->|ParentObjectID| REV_RAW["ReservoirEstimatedVolumes raw"]
-  REV_RAW -->|Key: Realisation| K1
-  REV_RAW -->|Key: Zone| K2
-  REV_RAW -->|Key: SegmentID ReservoirSegment:2.0.0| K3
-  REV_RAW --> BULK[Bulk]
-  REV_RAW --> NET[Net]
-  REV_RAW --> PORE[Pore]
-  REV_RAW --> HCP[HydrocarbonPore]
-  REV_RAW --> OIL[Oil]
-  REV_RAW --> GAS[AssociatedGas]
-```
-
-### 3.2 Aggregated statistics
-```mermaid
-graph LR
-  R[(Reservoir)] -->|ParentObjectID| REV_STAT["ReservoirEstimatedVolumes stats"]
-  REV_STAT -->|Key: Zone| KZ
-  REV_STAT -->|Key: SegmentID| KS
-  REV_STAT --> B10[Bulk.P10]
-  REV_STAT --> B50[Bulk.P50]
-  REV_STAT --> B90[Bulk.P90]
-  REV_STAT --> BAVG[Bulk.ArithmeticMean]
-  REV_STAT --> BMIN[Bulk.Minimum]
-  REV_STAT --> BMAX[Bulk.Maximum]
-  REV_STAT --> BSD[Bulk.StandardDeviation]
-  %% likewise for Net.*, Pore.*, HydrocarbonPore.*, Oil.*, AssociatedGas.*
-```
+- Use `ArithmeticMean` (not Average), `StandardDeviation` (not StDev)
+- Dot-notation for stats columns: `<Property>.<Statistic>`
+- Units via `UnitOfMeasureID` — don't embed units in column names
+- Consistent `m3` unless business rule requires `Mm3`
 
 ---
 
-## 4) Alternatives & improvements
+## 6) Quick comparison
 
-### 4.1 `ReservoirEstimatedVolumes` **vs** `ColumnBasedTable`
-**ReservoirEstimatedVolumes (current approach)**
-- **Pros**: Domain semantics (explicit *estimated volumes*), clear link to Reservoir/Segment via `ParentObjectID`, **property typing** via `ReservoirEstimatedVolumePropertyType`, and a well‑documented, discoverable WPC. Ideal for DG analytics and cross‑app interoperability. citeturn3search51turn3search54
-- **Cons**: Less free‑form; schema expects canonical properties and structure.
-
-**ColumnBasedTable (generic)**
-- **Pros**: Max flexibility for ad‑hoc columns (e.g., experimental knobs, non‑standard outputs); great for intermediate analysis tables. citeturn1search28
-- **Cons**: You must enforce semantics yourself (property types, units, relationships); discoverability is weaker than a domain WPC.
-
-**Pragmatic hybrid**: Keep `ReservoirEstimatedVolumes` as the **authoritative** volumes store; optionally retain a CBT for *raw intermediate* or *wide* tables and link it via lineage. citeturn1search28turn3search48
-
-### 4.2 GeoLabelSet for fast search (optional)
-Expose selected metrics (usually **P50**) per segment as `GeoLabelSet` labels to accelerate search and filtering, while deep numbers remain in REV. This improves user experience in portals while preserving analytical depth. citeturn3search52
-
-### 4.3 Canonical roles and naming checklist
-- Use `ArithmeticMean` (not Average), `StandardDeviation` (not StDev).
-- Prefer `m3` unless a business rule demands `Mm3` — keep units consistent per column.
-- Keep **dot‑notation** for stats columns; avoid embedding units in names (use `UnitOfMeasureID`). 
-
-### 4.4 Partition governance
-- Continue using Equinor DEV ACL and legal tags; keep **WorkProduct** ids in `ParentWorkProductID` to bundle DG artifacts. Consider a dedicated WorkProduct per DG step. citeturn3search1turn3search2
-
----
-
-## 5) Where this fits in OSDU
-- `ReservoirEstimatedVolumes` is part of the **Reservoir Management** worked examples; it links to Reservoir/Segments and complements other reservoir WPCs. citeturn3search48
-- `ColumnBasedTable` is the canonical generic table WPC and is widely used in reservoir data worked examples. citeturn1search28
-
----
-
-## 6) Quick differences (at a glance)
-
-| Aspect | Raw `ReservoirEstimatedVolumes` | Aggregated `ReservoirEstimatedVolumes` |
+| Aspect | Raw | Aggregated |
 |---|---|---|
-| Keys | `Realisation`, `Zone`, `SegmentID (KindID: ReservoirSegment:2.0.0)` | `Zone`, `SegmentID (KindID: ReservoirSegment:2.0.0)` |
-| Columns | `Bulk, Net, Pore, HydrocarbonPore, Oil, AssociatedGas` with `PropertyTypeID` + `m3` | Dot‑notation columns (`Bulk.P10`, `Oil.ArithmeticMean`, etc.) with `FacetIDs` (statistics) |
-| Scope | Each realization row | Aggregates across realizations |
-| Pros | Full variability preserved | Compact for decision reporting |
-| Typical Use | Monte Carlo/raw runs | DG, dashboards |
+| Keys | `Realisation`, `Zone`, `SegmentID` | `Zone`, `SegmentID` |
+| Columns | `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` | `Bulk.P10`, `Oil.P50`, `AssociatedGas.ArithmeticMean`, etc. |
+| Use case | Full ensemble / Monte Carlo | DG reporting, dashboards |
+| Links to BD | Input evidence (raw runs) | Decision evidence (statistical summary) |

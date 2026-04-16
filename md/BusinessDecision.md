@@ -1,7 +1,7 @@
 
 # OSDU Decision Gates with `BusinessDecision` — Implementation Guide
 
-> **Scope:** Model DG1…DG4 decisions as `osdu:wks:master-data--BusinessDecision:1.0.0` records, linking inputs (e.g., Wells, Grid maps, Velocity models, Production tables) and outputs (e.g., GenericRepresentation, ReservoirEstimatedVolumes, ColumnBasedTable) using **activity parameters** and/or **persisted collections** (WorkProduct / CollaborationProjectCollection). This guide summarizes options, pros/cons, and gives example payloads and diagrams.
+> **Scope:** Model DG1…DG4 decisions as `osdu:wks:master-data--BusinessDecision:1.0.0` records, linking inputs (e.g., Wells, Grid maps, Velocity models, Production tables) and outputs (e.g., GenericRepresentation, ReservoirEstimatedVolumes, ColumnBasedTable) using **activity parameters** and/or **persisted collections** (WorkProduct / PersistedCollection). This guide summarizes options, pros/cons, and gives example payloads and diagrams.
 
 ---
 
@@ -52,11 +52,11 @@ Use built-in properties for decision metadata and key relationships:
 
 ---
 
-### C) Persisted collections: `WorkProduct` and `CollaborationProjectCollection`
+### C) Persisted collections: `WorkProduct` and `PersistedCollection`
 Bundle a set of WPCs into a **versioned container** and link that single id as an input/context parameter.
 
 - `work-product--WorkProduct` (deliverable bundle) — [ER doc](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product/WorkProduct.1.0.0.md).
-- `work-product-component--CollaborationProjectCollection` (collaboration set) — [ER doc](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/CollaborationProjectCollection.1.0.0.md).
+- `work-product-component--PersistedCollection` (evidence package / curated set) — [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md).
 
 **Pros**
 - One id represents **“the DG package”**; simpler governance and versioning.
@@ -79,7 +79,7 @@ Many WPCs natively reference reservoir entities (e.g., `ReservoirEstimatedVolume
 1. **One `BusinessDecision` per gate**: set `DecisionLevelID`, `ApprovalStatusID`, dates, owners, summary.
 2. **Anchor the primary artifact** via `PriorActivityIDs` (e.g., consolidated volumes WPC).
 3. **List all key inputs and outputs** in `Parameters[]` with `ParameterRole` = `input`/`output`.
-4. **Optionally** package many artifacts into a **WorkProduct** or **CollaborationProjectCollection** and reference the container as a single parameter (keep 1–2 critical objects individually for drill‑down).
+4. **Optionally** package many artifacts into a **WorkProduct** or **PersistedCollection** and reference the container as a single parameter (keep 1–2 critical objects individually for drill‑down).
 5. **Risks & docs**: link via `RiskIDs` and `RiskAssessmentDocument`.
 
 **DG content mapping** (typical kinds):
@@ -237,13 +237,14 @@ graph LR
 ```
 Then reference this WorkProduct from `BusinessDecision.Parameters[]` as a **single** `input` or `context`.
 
-### 6.3 `CollaborationProjectCollection` (alternative persisted collection)
+### 6.3 `PersistedCollection` (evidence package)
 ```json
 {
-  "kind": "osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0",
-  "id": "dev:work-product-component--CollabCollection:PROJECTX-DG2:1",
+  "kind": "osdu:wks:work-product-component--PersistedCollection:1.0.0",
+  "id": "dev:work-product-component--PersistedCollection:PROJECTX-DG2-EvidencePackage:1",
   "data": {
-    "Name": "PROJECT X DG2 Collaboration Set",
+    "Name": "PROJECT X DG2 Evidence Package",
+    "Description": "PersistedCollection bundling all artifacts for the DG2 Concept Select decision.",
     "DataReferences": [
       "dev:work-product-component--GenericRepresentation:gr-5678:1",
       "dev:work-product-component--VelocityModeling:abcd-1234:1",
@@ -262,10 +263,10 @@ Then reference this WorkProduct from `BusinessDecision.Parameters[]` as a **sing
 |---|---|---|---|
 | `Parameters[]` (input/output/context) | Precise workflow/provenance at object level | Rich semantics; supports multi‑values, time index, keys | Heavier nested queries; requires conventions |
 | `WorkProduct` | Stable, versioned **DG package** | One id; easier ACL/legal; re‑use | Extra object to manage; still need parameters for roles |
-| `CollaborationProjectCollection` | Curated engagement set | Similar to WorkProduct, tuned for collaboration | Same management overhead |
+| `PersistedCollection` | Evidence package / curated set | One id for the DG package; `DataReferences[]` lists all artifacts | Extra object to manage; still need parameters for roles |
 | Explicit fields (`DecisionLevelID`, `ApprovalStatusID`, `Risk…`, `PriorActivityIDs`) | Gate filters & governance | Simple queries; clear domain | Not a substitute for full input/output lists |
 
-**Practical recommendation:** Use **both**: typed decision fields for gate metadata **and** `Parameters[]` for all gate inputs/outputs/context. If the artifact set is large, **also create** a WorkProduct (or CollaborationProjectCollection) and reference it; still list 1–2 critical artifacts individually.
+**Practical recommendation:** Use **both**: typed decision fields for gate metadata **and** `Parameters[]` for all gate inputs/outputs/context. If the artifact set is large, **also create** a PersistedCollection (or WorkProduct) and reference it; still list 1–2 critical artifacts individually.
 
 ---
 
@@ -274,6 +275,15 @@ Then reference this WorkProduct from `BusinessDecision.Parameters[]` as a **sing
 - `AbstractProjectActivity` (parameters and roles): [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/abstract/AbstractProjectActivity.1.2.0.md), [Migration notes](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Guides/MigrationGuides/M18/AbstractProjectActivity.1.1.0.md).
 - Decision catalogs: [DecisionLevel](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/reference-data/DecisionLevel.1.0.0.md), [DecisionApprovalStatus example](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Examples/reference-data/DecisionApprovalStatus.1.0.0.json).
 - WPCs used at gates: [VelocityModeling](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/VelocityModeling.1.3.0.md), [ProductionValues](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/ProductionValues.1.0.0.md), [GenericRepresentation example](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Examples/work-product-component/GenericRepresentation.1.0.0.json), [ColumnBasedTable usage](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Examples/WorkedExamples/Reservoir%20Data/ColumnBasedTable/README.md).
-- WorkProduct / CollaborationProjectCollection: [WorkProduct ER](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product/WorkProduct.1.0.0.md), [CollaborationProjectCollection ER](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/CollaborationProjectCollection.1.0.0.md).
+- WorkProduct / PersistedCollection: [WorkProduct ER](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product/WorkProduct.1.0.0.md), [PersistedCollection ER](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md).
+
+---
+
+## 9. Related guides
+
+- [Volumes](Volumes.md) — ReservoirEstimatedVolumes WPC, raw vs aggregated, fmu-dataio column mapping
+- [Uncertainty](Uncertainty.md) — FMU ensemble/Monte Carlo inputs & outputs in OSDU, Activity provenance
+- [Risk](Risk.md) — Risk master-data, mitigation documents, risk catalogs
+- [Drogon DG2 Demo](BdDemo.md) — Full worked example: BusinessDecision + all evidence artifacts
 
 ---
