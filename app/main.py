@@ -1640,7 +1640,7 @@ _HOWTO_SECTIONS: list[dict] = [
             {
                 "slug": "strat-column",
                 "file": "StratColumn.md",
-                "title": "Stratigraphic Column",
+                "title": "Stratigraphy",
                 "desc": "Data model, tooling & workflow",
             },
         ],
