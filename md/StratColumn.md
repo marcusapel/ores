@@ -1,5 +1,5 @@
 
-# StratigraphY — Data Model, Tooling & Workflow
+# Stratigraphy — Data Model, Tooling & Workflow
 
 > Comprehensive reference for the **OSDU Stratigraphic Column** data model, its relationship to **RESQML 2.0.1**, **SMDA**, and **OpenWorks** source systems, and the tools that ship with this repository.
 >
