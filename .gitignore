@@ -17,6 +17,4 @@ __pycache__/
 .venv/
 
 k8s/secret.yaml
-# eqn demo data (generated manifests & scripts)
 demo/eqn/
-md/amata
