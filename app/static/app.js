@@ -254,7 +254,11 @@ async function buildManifest() {
 
     const mf = res.manifest || {};
     manifestBox.textContent = JSON.stringify(mf, null, 2);
-    setText(buildSummary, `Built manifest (uris=${res.countUris || 0})`);
+    let msg = `Built manifest (uris=${res.countUris || 0})`;
+    if (res.skippedUris) {
+      msg += ` — ${res.skippedUris} URI(s) skipped (${(res.skippedTypes||[]).join(', ')})`;
+    }
+    setText(buildSummary, msg);
     if (btnIngest) btnIngest.disabled = false;
   } catch (e) {
     console.warn('build error:', e);
