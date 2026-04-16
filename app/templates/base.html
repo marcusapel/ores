@@ -159,19 +159,18 @@
     root.textContent = '';
 
     // Brand
-    var brand = el('span', { 'class': 'nav-brand', 'data-href': '/' }, 'ORES');
-    brand.addEventListener('click', function () { window.location.assign('/'); });
+    var brand = el('span', { 'class': 'nav-brand', 'data-href': '/howto' }, 'ORES');
+    brand.addEventListener('click', function () { window.location.assign('/howto'); });
     root.appendChild(brand);
 
     // Nav links
     var links = [
-      { href: '/',        label: 'RddmsAdmin' },
+      { href: '/admin',   label: 'RddmsAdmin' },
       { href: '/keys',    label: 'RddmsResources' },
       { href: '/search',  label: 'OsduSearch' },
       { href: '/analyse', label: 'AnalyseDG' },
       { href: '/add-dg',  label: 'AddDG' },
       { href: '/strat',   label: 'Stratigraphy' },
-      { href: '/howto',  label: 'HowTo' },
     ];
     links.forEach(function (lk) {
       var sp = linkSpan(lk.href, lk.label);

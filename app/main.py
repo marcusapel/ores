@@ -1014,7 +1014,12 @@ async def _reverse_lookup(
 # Pages & actions
 # ──────────────────────────────────────────────────────────────────────────────
 
-@app.get("/", response_class=HTMLResponse, summary="Home: list dataspaces")
+@app.get("/", response_class=RedirectResponse, summary="Redirect to HowTo")
+async def root_redirect():
+    return RedirectResponse("/howto", status_code=302)
+
+
+@app.get("/admin", response_class=HTMLResponse, summary="Admin: list dataspaces")
 async def home(request: Request):
     try:
         at = _access_token(request)
