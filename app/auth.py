@@ -92,7 +92,6 @@ async def login(request: Request):
     request.session["pkce_verifier"] = code_verifier
     request.session["pkce_state"] = state
     request.session["redirect_uri"] = redirect_uri
-    request.session["pkce_target"] = "osdu"
 
     async with AsyncOAuth2Client(
         client_id=CLIENT_ID,
@@ -266,7 +265,6 @@ async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
 @router.get("/auth")
 async def auth_info(request: Request):
     logged_in = bool(request.session.get("access_token")) if hasattr(request, "session") else False
-    smda_logged_in = bool(request.session.get("smda_access_token")) if hasattr(request, "session") else False
     return {
         "azure_tenant": TENANT[:8] + "..." if TENANT else "",
         "client_id": CLIENT_ID[:8] + "..." if CLIENT_ID else "",
