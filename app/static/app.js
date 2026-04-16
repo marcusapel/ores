@@ -276,14 +276,25 @@ async function buildManifest() {
       const r = await fetch('/api/manifest/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manifest })
+        body: JSON.stringify({ manifest, method: 'storage' })
       });
       if (!r.ok) {
         const errText = await r.text().catch(() => '');
         throw new Error(`${r.status} ${r.statusText}: ${errText.slice(0, 200)}`);
       }
       const res = await r.json();
-      setText(buildSummary, `Ingest OK: ${res.status || 'ok'} (run=${res.runId || '?'})`);
+      let info;
+      if (res.method === 'storage') {
+        const sr = res.storageResponse || {};
+        const sent = sr.recordsSent ?? '?';
+        const stored = sr.recordCount ?? '?';
+        const ids = sr.recordIds || [];
+        info = `${stored} record(s) stored (${sent} sent)`;
+        if (ids.length) info += '\n' + ids.join('\n');
+      } else {
+        info = `workflow run=${res.runId || '?'}`;
+      }
+      setText(buildSummary, `Ingest OK \u2014 ${info}`);
     } catch (e) {
       console.warn('ingest error:', e);
       setText(buildSummary, `Ingest failed: ${e.message}`);
@@ -298,10 +309,49 @@ async function buildManifest() {
   if (btnBuild) btnBuild.addEventListener('click', buildManifest);
   if (btnIngest) btnIngest.addEventListener('click', ingestManifest);
 
+  // ---- Dataspace two-segment filter for the <select> dropdown ----
+  const mfDsF1 = $('#mf-ds-filter-1');
+  const mfDsF2 = $('#mf-ds-filter-2');
+  let _allDsOptions = [];  // [{value, text}] — filled after dataspaces load
+
+  function _captureDsOptions() {
+    if (!dsSel) return;
+    _allDsOptions = [];
+    for (const opt of dsSel.options) {
+      _allDsOptions.push({ value: opt.value, text: opt.textContent });
+    }
+  }
+
+  function _applyDsSelectFilter() {
+    if (!dsSel || !_allDsOptions.length) return;
+    const q1 = (mfDsF1 ? mfDsF1.value : '').trim().toLowerCase();
+    const q2 = (mfDsF2 ? mfDsF2.value : '').trim().toLowerCase();
+    const prevValue = dsSel.value;
+    dsSel.innerHTML = '';
+    let found = false;
+    for (const item of _allDsOptions) {
+      const parts = item.value.toLowerCase().split('/');
+      const seg1 = parts[0] || '';
+      const seg2 = parts.slice(1).join('/');
+      if (q1 && !seg1.includes(q1)) continue;
+      if (q2 && !seg2.includes(q2)) continue;
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.text;
+      dsSel.appendChild(opt);
+      if (item.value === prevValue) { opt.selected = true; found = true; }
+    }
+    if (!found && dsSel.options.length > 0) dsSel.selectedIndex = 0;
+  }
+
+  if (mfDsF1) mfDsF1.addEventListener('input', _applyDsSelectFilter);
+  if (mfDsF2) mfDsF2.addEventListener('input', _applyDsSelectFilter);
+
   // Init: dataspaces -> types -> objects
   async function initManifestUI() {
     if (!dsSel || !objSel) return; // not on index page
     await loadDataspaces(); // respects prefilled options
+    _captureDsOptions();    // snapshot all options for filtering
     await loadTypes();
     await loadObjects();
   }

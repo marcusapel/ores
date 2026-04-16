@@ -362,6 +362,16 @@
 
 <!-- Dataspace -->
 <div class="row">
+  <label class="label">Filter</label>
+  <div style="display:flex;gap:.4rem;flex:1 1 auto;align-items:center;">
+    <input id="mf-ds-filter-1" type="text" placeholder="First segment…"
+           style="flex:1;padding:.25rem .4rem;border:1px solid #ccc;border-radius:4px;">
+    <span style="color:#999;">/</span>
+    <input id="mf-ds-filter-2" type="text" placeholder="Second segment…"
+           style="flex:1;padding:.25rem .4rem;border:1px solid #ccc;border-radius:4px;">
+  </div>
+</div>
+<div class="row">
   <label for="ds-select" class="label">Dataspace</label>
   <select id="ds-select" class="input">
     {% if dataspaces %}

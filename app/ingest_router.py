@@ -134,12 +134,13 @@ async def ingest_manifest(
     request: Request,
     background_tasks: BackgroundTasks,
 ) -> JSONResponse:
-    """Accepts a manifest (JSON) and immediately triggers Osdu_ingest workflow.
+    """Accepts a manifest (JSON) and ingests via Workflow or Storage API.
 
     Body schema:
     {
       "manifest": { ... },            # required manifest JSON
-      "runId": "optional-guid",      # optional
+      "method": "storage",            # "storage" (default) or "workflow"
+      "runId": "optional-guid",      # optional (workflow only)
       "partition": "data",           # optional override of DATA_PARTITION_ID
       "appKey": "my-app"             # optional override of APP_KEY
     }
@@ -152,6 +153,10 @@ async def ingest_manifest(
     manifest = body.get("manifest")
     if not isinstance(manifest, dict):
         raise HTTPException(status_code=400, detail="Body must include a 'manifest' object")
+
+    method = (body.get("method") or "storage").lower().strip()
+    if method not in ("workflow", "storage"):
+        raise HTTPException(status_code=400, detail="'method' must be 'workflow' or 'storage'")
 
     # Store manifest in memory (cap to last N items)
     manifest_id = str(uuid.uuid4())
@@ -180,29 +185,48 @@ async def ingest_manifest(
     if not access_token:
         raise HTTPException(status_code=401, detail="access_token not found in session/headers/cookies")
 
-    # Fire workflow call immediately
-    try:
-        workflow_response = await _post_workflow_run(
-            base_url=base_url,
-            partition=partition,
-            app_key=app_key,
-            access_token=access_token,
-            manifest=manifest,
-            run_id=run_id,
-        )
-    except HTTPException:
-        raise
-    except Exception as ex:
-        raise HTTPException(status_code=502, detail={"message": "Failed to call Workflow Service", "error": str(ex)})
+    if method == "workflow":
+        # Fire workflow call
+        try:
+            workflow_response = await _post_workflow_run(
+                base_url=base_url,
+                partition=partition,
+                app_key=app_key,
+                access_token=access_token,
+                manifest=manifest,
+                run_id=run_id,
+            )
+        except HTTPException:
+            raise
+        except Exception as ex:
+            raise HTTPException(status_code=502, detail={"message": "Failed to call Workflow Service", "error": str(ex)})
 
-    return JSONResponse(
-        {
+        return JSONResponse({
             "status": "submitted",
+            "method": "workflow",
             "manifestId": manifest_id,
             "runId": run_id,
             "workflowResponse": workflow_response,
-        }
-    )
+        })
+    else:  # storage
+        try:
+            storage_response = await _ingest_via_storage(
+                base_url=base_url,
+                partition=partition,
+                access_token=access_token,
+                manifest=manifest,
+            )
+        except HTTPException:
+            raise
+        except Exception as ex:
+            raise HTTPException(status_code=502, detail={"message": "Failed to call Storage API", "error": str(ex)})
+
+        return JSONResponse({
+            "status": "submitted",
+            "method": "storage",
+            "manifestId": manifest_id,
+            "storageResponse": storage_response,
+        })
 
 
 @router.get("/manifest/last")
@@ -333,9 +357,18 @@ async def _ingest_via_storage(
                 },
             )
         try:
-            return r.json()
+            body = r.json()
         except Exception:
-            return {"status_code": r.status_code, "text": r.text[:500]}
+            body = {"text": r.text[:500]}
+
+        # Normalise: OSDU Storage returns {"recordCount": N, "recordIds": [...], ...}
+        record_ids = body.get("recordIds") or body.get("recordIdVersions") or []
+        return {
+            "recordCount": body.get("recordCount", len(record_ids)),
+            "recordIds": record_ids,
+            "recordsSent": len(records),
+            "raw": body,
+        }
 
 
 @router.post("/rddms/build")
