@@ -32,8 +32,7 @@
         "DecisionSummary": "Evaluate the Valysar formation of the Drogon field. Assess in-place volumes (oil + gas) across 7 reservoir segments with facies-dependent porosity uncertainty. Determine whether to proceed to DG2 Concept Select.",
         "RiskIDs": [
           "dev:master-data--Risk:Drogon-PorosityAndCementation:1",
-          "dev:master-data--Risk:Drogon-FaultCompartment:1",
-          "dev:master-data--Risk:Drogon-OWCDepth:1"
+          "dev:master-data--Risk:Drogon-FaultCompartment:1"
         ],
         "PriorActivityIDs": [
           "dev:work-product-component--Activity:ead6e342-fa77-5485-b13b-7b3b2030c6e6:1"
@@ -44,7 +43,7 @@
             "Selection": "Raw per-realisation volumes feeding the statistical summary",
             "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
             "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-            "DataObjectParameter": "dev:work-product-component--ReservoirEstimatedVolumes:6a436525-7f21-43ce-84f2-c0a3a130fb73:1",
+            "DataObjectParameter": "dev:work-product-component--ReservoirEstimatedVolumes:dac100b4-4eb8-4b43-9630-9aa2d3d15837:1",
             "Keys": [
               {
                 "ParameterKey": "artifact",
@@ -57,7 +56,7 @@
             "Selection": "Aggregated statistics used for the DG1 assessment",
             "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
             "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-            "DataObjectParameter": "dev:work-product-component--ReservoirEstimatedVolumes:2a6251f6-4f3f-4734-9471-c9506e866da2:1",
+            "DataObjectParameter": "dev:work-product-component--ReservoirEstimatedVolumes:f9da5b21-f9b1-4596-bae0-04e09cc988dd:1",
             "Keys": [
               {
                 "ParameterKey": "artifact",
@@ -70,7 +69,7 @@
             "Selection": "Per-segment, per-facies input parameters",
             "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
             "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-            "DataObjectParameter": "dev:work-product-component--ColumnBasedTable:44675061-ae97-458b-b6b8-5b5ffedbe9e2:1",
+            "DataObjectParameter": "dev:work-product-component--ColumnBasedTable:9f4d496c-d9ea-4d36-907a-a94542c03bea:1",
             "Keys": [
               {
                 "ParameterKey": "artifact",
@@ -108,32 +107,6 @@
               {
                 "ParameterKey": "artifact",
                 "StringParameterKey": "DevelopmentConcept"
-              }
-            ]
-          },
-          {
-            "Title": "Production Forecast (Reference Case)",
-            "Selection": "20-year production forecast for Valysar DG1",
-            "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-            "DataObjectParameter": "dev:work-product-component--ColumnBasedTable:b8d4f2e3-ae5c-4b9f-c7a6-3f9d5e2b4c8a:1",
-            "Keys": [
-              {
-                "ParameterKey": "artifact",
-                "StringParameterKey": "ProductionForecast"
-              }
-            ]
-          },
-          {
-            "Title": "Headline volumes & reservoir properties (GeoLabelSet)",
-            "Selection": "P10/P50/P90 headline volumes per segment, derived from stat REV",
-            "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-            "DataObjectParameter": "dev:work-product-component--GeoLabelSet:f5c8b2d4-6a39-4eaf-9b72-8d4eaf1a3c96:1",
-            "Keys": [
-              {
-                "ParameterKey": "artifact",
-                "StringParameterKey": "GeoLabelSet"
               }
             ]
           }

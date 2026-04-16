@@ -6,7 +6,7 @@
     "Datasets": [],
     "WorkProductComponents": [
       {
-        "id": "dev:work-product-component--ColumnBasedTable:44675061-ae97-458b-b6b8-5b5ffedbe9e2:1",
+        "id": "dev:work-product-component--ColumnBasedTable:9f4d496c-d9ea-4d36-907a-a94542c03bea:1",
         "kind": "osdu:wks:work-product-component--ColumnBasedTable:1.4.0",
         "acl": {
           "owners": [
