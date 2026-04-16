@@ -29,6 +29,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 import httpx
+from . import osdu as _osdu_mod
 
 router = APIRouter()
 
@@ -38,6 +39,16 @@ _MANIFESTS: Dict[str, Dict[str, Any]] = {}
 
 
 def _get_env(name: str, default: Optional[str] = None) -> Optional[str]:
+    """Read config: prefer osdu module globals (set by active instance), fall back to os.getenv."""
+    # Module globals that are kept in sync by instances._apply_instance()
+    _MODULE_GLOBALS = {
+        "OSDU_BASE_URL": lambda: _osdu_mod.OSDU_BASE_URL,
+        "DATA_PARTITION_ID": lambda: _osdu_mod.DATA_PARTITION_ID,
+    }
+    if name in _MODULE_GLOBALS:
+        val = _MODULE_GLOBALS[name]()
+        if val:
+            return val
     v = os.getenv(name)
     return v if v is not None and v != "" else default
 

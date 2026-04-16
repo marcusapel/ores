@@ -14,10 +14,14 @@ log = logging.getLogger("rddms-admin.osdu")
 
 # ----------------------------------------------------------------------
 # Environment & defaults
+#
+# NOTE: These module-level globals are overwritten by instances.py
+#       _apply_instance() at startup and on every instance switch.
+#       Initial values are populated from env as a safe fallback.
 # ----------------------------------------------------------------------
 
 # Base DNS name of your ADME/OSDU instance (no scheme).
-OSDU_BASE_URL: str = os.getenv("OSDU_BASE_URL", "equinordev.energy.azure.com")
+OSDU_BASE_URL: str = os.getenv("OSDU_BASE_URL", "")
 
 # Required header for all ADME/OSDU calls.
 DATA_PARTITION_ID: str = os.getenv("DATA_PARTITION_ID", "").strip()

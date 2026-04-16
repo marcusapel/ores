@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-get_token.py — Mint an access token from the REFRESH_TOKEN in .env and
-print it (plus shell-eval snippets so you can export it directly).
+get_token.py — Mint an access token from the active instance's credentials
+and print it (plus shell-eval snippets so you can export it directly).
 
 Usage:
   python get_token.py                  # print token only
   python get_token.py --shell bash     # print:  export TOKEN=...
   python get_token.py --shell pwsh     # print:  $env:TOKEN = "..."
   python get_token.py --shell pwsh --quiet   # token value only (for $(...))
+  python get_token.py --instance prod  # use a specific instance
 
 PowerShell one-liner to set the variable in the current session:
   $env:TOKEN = (python get_token.py --quiet)
@@ -32,33 +33,33 @@ import httpx
 REPO_ROOT = Path(__file__).resolve().parent
 
 
-# ── .env loader (no external deps) ──────────────────────────────────────
-def _parse_dotenv(path: Path) -> Dict[str, str]:
-    env: Dict[str, str] = {}
-    if not path.exists():
-        return env
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, val = line.partition("=")
-        env[key.strip()] = val.strip()
-    return env
-
+# ── env loader ───────────────────────────────────────────────────────────
 
 def load_env() -> Dict[str, str]:
-    """Merge OS env + .env file; OS env wins."""
-    merged = _parse_dotenv(REPO_ROOT / ".env")
-    merged.update({k: v for k, v in os.environ.items() if v})
-    return merged
+    """Return current environment variables."""
+    return {k: v for k, v in os.environ.items() if v}
+
+
+def _resolve_instance_env(env: Dict[str, str], instance: str | None = None) -> Dict[str, str]:
+    """Map INSTANCE_<NAME>_* vars to the canonical auth keys."""
+    inst = (instance or env.get("DEFAULT_INSTANCE", "eqndev")).upper()
+    prefix = f"INSTANCE_{inst}_"
+
+    return {
+        "AZURE_TENANT_ID": env.get(f"{prefix}TENANT_ID") or env.get("AZURE_TENANT_ID", ""),
+        "AZURE_CLIENT_ID": env.get(f"{prefix}CLIENT_ID") or env.get("AZURE_CLIENT_ID", ""),
+        "AZURE_SCOPE":     env.get(f"{prefix}SCOPE")     or env.get("AZURE_SCOPE", ""),
+        "REFRESH_TOKEN":   env.get(f"{prefix}REFRESH_TOKEN") or env.get("REFRESH_TOKEN", ""),
+    }
 
 
 # ── Token exchange ───────────────────────────────────────────────────────
-def get_access_token(env: Dict[str, str]) -> Dict[str, str]:
-    tenant        = env.get("AZURE_TENANT_ID") or env.get("tenant", "")
-    client_id     = env.get("AZURE_CLIENT_ID") or env.get("client_id", "")
-    scope         = env.get("AZURE_SCOPE")     or env.get("scope", "")
-    refresh_token = env.get("REFRESH_TOKEN")   or env.get("refresh_token", "")
+def get_access_token(env: Dict[str, str], instance: str | None = None) -> Dict[str, str]:
+    resolved = _resolve_instance_env(env, instance)
+    tenant        = resolved["AZURE_TENANT_ID"]
+    client_id     = resolved["AZURE_CLIENT_ID"]
+    scope         = resolved["AZURE_SCOPE"]
+    refresh_token = resolved["REFRESH_TOKEN"]
 
     missing = [k for k, v in {
         "AZURE_TENANT_ID": tenant,
@@ -94,7 +95,7 @@ def get_access_token(env: Dict[str, str]) -> Dict[str, str]:
 
 # ── Main ─────────────────────────────────────────────────────────────────
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Mint access token from .env REFRESH_TOKEN")
+    ap = argparse.ArgumentParser(description="Mint access token from instance credentials")
     ap.add_argument(
         "--shell",
         choices=["bash", "pwsh", "none"],
@@ -111,12 +112,17 @@ def main() -> None:
         default="TOKEN",
         help="Variable name to use in shell snippet (default: TOKEN)",
     )
+    ap.add_argument(
+        "--instance", "-i",
+        default=None,
+        help="Instance name to use (default: DEFAULT_INSTANCE or eqndev)",
+    )
     args = ap.parse_args()
 
     env = load_env()
 
     try:
-        result = get_access_token(env)
+        result = get_access_token(env, instance=args.instance)
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)

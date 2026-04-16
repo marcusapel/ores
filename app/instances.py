@@ -1,8 +1,9 @@
 """
 app/instances.py — Multi-instance OSDU configuration.
 
-Each instance is defined by env vars with the pattern INSTANCE_<NAME>_<KEY>.
-The "default" instance uses the existing top-level env vars.
+Every instance is defined by env vars with the pattern INSTANCE_<NAME>_<KEY>.
+There is no special "default" instance — eqndev (or whatever DEFAULT_INSTANCE
+points to) is loaded with the same INSTANCE_<NAME>_* scanner as every other.
 
 Token strategies (tried in order of preference):
   1. refresh_token  → uses stored REFRESH_TOKEN (user-level, preferred)
@@ -142,28 +143,11 @@ def _load_instances():
 
     Convention:
       INSTANCE_<NAME>_HOSTNAME, INSTANCE_<NAME>_DATA_PARTITION_ID, etc.
-    The "default" instance is always built from existing top-level env vars.
+    All instances (including eqndev) follow the same pattern.
+    The active instance defaults to DEFAULT_INSTANCE env var, or 'eqndev',
+    or the first instance found alphabetically.
     """
     global _active_instance_name
-
-    # Default instance (existing Equinor dev / whatever is in .env)
-    _rt = os.getenv("REFRESH_TOKEN", "") or os.getenv("refresh_token", "")
-    default = OsduInstance(
-        name="default",
-        hostname=os.getenv("OSDU_BASE_URL", "equinordev.energy.azure.com"),
-        data_partition_id=os.getenv("DATA_PARTITION_ID", "dev"),
-        tenant_id=os.getenv("AZURE_TENANT_ID", ""),
-        client_id=os.getenv("AZURE_CLIENT_ID", ""),
-        scope=os.getenv("AZURE_SCOPE", ""),
-        refresh_token=_rt,
-        default_legal_tag=os.getenv("DEFAULT_LEGAL_TAG", ""),
-        default_owners=os.getenv("DEFAULT_OWNERS", ""),
-        default_viewers=os.getenv("DEFAULT_VIEWERS", ""),
-        default_countries=os.getenv("DEFAULT_COUNTRIES", "NO"),
-        auth_mode="refresh_token" if _rt else "none",
-    )
-    _instances["default"] = default
-    _active_instance_name = "default"
 
     # Scan for INSTANCE_<NAME>_HOSTNAME patterns
     seen: set[str] = set()
@@ -213,6 +197,47 @@ def _load_instances():
         log.info("Registered OSDU instance '%s' → %s (partition=%s, auth=%s)",
                  inst_name, hostname, inst.data_partition_id, mode)
 
+    # ── Backward compat: create a "legacy" instance from old top-level vars
+    #    if no INSTANCE_* vars were found at all (migration aid) ──
+    if not _instances:
+        _rt = os.getenv("REFRESH_TOKEN", "") or os.getenv("refresh_token", "")
+        hostname = os.getenv("OSDU_BASE_URL", "")
+        if hostname:
+            log.warning("No INSTANCE_* env vars found — falling back to legacy "
+                        "top-level env vars (OSDU_BASE_URL, AZURE_TENANT_ID, …). "
+                        "Please migrate to INSTANCE_<NAME>_* format.")
+            legacy = OsduInstance(
+                name="legacy",
+                hostname=hostname,
+                data_partition_id=os.getenv("DATA_PARTITION_ID", "dev"),
+                tenant_id=os.getenv("AZURE_TENANT_ID", ""),
+                client_id=os.getenv("AZURE_CLIENT_ID", ""),
+                scope=os.getenv("AZURE_SCOPE", ""),
+                refresh_token=_rt,
+                default_legal_tag=os.getenv("DEFAULT_LEGAL_TAG", ""),
+                default_owners=os.getenv("DEFAULT_OWNERS", ""),
+                default_viewers=os.getenv("DEFAULT_VIEWERS", ""),
+                default_countries=os.getenv("DEFAULT_COUNTRIES", "NO"),
+                auth_mode="refresh_token" if _rt else "none",
+            )
+            _instances["legacy"] = legacy
+
+    # ── Choose active instance ──
+    preferred = os.getenv("DEFAULT_INSTANCE", "eqndev").lower()
+    if preferred in _instances:
+        _active_instance_name = preferred
+    elif _instances:
+        _active_instance_name = sorted(_instances.keys())[0]
+    else:
+        log.error("No OSDU instances configured! "
+                  "Set INSTANCE_<NAME>_HOSTNAME env vars (see k8s/configmap.yaml).")
+        # Create a dummy so callers don't crash
+        _instances["none"] = OsduInstance(name="none", hostname="")
+        _active_instance_name = "none"
+
+    # Apply active instance to osdu.py + auth.py module globals
+    _apply_instance(_instances[_active_instance_name])
+
 
 def get_instances() -> Dict[str, OsduInstance]:
     if not _instances:
@@ -236,8 +261,16 @@ def set_active(name: str) -> OsduInstance:
 
     _active_instance_name = name
     inst = _instances[name]
+    _apply_instance(inst)
 
-    # Update osdu.py module-level globals so all existing code works
+    log.info("Switched active instance → '%s' (%s, partition=%s)",
+             name, inst.hostname, inst.data_partition_id)
+    return inst
+
+
+def _apply_instance(inst: OsduInstance):
+    """Push instance config into osdu.py and auth.py module-level globals."""
+    # ── osdu.py ──
     import app.osdu as osdu_mod
     osdu_mod.OSDU_BASE_URL = inst.hostname
     osdu_mod.DATA_PARTITION_ID = inst.data_partition_id
@@ -249,9 +282,17 @@ def set_active(name: str) -> OsduInstance:
     osdu_mod.DEFAULT_VIEWERS = [x.strip() for x in (inst.default_viewers or f"data.default.viewers@{pfx}").split(",") if x.strip()]
     osdu_mod.DEFAULT_COUNTRIES = [x.strip() for x in (inst.default_countries or "NO").split(",") if x.strip()]
 
-    log.info("Switched active instance → '%s' (%s, partition=%s)",
-             name, inst.hostname, inst.data_partition_id)
-    return inst
+    # ── auth.py ──
+    import app.auth as auth_mod
+    auth_mod.TENANT = inst.tenant_id
+    auth_mod.CLIENT_ID = inst.client_id
+    scopes_str = inst.scope or "openid offline_access"
+    auth_mod.SCOPES = scopes_str.split()
+    auth_mod.AUTH_BASE = f"https://login.microsoftonline.com/{inst.tenant_id}/oauth2/v2.0"
+    auth_mod.AUTHORIZE_URL = f"{auth_mod.AUTH_BASE}/authorize"
+    auth_mod.TOKEN_URL = f"{auth_mod.AUTH_BASE}/token"
+    auth_mod.ENV_REFRESH_TOKEN = inst.refresh_token or None
+    auth_mod.AUTH_MODE = "env_token" if inst.refresh_token else "per_user_pkce"
 
 
 def get_active_name() -> str:

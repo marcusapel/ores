@@ -1,20 +1,19 @@
-pycache/
-.pyc
-.pyo
-.pyd
-.python-version
-~$
-.tmp
-.lock
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.python-version
+.venv/
+
+# Temp / lock files
 ~$*
 *.tmp
 *.lock
-.env
-.venv/
 
+# ── Secrets & local config (NEVER commit) ──
 k8s/secret.yaml
+k8s/secret-backup/
+
+# ── Project-specific ignores ──
 demo/eqn/

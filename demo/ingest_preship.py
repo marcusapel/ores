@@ -78,29 +78,18 @@ def parse_kind(kind: str) -> dict:
 # ── Instance config loader ───────────────────────────────────────────
 
 def load_instance_config(name: str) -> Dict[str, Any]:
-    """Build an instance config dict from INSTANCE_<NAME>_* env vars."""
-    # Load .env if python-dotenv is available
-    env_file = REPO_ROOT / ".env"
-    env: Dict[str, str] = {}
-    if env_file.exists():
-        try:
-            from dotenv import dotenv_values  # type: ignore
-            env = {k: v for k, v in dotenv_values(env_file).items() if v is not None}
-        except ImportError:
-            # Fallback: simple parser
-            for line in env_file.read_text().splitlines():
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                k, _, v = line.partition("=")
-                env[k.strip()] = v.strip()
-    # Also overlay os.environ so CLI overrides work
-    env.update(os.environ)
+    """Build an instance config dict from INSTANCE_<NAME>_* env vars.
+
+    Env vars must be set before running this script, e.g.:
+        eval "$(python k8s/env_from_k8s.py)" && python demo/ingest_preship.py
+    """
+    env: Dict[str, str] = dict(os.environ)
 
     prefix = f"INSTANCE_{name.upper()}_"
     raw = {k[len(prefix):].lower(): v for k, v in env.items() if k.startswith(prefix)}
     if not raw:
-        sys.exit(f"ERROR: no INSTANCE_{name.upper()}_* variables found in .env")
+        sys.exit(f"ERROR: no INSTANCE_{name.upper()}_* variables found. "
+                 f"Run: eval \"$(python k8s/env_from_k8s.py)\"")
 
     host = raw.get("hostname", "")
     if not host.startswith("http"):

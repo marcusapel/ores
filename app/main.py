@@ -9,9 +9,6 @@ import logging
 import json
 from typing import List, Dict, Any, Optional, Set
 
-from dotenv import load_dotenv
-load_dotenv()  # must run before any module reads os.getenv at import time
-
 import httpx
 from httpx import HTTPStatusError
 from fastapi import FastAPI, Request, Form, HTTPException
@@ -159,6 +156,11 @@ log.info("Routes registered: %s", [getattr(r, "path", str(r)) for r in app.route
 # Initialise instance registry at import time (reads INSTANCE_* env vars)
 _all_instances = get_instances()
 log.info("OSDU instances loaded: %s (active=%s)", list(_all_instances.keys()), get_active_name())
+
+# Re-sync template globals after instance init (auth_mode may have changed)
+from .auth import AUTH_MODE as _AUTH_MODE_AFTER_INIT
+templates.env.globals["auth_mode"] = _AUTH_MODE_AFTER_INIT
+
 # Add /api/instances/switch to PUBLIC_PATHS so it doesn't require a token
 # (switching happens before a valid token exists for the new instance)
 PUBLIC_PATHS.add("/api/instances")
@@ -188,6 +190,9 @@ async def api_switch_instance(name: str = Form(...)):
     """Switch the active OSDU instance."""
     try:
         inst = set_active(name)
+        # Re-sync Jinja globals after auth.py update
+        from .auth import AUTH_MODE as _am
+        templates.env.globals["auth_mode"] = _am
         # Try to mint a token immediately to validate connectivity
         token = await inst.get_access_token()
         return {
