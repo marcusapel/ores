@@ -4,10 +4,11 @@ app/instances.py — Multi-instance OSDU configuration.
 Each instance is defined by env vars with the pattern INSTANCE_<NAME>_<KEY>.
 The "default" instance uses the existing top-level env vars.
 
-Token strategies per instance:
-  - refresh_token  → PKCE / shared refresh (existing flow)
-  - client_credentials → client_id + client_secret (pre-ship, test envs)
-  - az_cli → az account get-access-token (Equinor tenant)
+Token strategies (tried in order of preference):
+  1. refresh_token  → uses stored REFRESH_TOKEN (user-level, preferred)
+  2. client_credentials → uses CLIENT_ID + CLIENT_SECRET (service-level fallback)
+
+Store *at least one of* REFRESH_TOKEN or CLIENT_SECRET per instance.
 """
 from __future__ import annotations
 
@@ -57,16 +58,22 @@ class OsduInstance:
         return f"{self.data_partition_id}.dataservices.energy" if self.data_partition_id else ""
 
     async def get_access_token(self) -> Optional[str]:
-        """Mint or return cached access_token for this instance."""
+        """Mint or return cached access_token for this instance.
+
+        Tries refresh_token first, then client_credentials.
+        """
         if self._cached_token and time.time() < self._cached_exp:
             return self._cached_token
 
         token = None
-        if self.auth_mode == "client_credentials" and self.client_secret:
-            token = await self._client_credentials()
-        elif self.auth_mode == "refresh_token" and self.refresh_token:
+
+        # 1. Prefer refresh_token (user-level access)
+        if self.refresh_token:
             token = await self._refresh_token_flow()
-        # az_cli mode handled externally (existing auth.py flow)
+
+        # 2. Fallback to client_credentials (service-principal)
+        if not token and self.client_secret:
+            token = await self._client_credentials()
 
         if token:
             self._cached_token = token["access_token"]
@@ -140,6 +147,7 @@ def _load_instances():
     global _active_instance_name
 
     # Default instance (existing Equinor dev / whatever is in .env)
+    _rt = os.getenv("REFRESH_TOKEN", "") or os.getenv("refresh_token", "")
     default = OsduInstance(
         name="default",
         hostname=os.getenv("OSDU_BASE_URL", "equinordev.energy.azure.com"),
@@ -147,12 +155,12 @@ def _load_instances():
         tenant_id=os.getenv("AZURE_TENANT_ID", ""),
         client_id=os.getenv("AZURE_CLIENT_ID", ""),
         scope=os.getenv("AZURE_SCOPE", ""),
-        refresh_token=os.getenv("REFRESH_TOKEN", "") or os.getenv("refresh_token", ""),
+        refresh_token=_rt,
         default_legal_tag=os.getenv("DEFAULT_LEGAL_TAG", ""),
         default_owners=os.getenv("DEFAULT_OWNERS", ""),
         default_viewers=os.getenv("DEFAULT_VIEWERS", ""),
         default_countries=os.getenv("DEFAULT_COUNTRIES", "NO"),
-        auth_mode="refresh_token" if (os.getenv("REFRESH_TOKEN") or os.getenv("refresh_token")) else "az_cli",
+        auth_mode="refresh_token" if _rt else "none",
     )
     _instances["default"] = default
     _active_instance_name = "default"
@@ -172,15 +180,17 @@ def _load_instances():
         if not hostname:
             continue  # skip incomplete entries
 
-        # Determine auth mode
+        # Describe auth mode based on available credentials
         client_secret = _get("CLIENT_SECRET")
         refresh = _get("REFRESH_TOKEN")
-        if client_secret:
-            mode = "client_credentials"
+        if refresh and client_secret:
+            mode = "refresh_token+client_credentials"
         elif refresh:
             mode = "refresh_token"
+        elif client_secret:
+            mode = "client_credentials"
         else:
-            mode = "az_cli"
+            mode = "none"
 
         inst = OsduInstance(
             name=inst_name,
