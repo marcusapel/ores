@@ -44,6 +44,7 @@ SEISINT_RECORDS   = SCRIPT_DIR / "seisint" / "records"
 SEISINT_SCHEMAS   = SCRIPT_DIR / "seisint" / "schemas" / "resolved"
 DEVCONCEPT_SCHEMA = SCRIPT_DIR / "drogon" / "schema_devconcept.json"
 CHRONOSTRAT_ZIP   = SCRIPT_DIR / "strat" / "chronostrat_records.zip"
+STRATCOLUMN_ZIP   = SCRIPT_DIR / "strat" / "stratcolumn_records.zip"
 
 # ── Instance config (populated by load_instance_config in main) ──────
 TARGET: Dict[str, Any] = {}
@@ -505,17 +506,21 @@ def main():
                 print(f"\n⚠ SeisInt records not found at {SEISINT_RECORDS}")
                 print("  Run the seisint pipeline first.")
 
-        # 5. Ingest chronostratigraphy records (from zip)
+        # 5. Ingest stratigraphy records (from zips)
         if "strat" in selected:
-            if CHRONOSTRAT_ZIP.exists():
-                recs = load_and_transform_zip(CHRONOSTRAT_ZIP)
-                print(f"  Loaded {len(recs)} chronostrat records from zip")
-                result = ingest_records_chunked(client, recs, "chronostrat",
-                                               dry_run=args.dry_run)
-                for k in totals:
-                    totals[k] += result[k]
-            else:
-                print(f"\n⚠ Chronostrat zip not found at {CHRONOSTRAT_ZIP}")
+            for zip_path, label in [
+                (CHRONOSTRAT_ZIP,  "chronostrat"),
+                (STRATCOLUMN_ZIP,  "stratcolumn"),
+            ]:
+                if zip_path.exists():
+                    recs = load_and_transform_zip(zip_path)
+                    print(f"  Loaded {len(recs)} {label} records from zip")
+                    result = ingest_records_chunked(client, recs, label,
+                                                   dry_run=args.dry_run)
+                    for k in totals:
+                        totals[k] += result[k]
+                else:
+                    print(f"\n⚠ {label} zip not found at {zip_path}")
 
         # Summary
         print("\n" + "=" * 60)

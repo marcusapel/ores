@@ -1604,7 +1604,7 @@ _MD_DIR = _Path(__file__).resolve().parent.parent / "md"
 # Items can optionally carry ``children`` (sub-articles shown indented).
 _HOWTO_SECTIONS: list[dict] = [
     {
-        "title": "Ores Design and Usage",
+        "title": "HowTo",
         "items": [
             {
                 "slug": "ores-overview",
