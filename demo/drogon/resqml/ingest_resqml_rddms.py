@@ -190,7 +190,7 @@ def create_dataspace(server_url: str, image: str, dataspace: str, *,
     base = etp_base_cmd(server_url, partition=partition, token=token)
     inner = f"/bin/openETPServer space {base} --new -s {dataspace}"
     if xdata:
-        xdata_json = json.dumps(xdata).replace('"', '\\"')
+        xdata_json = json.dumps(xdata)
         inner += f" --xdata '{xdata_json}'"
     return run_docker(
         docker_run_args(image, inner, network_host=network_host),
