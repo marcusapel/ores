@@ -23,6 +23,14 @@
 
 {% if dataspaces %}
   <h2>Dataspaces</h2>
+  <div style="display:flex;gap:.5rem;max-width:36rem;margin-bottom:.5rem;">
+    <input id="ds-filter-1" type="text" placeholder="First segment…"
+           style="flex:1;padding:.4rem .6rem;border:1px solid #ccc;border-radius:4px;">
+    <span style="align-self:center;color:#999;">/</span>
+    <input id="ds-filter-2" type="text" placeholder="Second segment…"
+           style="flex:1;padding:.4rem .6rem;border:1px solid #ccc;border-radius:4px;">
+  </div>
+  <div style="max-height:12rem;overflow-y:auto;border:1px solid #eee;border-radius:4px;padding:.25rem .5rem;">
   <ul id="ds-list">
     {% for ds_row in dataspaces %}
       {% set path = (ds_row.get('path') or ds_row.get('Path') or ds_row.get('DataspaceId', '')) if ds_row is mapping else ds_row %}
@@ -31,6 +39,8 @@
       </li>
     {% endfor %}
   </ul>
+  </div>
+  <p id="ds-count" class="muted" style="margin-top:.25rem;"></p>
 {% else %}
   <p class="muted">No dataspaces found.</p>
 {% endif %}
@@ -94,6 +104,32 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    // ----- Dataspace search / filter (two-segment) -----
+    const filter1 = document.getElementById('ds-filter-1');
+    const filter2 = document.getElementById('ds-filter-2');
+    const dsCount = document.getElementById('ds-count');
+    const allRows = Array.from(document.querySelectorAll('#ds-list li[data-path]'));
+    function applyFilter() {
+      const q1 = (filter1 ? filter1.value : '').trim().toLowerCase();
+      const q2 = (filter2 ? filter2.value : '').trim().toLowerCase();
+      let visible = 0;
+      allRows.forEach(li => {
+        const path = (li.getAttribute('data-path') || '').toLowerCase();
+        const parts = path.split('/');
+        const seg1 = parts[0] || '';
+        const seg2 = parts.slice(1).join('/');  // everything after first /
+        const match1 = !q1 || seg1.includes(q1);
+        const match2 = !q2 || seg2.includes(q2);
+        const show = match1 && match2;
+        li.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      if (dsCount) dsCount.textContent = `Showing ${visible} of ${allRows.length} dataspaces`;
+    }
+    if (filter1) filter1.addEventListener('input', applyFilter);
+    if (filter2) filter2.addEventListener('input', applyFilter);
+    applyFilter(); // initial count
+
     // ----- Build per-dataspace actions -----
     const rows = document.querySelectorAll('#ds-list li[data-path]');
     rows.forEach(li => {
