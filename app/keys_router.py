@@ -445,6 +445,33 @@ async def keys_objects(
 
 # ── route: manifest building ──────────────────────────────────────────────────
 
+# Types whose URIs crash the RDDMS manifests/build endpoint (server 500).
+# Grid2dRepresentation carries large HDF5 array data that the builder
+# cannot serialise; EpcExternalPartReference is an internal packaging
+# artefact with no OSDU WPC mapping.
+_MANIFEST_SKIP_TYPES = {
+    "obj_Grid2dRepresentation",
+    "obj_EpcExternalPartReference",
+}
+
+def _uri_has_skip_type(uri: str) -> bool:
+    """Return True if *uri* contains a type known to crash manifests/build."""
+    for t in _MANIFEST_SKIP_TYPES:
+        if t in uri:
+            return True
+    return False
+
+def _filter_manifest_uris(uris: Set[str]) -> tuple[Set[str], Set[str]]:
+    """Partition *uris* into (safe, skipped) sets."""
+    safe: Set[str] = set()
+    skipped: Set[str] = set()
+    for u in uris:
+        if _uri_has_skip_type(u):
+            skipped.add(u)
+        else:
+            safe.add(u)
+    return safe, skipped
+
 def _add_node_uri(node: Dict[str, Any], uris: Set[str], ds: str) -> None:
     """Extract the EML URI from a RDDMS graph node and add it to *uris*."""
     uri = node.get("uri") or ""
@@ -496,10 +523,22 @@ async def dataspaces_manifest_build_uris(
         for node in (targets or []):
             if isinstance(node, dict): _add_node_uri(node, uris, ds)
 
+    safe_uris, skipped = _filter_manifest_uris(uris)
+    if not safe_uris:
+        skipped_types = {u.split("/")[-1].split("(")[0] for u in skipped}
+        return JSONResponse(
+            {"status": "error", "code": 422,
+             "reason": "No buildable URIs",
+             "detail": (f"All {len(skipped)} URI(s) were skipped because their types "
+                        f"({', '.join(sorted(skipped_types))}) are not supported by "
+                        "the RDDMS manifests/build endpoint.")},
+            status_code=422,
+        )
+
     try:
         manifest = await osdu.build_manifest_for_uris(
             at,
-            sorted(uris),
+            sorted(safe_uris),
             legal_tag=legal or osdu.DEFAULT_LEGAL_TAG,
             owners=[x.strip() for x in owners.split(",") if x.strip()],
             viewers=[x.strip() for x in viewers.split(",") if x.strip()],
@@ -518,7 +557,11 @@ async def dataspaces_manifest_build_uris(
             status_code=r.status_code or 500,
         )
     request.app.state.last_manifest = manifest
-    return JSONResponse({"status": "ok", "countUris": len(uris), "manifest": manifest})
+    result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
+    if skipped:
+        result["skippedUris"] = len(skipped)
+        result["skippedTypes"] = sorted({u.split("/")[-1].split("(")[0] for u in skipped})
+    return JSONResponse(result)
 
 @router.post("/dataspaces/manifest/build-from-selection",
           summary="Build manifest from multiple selected objects")
@@ -601,11 +644,24 @@ async def dataspaces_manifest_build_from_selection(
             for node in (targets or []):
                 if isinstance(node, dict): _add_node_uri(node, uris, ds)
 
-    # 4) Call the manifest builder
+    # 4) Filter out types that crash manifests/build
+    safe_uris, skipped = _filter_manifest_uris(uris)
+    if not safe_uris:
+        skipped_types = {u.split("/")[-1].split("(")[0] for u in skipped}
+        return JSONResponse(
+            {"status": "error", "code": 422,
+             "reason": "No buildable URIs",
+             "detail": (f"All {len(skipped)} URI(s) were skipped because their types "
+                        f"({', '.join(sorted(skipped_types))}) are not supported by "
+                        "the RDDMS manifests/build endpoint.")},
+            status_code=422,
+        )
+
+    # 5) Call the manifest builder
     try:
         manifest = await osdu.build_manifest_for_uris(
             at,
-            sorted(uris),
+            sorted(safe_uris),
             legal_tag=legal,
             owners=owners,
             viewers=viewers,
@@ -625,9 +681,13 @@ async def dataspaces_manifest_build_from_selection(
         )
 
     request.app.state.last_manifest = manifest
-    log.info("Manifest build: ds_paths=%d items=%d raw_uris=%d → uris=%d",
-             len(ds_paths), len(items), len(raw_uris), len(uris))
-    return JSONResponse({"status": "ok", "countUris": len(uris), "manifest": manifest})
+    log.info("Manifest build: ds_paths=%d items=%d raw_uris=%d → safe=%d skipped=%d",
+             len(ds_paths), len(items), len(raw_uris), len(safe_uris), len(skipped))
+    result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
+    if skipped:
+        result["skippedUris"] = len(skipped)
+        result["skippedTypes"] = sorted({u.split("/")[-1].split("(")[0] for u in skipped})
+    return JSONResponse(result)
 
 
 # ── StructureMap:1.0.0 endpoints (M27) ───────────────────────────────────────
