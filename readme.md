@@ -4,43 +4,73 @@ A FastAPI-based administrative UI for an OSDU-style RDDMS (Reservoir Data / Deci
 
 ---
 
-## What the client can do
+## Quick start
 
-| Page | Purpose |
-|------|---------|
-| **RddmsAdmin** (`/`) | List and manage OSDU Dataspaces — create, lock, unlock, delete, build manifests |
-| **RddmsResources** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
-| **OsduSearch** (`/search`) | Query the OSDU Search API and view results with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet, etc.) |
-| **Analyse** (`/analyse`) | Select a Reservoir, compare Business Decisions across decision gates (DG1→DG4) with volume/risk/economics deltas and charts |
-| **Add DG** (`/add-dg`) | Create and ingest a new BusinessDecision for an existing Reservoir, linking REV, GeoLabelSet, Activity and Risk records |
-| **Stratigraphy** (`/strat`) | Preview and ingest stratigraphic column records |
-| **HowTo** (`/howto`) | Browse grouped markdown documentation articles (BD modelling, SeisInt, CRS, Stratigraphy) |
+```bash
+# 1. Clone
+git clone https://github.com/equinor/ores.git
+cd ores
 
-Key rendering features:
+# 2. Install dependencies (Python 3.11+)
+pip install -r requirements.txt
+
+# 3. Configure secrets
+cp k8s/secret.yaml.template k8s/secret.yaml
+# Edit k8s/secret.yaml — fill in your OSDU tenant IDs, client IDs, tokens, API keys
+# Edit k8s/configmap.yaml — verify hostnames, partitions, legal tags
+# secret.yaml is gitignored — never commit it
+
+# 4. Run
+eval "$(python k8s/env_from_k8s.py)" && python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
+```
+
+Open <http://127.0.0.1:8000/> in a browser.
+
+### Run with Docker (alternative)
+
+```bash
+docker build -t ores .
+docker run -p 8000:8000 --env-file <(python k8s/env_from_k8s.py | sed 's/^export //') ores
+```
+
+### Troubleshooting
+
+- **Missing env vars?** — Run `python k8s/env_from_k8s.py` standalone to inspect what gets exported.
+- **Auth issues?** — Ensure `SECRET_KEY`, tenant IDs, and client IDs are set in `k8s/secret.yaml`.
+- **Port in use?** — Change `--port 8000` to another port.
+
+---
+
+## Pages
+
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/` | RddmsAdmin | Manage OSDU Dataspaces — create, lock, unlock, delete, build manifests |
+| `/keys` | RddmsResources | Browse dataspaces, record types, individual objects; inspect table & graph data |
+| `/search` | OsduSearch | Query the OSDU Search API with kind-specific cards (BD, REV, Risk, GeoLabelSet) |
+| `/analyse` | Analyse | Compare Business Decisions across decision gates (DG1→DG4) with volume/risk/economics deltas |
+| `/add-dg` | Add DG | Create and ingest a new BusinessDecision, linking REV, GeoLabelSet, Activity and Risk records |
+| `/strat` | Stratigraphy | Preview and ingest stratigraphic column records |
+| `/howto` | HowTo | Grouped markdown documentation articles (BD modelling, SeisInt, CRS, Stratigraphy) |
+
+### Key rendering features
 
 - **BD cards** — gradient header, headline volume KPIs (three-tier fallback: stat WPC → GeoLabelSet → ext.equinor), development concept, reservoir properties, economics, schedule, production forecast chart, alternatives, risk chips, uncertainties, authors & governance.
 - **REV cards** — teal-themed with P10/P50/P90 headlines, metadata highlights, full volume table.
-- **Analyse comparison** — gate timeline, side-by-side metric deltas (STOIIP, NPV, CAPEX, etc.), risk diff chips (added/removed/mitigated), property diffs, synthesis insights, Chart.js overlay charts.
+- **Analyse comparison** — gate timeline, side-by-side metric deltas (STOIIP, NPV, CAPEX, etc.), risk diff chips, property diffs, synthesis insights, Chart.js overlay charts.
 - **Mermaid relationship graphs** — interactive record-relationship diagrams with ancestry, data references, type-based styling.
 - **Local BD enrichment overlay** — OSDU silently drops custom `ext.equinor` keys during ingestion; the app loads manifests at startup and merges them back at render time.
 
 ## Requirements
 
-### Runtime
-
-| Requirement | Version |
-|-------------|---------|
-| Python | 3.11+ |
-| FastAPI | 0.115+ |
-| uvicorn | 0.32+ |
-| httpx | (latest) |
-
-
-Install all dependencies:
-
-```bash
-pip install -r requirements.txt
-```
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| Python | 3.11+ | 3.12 recommended |
+| FastAPI | 0.115+ | |
+| uvicorn | 0.32+ | |
+| httpx | latest | |
+| Chart.js 4 | CDN | No npm install needed |
+| Mermaid 10 | CDN | No npm install needed |
 
 ### Configuration (k8s YAML)
 
@@ -53,26 +83,6 @@ Config lives in two files under `k8s/`:
 | `k8s/secret.yaml.template` | Yes | Empty template — copy to `secret.yaml` and fill in |
 
 Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars split across both files.
-
-### Frontend (CDN — no npm install)
-
-- **Chart.js 4** — production forecast & comparison charts
-- **Mermaid 10** — relationship graph rendering
-
-### Quick start
-
-```bash
-# 1. Copy the secret template and fill in your credentials
-cp k8s/secret.yaml.template k8s/secret.yaml
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run the server
-eval "$(python k8s/env_from_k8s.py)" && python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
-```
-
-Open <http://127.0.0.1:8000/> in a browser.
 
 ---
 
