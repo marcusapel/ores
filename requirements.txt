@@ -1,9 +1,9 @@
 # Runtime requirements for the ORES web app (Python 3.12)
 # Pinned FastAPI/Pydantic/Starlette to avoid IncEx import errors
-fastapi==0.115.6
-starlette==0.41.3
-pydantic==2.10.6
-uvicorn[standard]==0.32.1
+fastapi==0.136.0
+starlette==1.0.0
+pydantic==2.13.2
+uvicorn[standard]==0.44.0
 
 # HTTP client / templating
 httpx>=0.24.0
