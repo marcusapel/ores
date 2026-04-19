@@ -123,7 +123,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=_SECRET_KEY,
     session_cookie="ores_session",
-    max_age=8 * 3600,          # 8 h session lifetime
+    max_age=30 * 24 * 3600,    # 30-day session cookie (RT kept alive via tokenstore)
     same_site="lax",
     https_only=False,           # allow http in local dev; set True behind TLS in prod
 )
