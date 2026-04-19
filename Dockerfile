@@ -28,7 +28,7 @@ COPY demo/         ./demo/
 COPY md/           ./md/
 
 # Own everything by the non-root user
-RUN chown -R ores:ores /app
+RUN mkdir -p /data && chown -R ores:ores /app /data
 
 USER ores
 

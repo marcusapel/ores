@@ -14,6 +14,7 @@ Store *at least one of* REFRESH_TOKEN or CLIENT_SECRET per instance.
 from __future__ import annotations
 
 import os
+import threading
 import time
 import logging
 from dataclasses import dataclass, field
@@ -22,6 +23,10 @@ from typing import Optional, Dict
 import httpx
 
 log = logging.getLogger("rddms-admin.instances")
+
+# Lock for instance switching — serialises _apply_instance to prevent
+# partially-updated module globals during concurrent requests (#8).
+_switch_lock = threading.Lock()
 
 
 @dataclass
@@ -254,14 +259,15 @@ def get_active() -> OsduInstance:
 def set_active(name: str) -> OsduInstance:
     """Switch the active instance. Returns the new active instance."""
     global _active_instance_name
-    if not _instances:
-        _load_instances()
-    if name not in _instances:
-        raise ValueError(f"Unknown instance: {name!r}. Available: {list(_instances.keys())}")
+    with _switch_lock:
+        if not _instances:
+            _load_instances()
+        if name not in _instances:
+            raise ValueError(f"Unknown instance: {name!r}. Available: {list(_instances.keys())}")
 
-    _active_instance_name = name
-    inst = _instances[name]
-    _apply_instance(inst)
+        _active_instance_name = name
+        inst = _instances[name]
+        _apply_instance(inst)
 
     log.info("Switched active instance → '%s' (%s, partition=%s)",
              name, inst.hostname, inst.data_partition_id)

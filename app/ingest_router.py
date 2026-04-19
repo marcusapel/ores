@@ -22,6 +22,7 @@ with the manifest JSON to trigger immediate ingestion.
 from __future__ import annotations
 
 import os
+import time
 import uuid
 import json
 from typing import Any, Dict, Optional
@@ -33,9 +34,28 @@ from . import osdu as _osdu_mod
 
 router = APIRouter()
 
-# Simple in-memory manifest store (last N manifests). Not for production.
-_MAX_ITEMS = 100
+# Simple in-memory manifest store (last N manifests, with TTL eviction).
+_MAX_ITEMS = 50
+_MAX_AGE_S = 3600  # 1 hour
 _MANIFESTS: Dict[str, Dict[str, Any]] = {}
+_MANIFEST_TS: Dict[str, float] = {}
+
+
+def _store_manifest(manifest_id: str, manifest: Dict[str, Any]) -> None:
+    """Store a manifest with TTL-based and size-based eviction."""
+    now = time.time()
+    # Evict expired entries
+    expired = [k for k, ts in _MANIFEST_TS.items() if now - ts > _MAX_AGE_S]
+    for k in expired:
+        _MANIFESTS.pop(k, None)
+        _MANIFEST_TS.pop(k, None)
+    # Evict oldest if still over limit
+    while len(_MANIFESTS) >= _MAX_ITEMS and _MANIFEST_TS:
+        oldest = min(_MANIFEST_TS, key=_MANIFEST_TS.get)  # type: ignore[arg-type]
+        _MANIFESTS.pop(oldest, None)
+        _MANIFEST_TS.pop(oldest, None)
+    _MANIFESTS[manifest_id] = manifest
+    _MANIFEST_TS[manifest_id] = now
 
 
 def _get_env(name: str, default: Optional[str] = None) -> Optional[str]:
@@ -107,35 +127,19 @@ async def _post_workflow_run(
 
 
 def _find_access_token(request: Request) -> Optional[str]:
-    """Try to retrieve the access_token from common places used in the app.
+    """Retrieve the access_token from the request context.
 
-    We DO NOT mint new tokens here to keep the existing auth workflow intact.
+    Primary source is ``request.state`` (set by the auth middleware).
+    Falls back to the ``Authorization`` header for direct API calls.
     """
-    # 1) Starlette session (requires SessionMiddleware configured in main.py)
-    access_token = None
-    try:
-        session = getattr(request, 'session', None)
-        if isinstance(session, dict):
-            access_token = session.get('access_token') or session.get('token')
-    except Exception:
-        access_token = None
+    # 1) Request state (set by auth middleware for all authenticated paths)
+    access_token = getattr(request.state, 'access_token', None)
 
-    # 2) Request state (some apps stash tokens here)
-    if not access_token:
-        try:
-            access_token = getattr(request.state, 'access_token', None)
-        except Exception:
-            access_token = None
-
-    # 3) Authorization header forwarded from the browser (if UI passes it)
+    # 2) Authorization header fallback
     if not access_token:
         auth = request.headers.get('Authorization')
         if auth and auth.lower().startswith('bearer '):
             access_token = auth.split(' ', 1)[1]
-
-    # 4) Cookie (if app sets a cookie named 'access_token')
-    if not access_token:
-        access_token = request.cookies.get('access_token')
 
     return access_token
 
@@ -169,16 +173,9 @@ async def ingest_manifest(
     if method not in ("workflow", "storage"):
         raise HTTPException(status_code=400, detail="'method' must be 'workflow' or 'storage'")
 
-    # Store manifest in memory (cap to last N items)
+    # Store manifest in memory (with TTL + size eviction)
     manifest_id = str(uuid.uuid4())
-    _MANIFESTS[manifest_id] = manifest
-    if len(_MANIFESTS) > _MAX_ITEMS:
-        # remove oldest
-        try:
-            oldest_key = next(iter(_MANIFESTS.keys()))
-            _MANIFESTS.pop(oldest_key, None)
-        except StopIteration:
-            pass
+    _store_manifest(manifest_id, manifest)
 
     # Resolve configuration
     base_url = _get_env("OSDU_BASE_URL")
@@ -433,7 +430,7 @@ async def rddms_build_manifest(request: Request) -> JSONResponse:
 
     # Stash for later retrieval / inspection
     manifest_id = str(uuid.uuid4())
-    _MANIFESTS[manifest_id] = manifest
+    _store_manifest(manifest_id, manifest)
 
     # Count records by section
     counts = {}
@@ -511,7 +508,7 @@ async def rddms_index(request: Request) -> JSONResponse:
 
     # Stash manifest
     manifest_id = str(uuid.uuid4())
-    _MANIFESTS[manifest_id] = manifest
+    _store_manifest(manifest_id, manifest)
     run_id = str(uuid.uuid4())
 
     # Step 2: Ingest

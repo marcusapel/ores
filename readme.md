@@ -109,9 +109,10 @@ When no shared instance token is configured (or for users who want their own ide
 
 **On subsequent visits (including after server restarts):**
 
-- If the session cookie is still valid and the access token has not expired → served immediately.
-- If the access token is expired → silently refreshed using the session's refresh token.
-- If the session cookie has expired or the server restarted → the `oid` stored in the cookie is used to look up the persisted refresh token from SQLite and mint a new access token automatically — **no re-login required**.
+- If the session cookie is still valid and the in-memory AT cache has a fresh token → served immediately.
+- If the access token cache has expired → silently refreshed from the encrypted RT in SQLite.
+- If the server restarted (memory cache empty) but the session cookie is still valid (within 30 days) → the `oid` in the cookie is used to look up the persisted refresh token from SQLite and mint a new access token automatically — **no re-login required**.
+- If the session cookie itself has expired (browser deleted it) → user must log in again.
 
 Users are only prompted to log in again if their Azure AD refresh token itself expires (typically 90 days of inactivity) or they explicitly click **Logout** (which also deletes the stored token from the DB).
 
@@ -121,14 +122,16 @@ Users are only prompted to log in again if their Azure AD refresh token itself e
 |---------|---------|----------|
 | DB path (k8s) | `/data/ores_tokens.db` | `TOKEN_DB_PATH` env var |
 | DB path (local) | `./ores_tokens.db` | `TOKEN_DB_PATH` env var |
+| Encryption | Fernet (derived from `SECRET_KEY`) | Automatic when `cryptography` is installed |
 
 The database is a single SQLite file with one table:
 
 ```
-users(oid TEXT PRIMARY KEY, upn TEXT, refresh_token TEXT, updated_at REAL)
+sessions(oid TEXT, instance_name TEXT, refresh_token_enc TEXT, upn TEXT, updated_at REAL)
+PRIMARY KEY (oid, instance_name)
 ```
 
-It stores **only** the refresh token — no passwords, no access tokens, no personal data beyond the UPN.
+Refresh tokens are **encrypted at rest** using Fernet symmetric encryption derived from `SECRET_KEY`. Access tokens are cached **in-memory only** and never written to disk. The session cookie carries only the user's `oid` and `instance_name` — no tokens or personal data.
 
 ---
 
@@ -152,6 +155,8 @@ kubectl apply -f k8s/ingress.yaml
 ### Persisting the token database across pod restarts
 
 Without a persistent volume the SQLite token DB lives in the pod's ephemeral filesystem and is lost on restart, forcing all users to re-login.  Mount a PVC at `/data`:
+
+> **Note:** The deployment uses `replicas: 1` because SQLite does not support concurrent writers across pods.  For multi-replica HA, replace SQLite with a shared store (e.g. PostgreSQL, Redis).
 
 **1. Create a PersistentVolumeClaim** (add to `k8s/` or inline in `deployment.yaml`):
 
@@ -192,13 +197,15 @@ Copy `k8s/secret.yaml.template` → `k8s/secret.yaml` and fill in at minimum:
 
 | Key | Purpose |
 |-----|---------|
-| `SECRET_KEY` | Signs session cookies — must be identical across all replicas |
+| `SECRET_KEY` | Signs session cookies **and** encrypts stored refresh tokens — must be identical across all replicas |
 | `INSTANCE_<NAME>_TENANT_ID` | Azure AD tenant for the OSDU instance |
 | `INSTANCE_<NAME>_CLIENT_ID` | App registration client ID |
 | `INSTANCE_<NAME>_REFRESH_TOKEN` | Shared refresh token (optional — enables zero-click mode) |
 | `INSTANCE_<NAME>_CLIENT_SECRET` | Service principal secret (alternative to refresh token) |
 
-> **Multi-replica deployments:** `SECRET_KEY` must be the same on every pod, otherwise session cookies from one pod are rejected by another.  Set it explicitly in `k8s/secret.yaml` rather than leaving it to auto-generate.
+> **Multi-replica deployments:** `SECRET_KEY` must be the same on every pod, otherwise session cookies from one pod are rejected by another and stored tokens cannot be decrypted.  Set it explicitly in `k8s/secret.yaml` rather than leaving it to auto-generate.
+>
+> Set `HTTPS_ONLY=true` in production deployments behind TLS to mark session cookies as `Secure`.
 
 ---
 
@@ -209,6 +216,7 @@ app/
   main.py              # FastAPI app: routes, BD enrichment, volume helpers
   auth.py              # PKCE sign-in, token exchange & refresh
   tokenstore.py        # SQLite-backed persistent refresh-token store (per user)
+  common.py            # Shared helpers (access_token, search_reservoirs)
   osdu.py              # OSDU API client (Search, Storage, Workflow)
   ingest_router.py     # Manifest ingestion endpoints
   analyse.py           # Analyse page: reservoir comparison across DGs
@@ -306,6 +314,7 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 | App entry | `app/main.py` |
 | Auth | `app/auth.py` |
 | Token store | `app/tokenstore.py` |
+| Shared helpers | `app/common.py` |
 | OSDU client | `app/osdu.py` |
 | Ingest API | `app/ingest_router.py` |
 | Analyse page | `app/analyse.py` |

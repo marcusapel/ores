@@ -8,7 +8,14 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-from .tokenstore import upsert as _ts_upsert, fetch as _ts_fetch, delete as _ts_delete, decode_id_token_payload
+from .tokenstore import (
+    upsert as _ts_upsert,
+    fetch as _ts_fetch,
+    delete as _ts_delete,
+    decode_id_token_payload,
+    get_cached_at as _ts_get_cached_at,
+    set_cached_at as _ts_set_cached_at,
+)
 
 log = logging.getLogger("rddms-admin")
 
@@ -55,7 +62,7 @@ _cached_env_token_exp: float = 0.0
 
 async def tokens_from_env() -> Optional[Dict[str, Any]]:
     """Mint access_token from the shared REFRESH_TOKEN in env.  Returns None if unavailable."""
-    global _cached_env_token, _cached_env_token_exp
+    global _cached_env_token, _cached_env_token_exp, ENV_REFRESH_TOKEN
     if not ENV_REFRESH_TOKEN or not CLIENT_ID or not TENANT:
         return None
     if _cached_env_token and time.time() < _cached_env_token_exp:
@@ -68,9 +75,21 @@ async def tokens_from_env() -> Optional[Dict[str, Any]]:
             refresh_token=ENV_REFRESH_TOKEN,
             scope=" ".join(SCOPES),
         )
+    # Rotate the refresh token if Azure AD issued a new one (#15)
+    new_rt = token.get("refresh_token") or ENV_REFRESH_TOKEN
+    if new_rt != ENV_REFRESH_TOKEN:
+        ENV_REFRESH_TOKEN = new_rt
+        try:
+            from .instances import get_active
+            active = get_active()
+            if active.refresh_token:
+                active.refresh_token = new_rt
+        except Exception:
+            pass
+        log.info("Env refresh token rotated")
     result = {
         "access_token": token.get("access_token"),
-        "refresh_token": token.get("refresh_token") or ENV_REFRESH_TOKEN,
+        "refresh_token": new_rt,
         "expires_in": token.get("expires_in"),
         "id_token": token.get("id_token", ""),
     }
@@ -103,9 +122,15 @@ async def login(request: Request):
     request.session["pkce_state"] = state
     request.session["redirect_uri"] = redirect_uri
 
+    # Ensure offline_access is present so Azure AD returns a refresh token (#16)
+    login_scopes = list(SCOPES)
+    if "offline_access" not in login_scopes:
+        login_scopes.append("offline_access")
+        log.warning("offline_access missing from SCOPES — added for PKCE login")
+
     async with AsyncOAuth2Client(
         client_id=CLIENT_ID,
-        scope=" ".join(SCOPES),
+        scope=" ".join(login_scopes),
         redirect_uri=redirect_uri,
         code_challenge_method="S256",
     ) as cli:
@@ -147,25 +172,29 @@ async def auth_callback(request: Request):
     # Clean up PKCE state
     request.session.pop("pkce_verifier", None)
     request.session.pop("pkce_state", None)
+    request.session.pop("redirect_uri", None)
 
     id_token_raw = token.get("id_token", "")
     claims = decode_id_token_payload(id_token_raw)
     oid = claims.get("oid", "")
     upn = claims.get("preferred_username") or claims.get("upn") or claims.get("email", "")
     rt = token.get("refresh_token", "")
+    at = token.get("access_token", "")
+    exp = time.time() + int(token.get("expires_in", 3600)) - 60
 
-    request.session["access_token"] = token.get("access_token", "")
-    request.session["refresh_token"] = rt
-    request.session["token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
-    request.session["user"] = id_token_raw
+    # Session cookie carries ONLY non-sensitive identifiers (#3)
+    from .instances import get_active_name
+    inst_name = get_active_name()
     request.session["oid"] = oid
+    request.session["instance_name"] = inst_name
 
-    # Persist refresh token so the user survives server restarts
+    # Tokens stored server-side only (encrypted in SQLite, AT cached in-memory)
     if oid and rt:
-        _ts_upsert(oid, rt, upn)
-        log.info("PKCE login successful for %s (oid=%s...), token persisted", upn, oid[:8])
+        _ts_upsert(oid, inst_name, rt, upn)
+        _ts_set_cached_at(oid, inst_name, at, exp)
+        log.info("PKCE login successful (oid=%s…), token persisted", oid[:8])
     else:
-        log.info("PKCE login successful (OSDU), redirecting to /")
+        log.info("PKCE login successful, redirecting to /")
     return RedirectResponse("/")
 
 
@@ -173,58 +202,73 @@ async def auth_callback(request: Request):
 async def logout(request: Request):
     """Clear session, remove persisted token, and redirect to home."""
     oid = request.session.get("oid", "")
+    instance_name = request.session.get("instance_name", "")
     if oid:
-        _ts_delete(oid)
+        _ts_delete(oid, instance_name)
     request.session.clear()
     return RedirectResponse("/login")
 
 
 async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
-    """Return OSDU access token from session, refreshing if expired.
+    """Return access token using server-side stores only.
+
+    The session cookie contains **only** the user's ``oid`` and the
+    ``instance_name`` they logged in against.  All sensitive tokens live
+    server-side (encrypted in SQLite + in-memory AT cache).
 
     Recovery order:
-      1. Session access_token still valid → return immediately.
-      2. Session refresh_token present    → use it to mint a new access_token.
-      3. No session RT, but stored OID    → load RT from SQLite tokenstore and mint.
-      4. Everything failed                → return None (caller redirects to /login).
+      1. In-memory AT cache still valid → return immediately.
+      2. SQLite RT → mint a new AT, cache it, return.
+      3. Nothing available → return None (caller redirects to /login).
     """
-    at = request.session.get("access_token")
-    exp = request.session.get("token_exp", 0)
-
-    if at and time.time() < exp:
-        return {"access_token": at}
-
-    # Determine the best refresh token to use
-    rt = request.session.get("refresh_token")
-
-    # If session has no RT (e.g. after server restart), try the persistent store
-    if not rt:
-        oid = request.session.get("oid", "")
-        if oid:
-            rt = _ts_fetch(oid)
-            if rt:
-                log.info("Restored refresh token from tokenstore for oid=%s...", oid[:8])
-
-    if not rt:
+    oid = request.session.get("oid", "")
+    instance_name = request.session.get("instance_name", "")
+    if not oid:
         return None
 
+    # 1. In-memory AT cache
+    cached_at = _ts_get_cached_at(oid, instance_name)
+    if cached_at:
+        return {"access_token": cached_at}
+
+    # 2. Fetch RT from SQLite
+    rt = _ts_fetch(oid, instance_name)
+    if not rt:
+        log.debug("No stored RT for oid=%s inst=%s", oid[:8], instance_name)
+        return None
+
+    # Resolve instance config for the correct token endpoint (#5)
     try:
-        async with AsyncOAuth2Client(client_id=CLIENT_ID, scope=SCOPES) as cli:
+        from .instances import get_instances, get_active
+        instances = get_instances()
+        inst = instances.get(instance_name) or get_active()
+        client_id = inst.client_id
+        scopes = (inst.scope or "openid offline_access").split()
+        token_url = inst.token_url
+    except Exception:
+        client_id = CLIENT_ID
+        scopes = SCOPES
+        token_url = TOKEN_URL
+
+    try:
+        async with AsyncOAuth2Client(client_id=client_id, scope=scopes) as cli:
             token = await cli.fetch_token(
-                TOKEN_URL,
+                token_url,
                 grant_type="refresh_token",
                 refresh_token=rt,
-                scope=" ".join(SCOPES),
+                scope=" ".join(scopes),
             )
         new_rt = token.get("refresh_token") or rt
-        request.session["access_token"] = token.get("access_token", "")
-        request.session["refresh_token"] = new_rt
-        request.session["token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
-        # Keep the persistent store up-to-date with the latest RT
-        oid = request.session.get("oid", "")
-        if oid and new_rt:
-            _ts_upsert(oid, new_rt)
-        return {"access_token": token["access_token"]}
+        new_at = token.get("access_token", "")
+        new_exp = time.time() + int(token.get("expires_in", 3600)) - 60
+
+        # Update server-side stores
+        _ts_set_cached_at(oid, instance_name, new_at, new_exp)
+        if new_rt != rt:
+            _ts_upsert(oid, instance_name, new_rt)
+
+        log.info("Minted AT from stored RT for oid=%s inst=%s", oid[:8], instance_name)
+        return {"access_token": new_at}
     except Exception as e:
         log.warning("Session refresh failed: %s — redirecting to login", e)
         return None
@@ -311,7 +355,7 @@ async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────
 @router.get("/auth")
 async def auth_info(request: Request):
-    logged_in = bool(request.session.get("access_token")) if hasattr(request, "session") else False
+    logged_in = bool(request.session.get("oid")) if hasattr(request, "session") else False
     return {
         "azure_tenant": TENANT[:8] + "..." if TENANT else "",
         "client_id": CLIENT_ID[:8] + "..." if CLIENT_ID else "",

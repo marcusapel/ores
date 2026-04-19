@@ -30,10 +30,8 @@ templates = Jinja2Templates(
 
 
 def _access_token(request: Request) -> str:
-    at = getattr(request.state, "access_token", None)
-    if not at:
-        raise HTTPException(401, "Authentication required")
-    return at
+    from .common import access_token as _at
+    return _at(request)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -114,53 +112,10 @@ async def _search_decision_levels(
 async def _search_reservoirs(
     request: Request, query: str = "*", limit: int = 50,
 ) -> List[Dict[str, str]]:
-    """Search for Reservoir master-data records, de-dupe by base ID."""
+    """Shared helper via common.search_reservoirs (parallel fetches, no N+1)."""
     at = _access_token(request)
-    search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
-    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
-    hdr = osdu.headers(at)
-
-    payload = {
-        "kind": "osdu:wks:master-data--Reservoir:2.0.0",
-        "query": query,
-        "limit": min(int(limit), 100),
-        "returnedFields": ["id", "kind", "version"],
-        "trackTotalCount": True,
-    }
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.post(search_url, json=payload, headers=hdr)
-        if not r.is_success:
-            log.warning("Reservoir search failed: %s", r.text[:300])
-            return []
-        results = r.json().get("results", [])
-
-    # De-dupe by base ID (strip version suffix), keep highest version
-    seen: Dict[str, Dict] = {}
-    for rec in results:
-        rid = rec.get("id", "")
-        base = rid.rsplit(":", 1)[0] if ":" in rid else rid
-        ver = rec.get("version", 0)
-        if base not in seen or ver > seen[base].get("version", 0):
-            seen[base] = rec
-
-    out = []
-    for rec in seen.values():
-        rid = rec.get("id", "")
-        # Fetch the name from storage
-        name = rid.split("--Reservoir:")[-1].split(":")[0] if "--Reservoir:" in rid else rid
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                sr = await client.get(f"{storage_url}/{rid}", headers=hdr)
-                if sr.is_success:
-                    sdata = sr.json()
-                    name = sdata.get("data", {}).get("Name", name)
-        except Exception:
-            pass
-        out.append({"id": rid, "name": name})
-
-    out.sort(key=lambda x: x["name"])
-    return out
+    from .common import search_reservoirs
+    return await search_reservoirs(at, query=query, limit=limit)
 
 
 @router.get("/add-dg/reservoirs", summary="JSON: reservoir list")
