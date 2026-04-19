@@ -52,6 +52,7 @@ app = FastAPI(title="RDDMS Admin")
 
 # ── Stable secret key (must be identical across workers) ─────────────────────
 _SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(16)
+_HTTPS_ONLY = os.getenv("HTTPS_ONLY", "false").lower() in ("1", "true", "yes")
 
 # Security headers & cache hardening
 @app.middleware("http")
@@ -125,7 +126,7 @@ app.add_middleware(
     session_cookie="ores_session",
     max_age=30 * 24 * 3600,    # 30-day session cookie (RT kept alive via tokenstore)
     same_site="lax",
-    https_only=False,           # allow http in local dev; set True behind TLS in prod
+    https_only=_HTTPS_ONLY,    # set HTTPS_ONLY=true in prod behind TLS
 )
 
 app.include_router(auth_router)  # keeps /auth diagnostics
@@ -134,6 +135,13 @@ app.include_router(strat_router)
 app.include_router(analyse_router)
 app.include_router(addgate_router)
 app.include_router(keys_router)
+
+
+# Close shared httpx client on shutdown (#9)
+@app.on_event("shutdown")
+async def _shutdown():
+    await osdu.close_shared_client()
+
 
 app.mount(
     "/static",
@@ -243,23 +251,27 @@ async def api_add_instance(request: Request):
 
     PREFIX = f"INSTANCE_{name.upper()}_"
 
+    # ── Sanitize form values for safe YAML inclusion (#14) ──
+    def _safe(v: str) -> str:
+        return re.sub(r'["\n\r\\]', '', (v or '')).strip()
+
     # ── Collect fields from form ──
     config_fields = {
-        "HOSTNAME": form.get("hostname", "").strip(),
-        "DATA_PARTITION_ID": form.get("data_partition_id", "opendes").strip(),
-        "AUTHORITY": form.get("authority", "osdu").strip(),
-        "SCHEMA_SOURCE": form.get("schema_source", "wks").strip(),
-        "DEFAULT_LEGAL_TAG": form.get("default_legal_tag", "").strip(),
-        "DEFAULT_OWNERS": form.get("default_owners", "").strip(),
-        "DEFAULT_VIEWERS": form.get("default_viewers", "").strip(),
-        "DEFAULT_COUNTRIES": form.get("default_countries", "NO").strip(),
+        "HOSTNAME": _safe(form.get("hostname", "")),
+        "DATA_PARTITION_ID": _safe(form.get("data_partition_id", "opendes")),
+        "AUTHORITY": _safe(form.get("authority", "osdu")),
+        "SCHEMA_SOURCE": _safe(form.get("schema_source", "wks")),
+        "DEFAULT_LEGAL_TAG": _safe(form.get("default_legal_tag", "")),
+        "DEFAULT_OWNERS": _safe(form.get("default_owners", "")),
+        "DEFAULT_VIEWERS": _safe(form.get("default_viewers", "")),
+        "DEFAULT_COUNTRIES": _safe(form.get("default_countries", "NO")),
     }
     secret_fields = {
-        "TENANT_ID": form.get("tenant_id", "").strip(),
-        "CLIENT_ID": form.get("client_id", "").strip(),
-        "CLIENT_SECRET": form.get("client_secret", "").strip(),
-        "SCOPE": form.get("scope", "").strip(),
-        "REFRESH_TOKEN": form.get("refresh_token", "").strip(),
+        "TENANT_ID": _safe(form.get("tenant_id", "")),
+        "CLIENT_ID": _safe(form.get("client_id", "")),
+        "CLIENT_SECRET": _safe(form.get("client_secret", "")),
+        "SCOPE": _safe(form.get("scope", "")),
+        "REFRESH_TOKEN": _safe(form.get("refresh_token", "")),
     }
 
     if not config_fields["HOSTNAME"]:
@@ -342,10 +354,8 @@ async def login_page(request: Request):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _access_token(request: Request) -> str:
-    at = getattr(request.state, "access_token", None)
-    if not at:
-        raise HTTPException(401, "Authentication failed")
-    return at
+    from .common import access_token as _at
+    return _at(request)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

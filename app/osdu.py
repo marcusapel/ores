@@ -66,6 +66,15 @@ async def _http(timeout: float = 60) -> AsyncIterator[httpx.AsyncClient]:
     yield _shared_client
 
 
+async def close_shared_client() -> None:
+    """Close the module-level HTTP client. Called on app shutdown (#9)."""
+    global _shared_client
+    if _shared_client is not None and not _shared_client.is_closed:
+        await _shared_client.aclose()
+        _shared_client = None
+        log.info("Shared httpx client closed")
+
+
 def _rddms_url(path: str = "") -> str:
     """Build a Reservoir-DDMS v2 URL.  *path* is appended after the base."""
     return f"https://{OSDU_BASE_URL}/api/reservoir-ddms/v2{path}"

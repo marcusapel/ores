@@ -34,10 +34,8 @@ router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 def _access_token(request: Request) -> str:
-    at = getattr(request.state, "access_token", None)
-    if not at:
-        raise HTTPException(401, "Authentication failed")
-    return at
+    from .common import access_token as _at
+    return _at(request)
 
 async def _osdu_get_record(request: Request, record_id: str) -> dict:
     at = _access_token(request)
@@ -107,6 +105,11 @@ def _flat_unit_fields(unit_rec: dict, chrono_rec: dict) -> dict:
 def _label_from_ref_id(val: str) -> str:
     if not val:
         return ""
+    parts = val.strip().split(":")
+    if len(parts) >= 2 and parts[-1] == "":
+        return parts[-2]
+    return parts[-1] if parts else val
+
 
 def _fmt_ma(v) -> str:
     """Format an age in Ma for display in synthetic unit labels."""
@@ -116,10 +119,6 @@ def _fmt_ma(v) -> str:
     if f == int(f):
         return str(int(f))
     return f"{f:.2f}".rstrip("0").rstrip(".")
-    parts = val.strip().split(":")
-    if len(parts) >= 2 and parts[-1] == "":
-        return parts[-2]
-    return parts[-1] if parts else val
 
 @router.get("/strat", response_class=HTMLResponse)
 async def strat_page(request: Request):

@@ -45,10 +45,8 @@ log = logging.getLogger("rddms-admin.keys")
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _access_token(request: Request) -> str:
-    at = getattr(request.state, "access_token", None)
-    if not at:
-        raise HTTPException(401, "Authentication failed")
-    return at
+    from .common import access_token as _at
+    return _at(request)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -28,10 +28,8 @@ templates = Jinja2Templates(
 
 
 def _access_token(request: Request) -> str:
-    at = getattr(request.state, "access_token", None)
-    if not at:
-        raise HTTPException(401, "Authentication failed")
-    return at
+    from .common import access_token as _at
+    return _at(request)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -71,61 +69,10 @@ async def analyse_page(request: Request):
 async def _search_reservoirs(
     request: Request, query: str = "*", limit: int = 50,
 ) -> List[Dict[str, str]]:
-    """Shared helper: search for Reservoir master-data records.
-
-    De-duplicates on record-id base (ignoring version suffix) and keeps
-    only the newest version so callers never see stale copies.
-    """
+    """Shared helper via common.search_reservoirs."""
     at = _access_token(request)
-    search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
-    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
-    hdr = osdu.headers(at)
-
-    payload = {
-        "kind": "osdu:wks:master-data--Reservoir:2.0.0",
-        "query": query,
-        "limit": min(int(limit), 100),
-        "returnedFields": ["id", "kind", "version"],
-        "trackTotalCount": True,
-    }
-
-    raw: List[Dict[str, str]] = []
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(search_url, headers=hdr, json=payload)
-            r.raise_for_status()
-            res = r.json()
-            for hit in res.get("results", []):
-                rid = hit.get("id")
-                if not rid:
-                    continue
-                name = rid
-                version = str(hit.get("version") or "")
-                try:
-                    rf = await client.get(f"{storage_url}/{rid}", headers=hdr)
-                    if rf.status_code == 200:
-                        d = (rf.json() or {}).get("data", {}) or {}
-                        name = d.get("Name") or d.get("Description") or rid
-                        version = version or str((rf.json() or {}).get("version") or "")
-                except Exception:
-                    pass
-                raw.append({"id": rid, "name": name, "version": version})
-    except Exception as e:
-        log.warning("[ANALYSE] Reservoir search failed: %s", e)
-
-    # De-duplicate: strip trailing ":N" version to get a stable base id,
-    # then keep only the entry whose version number is highest.
-    best: Dict[str, Dict[str, str]] = {}
-    for entry in raw:
-        rid = entry["id"]
-        # base id = everything up to (but not including) the last colon-number
-        parts = rid.rsplit(":", 1)
-        base = parts[0] if len(parts) == 2 and parts[1].isdigit() else rid
-        existing = best.get(base)
-        if existing is None or int(entry.get("version") or 0) > int(existing.get("version") or 0):
-            best[base] = entry
-
-    return list(best.values())
+    from .common import search_reservoirs
+    return await search_reservoirs(at, query=query, limit=limit)
 
 
 @router.get("/analyse/reservoirs", response_class=JSONResponse)

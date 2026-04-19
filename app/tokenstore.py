@@ -1,118 +1,218 @@
 """
 app/tokenstore.py — Persistent per-user refresh-token store.
 
-Tokens are persisted in a SQLite database so that users remain logged in
-across server restarts.  The database path defaults to
-``/data/ores_tokens.db`` (writable in k8s via a PVC) and falls back to
-``./ores_tokens.db`` in the current working directory for local dev.
+Security features:
+  • Refresh tokens are **encrypted at rest** using Fernet symmetric
+    encryption derived from ``SECRET_KEY``.
+  • Composite primary key ``(oid, instance_name)`` so tokens from
+    different OSDU instances never collide.
+  • A single module-level SQLite connection protected by a
+    ``threading.Lock`` avoids "database is locked" errors.
+  • Access tokens are cached **in-memory only** (never persisted).
 
-Schema
-------
-users(oid TEXT PRIMARY KEY, upn TEXT, refresh_token TEXT, updated_at REAL)
+The database path defaults to ``/data/ores_tokens.db`` (writable in k8s
+via a PVC) and falls back to ``./ores_tokens.db`` for local dev.
+Override with the ``TOKEN_DB_PATH`` env var.
 
-``oid`` is the Azure AD Object-ID extracted from the PKCE id_token JWT
-payload — it is stable across re-logins and is never shown to the user.
+Schema (v2)
+-----------
+sessions(oid, instance_name, refresh_token_enc, upn, updated_at)
 """
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import logging
 import os
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Optional
 
 log = logging.getLogger("rddms-admin.tokenstore")
 
-# ── DB path ──────────────────────────────────────────────────────────────────
+# ── Encryption (Fernet from cryptography, derived from SECRET_KEY) ───────────
+
+_fernet = None
+_fernet_init = False          # distinguish "not yet tried" from "unavailable"
+
+
+def _get_fernet():
+    global _fernet, _fernet_init
+    if _fernet_init:
+        return _fernet
+    _fernet_init = True
+    try:
+        from cryptography.fernet import Fernet
+        key = os.getenv("SECRET_KEY", "")
+        if not key:
+            log.warning("SECRET_KEY not set — token encryption uses empty key (INSECURE)")
+            key = "insecure-default"
+        dk = hashlib.sha256(key.encode()).digest()
+        _fernet = Fernet(base64.urlsafe_b64encode(dk))
+    except ImportError:
+        log.warning("cryptography package not installed — tokens stored unencrypted")
+        _fernet = None
+    return _fernet
+
+
+def _encrypt(plaintext: str) -> str:
+    f = _get_fernet()
+    if f:
+        return f.encrypt(plaintext.encode()).decode()
+    return plaintext
+
+
+def _decrypt(ciphertext: str) -> Optional[str]:
+    f = _get_fernet()
+    if not f:
+        return ciphertext
+    try:
+        return f.decrypt(ciphertext.encode()).decode()
+    except Exception:
+        log.warning("tokenstore: decryption failed (SECRET_KEY changed?) — token invalidated")
+        return None
+
+
+# ── DB connection (module-level, lazy, thread-safe) ──────────────────────────
+
 _DEFAULT_PATHS = ["/data/ores_tokens.db", "./ores_tokens.db"]
+
+_db_path: Optional[Path] = None
+_conn: Optional[sqlite3.Connection] = None
+_lock = threading.Lock()
+
 
 def _resolve_db_path() -> Path:
     env = os.getenv("TOKEN_DB_PATH")
-    if env:
-        return Path(env)
-    for p in _DEFAULT_PATHS:
+    candidates = [env] if env else _DEFAULT_PATHS
+    for p in candidates:
+        if not p:
+            continue
         try:
             path = Path(p)
             path.parent.mkdir(parents=True, exist_ok=True)
-            # quick write-test
             path.touch(exist_ok=True)
             return path
         except OSError:
             continue
     return Path("./ores_tokens.db")
 
-DB_PATH: Path = _resolve_db_path()
 
-
-# ── Schema init ──────────────────────────────────────────────────────────────
 def _get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS users (
-               oid          TEXT PRIMARY KEY,
-               upn          TEXT,
-               refresh_token TEXT NOT NULL,
-               updated_at   REAL NOT NULL
+    """Return the module-level connection, creating it on first call."""
+    global _conn, _db_path
+    if _conn is not None:
+        return _conn
+    if _db_path is None:
+        _db_path = _resolve_db_path()
+    _conn = sqlite3.connect(str(_db_path), check_same_thread=False)
+    _conn.execute("PRAGMA journal_mode=WAL")
+    _conn.execute(
+        """CREATE TABLE IF NOT EXISTS sessions (
+               oid             TEXT NOT NULL,
+               instance_name   TEXT NOT NULL DEFAULT '',
+               refresh_token_enc TEXT NOT NULL,
+               upn             TEXT DEFAULT '',
+               updated_at      REAL NOT NULL,
+               PRIMARY KEY (oid, instance_name)
            )"""
     )
-    conn.commit()
-    return conn
+    _conn.commit()
+    log.info("tokenstore: opened %s", _db_path)
+    return _conn
+
+
+# ── In-memory access-token cache (never persisted) ──────────────────────────
+
+_at_cache: dict[tuple[str, str], tuple[str, float]] = {}
+
+
+def get_cached_at(oid: str, instance: str) -> Optional[str]:
+    """Return a cached access token if still valid, else ``None``."""
+    cached = _at_cache.get((oid, instance))
+    if cached and time.time() < cached[1]:
+        return cached[0]
+    return None
+
+
+def set_cached_at(oid: str, instance: str, at: str, exp: float) -> None:
+    """Cache an access token in memory (never written to disk)."""
+    _at_cache[(oid, instance)] = (at, exp)
+
+
+def clear_cached_at(oid: str, instance: str) -> None:
+    _at_cache.pop((oid, instance), None)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
-def upsert(oid: str, refresh_token: str, upn: str = "") -> None:
-    """Persist (or update) the refresh token for a user identified by OID."""
+
+def upsert(oid: str, instance: str, refresh_token: str, upn: str = "") -> None:
+    """Persist (or update) the refresh token for ``(oid, instance)``."""
     if not oid or not refresh_token:
         return
+    enc = _encrypt(refresh_token)
     try:
-        with _get_conn() as conn:
+        with _lock:
+            conn = _get_conn()
             conn.execute(
-                """INSERT INTO users (oid, upn, refresh_token, updated_at)
-                   VALUES (?, ?, ?, ?)
-                   ON CONFLICT(oid) DO UPDATE SET
-                       upn          = excluded.upn,
-                       refresh_token = excluded.refresh_token,
-                       updated_at   = excluded.updated_at""",
-                (oid, upn, refresh_token, time.time()),
+                """INSERT INTO sessions (oid, instance_name, refresh_token_enc, upn, updated_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(oid, instance_name) DO UPDATE SET
+                       refresh_token_enc = excluded.refresh_token_enc,
+                       upn               = excluded.upn,
+                       updated_at        = excluded.updated_at""",
+                (oid, instance, enc, upn, time.time()),
             )
-        log.debug("tokenstore: upserted token for oid=%s upn=%s", oid[:8], upn)
+            conn.commit()
+        log.debug("tokenstore: upserted for oid=%s inst=%s", oid[:8], instance)
     except Exception as exc:
         log.warning("tokenstore.upsert failed: %s", exc)
 
 
-def fetch(oid: str) -> Optional[str]:
-    """Return the stored refresh token for *oid*, or None."""
+def fetch(oid: str, instance: str) -> Optional[str]:
+    """Return the decrypted refresh token for ``(oid, instance)``, or ``None``."""
     if not oid:
         return None
     try:
-        with _get_conn() as conn:
+        with _lock:
+            conn = _get_conn()
             row = conn.execute(
-                "SELECT refresh_token FROM users WHERE oid = ?", (oid,)
+                "SELECT refresh_token_enc FROM sessions WHERE oid = ? AND instance_name = ?",
+                (oid, instance),
             ).fetchone()
         if row:
-            log.debug("tokenstore: found stored token for oid=%s", oid[:8])
-            return row[0]
+            return _decrypt(row[0])
     except Exception as exc:
         log.warning("tokenstore.fetch failed: %s", exc)
     return None
 
 
-def delete(oid: str) -> None:
+def delete(oid: str, instance: str = "") -> None:
     """Remove a user's stored token (called on logout)."""
     if not oid:
         return
     try:
-        with _get_conn() as conn:
-            conn.execute("DELETE FROM users WHERE oid = ?", (oid,))
-        log.debug("tokenstore: deleted token for oid=%s", oid[:8])
+        with _lock:
+            conn = _get_conn()
+            if instance:
+                conn.execute(
+                    "DELETE FROM sessions WHERE oid = ? AND instance_name = ?",
+                    (oid, instance),
+                )
+            else:
+                conn.execute("DELETE FROM sessions WHERE oid = ?", (oid,))
+            conn.commit()
+        clear_cached_at(oid, instance)
+        log.debug("tokenstore: deleted for oid=%s inst=%s", oid[:8], instance)
     except Exception as exc:
         log.warning("tokenstore.delete failed: %s", exc)
 
 
 # ── JWT payload helper ────────────────────────────────────────────────────────
+
 def _b64pad(s: str) -> str:
     return s + "=" * (-len(s) % 4)
 
