@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 from authlib.integrations.httpx_client import AsyncOAuth2Client
+from .tokenstore import upsert as _ts_upsert, fetch as _ts_fetch, delete as _ts_delete, decode_id_token_payload
 
 log = logging.getLogger("rddms-admin")
 
@@ -147,34 +148,66 @@ async def auth_callback(request: Request):
     request.session.pop("pkce_verifier", None)
     request.session.pop("pkce_state", None)
 
+    id_token_raw = token.get("id_token", "")
+    claims = decode_id_token_payload(id_token_raw)
+    oid = claims.get("oid", "")
+    upn = claims.get("preferred_username") or claims.get("upn") or claims.get("email", "")
+    rt = token.get("refresh_token", "")
+
     request.session["access_token"] = token.get("access_token", "")
-    request.session["refresh_token"] = token.get("refresh_token", "")
+    request.session["refresh_token"] = rt
     request.session["token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
-    request.session["user"] = token.get("id_token", "")
-    log.info("PKCE login successful (OSDU), redirecting to /")
+    request.session["user"] = id_token_raw
+    request.session["oid"] = oid
+
+    # Persist refresh token so the user survives server restarts
+    if oid and rt:
+        _ts_upsert(oid, rt, upn)
+        log.info("PKCE login successful for %s (oid=%s...), token persisted", upn, oid[:8])
+    else:
+        log.info("PKCE login successful (OSDU), redirecting to /")
     return RedirectResponse("/")
 
 
 @router.get("/logout")
 async def logout(request: Request):
-    """Clear session and redirect to home."""
+    """Clear session, remove persisted token, and redirect to home."""
+    oid = request.session.get("oid", "")
+    if oid:
+        _ts_delete(oid)
     request.session.clear()
     return RedirectResponse("/login")
 
 
 async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
-    """Return OSDU access token from session, refreshing if expired."""
-    at = request.session.get("access_token")
-    if not at:
-        return None
+    """Return OSDU access token from session, refreshing if expired.
 
+    Recovery order:
+      1. Session access_token still valid → return immediately.
+      2. Session refresh_token present    → use it to mint a new access_token.
+      3. No session RT, but stored OID    → load RT from SQLite tokenstore and mint.
+      4. Everything failed                → return None (caller redirects to /login).
+    """
+    at = request.session.get("access_token")
     exp = request.session.get("token_exp", 0)
-    if time.time() < exp:
+
+    if at and time.time() < exp:
         return {"access_token": at}
 
+    # Determine the best refresh token to use
     rt = request.session.get("refresh_token")
+
+    # If session has no RT (e.g. after server restart), try the persistent store
+    if not rt:
+        oid = request.session.get("oid", "")
+        if oid:
+            rt = _ts_fetch(oid)
+            if rt:
+                log.info("Restored refresh token from tokenstore for oid=%s...", oid[:8])
+
     if not rt:
         return None
+
     try:
         async with AsyncOAuth2Client(client_id=CLIENT_ID, scope=SCOPES) as cli:
             token = await cli.fetch_token(
@@ -183,9 +216,14 @@ async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
                 refresh_token=rt,
                 scope=" ".join(SCOPES),
             )
+        new_rt = token.get("refresh_token") or rt
         request.session["access_token"] = token.get("access_token", "")
-        request.session["refresh_token"] = token.get("refresh_token") or rt
+        request.session["refresh_token"] = new_rt
         request.session["token_exp"] = time.time() + int(token.get("expires_in", 3600)) - 60
+        # Keep the persistent store up-to-date with the latest RT
+        oid = request.session.get("oid", "")
+        if oid and new_rt:
+            _ts_upsert(oid, new_rt)
         return {"access_token": token["access_token"]}
     except Exception as e:
         log.warning("Session refresh failed: %s — redirecting to login", e)

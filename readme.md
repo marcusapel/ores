@@ -86,12 +86,129 @@ Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars split across both 
 
 ---
 
+## Authentication & persistent sessions
+
+The app supports two authentication modes that are tried in order on every request:
+
+| Priority | Mode | When used |
+|----------|------|-----------|
+| 1 | **Instance token** | `INSTANCE_<NAME>_REFRESH_TOKEN` or `INSTANCE_<NAME>_CLIENT_SECRET` set in `k8s/secret.yaml` — zero-click, shared across all users |
+| 2 | **Per-user PKCE** | No shared token available — each browser user is redirected to Azure AD login once |
+
+### Per-user PKCE login (remote/multi-user deployments)
+
+When no shared instance token is configured (or for users who want their own identity), the app redirects to Azure AD, performs an OAuth2 Authorization Code + PKCE exchange, and stores the resulting tokens.
+
+**What happens after first login:**
+
+1. The user is redirected to Azure AD and signs in with their Equinor/Azure account.
+2. The app receives an `access_token` + `refresh_token` and an `id_token`.
+3. The `id_token` is decoded to extract the user's stable Azure AD Object-ID (`oid`) and UPN.
+4. The `refresh_token` is persisted to a local SQLite database (`app/tokenstore.py`) keyed by `oid`.
+5. A **30-day** signed session cookie is set in the browser.
+
+**On subsequent visits (including after server restarts):**
+
+- If the session cookie is still valid and the access token has not expired → served immediately.
+- If the access token is expired → silently refreshed using the session's refresh token.
+- If the session cookie has expired or the server restarted → the `oid` stored in the cookie is used to look up the persisted refresh token from SQLite and mint a new access token automatically — **no re-login required**.
+
+Users are only prompted to log in again if their Azure AD refresh token itself expires (typically 90 days of inactivity) or they explicitly click **Logout** (which also deletes the stored token from the DB).
+
+### Token database
+
+| Setting | Default | Override |
+|---------|---------|----------|
+| DB path (k8s) | `/data/ores_tokens.db` | `TOKEN_DB_PATH` env var |
+| DB path (local) | `./ores_tokens.db` | `TOKEN_DB_PATH` env var |
+
+The database is a single SQLite file with one table:
+
+```
+users(oid TEXT PRIMARY KEY, upn TEXT, refresh_token TEXT, updated_at REAL)
+```
+
+It stores **only** the refresh token — no passwords, no access tokens, no personal data beyond the UPN.
+
+---
+
+## Kubernetes deployment
+
+### Basic deployment
+
+```bash
+# Apply all manifests
+kubectl apply -k k8s/
+
+# Or individually
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml       # fill in from secret.yaml.template first
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/ingress.yaml
+```
+
+### Persisting the token database across pod restarts
+
+Without a persistent volume the SQLite token DB lives in the pod's ephemeral filesystem and is lost on restart, forcing all users to re-login.  Mount a PVC at `/data`:
+
+**1. Create a PersistentVolumeClaim** (add to `k8s/` or inline in `deployment.yaml`):
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ores-data
+  namespace: ores
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 100Mi
+```
+
+**2. Mount it in `k8s/deployment.yaml`:**
+
+```yaml
+spec:
+  containers:
+    - name: ores
+      # ... existing config ...
+      volumeMounts:
+        - name: ores-data
+          mountPath: /data
+  volumes:
+    - name: ores-data
+      persistentVolumeClaim:
+        claimName: ores-data
+```
+
+With this in place, the token DB at `/data/ores_tokens.db` survives pod restarts and redeployments, and remote users never need to re-authenticate.
+
+### Required secrets (`k8s/secret.yaml`)
+
+Copy `k8s/secret.yaml.template` → `k8s/secret.yaml` and fill in at minimum:
+
+| Key | Purpose |
+|-----|---------|
+| `SECRET_KEY` | Signs session cookies — must be identical across all replicas |
+| `INSTANCE_<NAME>_TENANT_ID` | Azure AD tenant for the OSDU instance |
+| `INSTANCE_<NAME>_CLIENT_ID` | App registration client ID |
+| `INSTANCE_<NAME>_REFRESH_TOKEN` | Shared refresh token (optional — enables zero-click mode) |
+| `INSTANCE_<NAME>_CLIENT_SECRET` | Service principal secret (alternative to refresh token) |
+
+> **Multi-replica deployments:** `SECRET_KEY` must be the same on every pod, otherwise session cookies from one pod are rejected by another.  Set it explicitly in `k8s/secret.yaml` rather than leaving it to auto-generate.
+
+---
+
 ## Project layout
 
 ```text
 app/
   main.py              # FastAPI app: routes, BD enrichment, volume helpers
   auth.py              # PKCE sign-in, token exchange & refresh
+  tokenstore.py        # SQLite-backed persistent refresh-token store (per user)
   osdu.py              # OSDU API client (Search, Storage, Workflow)
   ingest_router.py     # Manifest ingestion endpoints
   analyse.py           # Analyse page: reservoir comparison across DGs
@@ -188,6 +305,7 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 |----------|------|
 | App entry | `app/main.py` |
 | Auth | `app/auth.py` |
+| Token store | `app/tokenstore.py` |
 | OSDU client | `app/osdu.py` |
 | Ingest API | `app/ingest_router.py` |
 | Analyse page | `app/analyse.py` |
