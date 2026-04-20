@@ -4,6 +4,9 @@
 get_token.py — Mint an access token from the active instance's credentials
 and print it (plus shell-eval snippets so you can export it directly).
 
+Delegates the actual token exchange to ``demo/_auth.py`` so the logic
+lives in a single place.
+
 Usage:
   python get_token.py                  # print token only
   python get_token.py --shell bash     # print:  export TOKEN=...
@@ -28,12 +31,17 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-import httpx
+# ── Wire up demo/_auth.py (single source of truth for token minting) ─────
+_DEMO_DIR = str(Path(__file__).resolve().parent.parent / "demo")
+if _DEMO_DIR not in sys.path:
+    sys.path.insert(0, _DEMO_DIR)
+
+from _auth import get_token as _auth_get_token  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent
 
 
-# ── env loader ───────────────────────────────────────────────────────────
+# ── env loader (kept for backward compat) ────────────────────────────────
 
 def load_env() -> Dict[str, str]:
     """Return current environment variables."""
@@ -55,41 +63,17 @@ def _resolve_instance_env(env: Dict[str, str], instance: str | None = None) -> D
 
 # ── Token exchange ───────────────────────────────────────────────────────
 def get_access_token(env: Dict[str, str], instance: str | None = None) -> Dict[str, str]:
-    resolved = _resolve_instance_env(env, instance)
-    tenant        = resolved["AZURE_TENANT_ID"]
-    client_id     = resolved["AZURE_CLIENT_ID"]
-    scope         = resolved["AZURE_SCOPE"]
-    refresh_token = resolved["REFRESH_TOKEN"]
+    """Mint an access token via _auth.get_token().
 
-    missing = [k for k, v in {
-        "AZURE_TENANT_ID": tenant,
-        "AZURE_CLIENT_ID": client_id,
-        "AZURE_SCOPE": scope,
-        "REFRESH_TOKEN": refresh_token,
-    }.items() if not v]
-    if missing:
-        raise RuntimeError(f"Missing required env vars: {', '.join(missing)}")
-
-    url = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
-    resp = httpx.post(url, data={
-        "grant_type":    "refresh_token",
-        "client_id":     client_id,
-        "refresh_token": refresh_token,
-        "scope":         scope,
-    }, timeout=30)
-
-    if not resp.is_success:
-        raise RuntimeError(f"Token request failed ({resp.status_code}): {resp.text[:400]}")
-
-    data = resp.json()
-    access_token = data.get("access_token")
-    if not access_token:
-        raise RuntimeError(f"No access_token in response. Keys: {list(data.keys())}")
-
+    Returns a dict with ``access_token``, ``expires_in``, ``token_type``
+    for backward compatibility with the original interface.
+    """
+    inst_name = (instance or env.get("DEFAULT_INSTANCE", "eqndev")).lower()
+    token = _auth_get_token(inst_name, verbose=False)
     return {
-        "access_token": access_token,
-        "expires_in":   str(data.get("expires_in", "?")),
-        "token_type":   data.get("token_type", "Bearer"),
+        "access_token": token,
+        "expires_in":   "3600",
+        "token_type":   "Bearer",
     }
 
 

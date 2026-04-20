@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import math
 import os
@@ -10,7 +11,16 @@ from typing import Any, AsyncIterator
 import urllib.parse
 import httpx
 
+from .cache import cached_call
+
 log = logging.getLogger("rddms-admin.osdu")
+
+# ── Global concurrency limiter ───────────────────────────────────────────────
+# Limits how many simultaneous HTTP requests the app sends to external APIs.
+# Prevents saturating the OSDU backend during fan-out operations like search
+# enrichment.  Default 20; override via OSDU_MAX_CONCURRENT env var.
+_MAX_CONCURRENT = int(os.getenv("OSDU_MAX_CONCURRENT", "20"))
+API_SEMAPHORE = asyncio.Semaphore(_MAX_CONCURRENT)
 
 # ----------------------------------------------------------------------
 # Environment & defaults
@@ -94,11 +104,13 @@ def headers(access_token: str) -> dict[str, str]:
 # ----------------------------------------------------------------------
 
 async def list_dataspaces(access_token: str) -> list[dict[str, Any]]:
-    """GET /api/reservoir-ddms/v2/dataspaces"""
-    async with _http() as client:
-        r = await client.get(_rddms_url("/dataspaces"), headers=headers(access_token))
-        r.raise_for_status()
-        return r.json() or []
+    """GET /api/reservoir-ddms/v2/dataspaces  (cached 120 s)"""
+    async def _fetch(at: str) -> list[dict[str, Any]]:
+        async with _http() as client:
+            r = await client.get(_rddms_url("/dataspaces"), headers=headers(at))
+            r.raise_for_status()
+            return r.json() or []
+    return await cached_call("list_dataspaces", 120, _fetch, access_token)
 
 async def create_dataspace(
     access_token: str,

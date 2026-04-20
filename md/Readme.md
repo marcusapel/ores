@@ -82,22 +82,35 @@ Open <http://127.0.0.1:8000/> in a browser.
 app/
   main.py              # FastAPI app: routes, BD enrichment, volume helpers
   auth.py              # PKCE sign-in, token exchange & refresh
-  osdu.py              # OSDU API client (Search, Storage, Workflow)
+  tokenstore.py        # SQLite-backed persistent refresh-token store (per user)
+  common.py            # Shared helpers (access_token, search_reservoirs, cached)
+  osdu.py              # OSDU API client (Search, Storage, Workflow, semaphore)
+  cache.py             # Async TTL cache with thundering-herd protection
+  instances.py         # OsduInstance dataclass & instance resolution
   ingest_router.py     # Manifest ingestion endpoints
+  keys_router.py       # /keys page: browse dataspaces, types, objects
   analyse.py           # Analyse page: reservoir comparison across DGs
   addgate.py           # Add DG page: create new BusinessDecision records
   schemahandler.py     # JSON schema & manifest helpers
   strat.py             # Stratigraphy manifest builders
+  structuremap.py      # Structure-map helpers
+  get_token.py         # CLI: mint access token (delegates to demo/_auth.py)
   templates/           # Jinja2 HTML templates
   static/              # JS/CSS assets
 
 demo/
+  _auth.py             # Central auth module — k8s/env/.env resolution & token minting
+  gettoken.py          # CLI: mint token, list instances, --from-k8s, --export
+  dataspacecopy.py     # Copy records between OSDU dataspaces
   run_pipeline.py      # Generic cross-platform pipeline runner
   drogon/              # Drogon DG1 pipeline (self-contained)
   drogon_dg2/          # Drogon DG2 pipeline (references drogon/ for shared data)
   seisint/             # Volantis seismic interpretation pipeline (RDDMS)
   strat/               # Stratigraphic column manifests and tools
+
+tests/                 # pytest test suite (135+ tests)
 md/                    # Documentation and guides (rendered via /howto)
+k8s/                   # Kubernetes manifests (configmap, secret, deployment)
 ```
 
 ---
@@ -172,16 +185,59 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 
 ---
 
+## Demo token tools
+
+Token minting is centralised in `demo/_auth.py` — the single source of truth for
+k8s YAML loading, instance resolution (k8s → env → `.env`), and OAuth2 token exchange
+(both `refresh_token` and `client_credentials` grants).
+
+| File | Purpose |
+|------|--------|
+| `demo/_auth.py` | Shared module: `get_token()`, `load_instance()`, `api_headers()`, `base_url()` — imported by all demo scripts |
+| `demo/gettoken.py` | Rich CLI: `--from-k8s`, `--list`, `--export`, `--json` — thin wrapper around `_auth` |
+| `app/get_token.py` | Minimal CLI: `--shell bash\|pwsh`, `--instance` — also delegates to `_auth` |
+
+---
+
+## Performance & caching
+
+| Feature | Module | Detail |
+|---------|--------|--------|
+| TTL cache | `app/cache.py` | `ttl_cache` decorator / `cached_call()` with per-key `asyncio.Lock` |
+| Dataspace list | `app/osdu.py` | Cached 120 s |
+| Reservoir search | `app/common.py` | Cached 90 s |
+| API concurrency | `app/osdu.py` | `API_SEMAPHORE` (default 20, override via `OSDU_MAX_CONCURRENT`) |
+| Parallel fetches | `app/addgate.py`, `app/analyse.py`, `app/keys_router.py` | `asyncio.gather` for independent OSDU calls |
+
+---
+
+## Tests
+
+```bash
+python -m pytest tests/ -v
+```
+
+135+ tests covering auth, routes, k8s loading, token minting, caching, and tokenstore.
+
+---
+
 ## Links
 
 | Resource | Path |
 |----------|------|
 | App entry | `app/main.py` |
 | Auth | `app/auth.py` |
+| Token store | `app/tokenstore.py` |
+| Cache layer | `app/cache.py` |
+| Shared helpers | `app/common.py` |
 | OSDU client | `app/osdu.py` |
+| Keys/browse page | `app/keys_router.py` |
 | Ingest API | `app/ingest_router.py` |
 | Analyse page | `app/analyse.py` |
 | Add DG page | `app/addgate.py` |
+| CLI token tool (app) | `app/get_token.py` |
+| Demo auth module | `demo/_auth.py` |
+| CLI token tool (demo) | `demo/gettoken.py` |
 | Drogon pipeline | `demo/drogon/` |
 | Pipeline runner | `demo/run_pipeline.py` |
 | BD modelling guide | `md/BusinessDecision.md` |

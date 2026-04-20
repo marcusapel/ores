@@ -386,20 +386,25 @@ async def keys_objects(
             except Exception as e_all:
                 log.warning("keys_objects: resources/all failed: %s", e_all)
                 rows = []
-            # Fallback: enumerate types and aggregate
+            # Fallback: enumerate types and aggregate (parallel)
             if not rows:
                 try:
                     types = await osdu.list_types(at, enc) or []
                     names = [t.get("name") if isinstance(t, dict) else t for t in types if t]
-                    agg: List[Dict[str, Any]] = []
-                    for name in names:
-                        if not name:
-                            continue
+                    names = [n for n in names if n]
+
+                    async def _fetch_type(name):
                         try:
-                            part = await osdu.list_resources(at, enc, name) or []
-                            agg.extend(part)
+                            return await osdu.list_resources(at, enc, name) or []
                         except Exception as e_type:
                             log.warning("keys_objects: list_resources(%s) failed: %s", name, e_type)
+                            return []
+
+                    import asyncio
+                    parts = await asyncio.gather(*[_fetch_type(n) for n in names])
+                    agg: List[Dict[str, Any]] = []
+                    for part in parts:
+                        agg.extend(part)
                     rows = agg
                 except Exception as e:
                     log.warning("keys_objects: types aggregation failed: %s", e)

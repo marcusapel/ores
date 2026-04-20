@@ -42,7 +42,18 @@
   </div>
   <p id="ds-count" class="muted" style="margin-top:.25rem;"></p>
 {% else %}
-  <p class="muted">No dataspaces found.</p>
+  <h2>Dataspaces</h2>
+  <div style="display:flex;gap:.5rem;max-width:36rem;margin-bottom:.5rem;">
+    <input id="ds-filter-1" type="text" placeholder="First segment…"
+           style="flex:1;padding:.4rem .6rem;border:1px solid #ccc;border-radius:4px;">
+    <span style="align-self:center;color:#999;">/</span>
+    <input id="ds-filter-2" type="text" placeholder="Second segment…"
+           style="flex:1;padding:.4rem .6rem;border:1px solid #ccc;border-radius:4px;">
+  </div>
+  <div style="max-height:12rem;overflow-y:auto;border:1px solid #eee;border-radius:4px;padding:.25rem .5rem;">
+  <ul id="ds-list"></ul>
+  </div>
+  <p id="ds-count" class="muted" style="margin-top:.25rem;"></p>
 {% endif %}
 
 <hr />
@@ -104,11 +115,43 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    // ----- Async dataspace loading (replaces server-side blocking fetch) -----
+    const dsList = document.getElementById('ds-list');
+    async function loadAdminDataspaces() {
+      if (window.showLoading) window.showLoading('Loading dataspaces…');
+      try {
+        const r = await fetch('/admin/dataspaces.json', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const js = await r.json();
+        const items = js.items || [];
+        if (!items.length) {
+          dsList.innerHTML = '<li class="muted">No dataspaces found.</li>';
+          return;
+        }
+        dsList.innerHTML = '';
+        items.forEach(function(x) {
+          const li = document.createElement('li');
+          li.setAttribute('data-path', x.path);
+          const code = document.createElement('code');
+          code.textContent = x.path;
+          li.appendChild(code);
+          dsList.appendChild(li);
+        });
+        // Re-run filtering + button setup after populating
+        rebuildDsRows();
+      } catch (e) {
+        console.error('[Admin] dataspaces load failed', e);
+        dsList.innerHTML = '<li class="muted">Failed to load dataspaces.</li>';
+      } finally {
+        if (window.hideLoading) window.hideLoading();
+      }
+    }
+
     // ----- Dataspace search / filter (two-segment) -----
     const filter1 = document.getElementById('ds-filter-1');
     const filter2 = document.getElementById('ds-filter-2');
     const dsCount = document.getElementById('ds-count');
-    const allRows = Array.from(document.querySelectorAll('#ds-list li[data-path]'));
+    let allRows = Array.from(document.querySelectorAll('#ds-list li[data-path]'));
     function applyFilter() {
       const q1 = (filter1 ? filter1.value : '').trim().toLowerCase();
       const q2 = (filter2 ? filter2.value : '').trim().toLowerCase();
@@ -128,8 +171,8 @@
     }
     if (filter1) filter1.addEventListener('input', applyFilter);
     if (filter2) filter2.addEventListener('input', applyFilter);
-    applyFilter(); // initial count
 
+    function buildDsActions() {
     // ----- Build per-dataspace actions -----
     const rows = document.querySelectorAll('#ds-list li[data-path]');
     rows.forEach(li => {
@@ -240,6 +283,30 @@
       li.insertBefore(keysBtn, codeNode);
       li.insertBefore(document.createTextNode(' '), codeNode);
     });
+    } // end buildDsActions
+
+    function rebuildDsRows() {
+      allRows = Array.from(document.querySelectorAll('#ds-list li[data-path]'));
+      buildDsActions();
+      applyFilter();
+      // Also repopulate the manifest ds-select dropdown
+      const mfDsSel = document.getElementById('ds-select');
+      if (mfDsSel) {
+        mfDsSel.innerHTML = '';
+        allRows.forEach(function(li) {
+          const path = li.getAttribute('data-path') || '';
+          if (!path) return;
+          const opt = document.createElement('option');
+          opt.value = path;
+          opt.textContent = "eml:///dataspace('" + path + "')";
+          mfDsSel.appendChild(opt);
+        });
+      }
+    }
+
+    // Run on any server-side pre-populated rows, then async load
+    rebuildDsRows();
+    loadAdminDataspaces();
 
     // ----- Optional: lightweight JSON validation for custom_json -----
     const ta  = document.getElementById('custom_json');

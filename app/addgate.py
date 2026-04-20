@@ -9,6 +9,7 @@ Provides:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
@@ -41,8 +42,10 @@ def _access_token(request: Request) -> str:
 @router.get("/add-dg", response_class=HTMLResponse, summary="Add DG: create new BusinessDecision")
 async def add_dg_page(request: Request):
     """Render the Add DG form page."""
-    reservoirs = await _search_reservoirs(request)
-    decision_levels = await _search_decision_levels(request)
+    reservoirs, decision_levels = await asyncio.gather(
+        _search_reservoirs(request),
+        _search_decision_levels(request),
+    )
     return templates.TemplateResponse(
         request, "addgate.html",
         {"reservoirs": reservoirs, "decision_levels": decision_levels},
