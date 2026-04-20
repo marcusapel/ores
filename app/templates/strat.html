@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Stratigraphy{% endblock %}
 {% block content %}
-<h2>Stratigraphy — Stratigraphic Column Viewer</h2>
+<h2>Stratigraphy</h2>
 <style>
 /* ---- Hierarchy-based stratigraphic column ---- */
 .sc-wrap { max-width: 96rem; }
@@ -99,6 +99,7 @@
       <span class="imp-tab active" data-tab="ow">OpenWorks JSON</span>
       <span class="imp-tab" data-tab="smda">SMDA API</span>
       <span class="imp-tab" data-tab="file">OSDU Bundle File</span>
+      <span class="imp-tab" data-tab="rddms">Push to RDDMS</span>
     </div>
 
     <!-- Tab: OpenWorks JSON upload -->
@@ -224,6 +225,36 @@
       <div id="bundle-status" class="imp-status info" style="display:none;"></div>
       <div id="bundle-preview" class="imp-preview"></div>
     </div>
+    <!-- Tab: Push to Reservoir DDMS (RESQML) -->
+    <div class="imp-body" id="imp-rddms">
+      <p class="muted" style="margin:0 0 .5rem;">
+        Push a loaded OSDU stratigraphic column to the Reservoir DDMS as RESQML 2.0.1 objects.
+        First load a column from the search panel, then use this tab to push it.
+      </p>
+      <div id="rddms-col-info" class="muted" style="font-size:13px; margin-bottom:.5rem; font-style:italic;">
+        No column loaded yet — load one from the search panel first.
+      </div>
+      <div class="row" style="grid-template-columns:140px 1fr auto; gap:.4rem; align-items:center;">
+        <label for="rddms-ds">Dataspace</label>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <input id="rddms-ds" type="text" value="maap/strat" style="flex:1;" placeholder="e.g. maap/strat" />
+          <button class="btn" id="btn-rddms-list-ds" type="button" title="List existing dataspaces" style="white-space:nowrap;">List</button>
+        </div>
+      </div>
+      <div id="rddms-ds-picker" style="display:none; margin:.4rem 0;">
+        <select id="rddms-ds-sel" size="4" style="width:100%; font-size:13px;"></select>
+      </div>
+      <div style="display:flex; gap:.5rem; align-items:center; margin-top:.5rem;">
+        <label style="font-size:13px; display:flex; align-items:center; gap:.3rem; margin:0;">
+          <input id="rddms-create-ds" type="checkbox" checked /> Create dataspace if not exists
+        </label>
+      </div>
+      <div style="display:flex; gap:.5rem; align-items:center; margin-top:.5rem;">
+        <button class="btn btn-ingest" id="btn-rddms-push" type="button" disabled>Push to RDDMS</button>
+        <span id="rddms-status" class="muted" style="font-size:13px;"></span>
+      </div>
+      <div id="rddms-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
+    </div>
   </section>
 </details>
 
@@ -238,38 +269,7 @@
     Ages displayed as supplementary information within each cell.
   </div>
 
-  <!-- RDDMS Ingest Panel (shown after column is loaded) -->
-  <div id="rddms-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #cde; border-radius:6px; background:#f4f8fa;">
-    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#007079;">
-      Push to Reservoir DDMS as RESQML
-    </div>
-    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
-      Re-fetch this column from OSDU, convert to RESQML 2.0.1 objects, and push to a Reservoir DDMS dataspace.
-      This stores the stratigraphic model in the RESQML-native reservoir data store (separate from the OSDU WPC records above).
-    </p>
-    <div class="row" style="grid-template-columns:140px 1fr auto; gap:.4rem; align-items:center;">
-      <label for="rddms-ds">Dataspace</label>
-      <div style="display:flex;gap:.4rem;align-items:center;">
-        <input id="rddms-ds" type="text" value="maap/strat" style="flex:1;" placeholder="e.g. maap/strat" />
-        <button class="btn" id="btn-rddms-list-ds" type="button" title="List existing dataspaces" style="white-space:nowrap;">List</button>
-      </div>
-    </div>
-    <div id="rddms-ds-picker" style="display:none; margin:.4rem 0;">
-      <select id="rddms-ds-sel" size="4" style="width:100%; font-size:13px;"></select>
-    </div>
-    <div style="display:flex; gap:.5rem; align-items:center; margin-top:.5rem;">
-      <label style="font-size:13px; display:flex; align-items:center; gap:.3rem; margin:0;">
-        <input id="rddms-create-ds" type="checkbox" checked /> Create dataspace if not exists
-      </label>
-    </div>
-    <div style="display:flex; gap:.5rem; align-items:center; margin-top:.5rem;">
-      <button class="btn btn-ingest" id="btn-rddms-push" type="button">Push to RDDMS</button>
-      <span id="rddms-status" class="muted" style="font-size:13px;"></span>
-    </div>
-    <div id="rddms-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
-  </div>
-
-  <!-- Horizon Generation Panel (shown after column is loaded) -->
+    <!-- Horizon Generation Panel (shown after column is loaded) -->
   <div id="horizon-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #c8e6c9; border-radius:6px; background:#f1f8f2;">
     <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#2e7d32;">
       Generate Horizons from Unit Boundaries
@@ -681,8 +681,10 @@
     if (!rid) { setStatus('Select a Column or Rank.'); return; }
     setStatus('Loading\u2026');
     currentColumnId = null;
-    const rddmsPanel = document.getElementById('rddms-panel');
-    if (rddmsPanel) rddmsPanel.style.display = 'none';
+    const rddmsColInfo = document.getElementById('rddms-col-info');
+    const btnRddmsPushEl = document.getElementById('btn-rddms-push');
+    if (rddmsColInfo) rddmsColInfo.textContent = 'Loading…';
+    if (btnRddmsPushEl) btnRddmsPushEl.disabled = true;
     try {
       const url = `/api/strat/column.json?id=${encodeURIComponent(rid)}&enrich=true`;
       const res = await fetch(url, { headers:{'Cache-Control':'no-store'} });
@@ -706,9 +708,11 @@
         : 'empty';
       const prefix = isSingleRank ? 'Single Rank' : 'OK';
       setStatus(`${prefix} \u2014 ${info}`);
-      // Show RDDMS panel and Horizon panel after successful load
+      // Enable RDDMS push after successful load
       currentColumnId = rid;
-      if (rddmsPanel) rddmsPanel.style.display = 'block';
+      const colName = (model.column || {}).name || rid;
+      if (rddmsColInfo) rddmsColInfo.innerHTML = `Column loaded: <strong>${colName}</strong> — ready to push.`;
+      if (btnRddmsPushEl) btnRddmsPushEl.disabled = false;
 
       // Count real (non-synthetic) units and horizons
       let totalUnits = 0;
