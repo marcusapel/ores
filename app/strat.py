@@ -44,10 +44,13 @@ async def _osdu_get_record(request: Request, record_id: str) -> dict:
     hdr = osdu.headers(at)
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(url, headers=hdr)
+        log.debug("Storage GET %s → %d", record_id, r.status_code)
         if r.status_code == 200:
             return r.json() or {}
         if r.status_code == 404:
+            log.info("Storage GET %s → 404 (not found)", record_id)
             return {}
+        log.warning("Storage GET %s → %d: %s", record_id, r.status_code, r.text[:200])
         r.raise_for_status()
     return {}
 
@@ -90,25 +93,57 @@ def _extract_ages(unit_rec: dict, chrono_rec: dict):
     top = _first(
         cd.get("AgeBegin"), cd.get("TopMa"), cd.get("AgeBeginMa"),
         ud.get("OlderPossibleAge"), ud.get("TopMa"),
+        (ud.get("TimeRange") or {}).get("TopAgeMa"),
     )
     base = _first(
         cd.get("AgeEnd"), cd.get("BaseMa"), cd.get("AgeEndMa"),
         ud.get("YoungerPossibleAge"), ud.get("BaseMa"),
+        (ud.get("TimeRange") or {}).get("BaseAgeMa"),
     )
     try:
         return (float(top), float(base))
     except (TypeError, ValueError):
         return (None, None)
 
-def _flat_unit_fields(unit_rec: dict, chrono_rec: dict) -> dict:
-    """Extract flat convenience fields from a unit + chrono pair."""
+def _flat_unit_fields(unit_rec: dict, chrono_rec: dict,
+                      horizons_by_id: Optional[Dict[str, dict]] = None) -> dict:
+    """Extract flat convenience fields from a unit + chrono pair,
+    including horizon boundary references when available."""
     ud = _get_data(unit_rec) if unit_rec else {}
     cd = _get_data(chrono_rec) if chrono_rec else {}
     top, base = _extract_ages(unit_rec, chrono_rec)
     name = ud.get("Name") or cd.get("Name") or ""
     color = cd.get("Colour") or cd.get("Color") or None
     code = cd.get("Code") or ""
-    return {"name": name, "topMa": top, "baseMa": base, "color": color, "code": code}
+
+    result: Dict[str, Any] = {
+        "name": name, "topMa": top, "baseMa": base, "color": color, "code": code,
+    }
+
+    # ParentName — used by litho columns to establish hierarchy
+    parent_name = ud.get("ParentName") or ""
+    if parent_name:
+        result["parentName"] = parent_name
+
+    # Attach horizon boundary info if the unit references HorizonInterpretation records
+    hmap = horizons_by_id or {}
+    htop_id = _as_id(ud.get("ColumnStratigraphicHorizonTopID") or "")
+    hbase_id = _as_id(ud.get("ColumnStratigraphicHorizonBaseID") or "")
+    if htop_id and htop_id in hmap:
+        hd = _get_data(hmap[htop_id])
+        result["horizonTop"] = {
+            "id": htop_id, "name": hd.get("Name", ""),
+            "ageMa": hd.get("MeanPossibleAge"),
+            "conformableBelow": hd.get("isConformableBelow"),
+        }
+    if hbase_id and hbase_id in hmap:
+        hd = _get_data(hmap[hbase_id])
+        result["horizonBase"] = {
+            "id": hbase_id, "name": hd.get("Name", ""),
+            "ageMa": hd.get("MeanPossibleAge"),
+            "conformableAbove": hd.get("isConformableAbove"),
+        }
+    return result
 
 def _label_from_ref_id(val: str) -> str:
     if not val:
@@ -229,6 +264,9 @@ async def strat_search(
     async with httpx.AsyncClient(timeout=60) as client:
         # ── 1. Primary: Search-indexed StratigraphicColumn records ──
         r = await client.post(search_url, headers=hdr, json=payload)
+        log.info("Search StratigraphicColumn q='%s' → %d", q, r.status_code)
+        if r.status_code >= 400:
+            log.warning("Search failed (%d): %s", r.status_code, r.text[:300])
         r.raise_for_status()
         res = r.json() or {}
         total = res.get("totalCount") or len(res.get("results") or [])
@@ -257,20 +295,22 @@ async def strat_search(
         # ── 2. Discovery: find un-indexed columns via their Rank children ──
         # Rank records ARE search-indexed even when parent Columns are not.
         # Derive candidate Column IDs from Rank IDs, verify via Storage GET.
+        # Also include individual Rank records in results — users can load them directly.
         rank_payload = {
             "kind": "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:*",
             "query": q or "*",
             "limit": 200,
-            "returnedFields": ["id"],
+            "returnedFields": ["id", "kind", "version", "data.Name", "data.StratigraphicColumnRankUnitType"],
         }
         try:
             rr = await client.post(search_url, headers=hdr, json=rank_payload)
             if rr.status_code == 200:
                 rank_res = rr.json() or {}
-                candidate_col_ids = _derive_column_ids_from_ranks(
-                    [r2.get("id", "") for r2 in (rank_res.get("results") or [])]
-                )
-                # Verify each candidate that isn't already in the search results
+                rank_results = rank_res.get("results") or []
+                rank_ids_found = [r2.get("id", "") for r2 in rank_results]
+
+                # a) Column discovery from ranks (existing behaviour)
+                candidate_col_ids = _derive_column_ids_from_ranks(rank_ids_found)
                 verify_tasks = []
                 for cid in candidate_col_ids:
                     if cid not in seen_ids:
@@ -284,9 +324,26 @@ async def strat_search(
                             seen_ids.add(item["id"])
                             items.append(item)
                             total += 1
+
+                # b) Include individual Rank records (loadable as single-rank views)
+                for rrec in rank_results:
+                    rid = rrec.get("id", "")
+                    if rid and rid not in seen_ids:
+                        seen_ids.add(rid)
+                        rd = rrec.get("data") or {}
+                        rname = rd.get("Name") or _label_from_ref_id(rd.get("StratigraphicColumnRankUnitType") or "") or rid
+                        items.append({
+                            "id": rid,
+                            "name": rname,
+                            "kind": rrec.get("kind") or "",
+                            "version": rrec.get("version"),
+                            "type": "rank",
+                        })
+                        total += 1
         except Exception:
             pass  # Rank discovery is best-effort
 
+    log.info("Search complete: %d items (total=%d, q='%s')", len(items), total, q)
     return JSONResponse({"items": items, "total": total})
 
 
@@ -329,6 +386,9 @@ async def _storage_fetch_many(request: Request, ids: List[str]) -> Dict[str, dic
         r = await client.post(url, headers=hdr, json={"records": chunk})
         if r.status_code == 404:
             raise FileNotFoundError("records:batch not available")
+        log.debug("Storage batch POST %d ids → %d", len(chunk), r.status_code)
+        if r.status_code >= 400:
+            log.warning("Storage batch POST failed (%d): %s", r.status_code, r.text[:300])
         r.raise_for_status()
         data = r.json() or {}
         recs = data.get("records")
@@ -350,9 +410,11 @@ async def _storage_fetch_many(request: Request, ids: List[str]) -> Dict[str, dic
         url = f"{base}/records/{urllib.parse.quote(rid, safe='')}"
         async with sem:
             r = await client.get(url, headers=hdr)
+            log.debug("Storage GET %s → %d", rid, r.status_code)
             if r.status_code == 200:
                 results[rid] = r.json() or {}
             elif r.status_code != 404:
+                log.warning("Storage GET %s → %d: %s", rid, r.status_code, r.text[:200])
                 r.raise_for_status()
 
     async with httpx.AsyncClient(timeout=30, http2=True) as client:
@@ -393,6 +455,8 @@ async def _storage_fetch_many(request: Request, ids: List[str]) -> Dict[str, dic
         if alt not in results:
             results[alt] = body
 
+    fetched = len({k for k, v in results.items() if v})
+    log.info("Storage fetch: %d requested, %d fetched", len(uniq), fetched // 2 if fetched else 0)
     return results
         
 
@@ -428,29 +492,50 @@ async def get_strat_column(
       - Chronostratigraphic ranks (Systems/Series) provide the time framework; we mark them as isChrono
         when rank lists ChronoStratigraphy references.                                                     (Authoring schema) [2](https://stackoverflow.com/questions/78049428/why-when-i-include-a-llama-index-module-do-i-get-pydantic-validation-errors-with)
     """
-    # 1) Fetch the StratigraphicColumn WPC
+    # 1) Fetch the record (could be Column or Rank)
     col = await _osdu_get_record(request, id)
     if not col or not isinstance(col, dict):
-        raise HTTPException(404, detail="Column not found")
+        raise HTTPException(404, detail="Record not found")
 
     kind = col.get("kind", "")
-    if not kind.startswith("osdu:wks:work-product-component--StratigraphicColumn:"):
-        raise HTTPException(400, detail="Record is not a StratigraphicColumn")
+
+    # ── Handle StratigraphicColumnRankInterpretation directly ──
+    # Wrap it as a single-rank synthetic column so the rest of the pipeline
+    # (unit/chrono fetching, gap-fill, horizon collection) works unchanged.
+    if "StratigraphicColumnRankInterpretation" in kind:
+        drk = _get_data(col)
+        rank_name = (
+            drk.get("Name")
+            or _label_from_ref_id(drk.get("StratigraphicColumnRankUnitType") or "")
+            or "Unspecified"
+        )
+        # Build a synthetic Column wrapper
+        col_wrapper = {
+            "id": id,
+            "kind": "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
+            "data": {"Name": f"(Single Rank) {rank_name}"},
+            "_singleRank": True,
+        }
+        rank_ids = [id]
+        ranks_by_id = {id: col}
+        # Update col to the wrapper for the rest of the function
+        col = col_wrapper
+    elif kind.startswith("osdu:wks:work-product-component--StratigraphicColumn:"):
+        dcol = _get_data(col)
+        # 2) Read ordered rank IDs
+        rank_ids = _ids(
+            dcol.get("StratigraphicColumnRankInterpretationSet")
+            or dcol.get("RankInterpretationSet")
+            or []
+        )
+        if not rank_ids:
+            return JSONResponse({"column": col, "ranks": []})
+        # 3) Fetch all ranks in one go
+        ranks_by_id = await _storage_fetch_many(request, rank_ids)
+    else:
+        raise HTTPException(400, detail="Record is not a StratigraphicColumn or RankInterpretation")
 
     dcol = _get_data(col)
-
-    # 2) Read ordered rank IDs (use canonical key; tolerate alternates if present)
-    rank_ids = _ids(
-        dcol.get("StratigraphicColumnRankInterpretationSet")
-        or dcol.get("RankInterpretationSet")
-        or []
-    )
-    if not rank_ids:
-        # Return minimal structure; UI will handle empty ranks
-        return JSONResponse({"column": col, "ranks": []})
-
-    # 3) Fetch all ranks in one go
-    ranks_by_id = await _storage_fetch_many(request, rank_ids)
 
     # 4) Collect unit IDs and chrono IDs referenced by ranks (both rank-level chrono sets and unit-level pointers)
     unit_ids_all: List[str] = []
@@ -468,14 +553,21 @@ async def get_strat_column(
 
     # 5) Fetch units, then follow each unit’s chrono pointer (ChronoStratigraphyID) if present
     units_by_id = await _storage_fetch_many(request, unit_ids_all) if unit_ids_all else {}
+    horizon_ids_all: List[str] = []
     for u in units_by_id.values():
         ud = _get_data(u)
         cid = _as_id(ud.get("ChronoStratigraphyID") or ud.get("ChronostratigraphyID") or "")
         if cid:
             chrono_ids_all.append(cid)
+        # Collect horizon boundary references from units
+        for hkey in ("ColumnStratigraphicHorizonTopID", "ColumnStratigraphicHorizonBaseID"):
+            hid = _as_id(ud.get(hkey) or "")
+            if hid:
+                horizon_ids_all.append(hid)
 
-    # 6) Fetch all chrono records (deduped by the batched helper)
+    # 6) Fetch all chrono records and horizon records (deduped by the batched helper)
     chron_by_id = await _storage_fetch_many(request, chrono_ids_all) if chrono_ids_all else {}
+    horizons_by_id = await _storage_fetch_many(request, horizon_ids_all) if horizon_ids_all else {}
 
     # 7) Assemble ranks in the original order with:
     #      - rankName: from data.Name or the StratigraphicColumnRankUnitType label (System/Series/Group/Formation/…)
@@ -516,7 +608,7 @@ async def get_strat_column(
         for cid in chrono_ids:
             crec = chron_by_id.get(cid)
             if crec:
-                ff = _flat_unit_fields(None, crec)
+                ff = _flat_unit_fields(None, crec, horizons_by_id)
                 units_model.append({"unit": {}, "chrono": crec, **ff})
 
         # B) Rank-level unit interpretations: attach chrono if the unit points to one (ChronoStratigraphyID)
@@ -527,7 +619,7 @@ async def get_strat_column(
             ud = _get_data(urec)
             cid = _as_id(ud.get("ChronoStratigraphyID") or ud.get("ChronostratigraphyID") or "")
             cobj = chron_by_id.get(cid) if cid else {}
-            ff = _flat_unit_fields(urec, cobj)
+            ff = _flat_unit_fields(urec, cobj, horizons_by_id)
             units_model.append({"unit": urec, "chrono": cobj, **ff})
 
         # C) Order units older→younger for non-overlap per rank (as intended by the OSDU model)
@@ -655,10 +747,18 @@ async def get_strat_column(
             child_rank["units"].sort(key=_age_key)
             child_rank["unitCount"] = len(child_rank["units"])
 
-    # 9) Return column model
+    # 9) Collect fetched horizon records for inclusion in the model
+    horizon_list = [
+        {"id": rec.get("id", hid), **_get_data(rec)}
+        for hid, rec in horizons_by_id.items() if rec
+    ] if horizons_by_id else []
+
+    # 10) Return column model
     return JSONResponse({
         "column": col,
-        "ranks": ranks_model
+        "ranks": ranks_model,
+        "horizons": horizon_list,
+        "horizonCount": len(horizon_list),
     })
 
 
@@ -1019,6 +1119,7 @@ async def storage_put_strat_records(
 
     results = {"created": 0, "errors": []}
     # Upload in batches of 20
+    log.info("Storage PUT %d records in batches of 20", len(records))
     async with httpx.AsyncClient(timeout=60) as client:
         for i in range(0, len(records), 20):
             batch = records[i:i + 20]
@@ -1026,21 +1127,485 @@ async def storage_put_strat_records(
                 r = await client.put(url, headers=hdr, json=batch)
                 if r.status_code < 300:
                     resp = r.json()
-                    results["created"] += resp.get("recordCount", len(batch))
+                    cnt = resp.get("recordCount", len(batch))
+                    results["created"] += cnt
+                    log.debug("Storage PUT batch %d \u2192 %d (%d records)", i, r.status_code, cnt)
                 else:
+                    log.warning("Storage PUT batch %d \u2192 %d: %s", i, r.status_code, r.text[:300])
                     results["errors"].append({
                         "batch": i,
                         "httpStatus": r.status_code,
                         "detail": r.text[:1000],
                     })
             except Exception as e:
+                log.error("Storage PUT batch %d exception: %s", i, e)
                 results["errors"].append({"batch": i, "error": str(e)})
+
+    log.info("Storage PUT done: %d created, %d errors", results["created"], len(results["errors"]))
 
     status = "ok" if not results["errors"] else "partial"
     return JSONResponse({
         "status": status,
         "totalRecords": len(records),
         **results,
+    })
+
+
+# =====================================================================
+# HORIZON GENERATION — derive HorizonInterpretation records from
+# unit/chrono boundary ages in a loaded column model.
+# =====================================================================
+
+_KIND_HORIZON = "osdu:wks:work-product-component--HorizonInterpretation:1.2.0"
+
+
+def _age_token(age: float) -> str:
+    """538.8 -> '538p8', 66.0 -> '66p0' — safe for OSDU record IDs."""
+    s = f"{age:g}"
+    return s.replace(".", "p").replace("-", "m")
+
+
+def _generate_horizons_for_column(
+    model: dict,
+    partition: str = "data",
+) -> dict:
+    """Derive HorizonInterpretation WPC records from boundary ages in a column model.
+
+    **Complement-aware**: skips ages that already have a real HorizonInterpretation
+    record linked from a unit (``horizonTop`` / ``horizonBase`` in the model).
+    Only creates horizons for ages that are *missing* a boundary record.
+
+    Returns:
+      {
+        "horizons":  [<OSDU WPC record>, ...],          # new (to be created)
+        "unitPatches": [{"unitId": "...", "patch": {...}}, ...],
+        "stats": {"uniqueAges": N, "horizonCount": N, "unitsPatchable": N,
+                  "existingHorizons": N, "skippedAges": N}
+      }
+    """
+    column = model.get("column") or {}
+    col_data = _get_data(column) if isinstance(column, dict) else {}
+    col_name = col_data.get("Name") or "Column"
+
+    import re as _re
+    col_token = _re.sub(r"[^A-Za-z0-9._-]+", "-", col_name.strip())[:200]
+    if not col_token:
+        col_token = "Column"
+
+    role_type_id = f"{partition}:reference-data--StratigraphicRoleType:Chronostratigraphic:"
+
+    # ── Inventory existing horizons already linked from units ─────────
+    # Build a set of ages that already have real horizon records so we
+    # can skip them (complement, not duplicate).
+    existing_horizon_ages: Dict[float, str] = {}   # age → existing horizon id
+    for rank in model.get("ranks") or []:
+        for unit in rank.get("units") or []:
+            if unit.get("_synthetic"):
+                continue
+            for hkey in ("horizonTop", "horizonBase"):
+                h = unit.get(hkey)
+                if h and isinstance(h, dict) and h.get("id"):
+                    age = h.get("ageMa")
+                    if age is not None:
+                        existing_horizon_ages[float(age)] = h["id"]
+
+    # 1) Walk all units across all ranks, collect distinct boundary ages
+    age_info: Dict[float, List[tuple]] = {}
+    unit_ages: Dict[str, tuple] = {}
+
+    for ri, rank in enumerate(model.get("ranks") or []):
+        for ui, unit in enumerate(rank.get("units") or []):
+            if unit.get("_synthetic"):
+                continue
+            top_ma = unit.get("topMa")
+            base_ma = unit.get("baseMa")
+            name = unit.get("name") or f"Unit_{ui}"
+            key = f"{ri}:{ui}"
+
+            if top_ma is not None and base_ma is not None:
+                unit_ages[key] = (top_ma, base_ma)
+                age_info.setdefault(top_ma, []).append((name, "base"))
+                age_info.setdefault(base_ma, []).append((name, "top"))
+
+    # 2) Generate a HorizonInterpretation record per distinct age
+    #    SKIP ages that already have a real horizon linked.
+    horizons: List[dict] = []
+    horizon_id_by_age: Dict[float, str] = {}
+    skipped_ages = 0
+
+    default_acl = {"viewers": osdu.DEFAULT_VIEWERS, "owners": osdu.DEFAULT_OWNERS}
+    default_legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    for age in sorted(age_info.keys()):
+        # If a real horizon already covers this age, reuse its ID for patches
+        if age in existing_horizon_ages:
+            horizon_id_by_age[age] = existing_horizon_ages[age]
+            skipped_ages += 1
+            continue
+
+        entries = age_info[age]
+        tops = [n for n, side in entries if side == "top"]
+        bases = [n for n, side in entries if side == "base"]
+        if tops:
+            label = f"Top {tops[0]}"
+            if len(tops) > 1:
+                label += f" (+{len(tops) - 1})"
+        elif bases:
+            label = f"Base {bases[0]}"
+            if len(bases) > 1:
+                label += f" (+{len(bases) - 1})"
+        else:
+            label = f"{age} Ma"
+
+        hid = f"{partition}:work-product-component--HorizonInterpretation:{col_token}-H-{_age_token(age)}Ma:"
+        horizon_id_by_age[age] = hid
+
+        horizons.append({
+            "id": hid,
+            "kind": _KIND_HORIZON,
+            "acl": default_acl,
+            "legal": default_legal,
+            "data": {
+                "Name": label,
+                "Description": f"Stratigraphic boundary at {age} Ma",
+                "MeanPossibleAge": age,
+                "OlderPossibleAge": age,
+                "YoungerPossibleAge": age,
+                "StratigraphicRoleTypeID": role_type_id,
+                "isConformableAbove": True,
+                "isConformableBelow": True,
+                "IsDiscoverable": True,
+            },
+        })
+
+    # 3) Build patches: only for units that don't already have horizon links
+    unit_patches: List[dict] = []
+    for ri, rank in enumerate(model.get("ranks") or []):
+        for ui, unit in enumerate(rank.get("units") or []):
+            key = f"{ri}:{ui}"
+            if key not in unit_ages:
+                continue
+            older, younger = unit_ages[key]
+            # Check which links the unit already has
+            has_base = bool(unit.get("horizonBase"))
+            has_top = bool(unit.get("horizonTop"))
+            patch: Dict[str, Any] = {}
+            if not has_base and older in horizon_id_by_age:
+                patch["ColumnStratigraphicHorizonBaseID"] = horizon_id_by_age[older]
+            if not has_top and younger in horizon_id_by_age:
+                patch["ColumnStratigraphicHorizonTopID"] = horizon_id_by_age[younger]
+            if older is not None and not has_base:
+                patch["OlderPossibleAge"] = older
+            if younger is not None and not has_top:
+                patch["YoungerPossibleAge"] = younger
+            unit_rec = unit.get("unit") or {}
+            unit_id = unit_rec.get("id", "")
+            if patch:
+                unit_patches.append({"unitId": unit_id, "name": unit.get("name", ""), "patch": patch})
+
+    return {
+        "horizons": horizons,
+        "unitPatches": unit_patches,
+        "stats": {
+            "uniqueAges": len(age_info),
+            "horizonCount": len(horizons),
+            "unitsPatchable": len(unit_patches),
+            "existingHorizons": len(existing_horizon_ages),
+            "skippedAges": skipped_ages,
+        },
+    }
+
+
+@router.post("/api/strat/generate-horizons")
+async def generate_horizons(request: Request):
+    """Generate HorizonInterpretation records from unit/chrono boundary ages.
+
+    Body:
+    {
+      "columnId": "<OSDU StratigraphicColumn record id>",
+      "partition": "data",
+      "ingest": false   // if true, also PUT the horizons to OSDU Storage
+    }
+
+    Returns the generated horizons, unit patches, and stats.
+    If ingest=true, also sends the horizon records to OSDU Storage.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    column_id = (body.get("columnId") or "").strip()
+    partition = (body.get("partition") or osdu.DATA_PARTITION_ID or "data").strip()
+    do_ingest = body.get("ingest", False)
+
+    if not column_id:
+        raise HTTPException(400, "columnId is required")
+
+    # 1) Fetch the column model
+    model = await _fetch_column_model(request, column_id)
+
+    # 2) Generate horizons
+    result = _generate_horizons_for_column(model, partition=partition)
+    horizons = result["horizons"]
+
+    log.info("[Horizons] Generated %d horizons for column %s (%d unit patches)",
+             len(horizons), column_id, len(result["unitPatches"]))
+
+    # 3) Optionally ingest to OSDU Storage
+    ingest_result = None
+    if do_ingest and horizons:
+        at = _access_token(request)
+        base = f"https://{osdu.OSDU_BASE_URL}"
+        url = f"{base}/api/storage/v2/records"
+        hdr = osdu.headers(at)
+
+        ingest_result = {"created": 0, "errors": []}
+        async with httpx.AsyncClient(timeout=60) as client:
+            for i in range(0, len(horizons), 20):
+                batch = horizons[i:i + 20]
+                try:
+                    r = await client.put(url, headers=hdr, json=batch)
+                    if r.status_code < 300:
+                        resp = r.json()
+                        ingest_result["created"] += resp.get("recordCount", len(batch))
+                    else:
+                        ingest_result["errors"].append({
+                            "batch": i, "httpStatus": r.status_code,
+                            "detail": r.text[:1000],
+                        })
+                except Exception as e:
+                    ingest_result["errors"].append({"batch": i, "error": str(e)})
+
+    return JSONResponse({
+        **result,
+        "ingest": ingest_result,
+    })
+
+
+# =====================================================================
+# UNIT GENERATION — derive StratigraphicUnitInterpretation records
+# from a sorted sequence of HorizonInterpretation boundaries.
+# =====================================================================
+
+_KIND_UNIT = "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0"
+
+
+def _generate_units_from_horizons(
+    model: dict,
+    partition: str = "data",
+) -> dict:
+    """Derive StratigraphicUnitInterpretation WPC records from horizon boundaries.
+
+    **Complement-aware**: skips age intervals that already have a real
+    StratigraphicUnitInterpretation record in the model.  Only creates
+    units for intervals between consecutive horizons that are *missing*.
+
+    Returns:
+      {
+        "units":     [<OSDU WPC record>, ...],       # new (to be created)
+        "stats":     {"horizonCount": N, "unitCount": N,
+                      "existingUnits": N, "skippedIntervals": N}
+      }
+    """
+    column = model.get("column") or {}
+    col_data = _get_data(column) if isinstance(column, dict) else {}
+    col_name = col_data.get("Name") or "Column"
+
+    import re as _re
+    col_token = _re.sub(r"[^A-Za-z0-9._-]+", "-", col_name.strip())[:200]
+    if not col_token:
+        col_token = "Column"
+
+    role_type_id = f"{partition}:reference-data--StratigraphicRoleType:Chronostratigraphic:"
+
+    # ── Inventory existing units (non-synthetic) and their age intervals ──
+    existing_intervals: set = set()   # {(older_age, younger_age)} rounded
+    existing_unit_count = 0
+    for rank in model.get("ranks") or []:
+        for unit in rank.get("units") or []:
+            if unit.get("_synthetic"):
+                continue
+            t = unit.get("topMa")
+            b = unit.get("baseMa")
+            if t is not None and b is not None:
+                existing_intervals.add((round(float(t), 4), round(float(b), 4)))
+                existing_unit_count += 1
+
+    # ── Collect horizons ──────────────────────────────────────────────
+    horizon_tuples: List[tuple] = []  # (age_ma, name, horizon_id_or_none)
+    seen_ages: set = set()
+
+    # (a) Gather from horizonTop / horizonBase on every unit
+    for rank in model.get("ranks") or []:
+        for unit in rank.get("units") or []:
+            if unit.get("_synthetic"):
+                continue
+            for hkey in ("horizonTop", "horizonBase"):
+                h = unit.get(hkey)
+                if not h or not isinstance(h, dict):
+                    continue
+                age = h.get("ageMa")
+                if age is None or age in seen_ages:
+                    continue
+                seen_ages.add(age)
+                horizon_tuples.append((float(age), h.get("name", f"{age} Ma"), h.get("id")))
+
+    # (b) Fall back: extract distinct ages from unit boundaries (no real horizon records)
+    if not horizon_tuples:
+        for rank in model.get("ranks") or []:
+            for unit in rank.get("units") or []:
+                if unit.get("_synthetic"):
+                    continue
+                for age_key in ("topMa", "baseMa"):
+                    age = unit.get(age_key)
+                    if age is not None and age not in seen_ages:
+                        seen_ages.add(age)
+                        name = unit.get("name") or ""
+                        label = f"Top {name}" if age_key == "baseMa" else f"Base {name}"
+                        horizon_tuples.append((float(age), label.strip(), None))
+
+    if len(horizon_tuples) < 2:
+        return {"units": [], "stats": {
+            "horizonCount": len(horizon_tuples), "unitCount": 0,
+            "existingUnits": existing_unit_count, "skippedIntervals": 0,
+        }}
+
+    # Sort older (larger Ma) → younger (smaller Ma)
+    horizon_tuples.sort(key=lambda t: -t[0])
+
+    # ── Generate one unit per consecutive pair (skip existing) ────────
+    default_acl = {"viewers": osdu.DEFAULT_VIEWERS, "owners": osdu.DEFAULT_OWNERS}
+    default_legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    units: List[dict] = []
+    skipped_intervals = 0
+
+    for i in range(len(horizon_tuples) - 1):
+        older_age, older_name, older_hid = horizon_tuples[i]
+        younger_age, younger_name, younger_hid = horizon_tuples[i + 1]
+
+        # Skip if this interval already exists as a real unit
+        interval_key = (round(older_age, 4), round(younger_age, 4))
+        if interval_key in existing_intervals:
+            skipped_intervals += 1
+            continue
+
+        # Name: use the younger horizon's name with "Top" stripped, or compose from pair
+        unit_name = younger_name
+        for prefix in ("Top ", "Base "):
+            if unit_name.startswith(prefix):
+                unit_name = unit_name[len(prefix):]
+                break
+        if not unit_name:
+            unit_name = f"Unit {older_age}-{younger_age} Ma"
+
+        age_tok_older = _age_token(older_age)
+        age_tok_younger = _age_token(younger_age)
+        uid = f"{partition}:work-product-component--StratigraphicUnitInterpretation:{col_token}-U-{age_tok_older}-{age_tok_younger}Ma:"
+
+        unit_data: Dict[str, Any] = {
+            "Name": unit_name,
+            "Description": f"Stratigraphic unit from {older_age} Ma to {younger_age} Ma",
+            "OlderPossibleAge": older_age,
+            "YoungerPossibleAge": younger_age,
+            "StratigraphicRoleTypeID": role_type_id,
+            "IsDiscoverable": True,
+        }
+        if older_hid:
+            unit_data["ColumnStratigraphicHorizonBaseID"] = older_hid
+        if younger_hid:
+            unit_data["ColumnStratigraphicHorizonTopID"] = younger_hid
+
+        units.append({
+            "id": uid,
+            "kind": _KIND_UNIT,
+            "acl": default_acl,
+            "legal": default_legal,
+            "data": unit_data,
+        })
+
+    return {
+        "units": units,
+        "stats": {
+            "horizonCount": len(horizon_tuples),
+            "unitCount": len(units),
+            "existingUnits": existing_unit_count,
+            "skippedIntervals": skipped_intervals,
+        },
+    }
+
+
+@router.post("/api/strat/generate-units")
+async def generate_units(request: Request):
+    """Generate StratigraphicUnitInterpretation records from horizon boundaries.
+
+    Body:
+    {
+      "columnId": "<OSDU StratigraphicColumn record id>",
+      "partition": "data",
+      "ingest": false   // if true, also PUT the units to OSDU Storage
+    }
+
+    Returns the generated units and stats.
+    If ingest=true, also sends the unit records to OSDU Storage.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    column_id = (body.get("columnId") or "").strip()
+    partition = (body.get("partition") or osdu.DATA_PARTITION_ID or "data").strip()
+    do_ingest = body.get("ingest", False)
+
+    if not column_id:
+        raise HTTPException(400, "columnId is required")
+
+    # 1) Fetch the column model
+    model = await _fetch_column_model(request, column_id)
+
+    # 2) Generate units from horizons
+    result = _generate_units_from_horizons(model, partition=partition)
+    units = result["units"]
+
+    log.info("[Units] Generated %d units for column %s from %d horizons",
+             len(units), column_id, result["stats"]["horizonCount"])
+
+    # 3) Optionally ingest to OSDU Storage
+    ingest_result = None
+    if do_ingest and units:
+        at = _access_token(request)
+        base = f"https://{osdu.OSDU_BASE_URL}"
+        url = f"{base}/api/storage/v2/records"
+        hdr = osdu.headers(at)
+
+        ingest_result = {"created": 0, "errors": []}
+        async with httpx.AsyncClient(timeout=60) as client:
+            for i in range(0, len(units), 20):
+                batch = units[i:i + 20]
+                try:
+                    r = await client.put(url, headers=hdr, json=batch)
+                    if r.status_code < 300:
+                        resp = r.json()
+                        ingest_result["created"] += resp.get("recordCount", len(batch))
+                    else:
+                        ingest_result["errors"].append({
+                            "batch": i, "httpStatus": r.status_code,
+                            "detail": r.text[:1000],
+                        })
+                except Exception as e:
+                    ingest_result["errors"].append({"batch": i, "error": str(e)})
+
+    return JSONResponse({
+        **result,
+        "ingest": ingest_result,
     })
 
 
@@ -1096,10 +1661,69 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
     by_type: Dict[str, List[dict]] = {
         "resqml20.obj_OrganizationFeature": [],
         "resqml20.obj_RockVolumeFeature": [],
+        "resqml20.obj_BoundaryFeature": [],
+        "resqml20.obj_HorizonInterpretation": [],
         "resqml20.obj_StratigraphicUnitInterpretation": [],
         "resqml20.obj_StratigraphicColumnRankInterpretation": [],
         "resqml20.obj_StratigraphicColumn": [],
     }
+
+    # Collect distinct boundary ages across all units for horizon generation
+    horizon_age_map: Dict[float, str] = {}  # age -> horizon_uuid
+    boundary_feat_map: Dict[float, str] = {}  # age -> boundary_feature_uuid
+    age_labels: Dict[float, str] = {}  # age -> display label
+
+    # First pass: collect all boundary ages and labels
+    for rank in (model.get("ranks") or []):
+        for unit in (rank.get("units") or []):
+            if unit.get("_synthetic"):
+                continue
+            name = unit.get("name") or ""
+            top = unit.get("topMa")
+            base = unit.get("baseMa")
+            # Prefer real horizon data if present
+            if unit.get("horizonTop"):
+                ht = unit["horizonTop"]
+                age = ht.get("ageMa") or base
+                if age is not None:
+                    age_labels.setdefault(age, ht.get("name") or f"Top {name}")
+            elif base is not None:
+                age_labels.setdefault(base, f"Top {name}")
+            if unit.get("horizonBase"):
+                hb = unit["horizonBase"]
+                age = hb.get("ageMa") or top
+                if age is not None:
+                    age_labels.setdefault(age, hb.get("name") or f"Base {name}")
+            elif top is not None:
+                age_labels.setdefault(top, f"Base {name}")
+
+    # Generate BoundaryFeature + HorizonInterpretation per distinct age
+    for age in sorted(age_labels.keys()):
+        label = age_labels[age]
+        bf_uuid = _det_uuid(f"boundaryfeat:{col_id}:{age}")
+        hi_uuid = _det_uuid(f"horizon:{col_id}:{age}")
+        boundary_feat_map[age] = bf_uuid
+        horizon_age_map[age] = hi_uuid
+
+        by_type["resqml20.obj_BoundaryFeature"].append({
+            "$type": "resqml20.obj_BoundaryFeature",
+            "SchemaVersion": "2.0",
+            "Uuid": bf_uuid,
+            "Citation": _resqml_citation(label),
+        })
+        by_type["resqml20.obj_HorizonInterpretation"].append({
+            "$type": "resqml20.obj_HorizonInterpretation",
+            "SchemaVersion": "2.0",
+            "Uuid": hi_uuid,
+            "Citation": _resqml_citation(label),
+            "Domain": "depth",
+            "InterpretedFeature": _resqml_ref(
+                "obj_BoundaryFeature", bf_uuid, label,
+            ),
+            "ExtraMetadata": [
+                {"Name": "Age_Ma", "Value": str(age)},
+            ],
+        })
 
     rank_refs: List[dict] = []
 
@@ -1159,6 +1783,20 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
                 extra.append({"Name": "ChronoCode", "Value": unit["code"]})
             if extra:
                 unit_obj["ExtraMetadata"] = extra
+
+            # Link unit to horizon boundaries (top/base) if age-derived horizons exist
+            top_hz_uuid = horizon_age_map.get(unit.get("baseMa"))  # younger boundary = top horizon
+            base_hz_uuid = horizon_age_map.get(unit.get("topMa"))  # older boundary = base horizon
+            if top_hz_uuid:
+                unit_obj["TopBoundary"] = _resqml_ref(
+                    "obj_HorizonInterpretation", top_hz_uuid,
+                    age_labels.get(unit.get("baseMa"), ""),
+                )
+            if base_hz_uuid:
+                unit_obj["BaseBoundary"] = _resqml_ref(
+                    "obj_HorizonInterpretation", base_hz_uuid,
+                    age_labels.get(unit.get("topMa"), ""),
+                )
 
             by_type["resqml20.obj_StratigraphicUnitInterpretation"].append(unit_obj)
             unit_refs.append(_resqml_ref(
@@ -1292,7 +1930,9 @@ async def _push_resqml_to_rddms(
     # Flatten all objects into a single list (RDDMS accepts mixed types)
     put_order = [
         "resqml20.obj_RockVolumeFeature",
+        "resqml20.obj_BoundaryFeature",
         "resqml20.obj_OrganizationFeature",
+        "resqml20.obj_HorizonInterpretation",
         "resqml20.obj_StratigraphicUnitInterpretation",
         "resqml20.obj_StratigraphicColumnRankInterpretation",
         "resqml20.obj_StratigraphicColumn",
@@ -1310,18 +1950,17 @@ async def _push_resqml_to_rddms(
 
     try:
         # 1) Begin transaction
-        log.info("[RDDMS] Beginning transaction on %s", dataspace)
         tx_id = await osdu.begin_transaction(at, dataspace)
-        log.info("[RDDMS] Transaction started: %s", tx_id)
+        log.info("[RDDMS] Transaction on %s: PUT %d objects (tx=%s)",
+                 dataspace, len(all_objects), tx_id)
 
         # 2) PUT all objects in one call within the transaction
-        log.info("[RDDMS] PUT %d objects into %s (tx=%s)", len(all_objects), dataspace, tx_id)
         resp = await osdu.put_resources(at, dataspace, all_objects, tx_id)
-        log.info("[RDDMS] PUT resources succeeded: %s", resp)
 
         # 3) Commit the transaction
         await osdu.commit_transaction(at, dataspace, tx_id)
-        log.info("[RDDMS] Transaction %s committed", tx_id)
+        log.info("[RDDMS] Transaction %s committed \u2014 %d objects pushed to %s",
+                 tx_id, len(all_objects), dataspace)
 
     except httpx.HTTPStatusError as e:
         err = {
@@ -1388,13 +2027,19 @@ async def _fetch_column_model(request: Request, column_id: str) -> dict:
         unit_ids_all.extend(_ids(drk.get("StratigraphicUnitInterpretationSet")))
 
     units_by_id = await _storage_fetch_many(request, unit_ids_all) if unit_ids_all else {}
+    horizon_ids_all: List[str] = []
     for u in units_by_id.values():
         ud = _get_data(u)
         cid = _as_id(ud.get("ChronoStratigraphyID") or ud.get("ChronostratigraphyID") or "")
         if cid:
             chrono_ids_all.append(cid)
+        for hkey in ("ColumnStratigraphicHorizonTopID", "ColumnStratigraphicHorizonBaseID"):
+            hid = _as_id(ud.get(hkey) or "")
+            if hid:
+                horizon_ids_all.append(hid)
 
     chron_by_id = await _storage_fetch_many(request, chrono_ids_all) if chrono_ids_all else {}
+    horizons_by_id = await _storage_fetch_many(request, horizon_ids_all) if horizon_ids_all else {}
 
     def _age_key(u):
         top = u.get("topMa")
@@ -1418,7 +2063,7 @@ async def _fetch_column_model(request: Request, column_id: str) -> dict:
         for cid in chrono_ids:
             crec = chron_by_id.get(cid)
             if crec:
-                ff = _flat_unit_fields(None, crec)
+                ff = _flat_unit_fields(None, crec, horizons_by_id)
                 units_model.append({"unit": {}, "chrono": crec, **ff})
         for uid in unit_ids:
             urec = units_by_id.get(uid)
@@ -1427,7 +2072,7 @@ async def _fetch_column_model(request: Request, column_id: str) -> dict:
             ud = _get_data(urec)
             cid_ref = _as_id(ud.get("ChronoStratigraphyID") or "")
             cobj = chron_by_id.get(cid_ref) if cid_ref else {}
-            ff = _flat_unit_fields(urec, cobj)
+            ff = _flat_unit_fields(urec, cobj, horizons_by_id)
             units_model.append({"unit": urec, "chrono": cobj, **ff})
 
         units_model.sort(key=_age_key)
@@ -1470,13 +2115,13 @@ async def ingest_strat_to_rddms(request: Request):
         raise HTTPException(400, "dataspace is required")
 
     # 1) Fetch the column model from OSDU
-    log.info("[RDDMS] Fetching column %s for RESQML conversion", column_id)
     model = await _fetch_column_model(request, column_id)
 
     # 2) Convert to RESQML 2.0.1 objects
     resqml_by_type = _osdu_column_to_resqml(model)
-    log.info("[RDDMS] Converted to %d RESQML objects across %d types",
-             sum(len(v) for v in resqml_by_type.values()), len(resqml_by_type))
+    total_objs = sum(len(v) for v in resqml_by_type.values())
+    log.info("[RDDMS] %s \u2192 %d RESQML objects (%d types) \u2192 %s",
+             column_id, total_objs, len(resqml_by_type), dataspace)
 
     # 3) Push to RDDMS (create dataspace + PUT objects)
     col_name = ((model.get("column") or {}).get("data") or {}).get("Name", "")
@@ -1519,7 +2164,7 @@ async def smda_push_to_rddms(request: Request):
     # 1) Get SMDA auth and fetch column
     auth_kw = await _smda_auth(request)
 
-    log.info("[SMDA→RDDMS] Fetching column '%s' from SMDA", column_name)
+    log.info("[SMDA→RDDMS] Fetching '%s' from SMDA", column_name)
     try:
         col = _StratColumn.from_smda_api(
             column_name,
@@ -1528,13 +2173,14 @@ async def smda_push_to_rddms(request: Request):
             verify_ssl=False,
         )
     except Exception as e:
+        log.warning("[SMDA→RDDMS] Fetch failed for '%s': %s", column_name, e)
         raise HTTPException(422, f"SMDA fetch error: {e}")
 
     # 2) Convert StratColumn → model → RESQML
     model = _stratcol_to_model(col)
     resqml_by_type = _osdu_column_to_resqml(model)
-    log.info("[SMDA→RDDMS] Converted '%s' to %d RESQML objects",
-             col.name, sum(len(v) for v in resqml_by_type.values()))
+    total_objs = sum(len(v) for v in resqml_by_type.values())
+    log.info("[SMDA→RDDMS] '%s' → %d RESQML objects → %s", col.name, total_objs, dataspace)
 
     # 3) Push to RDDMS
     result = await _push_resqml_to_rddms(at, resqml_by_type, dataspace, create_ds, col.name)
@@ -1547,8 +2193,6 @@ async def list_strat_dataspaces(request: Request):
     at = _access_token(request)
     try:
         ds = await osdu.list_dataspaces(at)
-        log.info("[RDDMS] Raw dataspaces response type=%s len=%s",
-                 type(ds).__name__, len(ds) if isinstance(ds, (list, dict)) else "n/a")
         items = []
         if isinstance(ds, list):
             for d in ds:

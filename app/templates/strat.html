@@ -17,6 +17,9 @@
 .sc-cell { border: 1px solid rgba(0,0,0,.12); }
 .sc-cell strong { display: block; font-size: .88rem; line-height: 1.25; }
 .sc-age { font-size: .78rem; opacity: .75; margin-top: 1px; }
+.sc-horizon { font-size: .72rem; color: #7b1fa2; font-style: italic; margin-top: 1px; opacity: .85; }
+.sc-horizon-top { border-top: 2px solid #7b1fa2 !important; }
+.sc-horizon-base { border-bottom: 2px solid #7b1fa2 !important; }
 .sc-empty { background: #f8f8f8; border: 1px solid rgba(0,0,0,.06); }
 .sc-synthetic { background: repeating-linear-gradient(
     -45deg, #f8f8f8, #f8f8f8 4px, #eee 4px, #eee 8px) !important;
@@ -25,6 +28,9 @@
 .sc-synthetic .sc-age { color: #aaa; }
 .sc-footnote { font-size: .85rem; color: #605e5c; margin-top:.35rem; }
 .legend { display:flex; gap:.5rem; flex-wrap:wrap; margin:.35rem 0 .6rem; }
+.legend-item { display:inline-flex; align-items:center; gap:.3rem; margin-right:.75rem; cursor:pointer; user-select:none; }
+.legend-item.off { opacity:.4; }
+.legend-item.off .legend-sw { background:repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px) !important; }
 .rank-col { min-width: 8rem; }
 
 /* ---- Import panel ---- */
@@ -48,7 +54,7 @@
 
 <!-- Search -->
 <section class="sc-wrap sc-panel" style="margin-bottom:1rem;">
-  <h3 style="margin:0 0 .5rem 0;">Find Stratigraphic Columns</h3>
+  <h3 style="margin:0 0 .5rem 0;">Find Stratigraphic Columns &amp; Ranks</h3>
   <div class="row" style="grid-template-columns:160px 1fr;">
     <label for="strat-q">Query</label>
     <input id="strat-q" type="text" value="*" placeholder="e.g., data.Name:Gudrun OR *" />
@@ -56,17 +62,25 @@
     <input id="strat-limit" type="number" value="50" min="1" max="1000" />
   </div>
   <div style="display:flex;gap:.5rem;align-items:center;">
-    <button class="btn" id="btn-search" type="button">Search Columns</button>
+    <button class="btn" id="btn-search" type="button">Search</button>
     <span id="search-status" class="muted"></span>
   </div>
   <div style="margin-top:.5rem;">
-    <label for="strat-results">Results</label>
+    <label for="strat-results">Results <span class="muted" style="font-weight:normal;font-size:.82rem;">(Columns &amp; Ranks)</span></label>
     <select id="strat-results" size="7" style="width:100%;">
       <option value="">— no results —</option>
     </select>
     <div class="muted" style="font-size:.85rem;margin-top:.25rem;">
-      Select a record to render the hierarchical stratigraphic column.
+      Select a Column or a single Rank to render. Ranks display as a single-rank view.
     </div>
+  </div>
+  <div style="margin-top:.6rem; padding-top:.5rem; border-top:1px solid #e1dfdd;">
+    <label for="direct-id" style="font-size:13px; font-weight:600;">Load by Record ID</label>
+    <div style="display:flex;gap:.4rem;align-items:center;margin-top:.2rem;">
+      <input id="direct-id" type="text" placeholder="dev:work-product-component--StratigraphicColumn:… or …RankInterpretation:…" style="flex:1;font-size:13px;" />
+      <button class="btn" id="btn-direct-load" type="button" style="white-space:nowrap;">Load</button>
+    </div>
+    <div class="muted" style="font-size:.8rem;margin-top:.15rem;">Paste a Column or RankInterpretation record ID to load it directly.</div>
   </div>
 </section>
 
@@ -124,14 +138,18 @@
         <input id="smda-partition" type="text" value="{{ partition }}" />
       </div>
       <div id="smda-columns-list" style="display:none;margin-bottom:.5rem;">
-        <label>Available columns <input id="smda-columns-filter" type="text" placeholder="Filter…" style="width:160px;font-size:12px;padding:2px 6px;margin-left:.5rem;" /></label>
-        <select id="smda-columns-sel" size="8" style="width:100%;font-size:13px;"></select>
+        <label>Available columns <small class="muted">(Ctrl/Shift-click to select multiple)</small>
+          <input id="smda-columns-filter" type="text" placeholder="Filter…" style="width:160px;font-size:12px;padding:2px 6px;margin-left:.5rem;" />
+        </label>
+        <select id="smda-columns-sel" size="10" multiple style="width:100%;font-size:13px;"></select>
         <span id="smda-columns-count" class="muted" style="font-size:12px;"></span>
       </div>
-      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;flex-wrap:wrap;">
         <button class="btn" id="btn-smda-fetch" type="button" title="Fetch strat units from the SMDA API and convert to OSDU WPC records (preview only)">Fetch &amp; Convert</button>
         <button class="btn btn-ingest" id="btn-smda-storage" type="button" disabled title="Send each record to the OSDU Storage API">Send to OSDU</button>
         <button class="btn" id="btn-smda-download" type="button" disabled title="Save the OSDU WPC bundle as a local JSON file">Download Bundle</button>
+        <span style="border-left:1px solid #ccc;height:1.4em;"></span>
+        <button class="btn btn-ingest" id="btn-smda-batch" type="button" title="Fetch &amp; ingest all selected columns in one go">Batch Fetch &amp; Ingest Selected</button>
       </div>
       <details class="muted" style="font-size:.8rem;margin-top:.4rem;">
         <summary style="cursor:pointer;">What do these buttons do?</summary>
@@ -139,6 +157,7 @@
           <li><strong>Fetch &amp; Convert</strong> &mdash; Calls the SMDA REST API to retrieve all stratigraphic units for the selected column, then converts them to OSDU WPC records. Preview the result below &mdash; nothing is written to OSDU yet.</li>
           <li><strong>Send to OSDU</strong> &mdash; Writes each record to the <em>OSDU Storage API</em> in batches. Creates the column, ranks, and units in the OSDU records catalog.</li>
           <li><strong>Download Bundle</strong> &mdash; Saves the OSDU WPC bundle as a <code>.json</code> file for inspection or later upload.</li>
+          <li><strong>Batch Fetch &amp; Ingest Selected</strong> &mdash; Fetches <em>and</em> sends to OSDU each selected column in sequence. Use Ctrl-click or Shift-click to select multiple columns in the list.</li>
         </ul>
       </details>
       <div id="smda-status" class="imp-status info" style="display:none;"></div>
@@ -243,6 +262,42 @@
     <div id="rddms-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
   </div>
 
+  <!-- Horizon Generation Panel (shown after column is loaded) -->
+  <div id="horizon-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #c8e6c9; border-radius:6px; background:#f1f8f2;">
+    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#2e7d32;">
+      Generate Horizons from Unit Boundaries
+    </div>
+    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
+      Derive <code>HorizonInterpretation</code> records from the age boundaries of units in this column.
+      Each unique boundary age produces one horizon. <strong>Existing</strong> horizons are kept &mdash; only missing boundaries are generated.
+    </p>
+    <div id="horizon-info" class="muted" style="font-size:13px; margin-bottom:.4rem;"></div>
+    <div style="display:flex; gap:.5rem; align-items:center;">
+      <button class="btn" id="btn-horizon-preview" type="button" title="Preview generated horizons without ingesting">Preview</button>
+      <button class="btn btn-ingest" id="btn-horizon-ingest" type="button" title="Generate and ingest horizons to OSDU Storage">Generate &amp; Ingest to OSDU</button>
+      <span id="horizon-status" class="muted" style="font-size:13px;"></span>
+    </div>
+    <div id="horizon-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
+  </div>
+
+  <!-- Unit Generation Panel (inverse: horizons → units) -->
+  <div id="unitgen-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #bbdefb; border-radius:6px; background:#e3f2fd;">
+    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#1565c0;">
+      Generate Units from Horizon Boundaries
+    </div>
+    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
+      Derive <code>StratigraphicUnitInterpretation</code> records from consecutive horizon boundaries.
+      Each pair of adjacent horizons (sorted by age) produces one unit interval. <strong>Existing</strong> units are kept &mdash; only missing intervals are generated.
+    </p>
+    <div id="unitgen-info" class="muted" style="font-size:13px; margin-bottom:.4rem;"></div>
+    <div style="display:flex; gap:.5rem; align-items:center;">
+      <button class="btn" id="btn-unitgen-preview" type="button" title="Preview generated units without ingesting">Preview</button>
+      <button class="btn btn-ingest" id="btn-unitgen-ingest" type="button" title="Generate and ingest units to OSDU Storage">Generate &amp; Ingest to OSDU</button>
+      <span id="unitgen-status" class="muted" style="font-size:13px;"></span>
+    </div>
+    <div id="unitgen-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
+  </div>
+
   <details style="margin-top:.75rem;">
     <summary class="muted">Raw metadata</summary>
     <table class="sc-table" style="font-size:13px;">
@@ -306,6 +361,10 @@
     if (child.code && parent.code) {
       return child.code.startsWith(parent.code + '.') || child.code === parent.code;
     }
+    // Litho ParentName: child.parentName matches parent.name (case-insensitive)
+    if (child.parentName && parent.name) {
+      return child.parentName.toLowerCase().trim() === parent.name.toLowerCase().trim();
+    }
     return false;
   }
 
@@ -324,7 +383,10 @@
         baseMa: (u.baseMa != null) ? u.baseMa : null,
         color:  u.color  || null,
         code:   u.code   || '',
+        parentName: u.parentName || '',
         _synthetic: !!u._synthetic,
+        horizonTop:  u.horizonTop  || null,
+        horizonBase: u.horizonBase || null,
       }))
     })).filter(rk => rk.units.length > 0);
 
@@ -382,17 +444,6 @@
     // Sort roots older-first (bigger topMa first)
     roots.sort((a, b) => (b.topMa || 0) - (a.topMa || 0));
 
-    // Orphan roots at deeper ranks: extend leftward to column 0
-    // so they fill the full table width (otherwise they leave white gaps
-    // in all columns to their left).  We adjust rankIdx before computeLeaf
-    // so that colSpan computation (nRanks - rankIdx for leaves, or
-    // minChildRank - rankIdx for parents) properly spans all columns.
-    for (const r of roots) {
-      if (r.rankIdx > 0) {
-        r.rankIdx = 0;
-      }
-    }
-
     // Compute leaf counts + colSpan
     function computeLeaf(node) {
       if (node.children.length === 0) {
@@ -426,34 +477,6 @@
 
     const totalRows = rowIdx;
 
-    // Fill gaps: when a child at rank ci has a parent whose span ends at
-    // pe = parent.effectiveCol + parent.colSpan, and ci > pe, extend
-    // the child leftward so it starts at pe (no white holes).
-    function fillGaps(node) {
-      node.effectiveCol = (node.effectiveCol != null) ? node.effectiveCol : node.rankIdx;
-      if (!node.children.length) return;
-      const parentEnd = node.effectiveCol + node.colSpan;
-      for (const child of node.children) {
-        child.effectiveCol = child.rankIdx;
-        if (child.rankIdx > parentEnd) {
-          const gap = child.rankIdx - parentEnd;
-          child.colSpan += gap;
-          child.effectiveCol = parentEnd;
-        }
-        fillGaps(child);
-      }
-    }
-    for (const r of roots) { r.effectiveCol = r.rankIdx; fillGaps(r); }
-
-    // Build start-map using effectiveCol so gap-filled nodes render correctly
-    const startMap = new Array(nRanks).fill(null).map(() => new Map());
-    function populateStartMap(node) {
-      const col = (node.effectiveCol != null) ? node.effectiveCol : node.rankIdx;
-      startMap[col].set(node.rowStart, node);
-      for (const ch of node.children) populateStartMap(ch);
-    }
-    for (const r of roots) populateStartMap(r);
-
     // Column metadata: rank-level gradient dark → light
     const columns = ranks.map((rk, ri) => {
       const t = nRanks === 1 ? 0.5 : ri / (nRanks - 1);
@@ -464,7 +487,7 @@
       return { rankName: rk.rankName, bg, fg, nodes: levels[ri] };
     });
 
-    return { columns, totalRows, nRanks, startMap };
+    return { columns, totalRows, nRanks };
   }
 
   /* ------------------------------------------------------------------ */
@@ -475,14 +498,44 @@
     if (!columns) return;
     for (const col of columns) {
       const wrap = document.createElement('span');
-      wrap.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;margin-right:.75rem;';
+      wrap.className = _hiddenRanks.has(col.rankName) ? 'legend-item off' : 'legend-item';
       const sw = document.createElement('i');
+      sw.className = 'legend-sw';
       sw.style.cssText = `width:14px;height:14px;display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,.18);background:${col.bg};`;
       wrap.appendChild(sw);
       const lbl = document.createElement('span');
       lbl.textContent = `${col.rankName} (${col.nodes.length})`;
       wrap.appendChild(lbl);
+      wrap.addEventListener('click', () => toggleRank(col.rankName));
       legendBox.appendChild(wrap);
+    }
+  }
+
+  function toggleRank(rankName) {
+    if (_hiddenRanks.has(rankName)) _hiddenRanks.delete(rankName);
+    else _hiddenRanks.add(rankName);
+    refreshHierarchy();
+  }
+
+  /** Re-build + re-render hierarchy using _cachedModel with hidden ranks filtered out. */
+  function refreshHierarchy() {
+    if (!_cachedModel) return;
+    // Build full hierarchy (all ranks) for legend counts
+    const fullHierarchy = buildHierarchy(_cachedModel);
+    renderLegend(fullHierarchy ? fullHierarchy.columns : []);
+    // Filtered model: only visible ranks
+    const filtered = {
+      ..._cachedModel,
+      ranks: (_cachedModel.ranks || []).filter(rk => !_hiddenRanks.has(rk.rankName || 'Unspecified')),
+    };
+    const hierarchy = buildHierarchy(filtered);
+    renderHierarchy(hierarchy);
+    // Update status row count
+    if (hierarchy) {
+      const info = `${hierarchy.totalRows} rows \u00d7 ${hierarchy.nRanks} ranks`;
+      const isSingleRank = !!(_cachedModel.column || {})._singleRank;
+      const prefix = isSingleRank ? 'Single Rank' : 'OK';
+      setStatus(`${prefix} \u2014 ${info}`);
     }
   }
 
@@ -507,7 +560,14 @@
       matrixRoot.innerHTML = '<p class="muted" style="padding:.5rem;">No stratigraphic units to display.</p>';
       return;
     }
-    const { columns, totalRows, nRanks, startMap } = hierarchy;
+    const { columns, totalRows, nRanks } = hierarchy;
+
+    // Build start-map per column: row → node
+    const startMap = columns.map(col => {
+      const m = new Map();
+      for (const node of col.nodes) m.set(node.rowStart, node);
+      return m;
+    });
 
     const table = document.createElement('table');
     table.className = 'sc-table';
@@ -543,11 +603,10 @@
           if (node.leafCount > 1)  td.rowSpan = node.leafCount;
           if (node.colSpan  > 1)   td.colSpan = node.colSpan;
 
-          // Background: prefer ICS chrono colour; else use the node's original rank gradient
-          const origRank = node.rankIdx;
-          const bgColor = node.color || columns[origRank].bg;
+          // Background: prefer ICS chrono colour; else rank gradient
+          const bgColor = node.color || columns[c].bg;
           td.style.background = bgColor;
-          td.style.color = node.color ? (isLightColor(node.color) ? '#222' : '#fff') : columns[origRank].fg;
+          td.style.color = node.color ? (isLightColor(node.color) ? '#222' : '#fff') : columns[c].fg;
 
           // Name
           const nameEl = document.createElement('strong');
@@ -560,6 +619,22 @@
             ageEl.className = 'sc-age';
             ageEl.textContent = `${fmtAge(node.topMa)}\u2013${fmtAge(node.baseMa)} Ma`;
             td.appendChild(ageEl);
+          }
+
+          // Horizon boundary labels (real OSDU HorizonInterpretation data)
+          if (node.horizonTop) {
+            td.classList.add('sc-horizon-top');
+            const hEl = document.createElement('div');
+            hEl.className = 'sc-horizon';
+            hEl.textContent = `\u25B3 ${node.horizonTop.name}`;
+            td.appendChild(hEl);
+          }
+          if (node.horizonBase) {
+            td.classList.add('sc-horizon-base');
+            const hEl = document.createElement('div');
+            hEl.className = 'sc-horizon';
+            hEl.textContent = `\u25BD ${node.horizonBase.name}`;
+            td.appendChild(hEl);
           }
 
           td.title = node.name
@@ -590,10 +665,12 @@
   /*  LOAD + SEARCH                                                     */
   /* ------------------------------------------------------------------ */
   let currentColumnId = null;  // Track currently loaded column for RDDMS push
+  let _cachedModel = null;       // Full model for legend-toggle re-renders
+  const _hiddenRanks = new Set(); // rankName strings currently toggled off
 
   async function loadColumnById(id){
     const rid = (id||'').trim();
-    if (!rid) { setStatus('Select a StratigraphicColumn.'); return; }
+    if (!rid) { setStatus('Select a Column or Rank.'); return; }
     setStatus('Loading\u2026');
     currentColumnId = null;
     const rddmsPanel = document.getElementById('rddms-panel');
@@ -603,6 +680,9 @@
       const res = await fetch(url, { headers:{'Cache-Control':'no-store'} });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const model = await res.json();
+      _cachedModel = model;
+      _hiddenRanks.clear();
+      const isSingleRank = !!(model.column || {})._singleRank;
       const hierarchy = buildHierarchy(model);
       renderLegend(hierarchy ? hierarchy.columns : []);
       renderHierarchy(hierarchy);
@@ -616,10 +696,39 @@
       const info = hierarchy
         ? `${hierarchy.totalRows} rows \u00d7 ${hierarchy.nRanks} ranks`
         : 'empty';
-      setStatus(`OK \u2014 ${info}`);
-      // Show RDDMS panel after successful load
+      const prefix = isSingleRank ? 'Single Rank' : 'OK';
+      setStatus(`${prefix} \u2014 ${info}`);
+      // Show RDDMS panel and Horizon panel after successful load
       currentColumnId = rid;
       if (rddmsPanel) rddmsPanel.style.display = 'block';
+
+      // Count real (non-synthetic) units and horizons
+      let totalUnits = 0;
+      for (const rk of (model.ranks || [])) {
+        for (const u of (rk.units || [])) { if (!u._synthetic) totalUnits++; }
+      }
+      const hc = model.horizonCount || 0;
+
+      // Generate Horizons panel: only if real units exist
+      const horizonPanel = document.getElementById('horizon-panel');
+      if (horizonPanel) {
+        horizonPanel.style.display = totalUnits > 0 ? 'block' : 'none';
+        const hInfo = document.getElementById('horizon-info');
+        if (hInfo) {
+          hInfo.textContent = hc > 0
+            ? `This column already has ${hc} HorizonInterpretation record(s) in OSDU.`
+            : 'No HorizonInterpretation records found for this column (none linked from units).';
+        }
+      }
+      // Generate Units panel: only if horizons exist
+      const unitgenPanel = document.getElementById('unitgen-panel');
+      if (unitgenPanel) {
+        unitgenPanel.style.display = hc > 0 ? 'block' : 'none';
+        const ugInfo = document.getElementById('unitgen-info');
+        if (ugInfo) {
+          ugInfo.textContent = `${hc} horizon(s) available \u2192 can generate up to ${Math.max(0, hc - 1)} unit interval(s). Column currently has ${totalUnits} unit(s).`;
+        }
+      }
     } catch(e) {
       console.warn(e);
       setStatus('Load failed: ' + e.message);
@@ -644,15 +753,21 @@
         clear(legendBox); clear(matrixRoot);
         return;
       }
-      for (const it of items) {
+      // Sort: Columns first, then Ranks
+      const cols = items.filter(i => i.type !== 'rank');
+      const ranks = items.filter(i => i.type === 'rank');
+      for (const it of [...cols, ...ranks]) {
         const opt = document.createElement('option');
         opt.value = it.id;
-        const tag = it.source === 'storage' ? ' ⏳ (indexing)' : '';
-        opt.textContent = `[StratigraphicColumn] ${it.name||it.id} — ${it.id}${tag}`;
+        const isRank = it.type === 'rank' || (it.kind || '').includes('RankInterpretation');
+        const badge = isRank ? 'Rank' : 'Column';
+        const extra = it.source === 'storage' ? ' \u23f3 (indexing)' : '';
+        opt.textContent = `[${badge}] ${it.name||it.id} \u2014 ${it.id}${extra}`;
         resSelect.appendChild(opt);
       }
       resSelect.selectedIndex = 0;
-      searchStat.textContent = `Found ${data.total ?? items.length}`;
+      const nCols = cols.length, nRanks = ranks.length;
+      searchStat.textContent = `Found ${nCols} column(s), ${nRanks} rank(s)`;
       loadColumnById(resSelect.value);
     } catch(e) {
       console.warn(e);
@@ -665,6 +780,20 @@
   resSelect?.addEventListener('change', () => {
     const id = resSelect.value || '';
     if (id) loadColumnById(id);
+  });
+
+  // Direct load by pasted ID
+  const directIdInput = $('#direct-id');
+  const btnDirectLoad = $('#btn-direct-load');
+  btnDirectLoad?.addEventListener('click', () => {
+    const id = (directIdInput?.value || '').trim();
+    if (id) loadColumnById(id);
+  });
+  directIdInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const id = (directIdInput?.value || '').trim();
+      if (id) loadColumnById(id);
+    }
   });
 
   /* ================================================================ */
@@ -834,7 +963,12 @@
   });
 
   document.getElementById('smda-columns-sel')?.addEventListener('change', function() {
-    document.getElementById('smda-col').value = this.value;
+    const opts = Array.from(this.selectedOptions).map(o => o.value);
+    document.getElementById('smda-col').value = opts[0] || '';
+    const batchBtn = document.getElementById('btn-smda-batch');
+    if (batchBtn) batchBtn.textContent = opts.length > 1
+      ? `Batch Fetch & Ingest (${opts.length})`
+      : 'Batch Fetch & Ingest Selected';
   });
 
   btnSmdaFetch?.addEventListener('click', async () => {
@@ -869,6 +1003,59 @@
   });
   btnSmdaDownload?.addEventListener('click', () => {
     if (smdaBundle) downloadJSON(smdaBundle, 'smda_strat_osdu_bundle.json');
+  });
+
+  /* ---- SMDA batch fetch & ingest ---- */
+  let _batchRunning = false;
+  document.getElementById('btn-smda-batch')?.addEventListener('click', async () => {
+    const sel = document.getElementById('smda-columns-sel');
+    const cols = Array.from(sel.selectedOptions).map(o => o.value);
+    if (!cols.length) { impStatus('smda-status', 'Select one or more columns from the list first', 'err'); return; }
+    if (_batchRunning) { impStatus('smda-status', 'Batch already running…', 'err'); return; }
+    _batchRunning = true;
+    const smdaUrl = document.getElementById('smda-url')?.value || '';
+    const partition = document.getElementById('smda-partition')?.value || 'data';
+    const batchBtn = document.getElementById('btn-smda-batch');
+    batchBtn.disabled = true;
+    let ok = 0, fail = 0;
+    const errors = [];
+    for (let i = 0; i < cols.length; i++) {
+      const col = cols[i];
+      impStatus('smda-status', `[${i+1}/${cols.length}] Fetching "${col}" from SMDA…`, 'info');
+      try {
+        // 1. Fetch & convert
+        const fd = new FormData();
+        fd.append('column', col);
+        fd.append('smda_url', smdaUrl);
+        fd.append('partition', partition);
+        const r1 = await fetch('/api/strat/import/smda', {method:'POST', body:fd});
+        const d1 = await r1.json();
+        if (!r1.ok) throw new Error(d1.detail || r1.statusText);
+        // 2. Ingest to OSDU Storage
+        impStatus('smda-status', `[${i+1}/${cols.length}] Ingesting "${d1.columnName}" to OSDU…`, 'info');
+        const r2 = await fetch('/api/strat/storage/put', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({bundle: d1.bundle, partition}),
+        });
+        const d2 = await r2.json();
+        if (!r2.ok) throw new Error(d2.detail || r2.statusText);
+        ok++;
+      } catch(e) {
+        fail++;
+        errors.push(`${col}: ${e.message}`);
+      }
+    }
+    _batchRunning = false;
+    batchBtn.disabled = false;
+    let msg = `Batch complete: ${ok} ingested`;
+    if (fail) msg += `, ${fail} failed`;
+    impStatus('smda-status', msg, fail ? 'err' : 'ok');
+    if (errors.length) {
+      const prev = document.getElementById('smda-preview');
+      prev.innerHTML = `<strong>Errors:</strong><br>${errors.map(e => `&bull; ${e}`).join('<br>')}`;
+    }
+    setTimeout(() => doSearch(), 500);
   });
 
   /* ---- SMDA → RDDMS push ---- */
@@ -1108,6 +1295,155 @@
       btnRddmsPush.disabled = false;
     }
   });
+
+  /* ------------------------------------------------------------------ */
+  /*  HORIZON GENERATION                                                */
+  /* ------------------------------------------------------------------ */
+  async function _doHorizonRequest(ingest) {
+    if (!currentColumnId) return;
+    const statusEl = document.getElementById('horizon-status');
+    const resultEl = document.getElementById('horizon-result');
+    const partition = '{{ partition }}';
+
+    if (statusEl) statusEl.textContent = ingest ? 'Generating & ingesting\u2026' : 'Generating preview\u2026';
+    if (resultEl) resultEl.style.display = 'none';
+
+    try {
+      const r = await fetch('/api/strat/generate-horizons', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          columnId: currentColumnId,
+          partition: partition,
+          ingest: !!ingest,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+
+      const s = data.stats || {};
+      let html = `<strong>${s.horizonCount || 0} new horizon(s)</strong> from ${s.uniqueAges || 0} distinct ages, `;
+      html += `${s.unitsPatchable || 0} units linkable`;
+      if (s.existingHorizons) html += `<br><span class="muted">${s.existingHorizons} existing horizon(s) kept, ${s.skippedAges || 0} age(s) skipped (already linked)</span>`;
+      if (s.horizonCount === 0 && s.existingHorizons > 0) html += `<br><em>All boundary ages already have horizons — nothing to generate.</em>`;
+
+      if (ingest && data.ingest) {
+        const ig = data.ingest;
+        html += `<br><strong>Ingested:</strong> ${ig.created || 0} records to OSDU Storage`;
+        if (ig.errors && ig.errors.length) {
+          html += ` <span style="color:#c62828;">(${ig.errors.length} errors)</span>`;
+        }
+      }
+
+      // Show a few sample horizons
+      if (data.horizons && data.horizons.length) {
+        const samples = data.horizons.slice(0, 5);
+        html += '<details style="margin-top:.4rem;"><summary>Sample horizons</summary><ul style="font-size:12px;margin:.3rem 0;">';
+        for (const h of samples) {
+          const hd = h.data || {};
+          html += `<li><strong>${hd.Name}</strong> \u2014 ${hd.MeanPossibleAge} Ma</li>`;
+        }
+        if (data.horizons.length > 5) html += `<li>\u2026 and ${data.horizons.length - 5} more</li>`;
+        html += '</ul></details>';
+      }
+
+      if (resultEl) {
+        resultEl.innerHTML = html;
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#e8f5e9';
+        resultEl.style.border = '1px solid #4caf50';
+      }
+      if (statusEl) statusEl.textContent = ingest ? 'Done \u2014 horizons ingested' : 'Preview ready';
+
+      // Auto-refresh column to show horizon data
+      if (ingest) setTimeout(() => loadColumnById(currentColumnId), 2000);
+    } catch(e) {
+      if (statusEl) statusEl.textContent = 'Failed: ' + e.message;
+      if (resultEl) {
+        resultEl.innerHTML = `<strong>\u274c Error</strong>: ${e.message}`;
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fce4ec';
+        resultEl.style.border = '1px solid #e53935';
+      }
+    }
+  }
+
+  document.getElementById('btn-horizon-preview')?.addEventListener('click', () => _doHorizonRequest(false));
+  document.getElementById('btn-horizon-ingest')?.addEventListener('click', () => _doHorizonRequest(true));
+
+  /* ------------------------------------------------------------------ */
+  /*  UNIT GENERATION (inverse: horizons → units)                       */
+  /* ------------------------------------------------------------------ */
+  async function _doUnitGenRequest(ingest) {
+    if (!currentColumnId) return;
+    const statusEl = document.getElementById('unitgen-status');
+    const resultEl = document.getElementById('unitgen-result');
+    const partition = '{{ partition }}';
+
+    if (statusEl) statusEl.textContent = ingest ? 'Generating & ingesting\u2026' : 'Generating preview\u2026';
+    if (resultEl) resultEl.style.display = 'none';
+
+    try {
+      const r = await fetch('/api/strat/generate-units', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          columnId: currentColumnId,
+          partition: partition,
+          ingest: !!ingest,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || r.statusText);
+
+      const s = data.stats || {};
+      let html = `<strong>${s.unitCount || 0} new unit(s)</strong> derived from ${s.horizonCount || 0} horizon boundaries`;
+      if (s.existingUnits) html += `<br><span class="muted">${s.existingUnits} existing unit(s) kept, ${s.skippedIntervals || 0} interval(s) skipped (already covered)</span>`;
+      if (s.unitCount === 0 && s.existingUnits > 0) html += `<br><em>All intervals already have units — nothing to generate.</em>`;
+
+      if (ingest && data.ingest) {
+        const ig = data.ingest;
+        html += `<br><strong>Ingested:</strong> ${ig.created || 0} records to OSDU Storage`;
+        if (ig.errors && ig.errors.length) {
+          html += ` <span style="color:#c62828;">(${ig.errors.length} errors)</span>`;
+        }
+      }
+
+      // Show a few sample units
+      if (data.units && data.units.length) {
+        const samples = data.units.slice(0, 5);
+        html += '<details style="margin-top:.4rem;"><summary>Sample units</summary><ul style="font-size:12px;margin:.3rem 0;">';
+        for (const u of samples) {
+          const ud = u.data || {};
+          html += `<li><strong>${ud.Name}</strong> \u2014 ${ud.OlderPossibleAge}\u2013${ud.YoungerPossibleAge} Ma</li>`;
+        }
+        if (data.units.length > 5) html += `<li>\u2026 and ${data.units.length - 5} more</li>`;
+        html += '</ul></details>';
+      }
+
+      if (resultEl) {
+        resultEl.innerHTML = html;
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#e3f2fd';
+        resultEl.style.border = '1px solid #1976d2';
+      }
+      if (statusEl) statusEl.textContent = ingest ? 'Done \u2014 units ingested' : 'Preview ready';
+
+      // Auto-refresh column after ingest
+      if (ingest) setTimeout(() => loadColumnById(currentColumnId), 2000);
+    } catch(e) {
+      if (statusEl) statusEl.textContent = 'Failed: ' + e.message;
+      if (resultEl) {
+        resultEl.innerHTML = `<strong>\u274c Error</strong>: ${e.message}`;
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fce4ec';
+        resultEl.style.border = '1px solid #e53935';
+      }
+    }
+  }
+
+  document.getElementById('btn-unitgen-preview')?.addEventListener('click', () => _doUnitGenRequest(false));
+  document.getElementById('btn-unitgen-ingest')?.addEventListener('click', () => _doUnitGenRequest(true));
 
 })();
 </script>

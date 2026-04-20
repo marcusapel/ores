@@ -198,7 +198,7 @@ Copy `k8s/secret.yaml.template` → `k8s/secret.yaml` and fill in at minimum:
 | Key | Purpose |
 |-----|---------|
 | `SECRET_KEY` | Signs session cookies **and** encrypts stored refresh tokens — must be identical across all replicas |
-| `INSTANCE_<NAME>_TENANT_ID` | Azure AD tenant for the OSDU instance |
+| `INSTANCE_<NAME>_TENANT_ID` | AD tenant for the OSDU instance |
 | `INSTANCE_<NAME>_CLIENT_ID` | App registration client ID |
 | `INSTANCE_<NAME>_REFRESH_TOKEN` | Shared refresh token (optional — enables zero-click mode) |
 | `INSTANCE_<NAME>_CLIENT_SECRET` | Service principal secret (alternative to refresh token) |

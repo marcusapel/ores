@@ -30,7 +30,7 @@ from app.tokenstore import (
     set_cached_at,
     clear_cached_at,
 )
-from tests.conftest import USERS, fake_token_response
+from test.conftest import USERS, fake_token_response
 
 
 # ─────────────────────────────────────────────────────────────────────────────

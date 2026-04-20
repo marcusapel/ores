@@ -29,7 +29,7 @@ import httpx
 import pytest
 from starlette.testclient import TestClient
 
-from tests.conftest import USERS
+from test.conftest import USERS
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -569,6 +569,56 @@ class TestStratColumnFetch:
         data = resp.json()
         assert data["ranks"] == []
 
+    def test_load_single_rank_by_id(self, authed_client):
+        """Loading a RankInterpretation ID wraps it as a single-rank column."""
+        rank_id = "opendes:work-product-component--StratigraphicColumnRankInterpretation:erathem:"
+        chrono1_id = "opendes:reference-data--ChronoStratigraphy:paleozoic:"
+        chrono2_id = "opendes:reference-data--ChronoStratigraphy:mesozoic:"
+
+        rank = _fake_rank_record(rank_id, "Erathem", [chrono1_id, chrono2_id])
+        chrono1 = _fake_chrono_record(chrono1_id, "Paleozoic", 541.0, 251.9, "#99C08D")
+        chrono2 = _fake_chrono_record(chrono2_id, "Mesozoic", 251.9, 66.0, "#67C5CA")
+
+        records = {rank_id: rank, chrono1_id: chrono1, chrono2_id: chrono2}
+
+        with patch("httpx.AsyncClient", self._make_fake_client(records)):
+            resp = authed_client.get(f"/api/strat/column.json?id={rank_id}")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "column" in data
+        assert "ranks" in data
+        # The synthetic column wrapper should flag _singleRank
+        assert data["column"].get("_singleRank") is True
+        assert "(Single Rank)" in data["column"]["data"]["Name"]
+
+        # Should have exactly 1 rank with the chrono units
+        ranks = data["ranks"]
+        assert len(ranks) == 1
+        assert ranks[0]["rankName"] == "Erathem"
+        unit_names = [u.get("name", "") for u in ranks[0]["units"]]
+        assert "Paleozoic" in unit_names
+        assert "Mesozoic" in unit_names
+
+    def test_load_single_rank_chrono_ages(self, authed_client):
+        """Single-rank view: chrono ages are present on units."""
+        rank_id = "opendes:work-product-component--StratigraphicColumnRankInterpretation:system:"
+        c_id = "opendes:reference-data--ChronoStratigraphy:cretaceous:"
+        rank = _fake_rank_record(rank_id, "System", [c_id])
+        chrono = _fake_chrono_record(c_id, "Cretaceous", 145.0, 66.0, "#7FC64E")
+        records = {rank_id: rank, c_id: chrono}
+
+        with patch("httpx.AsyncClient", self._make_fake_client(records)):
+            resp = authed_client.get(f"/api/strat/column.json?id={rank_id}")
+
+        assert resp.status_code == 200
+        ranks = resp.json()["ranks"]
+        assert len(ranks) == 1
+        cret = next((u for u in ranks[0]["units"] if u.get("name") == "Cretaceous"), None)
+        assert cret is not None
+        assert cret["topMa"] == 145.0
+        assert cret["baseMa"] == 66.0
+
 
 class TestStratPage:
     """GET /strat → HTML page renders."""
@@ -602,3 +652,243 @@ class TestAdminPage:
             resp = authed_client.get("/admin")
         # Should still render (with empty dataspaces), not 500
         assert resp.status_code == 200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Generation — horizons ↔ units bidirectional (complement-aware)
+#
+# Uses the ICS demo chrono column as the realistic test fixture:
+#   Eonothem  rank → Phanerozoic (541–0 Ma), Proterozoic (2500–541 Ma)
+#   Erathem   rank → Paleozoic   (541–251.9 Ma), Mesozoic (251.9–66 Ma)
+#
+# This matches real OSDU StratigraphicColumn data: chrono records carry
+# AgeBegin/AgeEnd, units may or may not have horizons linked.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _chrono_column_model(with_horizons: bool = False) -> dict:
+    """Build a column model matching the ICS demo chrono column.
+
+    Two ranks (Eonothem & Erathem) with 4 chrono entries total.
+    If ``with_horizons`` is True, each unit gets horizonTop/horizonBase
+    to simulate a column where horizons have already been generated.
+    """
+    def _u(name, top, base, uid, hztop=None, hzbase=None):
+        """Helper: build one unit entry in the model."""
+        u: Dict[str, Any] = {
+            "unit": {"id": uid}, "chrono": {},
+            "name": name, "topMa": top, "baseMa": base,
+        }
+        if hztop:
+            u["horizonTop"] = hztop
+        if hzbase:
+            u["horizonBase"] = hzbase
+        return u
+
+    def _hz(age, label):
+        """Helper: horizon ref dict."""
+        return {"id": f"opendes:wpc--HorizonInterpretation:ics-{age}Ma:", "name": label, "ageMa": age}
+
+    eo_units = [
+        _u("Phanerozoic", 541.0, 0.0,
+           "opendes:reference-data--ChronoStratigraphy:phanerozoic:",
+           _hz(541.0, "Base Phanerozoic") if with_horizons else None,
+           _hz(0.0, "Top Phanerozoic") if with_horizons else None),
+        _u("Proterozoic", 2500.0, 541.0,
+           "opendes:reference-data--ChronoStratigraphy:proterozoic:",
+           _hz(2500.0, "Base Proterozoic") if with_horizons else None,
+           _hz(541.0, "Top Proterozoic") if with_horizons else None),
+    ]
+    er_units = [
+        _u("Paleozoic", 541.0, 251.9,
+           "opendes:reference-data--ChronoStratigraphy:paleozoic:",
+           _hz(541.0, "Base Paleozoic") if with_horizons else None,
+           _hz(251.9, "Top Paleozoic") if with_horizons else None),
+        _u("Mesozoic", 251.9, 66.0,
+           "opendes:reference-data--ChronoStratigraphy:mesozoic:",
+           _hz(251.9, "Base Mesozoic") if with_horizons else None,
+           _hz(66.0, "Top Mesozoic") if with_horizons else None),
+        _u("Cenozoic", 66.0, 0.0,
+           "opendes:reference-data--ChronoStratigraphy:cenozoic:",
+           _hz(66.0, "Base Cenozoic") if with_horizons else None,
+           _hz(0.0, "Top Cenozoic") if with_horizons else None),
+    ]
+
+    return {
+        "column": {
+            "id": "opendes:work-product-component--StratigraphicColumn:ics2017",
+            "kind": "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
+            "data": {"Name": "ICS 2017 Chrono Column"},
+        },
+        "ranks": [
+            {"rankName": "Eonothem", "isChrono": True, "units": eo_units, "unitCount": 2},
+            {"rankName": "Erathem",  "isChrono": True, "units": er_units, "unitCount": 3},
+        ],
+        "horizonCount": 5 if with_horizons else 0,
+    }
+
+
+class TestGenerateHorizonsComplement:
+    """_generate_horizons_for_column on the ICS chrono demo column."""
+
+    def test_chrono_no_existing_horizons_generates_all(self):
+        """Bare chrono column (no horizons linked) → all boundary ages get new horizons."""
+        from app.strat import _generate_horizons_for_column
+        model = _chrono_column_model(with_horizons=False)
+        result = _generate_horizons_for_column(model, partition="opendes")
+
+        s = result["stats"]
+        # Distinct ages: 2500, 541, 251.9, 66, 0 = 5
+        assert s["uniqueAges"] == 5
+        assert s["existingHorizons"] == 0
+        assert s["skippedAges"] == 0
+        assert s["horizonCount"] == 5
+        assert len(result["horizons"]) == 5
+
+        # Check ages are present
+        ages = sorted(h["data"]["MeanPossibleAge"] for h in result["horizons"])
+        assert ages == [0.0, 66.0, 251.9, 541.0, 2500.0]
+
+    def test_chrono_all_horizons_exist_nothing_generated(self):
+        """Column where every unit already has horizons → nothing new generated."""
+        from app.strat import _generate_horizons_for_column
+        model = _chrono_column_model(with_horizons=True)
+        result = _generate_horizons_for_column(model, partition="opendes")
+
+        s = result["stats"]
+        assert s["horizonCount"] == 0
+        assert s["skippedAges"] == 5  # all 5 ages already have horizons
+        assert len(result["horizons"]) == 0
+
+    def test_chrono_partial_horizons_complement(self):
+        """Only some units have horizons → generate only the missing ones."""
+        from app.strat import _generate_horizons_for_column
+        model = _chrono_column_model(with_horizons=False)
+        # Give Paleozoic horizons at 541 and 251.9 (2 of 5 ages covered)
+        er_paleo = model["ranks"][1]["units"][0]
+        er_paleo["horizonTop"] = {"id": "opendes:hz:541:", "name": "Base Paleozoic", "ageMa": 541.0}
+        er_paleo["horizonBase"] = {"id": "opendes:hz:251p9:", "name": "Top Paleozoic", "ageMa": 251.9}
+
+        result = _generate_horizons_for_column(model, partition="opendes")
+        s = result["stats"]
+        assert s["existingHorizons"] == 2   # 541 and 251.9 already exist
+        assert s["skippedAges"] == 2
+        assert s["horizonCount"] == 3       # 2500, 66, 0 still need horizons
+        generated_ages = sorted(h["data"]["MeanPossibleAge"] for h in result["horizons"])
+        assert generated_ages == [0.0, 66.0, 2500.0]
+
+    def test_chrono_horizon_unit_patches_skip_existing(self):
+        """Unit patches are only generated for links that don't already exist."""
+        from app.strat import _generate_horizons_for_column
+        model = _chrono_column_model(with_horizons=False)
+        # Give Mesozoic both horizons (251.9 and 66)
+        meso = model["ranks"][1]["units"][1]
+        meso["horizonTop"] = {"id": "opendes:hz:251p9:", "name": "Base Mesozoic", "ageMa": 251.9}
+        meso["horizonBase"] = {"id": "opendes:hz:66:", "name": "Top Mesozoic", "ageMa": 66.0}
+
+        result = _generate_horizons_for_column(model, partition="opendes")
+        # Mesozoic already has both links → no patch needed for it
+        patched_ids = [p["unitId"] for p in result["unitPatches"]]
+        assert "opendes:reference-data--ChronoStratigraphy:mesozoic:" not in patched_ids
+
+
+class TestGenerateUnitsFromHorizons:
+    """POST /api/strat/generate-units on the ICS chrono demo column."""
+
+    def test_chrono_with_horizons_all_covered(self):
+        """Column has 4 units, horizons at every boundary → all intervals covered,
+        nothing new to generate."""
+        from app.strat import _generate_units_from_horizons
+        model = _chrono_column_model(with_horizons=True)
+        result = _generate_units_from_horizons(model, partition="opendes")
+
+        s = result["stats"]
+        assert s["existingUnits"] == 5       # Phanerozoic, Proterozoic, Paleozoic, Mesozoic, Cenozoic
+        assert s["skippedIntervals"] == 4    # all 4 consecutive intervals already covered
+        assert s["unitCount"] == 0           # nothing new
+        assert len(result["units"]) == 0
+
+    def test_chrono_no_horizons_fallback_all_covered(self):
+        """No horizon objects, but unit boundary ages define the same intervals →
+        fallback extraction still produces all ages, but existing units cover them."""
+        from app.strat import _generate_units_from_horizons
+        model = _chrono_column_model(with_horizons=False)
+        result = _generate_units_from_horizons(model, partition="opendes")
+
+        s = result["stats"]
+        # 5 distinct boundary ages → 4 possible intervals
+        assert s["horizonCount"] == 5
+        assert s["existingUnits"] == 5
+        assert s["skippedIntervals"] == 4
+        assert s["unitCount"] == 0
+
+    def test_chrono_partial_unit_coverage(self):
+        """Remove Mesozoic & Cenozoic from Erathem (gap 251.9–0 Ma) → generator fills it."""
+        from app.strat import _generate_units_from_horizons
+        model = _chrono_column_model(with_horizons=True)
+        # Keep only Paleozoic in Erathem rank (remove Mesozoic + Cenozoic)
+        model["ranks"][1]["units"] = model["ranks"][1]["units"][:1]
+        model["ranks"][1]["unitCount"] = 1
+
+        result = _generate_units_from_horizons(model, partition="opendes")
+        s = result["stats"]
+        assert s["existingUnits"] == 3  # Phanerozoic, Proterozoic, Paleozoic
+        # Remaining horizons (from 3 units): 2500, 541, 251.9, 0  (ages 66 lost
+        # with Mesozoic/Cenozoic).  Consecutive intervals:
+        #   (2500→541), (541→251.9), (251.9→0)
+        # Existing: (2500→541)=Proterozoic ✓, (541→251.9)=Paleozoic ✓,
+        #           (251.9→0) ≠ Phanerozoic(541→0) → generated
+        assert s["skippedIntervals"] == 2
+        assert s["unitCount"] == 1
+
+    def test_chrono_unit_gen_has_acl_legal(self):
+        """Generated unit records include ACL and legal fields."""
+        from app.strat import _generate_units_from_horizons
+        # Build a model with a gap to force generation
+        model = _chrono_column_model(with_horizons=True)
+        model["ranks"][1]["units"] = model["ranks"][1]["units"][:1]
+        result = _generate_units_from_horizons(model, partition="opendes")
+        for u in result["units"]:
+            assert "acl" in u
+            assert "legal" in u
+            assert "viewers" in u["acl"]
+            assert "legaltags" in u["legal"]
+
+    def test_chrono_single_age_no_intervals(self):
+        """A column with only one distinct boundary age can't produce intervals."""
+        from app.strat import _generate_units_from_horizons
+        model = {
+            "column": {"id": "opendes:col:tiny:", "data": {"Name": "Tiny"}},
+            "ranks": [{"rankName": "R", "units": [
+                {"unit": {}, "chrono": {}, "name": "A", "topMa": 66.0, "baseMa": 66.0}
+            ]}],
+        }
+        result = _generate_units_from_horizons(model, partition="opendes")
+        assert result["stats"]["unitCount"] == 0
+
+    def test_generate_units_endpoint_preview(self, authed_client):
+        """POST /api/strat/generate-units with ingest=false returns preview
+        using the chrono demo column (all intervals covered → 0 new)."""
+        model = _chrono_column_model(with_horizons=True)
+
+        with patch("app.strat._fetch_column_model", new_callable=AsyncMock,
+                    return_value=model):
+            resp = authed_client.post(
+                "/api/strat/generate-units",
+                json={"columnId": model["column"]["id"], "ingest": False},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "units" in data
+        assert "stats" in data
+        assert data["stats"]["unitCount"] == 0
+        assert data["stats"]["existingUnits"] == 5
+        assert data["ingest"] is None
+
+    def test_generate_units_endpoint_missing_column_id(self, authed_client):
+        """Missing columnId → 400."""
+        resp = authed_client.post(
+            "/api/strat/generate-units",
+            json={"ingest": False},
+        )
+        assert resp.status_code == 400

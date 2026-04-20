@@ -30,7 +30,7 @@ from app.tokenstore import (
     _decrypt,
     _get_conn,
 )
-from tests.conftest import USERS, make_id_token
+from test.conftest import USERS, make_id_token
 
 
 # ─────────────────────────────────────────────────────────────────────────────
