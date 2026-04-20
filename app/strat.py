@@ -79,13 +79,21 @@ def _extract_ages(unit_rec: dict, chrono_rec: dict):
     """Return (topMa, baseMa) as floats, or (None, None)."""
     cd = _get_data(chrono_rec) if chrono_rec else {}
     ud = _get_data(unit_rec) if unit_rec else {}
-    top = (
-        cd.get("AgeBegin") or cd.get("TopMa") or cd.get("AgeBeginMa")
-        or ud.get("OlderPossibleAge") or ud.get("TopMa")
+
+    # Use `is not None` checks — 0.0 is a valid age (present day) but falsy
+    def _first(*vals):
+        for v in vals:
+            if v is not None:
+                return v
+        return None
+
+    top = _first(
+        cd.get("AgeBegin"), cd.get("TopMa"), cd.get("AgeBeginMa"),
+        ud.get("OlderPossibleAge"), ud.get("TopMa"),
     )
-    base = (
-        cd.get("AgeEnd") or cd.get("BaseMa") or cd.get("AgeEndMa")
-        or ud.get("YoungerPossibleAge") or ud.get("BaseMa")
+    base = _first(
+        cd.get("AgeEnd"), cd.get("BaseMa"), cd.get("AgeEndMa"),
+        ud.get("YoungerPossibleAge"), ud.get("BaseMa"),
     )
     try:
         return (float(top), float(base))
