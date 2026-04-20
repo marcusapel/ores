@@ -30,27 +30,9 @@ import httpx
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT  = SCRIPT_DIR.parent.parent
 
-from _shared import load_env  # noqa: E402
-
-
-def get_access_token(env: Dict[str, str]) -> str:
-    """Mint an access_token via AAD v2 refresh_token grant."""
-    url = f"https://login.microsoftonline.com/{env['tenant']}/oauth2/v2.0/token"
-    form = {
-        "grant_type":    "refresh_token",
-        "client_id":     env["client_id"],
-        "refresh_token": env["refresh_token"],
-        "scope":         env["scope"],
-    }
-    r = httpx.post(url, data=form, timeout=30)
-    if not r.is_success:
-        raise RuntimeError(f"Auth failed ({r.status_code}): {r.text[:600]}")
-    data = r.json()
-    token = data.get("access_token")
-    if not token:
-        raise RuntimeError(f"No access_token in response: {list(data.keys())}")
-    print(f"  ✓ token acquired (expires_in={data.get('expires_in', '?')}s)")
-    return token
+import sys as _sys
+_sys.path.insert(0, str(REPO_ROOT / "demo"))
+from _auth import load_env, mint_from_env as get_access_token  # noqa: E402
 
 
 def register_schema(env: Dict[str, str], token: str, payload: dict,

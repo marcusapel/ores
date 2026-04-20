@@ -246,6 +246,7 @@
     }
 
     async function loadDataspaces() {
+      showLoading('Loading dataspaces…');
       try {
         const r = await fetch('/keys/dataspaces.json', { credentials: 'same-origin' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -271,12 +272,15 @@
         setMsg('Failed to load dataspaces.');
         console.error(e);
         return false;
+      } finally {
+        hideLoading();
       }
     }
 
     async function loadTypes() {
       if (!dsSel.value) return;
       setMsg('Loading types…');
+      showLoading('Loading types…');
       try {
         const r = await fetch(`/keys/types.json?ds=${encodeURIComponent(dsSel.value)}`, { credentials: 'same-origin' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -295,12 +299,15 @@
       } catch (e) {
         setMsg('Failed to load types.');
         console.error(e);
+      } finally {
+        hideLoading();
       }
     }
 
     async function loadObjects() {
       if (!dsSel.value || !typSel.value) return;
       setMsg('Loading objects…');
+      showLoading('Loading objects…');
       try {
         const url = `/keys/objects.json?ds=${encodeURIComponent(dsSel.value)}&typ=${encodeURIComponent(typSel.value)}`;
         const r = await fetch(url, { credentials: 'same-origin' });
@@ -319,6 +326,8 @@
       } catch (e) {
         setMsg('Failed to load objects.');
         console.error(e);
+      } finally {
+        hideLoading();
       }
     }
 
@@ -326,6 +335,7 @@
       const ds = dsSel.value, typ = typSel.value, uuid = objSel.value;
       if (!ds || !typ || !uuid) { setMsg('Pick dataspace, type, and object.'); return; }
       setMsg('Loading object details…');
+      showLoading('Loading object details…');
       clearDetails();
       try {
         // Fetch object details and graph in parallel
@@ -451,6 +461,8 @@
       } catch (e) {
         setMsg('Failed to load object: ' + e.message);
         console.error(e);
+      } finally {
+        hideLoading();
       }
     }
 

@@ -340,8 +340,7 @@ async def api_add_instance(request: Request):
 async def login_page(request: Request):
     """Serve the sign-in landing page (only reached when no env token is set)."""
     insts = get_instances()
-    return templates.TemplateResponse("login.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "login.html", {
         "instances": {
             n: {"hostname": i.hostname, "partition": i.data_partition_id, "auth_mode": i.auth_mode}
             for n, i in insts.items()
@@ -1229,9 +1228,8 @@ async def home(request: Request):
         log.warning("List dataspaces failed: %s", e)
         dataspaces = []
     return templates.TemplateResponse(
-        "admin.html",
+        request, "admin.html",
         {
-            "request": request,
             "view": "home",
             "dataspaces": dataspaces,
             # Defaults for the "Create Dataspace" form (prefilled values)
@@ -1264,9 +1262,8 @@ async def dataspaces_create(
                 raise ValueError("Custom data must be a JSON object")
         except Exception as ex:
             return templates.TemplateResponse(
-                "admin.html",
+                request, "admin.html",
                 {
-                    "request": request,
                     "view": "home",
                     "dataspaces": [],
                     "ds_default": os.getenv("DEFAULT_DATASPACE", ""),
@@ -1293,9 +1290,8 @@ async def dataspaces_create(
     except HTTPStatusError as e:
         r = e.response
         return templates.TemplateResponse(
-            "admin.html",
+            request, "admin.html",
             {
-                "request": request,
                 "view": "home",
                 "dataspaces": [],
                 "ds_default": os.getenv("DEFAULT_DATASPACE", ""),
@@ -1543,9 +1539,8 @@ async def search_page(request: Request):
     kind_options = _collect_manifest_kinds()
     default_kind = "osdu:wks:master-data--BusinessDecision:1.0.0"
     return templates.TemplateResponse(
-        "search.html",
+        request, "search.html",
         {
-            "request": request,
             "kind": default_kind,
             "kinds_extra": "",
             "kind_options": kind_options,
@@ -1643,9 +1638,8 @@ async def search_run(
             ]))
 
         return templates.TemplateResponse(
-            "search.html",
+            request, "search.html",
             {
-                "request": request,
                 "results": {
                     "results": enriched_results,
                     "totalCount": merged_total_count or len(enriched_results),
@@ -1662,9 +1656,8 @@ async def search_run(
         r = e.response
         log.warning("[SEARCH] HTTP error: %s %s", r.status_code, r.text[:512] if r.text else "")
         return templates.TemplateResponse(
-            "search.html",
+            request, "search.html",
             {
-                "request": request,
                 "error": f"Search failed: {r.status_code} {r.reason_phrase}",
                 "error_detail": (r.text[:2000] if r.text else ""),
                 "kind": kind,
@@ -1678,9 +1671,8 @@ async def search_run(
     except Exception as e:
         log.exception("[SEARCH] Unexpected error: %s", e)
         return templates.TemplateResponse(
-            "search.html",
+            request, "search.html",
             {
-                "request": request,
                 "error": "Unexpected error",
                 "error_detail": "See server logs",
                 "kind": kind,
@@ -1709,9 +1701,8 @@ async def view_record(request: Request, record_id: str):
                 full, client, storage_url, search_url, hdr)
 
         return templates.TemplateResponse(
-            "search.html",
+            request, "search.html",
             {
-                "request": request,
                 "results": {"results": [enriched], "totalCount": 1},
                 "kind": full.get("kind", ""),
                 "kinds_extra": "",
@@ -1722,9 +1713,8 @@ async def view_record(request: Request, record_id: str):
         )
     except HTTPStatusError as e:
         return templates.TemplateResponse(
-            "search.html",
+            request, "search.html",
             {
-                "request": request,
                 "error": f"Record fetch failed: {e.response.status_code}",
                 "error_detail": (e.response.text[:2000] if e.response.text else ""),
                 "kind": "",
@@ -1738,9 +1728,8 @@ async def view_record(request: Request, record_id: str):
     except Exception as e:
         log.exception("[VIEW] Unexpected error: %s", e)
         return templates.TemplateResponse(
-            "search.html",
+            request, "search.html",
             {
-                "request": request,
                 "error": "Unexpected error",
                 "error_detail": "See server logs",
                 "kind": "",
@@ -1854,9 +1843,8 @@ def _render_md(filename: str) -> tuple[str, str]:
 async def howto_index(request: Request):
     insts = get_instances()
     return templates.TemplateResponse(
-        "ores.html",
+        request, "ores.html",
         {
-            "request": request,
             "sections": _HOWTO_SECTIONS,
             "instances": {n: {"hostname": i.hostname, "partition": i.data_partition_id, "auth_mode": i.auth_mode} for n, i in insts.items()},
             "active_instance": get_active_name(),
@@ -1879,9 +1867,8 @@ async def howto_article(request: Request, slug: str):
                 children = item.get("children", [])
                 break
     return templates.TemplateResponse(
-        "howto_article.html",
+        request, "howto_article.html",
         {
-            "request": request,
             "title": title,
             "slug": slug,
             "toc_html": toc_html,

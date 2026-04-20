@@ -57,8 +57,8 @@ def _access_token(request: Request) -> str:
 async def keys_page(request: Request):
     # Render immediately — dataspaces loaded async via JS /keys/dataspaces.json
     return templates.TemplateResponse(
-        "keys.html",
-        {"request": request, "prefill_ds": []},
+        request, "keys.html",
+        {"prefill_ds": []},
         media_type="text/html",
     )
 

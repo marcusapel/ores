@@ -61,6 +61,12 @@ from typing import Dict, List, Optional, Tuple
 import requests
 from urllib.parse import quote, unquote
 
+# ── Central auth module ─────────────────────────────────────────────────
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_DEMO_DIR = _SCRIPT_DIR.parent.parent
+sys.path.insert(0, str(_DEMO_DIR))
+from _auth import mint_from_env as _mint_from_env  # noqa: E402
+
 # --------------------------- small helpers ---------------------------
 
 def encode_dataspace_id(ds: str) -> str:
@@ -98,37 +104,28 @@ def get_access_token_from_refresh_token(
     timeout: int = 20,
     debug: bool = False,
 ) -> Tuple[str, int]:
+    """Obtain access_token — delegates to central _auth module (v2), with v1 fallback."""
     if not refresh_token:
         raise RuntimeError("Missing refresh_token (env var 'refresh_token')")
 
+    # ── Try central _auth module (v2 grant) first ──────────────────────
+    try:
+        env = {
+            "tenant":        tenant_id,
+            "client_id":     client_id,
+            "refresh_token": refresh_token,
+            "scope":         scope_v2 or f"{client_id}/.default",
+        }
+        token = _mint_from_env(env, verbose=debug)
+        return token, 3600
+    except Exception as e:
+        if debug:
+            log(f"[auth] _auth v2 failed ({e}), trying v1 fallback")
+
+    # ── Fallback: AAD v1 (resource) ───────────────────────────────────
     sess = requests.Session()
     sess.headers.update({"Content-Type": "application/x-www-form-urlencoded"})
 
-    if debug:
-        log("[auth] trying AAD v2 (scope)")
-
-    # Try AAD v2 (scope)
-    if scope_v2:
-        v2_url = f"{authority_base.rstrip('/')}/{tenant_id}/oauth2/v2.0/token"
-        v2_form = {
-            "grant_type": "refresh_token",
-            "client_id": client_id,
-            "refresh_token": refresh_token,
-            "scope": scope_v2,
-        }
-        t0 = time.time()
-        r = sess.post(v2_url, data=v2_form, timeout=timeout)
-        dt = time.time() - t0
-        if debug:
-            log(f"[auth] v2 POST {r.status_code} in {dt:.2f}s to {v2_url}")
-        if r.ok and "access_token" in r.json():
-            data = r.json()
-            return data["access_token"], int(data.get("expires_in", 3600))
-        else:
-            if debug:
-                log(f"[auth] v2 error body: {r.text[:800]}")
-
-    # Fallback AAD v1 (resource)
     if debug:
         log("[auth] trying AAD v1 (resource)")
     if resource_v1:

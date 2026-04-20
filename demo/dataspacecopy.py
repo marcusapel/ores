@@ -52,37 +52,45 @@ IMAGE_LOCAL = "osdu-etp-client"        # ws://  (local RDDMS, no SSL)
 
 LOCAL_ETP_URL = "ws://localhost:9100/"
 
-# ── Instance config & auth via gettoken.py ────────────────────────────────── #
-# Import the sibling module for token minting and instance metadata.
-import importlib.util
-_gt_spec = importlib.util.spec_from_file_location("gettoken", SCRIPT_DIR / "gettoken.py")
-_gt = importlib.util.module_from_spec(_gt_spec)
-_gt_spec.loader.exec_module(_gt)
+# ── Instance config & auth via central _auth module ───────────────────────── #
+sys.path.insert(0, str(SCRIPT_DIR))
+from _auth import load_instance as _load_inst, get_token as _get_token  # noqa: E402
+
+# Also import gettoken for etp_url helper (if available)
+try:
+    import importlib.util
+    _gt_spec = importlib.util.spec_from_file_location("gettoken", SCRIPT_DIR / "gettoken.py")
+    _gt = importlib.util.module_from_spec(_gt_spec)
+    _gt_spec.loader.exec_module(_gt)
+    _has_gt = True
+except Exception:
+    _has_gt = False
 
 
 def load_instance(name: str) -> Dict[str, str]:
-    """Build an instance dict (etp_url, partition, xdata fields) from gettoken.py."""
-    canon = _gt.ALIASES.get(name.lower(), name.lower())
-    if canon not in _gt.INSTANCES:
-        sys.exit(f"Unknown instance '{name}'. Known: {', '.join(_gt.INSTANCES)}")
-    inst = _gt.INSTANCES[canon]
-    host = inst["hostname"]
-    partition = inst["partition"]
+    """Build an instance dict from the unified _auth resolution chain."""
+    inst = _load_inst(name)
+    host = inst["host"].replace("https://", "").replace("http://", "").rstrip("/")
+    partition = inst.get("partition", "")
     return {
-        "name":       canon,
+        "name":       inst["name"],
         "host":       host,
         "partition":  partition,
-        "etp_url":    _gt.etp_url(canon),
-        "legal_tag":  inst.get("legal_tag", f"{partition}-public-usa-dataset-1"),
-        "owners":     inst.get("owners", f"data.default.owners@{partition}.dataservices.energy"),
-        "viewers":    inst.get("viewers", f"data.default.viewers@{partition}.dataservices.energy"),
-        "countries":  inst.get("countries", "NO"),
+        "etp_url":    f"wss://{host}/api/reservoir-ddms-etp/v2/",
+        "legal_tag":  inst.get("legal_tag") or f"{partition}-public-usa-dataset-1",
+        "owners":     (inst.get("owners") or [f"data.default.owners@{partition}.dataservices.energy"])[0]
+                      if isinstance(inst.get("owners"), list) else
+                      inst.get("owners", f"data.default.owners@{partition}.dataservices.energy"),
+        "viewers":    (inst.get("viewers") or [f"data.default.viewers@{partition}.dataservices.energy"])[0]
+                      if isinstance(inst.get("viewers"), list) else
+                      inst.get("viewers", f"data.default.viewers@{partition}.dataservices.energy"),
+        "countries":  inst.get("countries", ["NO"])[0] if isinstance(inst.get("countries"), list) else "NO",
     }
 
 
 def get_access_token(inst: Dict[str, str]) -> str:
-    """Mint an access token via gettoken.py."""
-    return _gt.mint_token(inst["name"], verbose=True)
+    """Mint an access token via the central _auth module."""
+    return _get_token(inst["name"], verbose=True)
 
 
 # ── Docker helpers (reused from ingest_resqml_rddms.py) ──────────────────── #

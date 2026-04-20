@@ -33,8 +33,8 @@ _switch_lock = threading.Lock()
 class OsduInstance:
     """Configuration for a single OSDU instance."""
     name: str
-    hostname: str                           # e.g. equinorswedev.energy.azure.com
-    data_partition_id: str                  # e.g. dev, opendes
+    hostname: str = ""                      # e.g. equinorswedev.energy.azure.com
+    data_partition_id: str = ""             # e.g. dev, opendes
     tenant_id: str = ""
     client_id: str = ""
     client_secret: str = ""                 # only for client_credentials flow
@@ -237,7 +237,7 @@ def _load_instances():
         log.error("No OSDU instances configured! "
                   "Set INSTANCE_<NAME>_HOSTNAME env vars (see k8s/configmap.yaml).")
         # Create a dummy so callers don't crash
-        _instances["none"] = OsduInstance(name="none", hostname="")
+        _instances["none"] = OsduInstance(name="none")
         _active_instance_name = "none"
 
     # Apply active instance to osdu.py + auth.py module globals

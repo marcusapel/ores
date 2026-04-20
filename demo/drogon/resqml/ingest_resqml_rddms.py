@@ -57,76 +57,28 @@ DEFAULT_DATASPACE = "maap/drogon-resqml"
 LOCAL_DATASPACE   = "demo/Drogon"
 
 
-# ─────────────── .env loader (cloud mode only) ───────────────────────────── #
+# ─────────────── Auth & env (via central _auth module) ────────────────────── #
 
-def _parse_dotenv(path: Path) -> Dict[str, str]:
-    vals: Dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        k, v = k.strip(), v.strip()
-        if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-            v = v[1:-1]
-        vals[k] = v
-    return vals
-
-
-def _first(env: Dict[str, str], keys: List[str]) -> Optional[str]:
-    for k in keys:
-        v = (env.get(k) or "").strip()
-        if v:
-            return v
-    return None
+import sys as _sys
+_sys.path.insert(0, str(REPO_ROOT / "demo"))
+from _auth import load_env as _auth_load_env, mint_from_env as get_access_token  # noqa: E402
 
 
 def load_env(path: Path) -> Dict[str, str]:
-    if not path.exists():
-        raise SystemExit(f"env file not found: {path}")
-    merged = _parse_dotenv(path)
+    """Load env from .env file, with extra ETP/legal fields.
 
-    env: Dict[str, str] = {}
-    env["refresh_token"] = _first(merged, ["refresh_token", "REFRESH_TOKEN"]) or ""
-    env["tenant"]        = _first(merged, ["OSDU_TENANT_ID", "AZURE_TENANT_ID"]) or ""
-    env["client_id"]     = _first(merged, ["OSDU_CLIENT_ID", "AZURE_CLIENT_ID"]) or ""
-    env["scope"]         = _first(merged, ["OSDU_SCOPE", "AZURE_SCOPE"]) or ""
-    host                 = _first(merged, ["OSDU_HOST", "OSDU_BASE_URL"]) or ""
-    env["host"]          = host.rstrip("/")
-    env["partition"]     = _first(merged, ["OSDU_PARTITION", "DATA_PARTITION_ID"]) or ""
-
-    env["etp_url"]   = f"wss://{env['host']}/api/reservoir-ddms-etp/v2/"
-    env["legal_tag"] = _first(merged, ["DEFAULT_LEGAL_TAG"]) or f"{env['partition']}-equinor-private-default"
-    dom = f"{env['partition']}.dataservices.energy"
-    env["owners"]  = _first(merged, ["DEFAULT_OWNERS"]) or f"data.default.owners@{dom}"
-    env["viewers"] = _first(merged, ["DEFAULT_VIEWERS"]) or f"data.default.viewers@{dom}"
-
-    missing = [k for k in ("refresh_token", "tenant", "client_id", "scope", "host", "partition") if not env[k]]
-    if missing:
-        raise SystemExit(f"Missing keys in .env: {', '.join(missing)}")
+    Delegates core auth fields to the central _auth module, then adds
+    RDDMS-specific fields (etp_url, legal_tag, owners, viewers).
+    """
+    env = _auth_load_env([str(path)])
+    host = env.get("host", "").rstrip("/")
+    partition = env.get("partition", "")
+    env["etp_url"]   = f"wss://{host.replace('https://', '')}/api/reservoir-ddms-etp/v2/"
+    dom = f"{partition}.dataservices.energy"
+    env["legal_tag"] = f"{partition}-equinor-private-default"
+    env["owners"]    = f"data.default.owners@{dom}"
+    env["viewers"]   = f"data.default.viewers@{dom}"
     return env
-
-
-# ─────────────── Auth (cloud only) ────────────────────────────────────────── #
-
-def get_access_token(env: Dict[str, str]) -> str:
-    import httpx
-    url = f"https://login.microsoftonline.com/{env['tenant']}/oauth2/v2.0/token"
-    form = {
-        "grant_type":    "refresh_token",
-        "client_id":     env["client_id"],
-        "refresh_token": env["refresh_token"],
-        "scope":         env["scope"],
-    }
-    r = httpx.post(url, data=form, timeout=30)
-    if not r.is_success:
-        raise RuntimeError(f"Auth failed ({r.status_code}): {r.text[:600]}")
-    data = r.json()
-    token = data.get("access_token")
-    if not token:
-        raise RuntimeError(f"No access_token: {list(data.keys())}")
-    print(f"  Token acquired (expires_in={data.get('expires_in', '?')}s)")
-    return token
 
 
 # ─────────────── Docker helpers ───────────────────────────────────────────── #

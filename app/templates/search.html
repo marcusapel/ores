@@ -195,8 +195,18 @@
   <label>returnedFields (comma separated)</label>
   <input type="text" name="returnedFields" value="{{ returnedFields or 'id,kind,version' }}" style="width: 100%;">
 
-  <button type="submit">Search</button>
+  <button type="submit" id="searchBtn">Search</button>
 </form>
+<script>
+(function(){
+  var form = document.querySelector('form.search-form');
+  if (form) form.addEventListener('submit', function() {
+    if (window.showLoading) window.showLoading('Searching OSDU…');
+    var btn = document.getElementById('searchBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
+  });
+})();
+</script>
 
 <script>
   (function () {
