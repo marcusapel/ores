@@ -1221,17 +1221,12 @@ async def root_redirect():
 
 @app.get("/admin", response_class=HTMLResponse, summary="Admin: list dataspaces")
 async def home(request: Request):
-    try:
-        at = _access_token(request)
-        dataspaces = await osdu.list_dataspaces(at)
-    except Exception as e:
-        log.warning("List dataspaces failed: %s", e)
-        dataspaces = []
+    # Render the shell immediately — dataspaces loaded async via JS
     return templates.TemplateResponse(
         request, "admin.html",
         {
             "view": "home",
-            "dataspaces": dataspaces,
+            "dataspaces": [],
             # Defaults for the "Create Dataspace" form (prefilled values)
             "ds_default": os.getenv("DEFAULT_DATASPACE", ""),
             "default_legal_tag": osdu.DEFAULT_LEGAL_TAG,
@@ -1240,6 +1235,26 @@ async def home(request: Request):
             "default_countries": ",".join(osdu.DEFAULT_COUNTRIES),
         },
     )
+
+
+@app.get("/admin/dataspaces.json", summary="Async dataspace list for admin page")
+async def admin_dataspaces_json(request: Request):
+    """JSON endpoint for client-side dataspace loading (cached 120 s)."""
+    try:
+        at = _access_token(request)
+        dataspaces = await osdu.list_dataspaces(at)
+    except Exception as e:
+        log.warning("admin_dataspaces_json failed: %s", e)
+        dataspaces = []
+    items = []
+    for x in dataspaces:
+        if isinstance(x, dict):
+            p = x.get("path") or x.get("Path") or x.get("DataspaceId") or ""
+            if p:
+                items.append({"path": p, "uri": x.get("uri", "")})
+        elif isinstance(x, str) and x:
+            items.append({"path": x, "uri": ""})
+    return JSONResponse({"items": items})
 
 @app.post("/dataspaces/create", summary="Create a dataspace with default legal/ACL")
 async def dataspaces_create(
@@ -1618,15 +1633,18 @@ async def search_run(
                     break
 
             # ── Phase 2: Fetch full storage records in parallel ──────────────
+            _sem = osdu.API_SEMAPHORE
+
             async def _fetch_full(rid: str):
-                try:
-                    r_full = await client.get(f"{storage_url}/{rid}", headers=hdr)
-                    if r_full.status_code == 200:
-                        return r_full.json()
-                    log.warning("[SEARCH] Full record fetch failed for %s: %d", rid, r_full.status_code)
-                except Exception as e:
-                    log.warning("[SEARCH] Exception fetching %s: %s", rid, e)
-                return None
+                async with _sem:
+                    try:
+                        r_full = await client.get(f"{storage_url}/{rid}", headers=hdr)
+                        if r_full.status_code == 200:
+                            return r_full.json()
+                        log.warning("[SEARCH] Full record fetch failed for %s: %d", rid, r_full.status_code)
+                    except Exception as e:
+                        log.warning("[SEARCH] Exception fetching %s: %s", rid, e)
+                    return None
 
             full_records = await asyncio.gather(*[_fetch_full(rid) for rid in all_hit_ids])
             valid_records = [f for f in full_records if f is not None]

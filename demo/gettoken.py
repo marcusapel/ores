@@ -3,6 +3,11 @@
 """
 gettoken.py — Mint an OSDU access token for any configured instance.
 
+Thin CLI wrapper.  Core k8s-loading and token-minting lives in
+:mod:`_auth`; this module adds the rich CLI (``--list``, ``--export``,
+``--json``, ``--from-k8s``) and the hard-coded INSTANCES dict for
+legacy ``etp_url()`` / ``partition()`` helpers.
+
 Secret sources (checked in order):
   1. ``k8s/secret.yaml`` + ``k8s/configmap.yaml`` (``--from-k8s``, or auto)
   2. Environment variables (``INSTANCE_<NAME>_*`` pattern, or legacy names)
@@ -34,6 +39,13 @@ try:
 except ImportError:
     sys.exit("Missing httpx — pip install httpx")
 
+# _auth.py is the single source of truth for k8s YAML loading.
+# Re-export so ``gettoken._load_k8s_yaml`` / ``gettoken.load_k8s_env``
+# keep working (tests and dataspacecopy.py rely on the names).
+from _auth import (                                      # noqa: E402
+    _load_k8s_yaml,
+    load_k8s_env,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 K8S_DIR = REPO_ROOT / "k8s"
@@ -72,55 +84,6 @@ INSTANCES: Dict[str, Dict[str, Any]] = {
 
 # Aliases so existing INSTANCE_ names work too
 ALIASES = {"eqndev": "swedev"}
-
-
-# ── k8s YAML secret/config loader ───────────────────────────────────── #
-
-def _load_k8s_yaml(path: Path) -> Dict[str, str]:
-    """Parse a k8s ConfigMap or Secret YAML into a flat dict.
-
-    Uses PyYAML if available, otherwise falls back to the minimal
-    parser from k8s/env_from_k8s.py (handles flat data:/stringData: maps).
-    """
-    if not path.exists():
-        return {}
-    text = path.read_text()
-    try:
-        import yaml
-        doc = yaml.safe_load(text) or {}
-        return {**(doc.get("data") or {}), **(doc.get("stringData") or {})}
-    except ImportError:
-        pass
-    # Minimal parser for flat YAML blocks
-    result: Dict[str, str] = {}
-    in_data_block = False
-    for raw_line in text.splitlines():
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#"):
-            if in_data_block and not raw_line.startswith((" ", "\t")):
-                in_data_block = False
-            continue
-        if stripped in ("data:", "stringData:"):
-            in_data_block = True
-            continue
-        if not raw_line[0].isspace():
-            in_data_block = False
-            continue
-        if in_data_block and ":" in stripped:
-            key, _, val = stripped.partition(":")
-            key = key.strip()
-            val = val.strip().strip('"').strip("'")
-            if key and not key.startswith("#"):
-                result[key] = val
-    return result
-
-
-def load_k8s_env(k8s_dir: Optional[Path] = None) -> Dict[str, str]:
-    """Load merged config + secrets from the k8s directory."""
-    d = k8s_dir or K8S_DIR
-    config = _load_k8s_yaml(d / "configmap.yaml")
-    secrets = _load_k8s_yaml(d / "secret.yaml")
-    return {**config, **secrets}
 
 
 def discover_k8s_instances(k8s_env: Dict[str, str]) -> Dict[str, Dict[str, str]]:

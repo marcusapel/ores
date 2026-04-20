@@ -44,7 +44,7 @@ _token_cache: Dict[str, tuple[str, float]] = {}   # name → (token, expiry_ts)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1.  k8s YAML loader  (reused from demo/gettoken.py)
+# 1.  k8s YAML loader  (canonical — re-exported by gettoken.py)
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _load_k8s_yaml(path: Path) -> Dict[str, str]:

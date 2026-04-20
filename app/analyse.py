@@ -8,6 +8,7 @@ Provides:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple
@@ -421,7 +422,8 @@ async def analyse_compare(
                 len(all_bd_ids), reservoir_id,
             )
 
-            for bid in all_bd_ids:
+            # Process all BDs in parallel (was sequential)
+            async def _process_bd(bid):
                 try:
                     data_block: Optional[Dict[str, Any]] = None
                     full: Dict[str, Any] = {}
@@ -435,7 +437,7 @@ async def analyse_compare(
                     except Exception:
                         pass
                     if not data_block:
-                        continue
+                        return None
 
                     # Post-filter: verify this BD actually references the
                     # selected reservoir via Parameters[].DataObjectParameter.
@@ -451,7 +453,7 @@ async def analyse_compare(
                             "[ANALYSE] BD %s does not reference reservoir %s — skipping",
                             bid, reservoir_id,
                         )
-                        continue
+                        return None
 
                     gls = await _enrich_geolabel(
                         data_block, client, storage_url, hdr
@@ -507,20 +509,26 @@ async def analyse_compare(
                         "gls_uncertainty": gls.get("uncertainty") or {},
                         "_sort_key": _extract_dg_sort_key(data_block),
                     }
-                    gates.append(gate)
+                    return gate
                 except Exception as e:
                     log.warning(
                         "[ANALYSE] Failed to process BD %s: %s", bid, e
                     )
+                    return None
+
+            # Process all BDs in parallel
+            bd_results = await asyncio.gather(*[_process_bd(bid) for bid in all_bd_ids])
+            gates = [g for g in bd_results if g is not None]
 
             gates.sort(key=lambda g: g.pop("_sort_key"))
 
-            # Hydrate risk names + details
+            # Hydrate risk names + details (parallel)
             all_risk_ids: set = set()
             for g in gates:
                 g.setdefault("risk_details", {})
                 all_risk_ids.update(g.get("risk_ids") or [])
-            for rid in all_risk_ids:
+
+            async def _fetch_risk(rid):
                 rname = rid
                 rdata: Dict[str, Any] = {}
                 try:
@@ -532,7 +540,6 @@ async def analyse_compare(
                         rname = rdata.get("Name") or rid
                 except Exception:
                     pass
-                # Extract severity/probability/status from equinor ext
                 eq = (rdata.get("ext") or {}).get("equinor") or {}
                 detail = {
                     "name": rname,
@@ -543,6 +550,10 @@ async def analyse_compare(
                     "status": eq.get("Status", ""),
                     "category": eq.get("RiskCategoryID", ""),
                 }
+                return (rid, rname, detail)
+
+            risk_results = await asyncio.gather(*[_fetch_risk(rid) for rid in all_risk_ids])
+            for rid, rname, detail in risk_results:
                 for g in gates:
                     if rid in (g.get("risk_ids") or []):
                         g["risk_names"][rid] = rname

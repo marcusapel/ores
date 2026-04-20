@@ -216,23 +216,34 @@ app/
   main.py              # FastAPI app: routes, BD enrichment, volume helpers
   auth.py              # PKCE sign-in, token exchange & refresh
   tokenstore.py        # SQLite-backed persistent refresh-token store (per user)
-  common.py            # Shared helpers (access_token, search_reservoirs)
-  osdu.py              # OSDU API client (Search, Storage, Workflow)
+  common.py            # Shared helpers (access_token, search_reservoirs, cached)
+  osdu.py              # OSDU API client (Search, Storage, Workflow, semaphore)
+  cache.py             # Async TTL cache with thundering-herd protection
+  instances.py         # OsduInstance dataclass & instance resolution
   ingest_router.py     # Manifest ingestion endpoints
+  keys_router.py       # /keys page: browse dataspaces, types, objects
   analyse.py           # Analyse page: reservoir comparison across DGs
   addgate.py           # Add DG page: create new BusinessDecision records
   schemahandler.py     # JSON schema & manifest helpers
   strat.py             # Stratigraphy manifest builders
+  structuremap.py      # Structure-map helpers
+  get_token.py         # CLI: mint access token (delegates to demo/_auth.py)
   templates/           # Jinja2 HTML templates
   static/              # JS/CSS assets
 
 demo/
+  _auth.py             # Central auth module — k8s/env/.env resolution & token minting
+  gettoken.py          # CLI: mint token, list instances, --from-k8s, --export
+  dataspacecopy.py     # Copy records between OSDU dataspaces
   run_pipeline.py      # Generic cross-platform pipeline runner
   drogon/              # Drogon DG1 pipeline (self-contained)
   drogon_dg2/          # Drogon DG2 pipeline (references drogon/ for shared data)
   seisint/             # Volantis seismic interpretation pipeline (RDDMS)
   strat/               # Stratigraphic column manifests and tools
+
+tests/                 # pytest test suite (135+ tests)
 md/                    # Documentation and guides (rendered via /howto)
+k8s/                   # Kubernetes manifests (configmap, secret, deployment)
 ```
 
 ---
@@ -307,6 +318,66 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 
 ---
 
+## Demo token tools
+
+Token minting is centralised in `demo/_auth.py` — the single source of truth for
+k8s YAML loading, instance resolution (k8s → env → `.env`), and OAuth2 token exchange
+(both `refresh_token` and `client_credentials` grants).
+
+| File | Purpose |
+|------|---------|
+| `demo/_auth.py` | Shared module: `get_token()`, `load_instance()`, `api_headers()`, `base_url()` — imported by all demo scripts |
+| `demo/gettoken.py` | Rich CLI: `--from-k8s`, `--list`, `--export`, `--json` — thin wrapper around `_auth` |
+| `app/get_token.py` | Minimal CLI: `--shell bash\|pwsh`, `--instance` — also delegates to `_auth` |
+
+```bash
+# Mint a token
+python demo/gettoken.py eqndev --from-k8s
+
+# List all discoverable instances
+python demo/gettoken.py --list
+
+# In a demo script
+from _auth import get_token, api_headers
+token = get_token("eqndev")
+headers = api_headers("eqndev")
+```
+
+---
+
+## Performance & caching
+
+| Feature | Module | Detail |
+|---------|--------|--------|
+| TTL cache | `app/cache.py` | `ttl_cache` decorator / `cached_call()` with per-key `asyncio.Lock` (thundering-herd protection) |
+| Dataspace list | `app/osdu.py` | Cached 120 s via `cached_call()` |
+| Reservoir search | `app/common.py` | Cached 90 s via `cached_call()` |
+| API concurrency | `app/osdu.py` | `API_SEMAPHORE` (default 20, override via `OSDU_MAX_CONCURRENT`) |
+| Parallel fetches | `app/addgate.py`, `app/analyse.py`, `app/keys_router.py` | `asyncio.gather` for independent OSDU calls |
+
+---
+
+## Tests
+
+```bash
+python -m pytest tests/ -v          # run all tests
+python -m pytest tests/ -v -x       # stop on first failure
+```
+
+The test suite uses **pytest** + **pytest-asyncio** and currently contains **135+** tests covering:
+
+| File | Tests | Area |
+|------|-------|------|
+| `tests/test_auth.py` | 48 | Auth modes, PKCE flow, token refresh, diagnostics |
+| `tests/test_routes.py` | 21 | Route rendering, strat column, admin page |
+| `tests/test_gettoken.py` | 32 | k8s YAML loading, instance discovery, token minting |
+| `tests/test_demo_auth.py` | 24 | Central auth module (`.env`, caching, backward compat) |
+| `tests/test_tokenstore.py` | — | SQLite token store CRUD, encryption, multi-user |
+| `tests/test_instances.py` | 2 | OsduInstance dataclass |
+| `tests/test_cache.py` | 8 | TTL cache, thundering-herd lock, invalidation |
+
+---
+
 ## Links
 
 | Resource | Path |
@@ -314,11 +385,16 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 | App entry | `app/main.py` |
 | Auth | `app/auth.py` |
 | Token store | `app/tokenstore.py` |
+| Cache layer | `app/cache.py` |
 | Shared helpers | `app/common.py` |
 | OSDU client | `app/osdu.py` |
+| Keys/browse page | `app/keys_router.py` |
 | Ingest API | `app/ingest_router.py` |
 | Analyse page | `app/analyse.py` |
 | Add DG page | `app/addgate.py` |
+| CLI token tool (app) | `app/get_token.py` |
+| Demo auth module | `demo/_auth.py` |
+| CLI token tool (demo) | `demo/gettoken.py` |
 | Drogon pipeline | `demo/drogon/` |
 | Pipeline runner | `demo/run_pipeline.py` |
 | BD modelling guide | `md/BusinessDecision.md` |
