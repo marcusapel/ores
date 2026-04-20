@@ -124,8 +124,9 @@
         <input id="smda-partition" type="text" value="{{ partition }}" />
       </div>
       <div id="smda-columns-list" style="display:none;margin-bottom:.5rem;">
-        <label>Available columns</label>
-        <select id="smda-columns-sel" size="5" style="width:100%;font-size:13px;"></select>
+        <label>Available columns <input id="smda-columns-filter" type="text" placeholder="Filter…" style="width:160px;font-size:12px;padding:2px 6px;margin-left:.5rem;" /></label>
+        <select id="smda-columns-sel" size="8" style="width:100%;font-size:13px;"></select>
+        <span id="smda-columns-count" class="muted" style="font-size:12px;"></span>
       </div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;">
         <button class="btn" id="btn-smda-fetch" type="button" title="Fetch strat units from the SMDA API and convert to OSDU WPC records (preview only)">Fetch &amp; Convert</button>
@@ -646,7 +647,8 @@
       for (const it of items) {
         const opt = document.createElement('option');
         opt.value = it.id;
-        opt.textContent = `[StratigraphicColumn] ${it.name||it.id} — ${it.id}`;
+        const tag = it.source === 'storage' ? ' ⏳ (indexing)' : '';
+        opt.textContent = `[StratigraphicColumn] ${it.name||it.id} — ${it.id}${tag}`;
         resSelect.appendChild(opt);
       }
       resSelect.selectedIndex = 0;
@@ -722,6 +724,9 @@
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || r.statusText);
       impStatus(statusId, `${data.status}: ${data.created || data.totalRecords || '?'} records sent to OSDU`, 'ok');
+
+      // Auto-refresh search — backend discovers un-indexed columns via Rank records
+      setTimeout(() => doSearch(), 500);
     } catch(e) {
       impStatus(statusId, 'Send failed: ' + e.message, 'err');
     }
@@ -785,6 +790,8 @@
     } catch(e) {}
   })();
 
+  let smdaColumnsDetails = [];   // enriched column metadata from SMDA
+
   btnSmdaList?.addEventListener('click', async () => {
     const smdaUrl = document.getElementById('smda-url')?.value || '';
     impStatus('smda-status', 'Listing columns…', 'info');
@@ -792,18 +799,38 @@
       const r = await fetch(`/api/strat/smda/columns.json?smda_url=${encodeURIComponent(smdaUrl)}`);
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || r.statusText);
-      const sel = document.getElementById('smda-columns-sel');
-      sel.innerHTML = '';
-      (data.columns || []).forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c; opt.textContent = c;
-        sel.appendChild(opt);
-      });
+      smdaColumnsDetails = data.details || (data.columns || []).map(c => ({name:c}));
+      _renderSmdaColumns(smdaColumnsDetails);
       document.getElementById('smda-columns-list').style.display = 'block';
       impStatus('smda-status', `Found ${data.total} column identifiers`, 'ok');
     } catch(e) {
       impStatus('smda-status', 'List failed: ' + e.message, 'err');
     }
+  });
+
+  function _renderSmdaColumns(items, filter) {
+    const sel = document.getElementById('smda-columns-sel');
+    const countEl = document.getElementById('smda-columns-count');
+    sel.innerHTML = '';
+    const filt = (filter || '').toLowerCase();
+    let shown = 0;
+    items.forEach(c => {
+      const name = c.name || c;
+      const typeBadge = c.type ? ` [${c.type}]` : '';
+      const areaBadge = c.area ? ` (${c.area})` : '';
+      const label = `${name}${typeBadge}${areaBadge}`;
+      if (filt && !label.toLowerCase().includes(filt)) return;
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = label;
+      sel.appendChild(opt);
+      shown++;
+    });
+    if (countEl) countEl.textContent = filt ? `${shown} / ${items.length}` : `${items.length} columns`;
+  }
+
+  document.getElementById('smda-columns-filter')?.addEventListener('input', function() {
+    _renderSmdaColumns(smdaColumnsDetails, this.value);
   });
 
   document.getElementById('smda-columns-sel')?.addEventListener('change', function() {

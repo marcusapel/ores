@@ -134,6 +134,75 @@ async def strat_page(request: Request):
         "partition": osdu.DATA_PARTITION_ID or "data",
     })
 
+
+# ── Helpers: discover un-indexed StratigraphicColumn via child Rank records ──
+
+_RANK_PREFIX = "work-product-component--StratigraphicColumnRankInterpretation:"
+_COL_TYPE = "work-product-component--StratigraphicColumn:"
+_RANK_SEPS = ("-Chrono-", "-Litho-", "-Bio-", "-Magneto-")
+
+
+def _derive_column_ids_from_ranks(rank_ids: List[str]) -> List[str]:
+    """Derive candidate parent StratigraphicColumn IDs from Rank record IDs.
+
+    Rank IDs follow the pattern:
+      <partition>:wpc--..RankInterpretation:<ColumnName>-<RolePrefix>-<RankName>:
+    We split on the first role separator to recover the column name portion.
+    If no separator matches, the full suffix is treated as a column name
+    (covers standalone-rank patterns like "Global-ICS-Column").
+    """
+    col_ids: dict[str, None] = {}  # ordered set
+    for rid in rank_ids:
+        idx = rid.find(_RANK_PREFIX)
+        if idx < 0:
+            continue
+        partition_part = rid[:idx]           # e.g. "dev:"
+        suffix = rid[idx + len(_RANK_PREFIX):]  # e.g. "ColName-Chrono-Stage:"
+        suffix = suffix.rstrip(":")
+        matched = False
+        for sep in _RANK_SEPS:
+            if sep in suffix:
+                col_suffix = suffix.split(sep)[0]
+                col_ids[f"{partition_part}{_COL_TYPE}{col_suffix}:"] = None
+                matched = True
+                break
+        if not matched and suffix:
+            # Treat entire suffix as candidate column name
+            col_ids[f"{partition_part}{_COL_TYPE}{suffix}:"] = None
+    return list(col_ids)
+
+
+async def _verify_column_from_storage(
+    client: httpx.AsyncClient,
+    storage_url: str,
+    hdr: dict,
+    record_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Verify a StratigraphicColumn record exists in OSDU Storage.
+
+    Returns an item dict suitable for the search response, or None.
+    """
+    try:
+        encoded = urllib.parse.quote(record_id, safe="")
+        r = await client.get(f"{storage_url}/{encoded}", headers=hdr)
+        if r.status_code != 200:
+            return None
+        full = r.json() or {}
+        kind = full.get("kind") or ""
+        if "StratigraphicColumn" not in kind:
+            return None
+        name = (full.get("data") or {}).get("Name") or record_id
+        return {
+            "id": record_id,
+            "name": name,
+            "kind": kind,
+            "version": full.get("version"),
+            "source": "storage",
+        }
+    except Exception:
+        return None
+
+
 @router.get("/api/strat/search.json")
 async def strat_search(
     request: Request,
@@ -155,8 +224,10 @@ async def strat_search(
 
     items: List[Dict[str, Any]] = []
     total = 0
+    seen_ids: set[str] = set()
 
     async with httpx.AsyncClient(timeout=60) as client:
+        # ── 1. Primary: Search-indexed StratigraphicColumn records ──
         r = await client.post(search_url, headers=hdr, json=payload)
         r.raise_for_status()
         res = r.json() or {}
@@ -166,7 +237,7 @@ async def strat_search(
             rid = rec.get("id")
             if not rid:
                 continue
-            # prefer the projected name if present
+            seen_ids.add(rid)
             name = ((rec.get("data") or {}).get("Name")) or ""
             if not name:
                 try:
@@ -182,6 +253,39 @@ async def strat_search(
                 "kind": rec.get("kind") or "",
                 "version": rec.get("version"),
             })
+
+        # ── 2. Discovery: find un-indexed columns via their Rank children ──
+        # Rank records ARE search-indexed even when parent Columns are not.
+        # Derive candidate Column IDs from Rank IDs, verify via Storage GET.
+        rank_payload = {
+            "kind": "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:*",
+            "query": q or "*",
+            "limit": 200,
+            "returnedFields": ["id"],
+        }
+        try:
+            rr = await client.post(search_url, headers=hdr, json=rank_payload)
+            if rr.status_code == 200:
+                rank_res = rr.json() or {}
+                candidate_col_ids = _derive_column_ids_from_ranks(
+                    [r2.get("id", "") for r2 in (rank_res.get("results") or [])]
+                )
+                # Verify each candidate that isn't already in the search results
+                verify_tasks = []
+                for cid in candidate_col_ids:
+                    if cid not in seen_ids:
+                        verify_tasks.append(_verify_column_from_storage(
+                            client, storage_url, hdr, cid
+                        ))
+                if verify_tasks:
+                    verified = await asyncio.gather(*verify_tasks)
+                    for item in verified:
+                        if item and item["id"] not in seen_ids:
+                            seen_ids.add(item["id"])
+                            items.append(item)
+                            total += 1
+        except Exception:
+            pass  # Rank discovery is best-effort
 
     return JSONResponse({"items": items, "total": total})
 
@@ -562,6 +666,67 @@ async def get_strat_column(
 # IMPORT / CONVERT / INGEST endpoints
 # =====================================================================
 
+# ── Chrono reference index (for resolving chrono names → OSDU SRNs) ──
+
+async def _build_chrono_index(request: Request) -> Dict[str, str]:
+    """Query OSDU Search for ChronoStratigraphy reference-data records
+    and build a lookup: lower(Name/AliasName/Code) → record ID.
+
+    This is the runtime equivalent of ``load_reference_index()`` in
+    stratcolumnhandler.py, but instead of reading local JSON files it
+    queries the Search API.
+    """
+    at = _access_token(request)
+    search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
+    hdr = osdu.headers(at)
+
+    idx: Dict[str, str] = {}
+    cursor: Optional[str] = None
+    page = 0
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        while True:
+            payload: Dict[str, Any] = {
+                "kind": "osdu:wks:reference-data--ChronoStratigraphy:*",
+                "query": "*",
+                "limit": 1000,
+                "returnedFields": ["id", "data.Name", "data.AliasNames", "data.Code", "data.CodeAsNumber"],
+            }
+            if cursor:
+                payload["cursor"] = cursor
+            r = await client.post(search_url, headers=hdr, json=payload)
+            if not r.is_success:
+                log.warning("Chrono index search failed (%s): %s",
+                            r.status_code, r.text[:300])
+                break
+            res = r.json() or {}
+            results = res.get("results") or []
+            for rec in results:
+                rid = rec.get("id")
+                if not rid:
+                    continue
+                data = rec.get("data") or {}
+                names: List[str] = []
+                if data.get("Name"):
+                    names.append(str(data["Name"]))
+                for a in (data.get("AliasNames") or []):
+                    if a:
+                        names.append(str(a))
+                for k in ("Code", "CodeAsNumber"):
+                    if data.get(k) is not None:
+                        names.append(str(data[k]))
+                for val in names:
+                    key = val.lower().strip()
+                    if key:
+                        idx[key] = rid
+            cursor = res.get("cursor")
+            page += 1
+            if not cursor or not results or page > 20:
+                break
+
+    log.info("Chrono reference index: %d names from OSDU", len(idx))
+    return idx
+
 @router.post("/api/strat/import/ow")
 async def import_ow_json(
     request: Request,
@@ -583,7 +748,20 @@ async def import_ow_json(
 
     try:
         col = _StratColumn.from_openworks_json(doc)
-        bundle = col.to_osdu_bundle(partition=partition)
+    except Exception as e:
+        raise HTTPException(422, f"Conversion error: {e}")
+
+    # If the column has chrono ranks, resolve names via OSDU reference data
+    has_chrono = any(r.kind != "litho" for r in col.ranks)
+    chrono_idx: Optional[Dict[str, str]] = None
+    if has_chrono:
+        try:
+            chrono_idx = await _build_chrono_index(request)
+        except Exception as exc:
+            log.warning("Could not build chrono index from OSDU: %s", exc)
+
+    try:
+        bundle = col.to_osdu_bundle(partition=partition, chrono_rd_index=chrono_idx)
     except Exception as e:
         raise HTTPException(422, f"Conversion error: {e}")
 
@@ -644,7 +822,23 @@ async def import_smda_api(
             **auth_kw,
             verify_ssl=False,
         )
-        bundle = col.to_osdu_bundle(partition=partition)
+    except Exception as e:
+        raise HTTPException(422, f"SMDA fetch/convert error: {e}")
+
+    # If the column has chrono ranks, build a chrono reference index from OSDU
+    has_chrono = any(r.kind != "litho" for r in col.ranks)
+    chrono_idx: Optional[Dict[str, str]] = None
+    if has_chrono:
+        try:
+            chrono_idx = await _build_chrono_index(request)
+        except Exception as exc:
+            log.warning("Could not build chrono index from OSDU: %s", exc)
+
+    try:
+        bundle = col.to_osdu_bundle(
+            partition=partition,
+            chrono_rd_index=chrono_idx,
+        )
     except Exception as e:
         raise HTTPException(422, f"SMDA fetch/convert error: {e}")
 
@@ -745,17 +939,38 @@ async def list_smda_columns(
         log.warning("SMDA strat-column request error: %s", exc)
         raise HTTPException(502, f"SMDA API request failed: {exc}")
 
-    # Extract unique column identifiers
-    names = sorted(set(
-        str(row.get("strat_column_identifier", "") or row.get("identifier", "")).strip()
-        for row in all_rows
-        if (row.get("strat_column_identifier") or row.get("identifier", "")).strip()
-    ))
+    # Extract unique column identifiers — include type & area metadata
+    # Group by identifier, keep the richest metadata row per column
+    columns_map: Dict[str, Dict[str, str]] = {}
+    for row in all_rows:
+        name = str(
+            row.get("strat_column_identifier", "") or row.get("identifier", "")
+        ).strip()
+        if not name:
+            continue
+        existing = columns_map.get(name)
+        col_type = str(row.get("strat_column_type") or "").strip()
+        area = str(row.get("area") or row.get("strat_column_area_type") or "").strip()
+        status = str(row.get("strat_column_status") or "").strip()
+        # Keep the entry with the most metadata
+        if not existing or (col_type and not existing.get("type")):
+            columns_map[name] = {
+                "name": name,
+                "type": col_type,
+                "area": area,
+                "status": status,
+            }
+
+    columns_list = sorted(columns_map.values(), key=lambda c: c["name"].lower())
 
     log.info("SMDA strat-column list: %d columns from %d rows (%d pages)",
-             len(names), len(all_rows), page)
+             len(columns_list), len(all_rows), page)
 
-    return JSONResponse({"columns": names, "total": len(names)})
+    return JSONResponse({
+        "columns": [c["name"] for c in columns_list],
+        "details": columns_list,
+        "total": len(columns_list),
+    })
 
 
 @router.post("/api/strat/storage/put")
@@ -784,6 +999,23 @@ async def storage_put_strat_records(
     base = f"https://{osdu.OSDU_BASE_URL}"
     url = f"{base}/api/storage/v2/records"
     hdr = osdu.headers(at)
+
+    # ── Inject default ACL + legal into records that lack them ──
+    # Without these, Storage accepts the record but the Indexer silently
+    # skips it → record exists in Storage but never appears in Search.
+    default_acl = {
+        "viewers": osdu.DEFAULT_VIEWERS,
+        "owners": osdu.DEFAULT_OWNERS,
+    }
+    default_legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+    for rec in records:
+        if not rec.get("acl"):
+            rec["acl"] = default_acl
+        if not rec.get("legal"):
+            rec["legal"] = default_legal
 
     results = {"created": 0, "errors": []}
     # Upload in batches of 20

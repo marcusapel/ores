@@ -705,8 +705,12 @@ class StratColumn:
                 rows = []
 
         if not rows:
-            raise ValueError(f"No strat units returned from SMDA for column "
-                             f"'{column_identifier}'.")
+            raise ValueError(
+                f"No strat units returned from SMDA for column "
+                f"'{column_identifier}'.  The column header exists in SMDA but "
+                f"has no units in the strat-units table.  This is an SMDA data "
+                f"gap — the column may not have been populated yet."
+            )
 
         def _float(x):
             try:
