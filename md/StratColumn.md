@@ -200,11 +200,13 @@ The **viewer** (`strat.html`) tries multiple field paths in priority order:
 
 | Priority | Source |
 |----------|--------|
-| 1 | Chrono `data.Colour` (ICS hex, e.g. `#67C5CA`) |
+| 1 | Chrono `data.Colour` or `data.Color` (ICS hex, e.g. `#67C5CA`) |
 | 2 | Unit `data.Rendering.ColorHtml` |
 | 3 | Unit `data.VendorMetadata.Raw.ColorHtml` |
 | 4 | Unit `data.VendorMetadata.Raw.color_html` |
-| 5 | Rank palette fallback (pastel blue/orange/green/…) |
+| 5 | Rank palette fallback (HSL gradient dark→light) |
+
+> All 5 levels are implemented in `_flat_unit_fields()` (`app/strat.py`).
 
 ---
 
@@ -227,7 +229,9 @@ StratigraphicColumn "Johan Sverdrup 2015"
 
 ### 4.2 Auto‑Decomposition of Flat Ranks
 
-The ICS chronostratigraphy in OSDU often has a **single rank** with **all** chrono records (Eonothems through Stages mixed together). The viewer backend (`app/strat.py`) detects this when a rank has >10 units and splits it into **virtual sub‑ranks** based on the `Code` path depth:
+> **Not currently implemented.** The description below is a design note for future work.
+
+The ICS chronostratigraphy in OSDU often has a **single rank** with **all** chrono records (Eonothems through Stages mixed together). A future enhancement could detect this when a rank has >10 units and split it into **virtual sub‑ranks** based on the `Code` path depth:
 
 | Code depth | Virtual rank name | Example Code |
 |-----------|-----------|-------------|
@@ -333,20 +337,22 @@ Higher‑rank cells span multiple leaf rows when the mapping shows they own thos
 
 | # | Strategy | Match rule |
 |---|----------|------------|
-| 1 | **Code prefix** | Leaf `Ph.Mz.K.UK.Ma` → parent whose `Code` is a prefix → `Ph.Mz.K.UK` (Series) |
-| 2 | **ParentName chain** | Walk `ParentName` links up through intermediate ranks until match |
-| 3 | **Age containment** | Parent age range fully contains leaf age range (0.5 Ma tolerance) |
-| 4 | **Positional fallback** | Distribute unassigned leaf units proportionally |
+| 1 | **Age containment** | Parent age range fully contains child age range (0.5 Ma tolerance) |
+| 2 | **Code prefix** | Child `Ph.Mz.K.UK.Ma` → parent whose `Code` is a prefix → `Ph.Mz.K.UK` (Series) |
+| 3 | **ParentName chain** | Child’s `data.ParentName` matches parent unit’s `Name` (case‑insensitive) |
+| 4 | **Positional fallback** | Unassigned nodes render in their own rank column (no forced parent) |
 
 ### 6.3 Key JavaScript Functions
 
 | Function | Purpose |
 |----------|---------|
-| `buildHierarchy(model)` | Tree from rank units — leaf‑rank rows, higher ranks via Code/ParentName/age/position |
-| `renderHierarchy(hierarchy)` | Emit `<table>` with Boundary column, `rowSpan` cells, colours |
-| `fillGaps(node)` | Extend children leftward via `effectiveCol` to cover parent gaps |
-| `populateStartMap(node)` | Build start-map using effectiveCol so gap-filled nodes render correctly |
-| `loadColumnById(id)` | Fetch column JSON, detect `missingRanks`, call buildHierarchy → renderHierarchy |
+| `buildHierarchy(model)` | Tree from rank units — leaf‑rank rows, higher ranks via Age/Code/ParentName containment |
+| `renderHierarchy(hierarchy)` | Emit `<table>` with `rowSpan`/`colSpan` cells, colours |
+| `isContainedIn(child, parent)` | True if child belongs to parent (age → code → parentName fallback) |
+| `renderLegend(columns)` | Rank legend with clickable toggle swatches |
+| `toggleRank(rankName)` | Hide/show a rank; triggers `refreshHierarchy()` |
+| `refreshHierarchy()` | Re‑build hierarchy from cached model with hidden ranks filtered out |
+| `loadColumnById(id)` | Fetch column JSON, call buildHierarchy → renderHierarchy → panels |
 | `doSearch()` | Search columns via `/api/strat/search.json` |
 
 ### 6.4 Features
@@ -356,8 +362,8 @@ Higher‑rank cells span multiple leaf rows when the mapping shows they own thos
 - **Synthetic horizon labels**: when real `HorizonInterpretation` records are not deployed, synthesizes "Top X" / "Base X" from unit/chrono names
 - **Gap‑fill**: backend inserts synthetic placeholder units with diagonal hatched pattern for missing intervals (see §9)
 - **RDDMS push**: after loading a column, push it to a Reservoir DDMS dataspace as RESQML 2.0.1 (see §10)
-- **Search**: full‑text or field query via OSDU Search API (default limit 100)
-- **Auto‑decomposition**: flat chrono ranks with >10 units split into virtual hierarchical sub‑ranks by `Code` depth
+- **Search**: full‑text or field query via OSDU Search API (default limit 20)
+- **Rank toggle**: legend items are clickable — hide/show any rank and the hierarchy re‑renders instantly
 - **Trailing‑colon resilience**: OSDU references often end with `:` — `_storage_fetch_many` retries with/without
 - **Missing‑rank diagnostics**: 404 rank records reported in `missingRanks` array; UI shows warning
 
