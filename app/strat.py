@@ -253,108 +253,114 @@ async def _verify_column_from_storage(
 async def strat_search(
     request: Request,
     q: str = Query("*"),
-    limit: int = Query(20, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
+    type: str = Query("all", description="Filter: all | column | rank | unit"),
 ):
     at = _access_token(request)
     search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
     storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
     hdr = osdu.headers(at)
-
-    payload = {
-        "kind": "osdu:wks:work-product-component--StratigraphicColumn:*",
-        "query": q or "*",
-        "limit": int(limit),
-        "returnedFields": ["id", "kind", "version", "data.Name"],
-        "trackTotalCount": True,
-    }
+    search_type = (type or "all").strip().lower()
 
     items: List[Dict[str, Any]] = []
     total = 0
     seen_ids: set[str] = set()
 
     async with httpx.AsyncClient(timeout=60) as client:
-        # ── 1. Primary: Search-indexed StratigraphicColumn records ──
-        r = await client.post(search_url, headers=hdr, json=payload)
-        log.info("Search StratigraphicColumn q='%s' → %d", q, r.status_code)
-        if r.status_code >= 400:
-            log.warning("Search failed (%d): %s", r.status_code, r.text[:300])
-        r.raise_for_status()
-        res = r.json() or {}
-        total = res.get("totalCount") or len(res.get("results") or [])
 
-        for rec in res.get("results") or []:
-            rid = rec.get("id")
-            if not rid:
-                continue
-            seen_ids.add(rid)
-            name = ((rec.get("data") or {}).get("Name")) or ""
-            if not name:
+        # ── Helper: run one search query and collect results ──
+        async def _search_kind(kind: str, item_type: str, extra_fields=None):
+            nonlocal total
+            fields = ["id", "kind", "version", "data.Name"]
+            if extra_fields:
+                fields.extend(extra_fields)
+            payload = {
+                "kind": kind,
+                "query": q or "*",
+                "limit": int(limit),
+                "returnedFields": fields,
+                "trackTotalCount": True,
+            }
+            r = await client.post(search_url, headers=hdr, json=payload)
+            log.info("Search %s q='%s' → %d", kind.split("--")[-1].split(":")[0], q, r.status_code)
+            if r.status_code >= 400:
+                log.warning("Search failed (%d): %s", r.status_code, r.text[:300])
+                return []
+            res = r.json() or {}
+            found = res.get("totalCount") or len(res.get("results") or [])
+            results = []
+            for rec in res.get("results") or []:
+                rid = rec.get("id")
+                if not rid or rid in seen_ids:
+                    continue
+                seen_ids.add(rid)
+                rd = rec.get("data") or {}
+                name = rd.get("Name") or ""
+                if item_type == "rank" and not name:
+                    name = _label_from_ref_id(rd.get("StratigraphicColumnRankUnitType") or "") or rid
+                results.append({
+                    "id": rid,
+                    "name": name or rid,
+                    "kind": rec.get("kind") or "",
+                    "version": rec.get("version"),
+                    "type": item_type,
+                })
+                total += 1
+            return results
+
+        # ── 1. Columns ──
+        if search_type in ("all", "column"):
+            col_items = await _search_kind(
+                "osdu:wks:work-product-component--StratigraphicColumn:*", "column")
+            items.extend(col_items)
+
+            # Discovery: find un-indexed columns via their Rank children
+            if search_type == "all":
                 try:
-                    rf = await client.get(f"{storage_url}/{rid}", headers=hdr)
-                    if rf.status_code == 200:
-                        full = rf.json() or {}
-                        name = (full.get("data") or {}).get("Name") or ""
+                    rank_disc = await _search_kind(
+                        "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:*",
+                        "rank",
+                        extra_fields=["data.StratigraphicColumnRankUnitType"],
+                    )
+                    rank_ids_found = [r2["id"] for r2 in rank_disc]
+                    candidate_col_ids = _derive_column_ids_from_ranks(rank_ids_found)
+                    verify_tasks = []
+                    for cid in candidate_col_ids:
+                        if cid not in seen_ids:
+                            verify_tasks.append(_verify_column_from_storage(
+                                client, storage_url, hdr, cid
+                            ))
+                    if verify_tasks:
+                        verified = await asyncio.gather(*verify_tasks)
+                        for item in verified:
+                            if item and item["id"] not in seen_ids:
+                                seen_ids.add(item["id"])
+                                items.append(item)
+                                total += 1
+                    # Include discovered ranks in results
+                    items.extend(rank_disc)
                 except Exception:
-                    pass
-            items.append({
-                "id": rid,
-                "name": name or rid,
-                "kind": rec.get("kind") or "",
-                "version": rec.get("version"),
-            })
+                    pass  # Rank discovery is best-effort
 
-        # ── 2. Discovery: find un-indexed columns via their Rank children ──
-        # Rank records ARE search-indexed even when parent Columns are not.
-        # Derive candidate Column IDs from Rank IDs, verify via Storage GET.
-        # Also include individual Rank records in results — users can load them directly.
-        rank_payload = {
-            "kind": "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:*",
-            "query": q or "*",
-            "limit": 200,
-            "returnedFields": ["id", "kind", "version", "data.Name", "data.StratigraphicColumnRankUnitType"],
-        }
-        try:
-            rr = await client.post(search_url, headers=hdr, json=rank_payload)
-            if rr.status_code == 200:
-                rank_res = rr.json() or {}
-                rank_results = rank_res.get("results") or []
-                rank_ids_found = [r2.get("id", "") for r2 in rank_results]
+        # ── 2. Ranks (standalone search) ──
+        if search_type == "rank":
+            rank_items = await _search_kind(
+                "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:*",
+                "rank",
+                extra_fields=["data.StratigraphicColumnRankUnitType"],
+            )
+            items.extend(rank_items)
 
-                # a) Column discovery from ranks (existing behaviour)
-                candidate_col_ids = _derive_column_ids_from_ranks(rank_ids_found)
-                verify_tasks = []
-                for cid in candidate_col_ids:
-                    if cid not in seen_ids:
-                        verify_tasks.append(_verify_column_from_storage(
-                            client, storage_url, hdr, cid
-                        ))
-                if verify_tasks:
-                    verified = await asyncio.gather(*verify_tasks)
-                    for item in verified:
-                        if item and item["id"] not in seen_ids:
-                            seen_ids.add(item["id"])
-                            items.append(item)
-                            total += 1
+        # ── 3. Units ──
+        if search_type == "unit":
+            unit_items = await _search_kind(
+                "osdu:wks:work-product-component--StratigraphicUnitInterpretation:*",
+                "unit",
+            )
+            items.extend(unit_items)
 
-                # b) Include individual Rank records (loadable as single-rank views)
-                for rrec in rank_results:
-                    rid = rrec.get("id", "")
-                    if rid and rid not in seen_ids:
-                        seen_ids.add(rid)
-                        rd = rrec.get("data") or {}
-                        rname = rd.get("Name") or _label_from_ref_id(rd.get("StratigraphicColumnRankUnitType") or "") or rid
-                        items.append({
-                            "id": rid,
-                            "name": rname,
-                            "kind": rrec.get("kind") or "",
-                            "version": rrec.get("version"),
-                            "type": "rank",
-                        })
-                        total += 1
-        except Exception:
-            pass  # Rank discovery is best-effort
-
-    log.info("Search complete: %d items (total=%d, q='%s')", len(items), total, q)
+    log.info("Search complete: %d items (total=%d, q='%s', type='%s')",
+             len(items), total, q, search_type)
     return JSONResponse({"items": items, "total": total})
 
 
