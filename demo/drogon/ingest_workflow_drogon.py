@@ -42,29 +42,10 @@ DEFAULT_MANIFESTS = [
 ]
 
 
-# ──────────────── .env loader ──────────────── #
-from _shared import parse_dotenv as _parse_dotenv, first_env as _first, load_env  # noqa: E402
-
-
-# ──────────────── Auth (httpx) ──────────────── #
-def get_access_token(env: Dict[str, str]) -> str:
-    url = f"https://login.microsoftonline.com/{env['tenant']}/oauth2/v2.0/token"
-    form = {
-        "grant_type":    "refresh_token",
-        "client_id":     env["client_id"],
-        "refresh_token": env["refresh_token"],
-        "scope":         env["scope"],
-    }
-    r = httpx.post(url, data=form, timeout=30)
-    if not r.is_success:
-        raise RuntimeError(f"Auth failed ({r.status_code}): {r.text[:600]}")
-    data = r.json()
-    token = data.get("access_token")
-    if not token:
-        raise RuntimeError(f"No access_token in response: {list(data.keys())}")
-    exp = data.get("expires_in", "?")
-    print(f"  token acquired (expires_in={exp}s)")
-    return token
+# ──────────────── Auth & env (via central _auth module) ──────────────── #
+import sys as _sys
+_sys.path.insert(0, str(REPO_ROOT / "demo"))
+from _auth import load_env, mint_from_env as get_access_token  # noqa: E402
 
 
 # ──────────────── Workflow submit + poll ──────────────── #

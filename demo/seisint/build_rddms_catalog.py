@@ -37,7 +37,8 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from seisint._shared import load_env, save_json
+from seisint._shared import save_json
+from _auth import load_env, mint_from_env  # noqa: E402
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -56,20 +57,7 @@ DATASPACE = "maap/drogon"
 
 
 def get_token(env: dict) -> str:
-    url = f"https://login.microsoftonline.com/{env['tenant']}/oauth2/v2.0/token"
-    r = httpx.post(url, data={
-        "grant_type": "refresh_token",
-        "client_id": env["client_id"],
-        "refresh_token": env["refresh_token"],
-        "scope": env["scope"],
-    }, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    token = data.get("access_token")
-    if not token:
-        raise RuntimeError(f"No access_token: {list(data.keys())}")
-    print(f"  token acquired (expires_in={data.get('expires_in', '?')}s)")
-    return token
+    return mint_from_env(env)
 
 
 def build_manifest(host: str, token: str, partition: str, uuids: list[str]) -> dict:

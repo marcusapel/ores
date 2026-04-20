@@ -19,23 +19,25 @@ from urllib.parse import quote
 
 import requests
 
+# ── Central auth module ──────────────────────────────────────────────
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_DEMO_DIR = _SCRIPT_DIR.parent.parent
+sys.path.insert(0, str(_DEMO_DIR))
+from _auth import mint_from_env as _mint  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
 
 def get_token(tenant: str, client_id: str, refresh_token: str, scope: str) -> str:
-    """Mint an access token via AAD v2.0 refresh_token grant."""
-    r = requests.post(
-        f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
-        data={
-            "grant_type": "refresh_token",
-            "client_id": client_id,
-            "refresh_token": refresh_token,
-            "scope": scope,
-        },
-    )
-    r.raise_for_status()
-    return r.json()["access_token"]
+    """Mint an access token via the central _auth module."""
+    env = {
+        "tenant": tenant,
+        "client_id": client_id,
+        "refresh_token": refresh_token,
+        "scope": scope,
+    }
+    return _mint(env)
 
 
 # ---------------------------------------------------------------------------
@@ -159,18 +161,11 @@ def flush(
 # ---------------------------------------------------------------------------
 
 def load_env_file(path: str) -> None:
-    """Minimal .env loader (no dependency on python-dotenv)."""
-    if not os.path.isfile(path):
-        return
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            k = k.strip()
-            v = v.strip().strip("\"'")
-            os.environ.setdefault(k, v)
+    """Minimal .env loader — delegates to central _auth module."""
+    from _auth import parse_dotenv as _pd
+    from pathlib import Path as _P
+    for k, v in _pd(_P(path)).items():
+        os.environ.setdefault(k, v)
 
 
 def main():

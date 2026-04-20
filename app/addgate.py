@@ -44,8 +44,8 @@ async def add_dg_page(request: Request):
     reservoirs = await _search_reservoirs(request)
     decision_levels = await _search_decision_levels(request)
     return templates.TemplateResponse(
-        "addgate.html",
-        {"request": request, "reservoirs": reservoirs, "decision_levels": decision_levels},
+        request, "addgate.html",
+        {"reservoirs": reservoirs, "decision_levels": decision_levels},
     )
 
 

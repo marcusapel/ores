@@ -1,16 +1,12 @@
 """Quick test: try to ingest 1 RDDMS-built record via Storage API and Workflow."""
-import httpx, json, sys, os
+import json, sys, os
 sys.path.insert(0, os.path.dirname(__file__))
-from _shared import load_env
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from _auth import load_env, mint_from_env  # noqa: E402
 
 _root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 env = load_env([os.path.join(_root, '.env')])
-tok = httpx.post(
-    f'https://login.microsoftonline.com/{env["tenant"]}/oauth2/v2.0/token',
-    data={'grant_type':'refresh_token','client_id':env['client_id'],
-          'refresh_token':env['refresh_token'],'scope':env['scope']},
-    timeout=30,
-).json()['access_token']
+tok = mint_from_env(env)
 
 base = f'https://{env["host"].replace("https://","")}'
 part = env['partition']

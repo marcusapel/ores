@@ -57,8 +57,8 @@ async def analyse_page(request: Request):
     """Render the Analyse page with an auto-loaded reservoir list."""
     reservoirs = await _search_reservoirs(request, query="*", limit=50)
     return templates.TemplateResponse(
-        "analyse.html",
-        {"request": request, "reservoirs": reservoirs},
+        request, "analyse.html",
+        {"reservoirs": reservoirs},
     )
 
 

@@ -122,6 +122,29 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #CCC; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #AAA; }
+
+  /* ── Loading overlay ── */
+  .loading-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(250, 250, 250, .65);
+    z-index: 9999;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: .75rem;
+  }
+  .loading-overlay.active { display: flex; }
+  .loading-spinner {
+    width: 38px; height: 38px;
+    border: 3.5px solid var(--eq-border, #e6e6e6);
+    border-top-color: var(--eq-red, #FF1243);
+    border-radius: 50%;
+    animation: spin .75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-label {
+    font-size: 13.5px; font-weight: 500;
+    color: var(--eq-slate, #565656);
+  }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -131,6 +154,27 @@
       Loading…
     </nav>
   </header>
+  <!-- Shared loading overlay (before <main> so showLoading is available to content scripts) -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-label" id="loadingLabel">Loading…</div>
+  </div>
+  <script>
+  (function(){
+    var ov = document.getElementById('loadingOverlay');
+    var lb = document.getElementById('loadingLabel');
+    var _count = 0;
+    window.showLoading = function(text) {
+      _count++;
+      if (text) lb.textContent = text;
+      ov.classList.add('active');
+    };
+    window.hideLoading = function() {
+      _count = Math.max(0, _count - 1);
+      if (_count === 0) ov.classList.remove('active');
+    };
+  })();
+  </script>
   <main>
     {% block content %}{% endblock %}
   </main>
@@ -207,7 +251,13 @@
     var elx = e.target.closest && e.target.closest('[data-href]');
     if (elx) {
       var url = elx.getAttribute('data-href');
-      if (url) window.location.assign(url);
+      if (url) {
+        // Show loading spinner for page navigations (e.g. /admin which fetches dataspaces server-side)
+        if (window.showLoading && url.indexOf('://') === -1) {
+          window.showLoading('Loading…');
+        }
+        window.location.assign(url);
+      }
     }
   });
 })();

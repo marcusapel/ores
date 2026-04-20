@@ -130,8 +130,7 @@ def _fmt_ma(v) -> str:
 
 @router.get("/strat", response_class=HTMLResponse)
 async def strat_page(request: Request):
-    return templates.TemplateResponse("strat.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "strat.html", {
         "partition": osdu.DATA_PARTITION_ID or "data",
     })
 

@@ -75,70 +75,53 @@ def parse_kind(kind: str) -> dict:
     }
 
 
-# ── Instance config loader ───────────────────────────────────────────
+# ── Instance config loader (via central _auth module) ─────────────────
+
+sys.path.insert(0, str(SCRIPT_DIR))
+from _auth import load_instance as _load_inst, mint_from_env  # noqa: E402
+
 
 def load_instance_config(name: str) -> Dict[str, Any]:
-    """Build an instance config dict from INSTANCE_<NAME>_* env vars.
+    """Build an instance config dict via the unified _auth resolution chain.
 
-    Env vars must be set before running this script, e.g.:
-        eval "$(python k8s/env_from_k8s.py)" && python demo/ingest_preship.py
+    Tries:  k8s/secret.yaml + configmap.yaml → INSTANCE_<NAME>_* env → .env
     """
-    env: Dict[str, str] = dict(os.environ)
-
-    prefix = f"INSTANCE_{name.upper()}_"
-    raw = {k[len(prefix):].lower(): v for k, v in env.items() if k.startswith(prefix)}
-    if not raw:
-        sys.exit(f"ERROR: no INSTANCE_{name.upper()}_* variables found. "
-                 f"Run: eval \"$(python k8s/env_from_k8s.py)\"")
-
-    host = raw.get("hostname", "")
-    if not host.startswith("http"):
-        host = f"https://{host}"
-    partition = raw.get("data_partition_id", "")
-    client_id = raw.get("client_id", "")
-
+    inst = _load_inst(name)
     return {
-        "host":          host,
-        "partition":     partition,
-        "tenant":        raw.get("tenant_id", ""),
-        "client_id":     client_id,
-        "client_secret": raw.get("client_secret", ""),
-        "scope":         raw.get("scope", f"{client_id}/.default"),
-        "legal_tag":     raw.get("default_legal_tag", f"{partition}-public-usa-dataset-1"),
-        "owners":        [raw["default_owners"]] if "default_owners" in raw
-                         else [f"data.default.owners@{partition}.dataservices.energy"],
-        "viewers":       [raw["default_viewers"]] if "default_viewers" in raw
-                         else [f"data.default.viewers@{partition}.dataservices.energy"],
-        "countries":     raw.get("default_countries", "US").split(","),
+        "host":          inst["host"],
+        "partition":     inst["partition"],
+        "tenant":        inst["tenant"],
+        "client_id":     inst["client_id"],
+        "client_secret": inst.get("client_secret", ""),
+        "scope":         inst.get("scope") or f"{inst['client_id']}/.default",
+        "legal_tag":     inst.get("legal_tag") or f"{inst['partition']}-public-usa-dataset-1",
+        "owners":        inst.get("owners") or [f"data.default.owners@{inst['partition']}.dataservices.energy"],
+        "viewers":       inst.get("viewers") or [f"data.default.viewers@{inst['partition']}.dataservices.energy"],
+        "countries":     inst.get("countries") or ["US"],
     }
 
 
-# ── Auth ──────────────────────────────────────────────────────────────
+# ── Auth (via central _auth module) ───────────────────────────────────
 
 _cached_token: str | None = None
 _cached_exp: float = 0.0
 
 
 def get_access_token() -> str:
-    """Mint access_token via client_credentials grant."""
+    """Mint access_token via the unified _auth module (auto-detects grant type)."""
     global _cached_token, _cached_exp
     if _cached_token and time.time() < _cached_exp:
         return _cached_token
 
-    url = f"https://login.microsoftonline.com/{TARGET['tenant']}/oauth2/v2.0/token"
-    data = {
-        "grant_type":    "client_credentials",
+    env = {
+        "tenant":        TARGET["tenant"],
         "client_id":     TARGET["client_id"],
-        "client_secret": TARGET["client_secret"],
+        "client_secret": TARGET.get("client_secret", ""),
+        "refresh_token": TARGET.get("refresh_token", ""),
         "scope":         TARGET["scope"],
     }
-    r = httpx.post(url, data=data, timeout=30)
-    if not r.is_success:
-        raise RuntimeError(f"Auth failed ({r.status_code}): {r.text[:600]}")
-    body = r.json()
-    _cached_token = body["access_token"]
-    _cached_exp = time.time() + max(int(body.get("expires_in", 3600)) - 120, 60)
-    print(f"  ✓ token acquired (expires_in={body.get('expires_in', '?')}s)")
+    _cached_token = mint_from_env(env)
+    _cached_exp = time.time() + 3000
     return _cached_token
 
 

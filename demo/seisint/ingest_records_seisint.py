@@ -37,25 +37,10 @@ REPO_ROOT = SCRIPT_DIR.parent.parent
 
 from _shared import load_env  # noqa: E402
 
-
-# ── Auth ──────────────────────────────────────────────────────────────
-def get_access_token(env: Dict[str, str]) -> str:
-    url = f"https://login.microsoftonline.com/{env['tenant']}/oauth2/v2.0/token"
-    form = {
-        "grant_type":    "refresh_token",
-        "client_id":     env["client_id"],
-        "refresh_token": env["refresh_token"],
-        "scope":         env["scope"],
-    }
-    r = httpx.post(url, data=form, timeout=30)
-    if not r.is_success:
-        raise RuntimeError(f"Auth failed ({r.status_code}): {r.text[:600]}")
-    data = r.json()
-    token = data.get("access_token")
-    if not token:
-        raise RuntimeError(f"No access_token in response: {list(data.keys())}")
-    print(f"  token acquired (expires_in={data.get('expires_in', '?')}s)")
-    return token
+# ── Auth (delegated to central _auth module via _shared re-export) ────
+import sys as _sys
+_sys.path.insert(0, str(SCRIPT_DIR.parent))
+from _auth import mint_from_env as get_access_token  # noqa: E402
 
 
 # ── Record helpers ────────────────────────────────────────────────────

@@ -29,7 +29,8 @@ import httpx
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from _shared import load_env  # noqa: E402
+sys.path.insert(0, str(SCRIPT_DIR.parent))
+from _auth import load_env, mint_from_env  # noqa: E402
 
 # ── RDDMS Configuration ────────────────────────────────────────────────
 DATASPACE = "maap/drogon"
@@ -47,15 +48,7 @@ DEMO_SURFACES = {
 
 # ── Auth ────────────────────────────────────────────────────────────────
 def get_token(env: dict) -> str:
-    url = f"https://login.microsoftonline.com/{env['tenant']}/oauth2/v2.0/token"
-    r = httpx.post(url, data={
-        "grant_type":    "refresh_token",
-        "client_id":     env["client_id"],
-        "refresh_token": env["refresh_token"],
-        "scope":         env["scope"],
-    }, timeout=30)
-    r.raise_for_status()
-    return r.json()["access_token"]
+    return mint_from_env(env)
 
 
 # ── RDDMS helpers ──────────────────────────────────────────────────────
