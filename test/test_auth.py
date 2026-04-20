@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
 from starlette.testclient import TestClient
 
-from tests.conftest import USERS, fake_token_response, id_token_for
+from test.conftest import USERS, fake_token_response, id_token_for
 
 
 # ─────────────────────────────────────────────────────────────────────────────

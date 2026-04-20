@@ -172,8 +172,23 @@ def _jinja_pretty_val(val):
 
 templates.env.filters["pretty_val"] = _jinja_pretty_val
 
+# ── Startup banner with PID (visible in terminal for easy kill) ──────────────
+import sys as _sys
+_pid = os.getpid()
+_banner = (
+    f"\n"
+    f"  ╔══════════════════════════════════════════════╗\n"
+    f"  ║  ORES  —  OSDU Record Explorer & Stratigraphy ║\n"
+    f"  ║  PID: {_pid:<39d} ║\n"
+    f"  ║  Kill: kill {_pid:<34d} ║\n"
+    f"  ╚══════════════════════════════════════════════╝\n"
+)
+print(_banner, file=_sys.stderr, flush=True)
+log.info("ORES starting — PID %d", _pid)
+
 # Log routes at startup (helps when a route goes missing)
-log.info("Routes registered: %s", [getattr(r, "path", str(r)) for r in app.routes])
+log.info("Routes registered: %d routes", len(app.routes))
+log.debug("Route paths: %s", [getattr(r, "path", str(r)) for r in app.routes])
 
 # ──────────────────────────────────────────────────────────────────────────────
 # OSDU instance switching
