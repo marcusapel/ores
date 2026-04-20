@@ -58,6 +58,13 @@
   <div class="row" style="grid-template-columns:160px 1fr;">
     <label for="strat-q">Query</label>
     <input id="strat-q" type="text" value="*" placeholder="e.g., data.Name:Gudrun OR *" />
+    <label for="strat-type">Search for</label>
+    <select id="strat-type" style="width:auto;">
+      <option value="all" selected>All (Columns + Ranks)</option>
+      <option value="column">Columns only</option>
+      <option value="rank">Ranks only</option>
+      <option value="unit">Units only</option>
+    </select>
     <label for="strat-limit">Limit</label>
     <input id="strat-limit" type="number" value="50" min="1" max="1000" />
   </div>
@@ -66,21 +73,21 @@
     <span id="search-status" class="muted"></span>
   </div>
   <div style="margin-top:.5rem;">
-    <label for="strat-results">Results <span class="muted" style="font-weight:normal;font-size:.82rem;">(Columns &amp; Ranks)</span></label>
+    <label for="strat-results">Results <span class="muted" style="font-weight:normal;font-size:.82rem;">(Columns, Ranks &amp; Units)</span></label>
     <select id="strat-results" size="7" style="width:100%;">
       <option value="">— no results —</option>
     </select>
     <div class="muted" style="font-size:.85rem;margin-top:.25rem;">
-      Select a Column or a single Rank to render. Ranks display as a single-rank view.
+      Select a Column, Rank or Unit to render. Ranks and Units display as a single-rank view.
     </div>
   </div>
   <div style="margin-top:.6rem; padding-top:.5rem; border-top:1px solid #e1dfdd;">
     <label for="direct-id" style="font-size:13px; font-weight:600;">Load by Record ID</label>
     <div style="display:flex;gap:.4rem;align-items:center;margin-top:.2rem;">
-      <input id="direct-id" type="text" placeholder="dev:work-product-component--StratigraphicColumn:… or …RankInterpretation:…" style="flex:1;font-size:13px;" />
+      <input id="direct-id" type="text" placeholder="dev:work-product-component--StratigraphicColumn:… or …RankInterpretation:… or …UnitInterpretation:…" style="flex:1;font-size:13px;" />
       <button class="btn" id="btn-direct-load" type="button" style="white-space:nowrap;">Load</button>
     </div>
-    <div class="muted" style="font-size:.8rem;margin-top:.15rem;">Paste a Column or RankInterpretation record ID to load it directly.</div>
+    <div class="muted" style="font-size:.8rem;margin-top:.15rem;">Paste a Column, RankInterpretation or UnitInterpretation record ID to load it directly.</div>
   </div>
 </section>
 
@@ -312,6 +319,7 @@
 
   const $ = (sel, root=document) => root.querySelector(sel);
   const qInput     = $('#strat-q');
+  const typeSelect  = $('#strat-type');
   const limitInput = $('#strat-limit');
   const btnSearch  = $('#btn-search');
   const resSelect  = $('#strat-results');
@@ -737,11 +745,12 @@
 
   async function doSearch(){
     const q = (qInput.value||'*').trim();
-    const lim = Math.max(1, Math.min(200, parseInt(limitInput.value||'20', 10)));
+    const lim = Math.max(1, Math.min(1000, parseInt(limitInput.value||'50', 10)));
+    const stype = (typeSelect ? typeSelect.value : 'all') || 'all';
     searchStat.textContent = 'Searching\u2026';
     resSelect.innerHTML = '<option value="">— searching —</option>';
     try {
-      const url = `/api/strat/search.json?q=${encodeURIComponent(q)}&limit=${lim}`;
+      const url = `/api/strat/search.json?q=${encodeURIComponent(q)}&limit=${lim}&type=${stype}`;
       const r = await fetch(url, { headers:{'Cache-Control':'no-store'} });
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       const data = await r.json();
@@ -753,22 +762,27 @@
         clear(legendBox); clear(matrixRoot);
         return;
       }
-      // Sort: Columns first, then Ranks
-      const cols = items.filter(i => i.type !== 'rank');
+      // Sort: Columns first, then Ranks, then Units
       const ranks = items.filter(i => i.type === 'rank');
-      for (const it of [...cols, ...ranks]) {
+      const units = items.filter(i => i.type === 'unit');
+      for (const it of [...cols, ...ranks, ...units]) {
         const opt = document.createElement('option');
         opt.value = it.id;
-        const isRank = it.type === 'rank' || (it.kind || '').includes('RankInterpretation');
-        const badge = isRank ? 'Rank' : 'Column';
+        const badge = it.type === 'rank' ? 'Rank'
+          : it.type === 'unit' ? 'Unit'
+          : 'Column';
         const extra = it.source === 'storage' ? ' \u23f3 (indexing)' : '';
         opt.textContent = `[${badge}] ${it.name||it.id} \u2014 ${it.id}${extra}`;
         resSelect.appendChild(opt);
       }
       resSelect.selectedIndex = 0;
-      const nCols = cols.length, nRanks = ranks.length;
-      searchStat.textContent = `Found ${nCols} column(s), ${nRanks} rank(s)`;
-      loadColumnById(resSelect.value);
+      const nCols = cols.length, nRanks = ranks.length, nUnits = units.length;
+      const parts = [];
+      if (nCols) parts.push(`${nCols} column(s)`);
+      if (nRanks) parts.push(`${nRanks} rank(s)`);
+      if (nUnits) parts.push(`${nUnits} unit(s)`);
+      searchStat.textContent = `Found ${parts.join(', ') || '0 results'}`;
+      if (stype !== 'unit') loadColumnById(resSelect.value);
     } catch(e) {
       console.warn(e);
       resSelect.innerHTML = '<option value="">— error —</option>';
