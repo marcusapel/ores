@@ -62,7 +62,7 @@ DEFAULT_PARTITION = os.getenv("OSDU_PARTITION", "data")  # default per OSDU exam
 KIND_COL = "osdu:wks:work-product-component--StratigraphicColumn:1.2.0"
 KIND_RANK = "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:1.3.0"
 KIND_UNIT = "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0"
-KIND_HORIZON = "osdu:wks:work-product-component--HorizonInterpretation:1.0.0"
+KIND_HORIZON = "osdu:wks:work-product-component--HorizonInterpretation:1.2.0"
 ORDERING_DEFAULT = "OlderToYounger"
 
 # Generic vendor→OSDU mapping (paths relative to the **record root**).

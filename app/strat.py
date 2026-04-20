@@ -94,11 +94,15 @@ def _extract_ages(unit_rec: dict, chrono_rec: dict):
         cd.get("AgeBegin"), cd.get("TopMa"), cd.get("AgeBeginMa"),
         ud.get("OlderPossibleAge"), ud.get("TopMa"),
         (ud.get("TimeRange") or {}).get("TopAgeMa"),
+        (ud.get("VendorMetadata") or {}).get("Raw", {}).get("TopAgeMa"),
+        (ud.get("VendorMetadata") or {}).get("Raw", {}).get("top_age"),
     )
     base = _first(
         cd.get("AgeEnd"), cd.get("BaseMa"), cd.get("AgeEndMa"),
         ud.get("YoungerPossibleAge"), ud.get("BaseMa"),
         (ud.get("TimeRange") or {}).get("BaseAgeMa"),
+        (ud.get("VendorMetadata") or {}).get("Raw", {}).get("BaseAgeMa"),
+        (ud.get("VendorMetadata") or {}).get("Raw", {}).get("base_age"),
     )
     try:
         return (float(top), float(base))
@@ -113,7 +117,14 @@ def _flat_unit_fields(unit_rec: dict, chrono_rec: dict,
     cd = _get_data(chrono_rec) if chrono_rec else {}
     top, base = _extract_ages(unit_rec, chrono_rec)
     name = ud.get("Name") or cd.get("Name") or ""
-    color = cd.get("Colour") or cd.get("Color") or None
+    # Colour: chrono first, then unit Rendering.ColorHtml, then VendorMetadata.Raw
+    color = (
+        cd.get("Colour") or cd.get("Color")
+        or (ud.get("Rendering") or {}).get("ColorHtml")
+        or (ud.get("VendorMetadata") or {}).get("Raw", {}).get("ColorHtml")
+        or (ud.get("VendorMetadata") or {}).get("Raw", {}).get("color_html")
+        or None
+    )
     code = cd.get("Code") or ""
 
     result: Dict[str, Any] = {
@@ -654,6 +665,19 @@ async def get_strat_column(
             return False
         return child_top <= parent_top + tol and child_base >= parent_base - tol
 
+    def _child_of(child_unit, parent_unit):
+        """True if child belongs to parent — by age containment OR parentName."""
+        ct, cb = child_unit.get("topMa"), child_unit.get("baseMa")
+        pt, pb = parent_unit.get("topMa"), parent_unit.get("baseMa")
+        if _is_contained(ct, cb, pt, pb):
+            return True
+        # Litho fallback: parentName matches parent name (case-insensitive)
+        pn = (child_unit.get("parentName") or "").strip().lower()
+        nn = (parent_unit.get("name") or "").strip().lower()
+        if pn and nn and pn == nn:
+            return True
+        return False
+
     for ri in range(len(ranks_model) - 1):
         parent_rank = ranks_model[ri]
         child_rank = ranks_model[ri + 1]
@@ -663,17 +687,16 @@ async def get_strat_column(
         for pu in parent_rank["units"]:
             p_top = pu.get("topMa")
             p_base = pu.get("baseMa")
-            if p_top is None or p_base is None:
-                continue
             # Use original ancestor name for clean labels (avoid nested "((...) — undifferentiated)")
             p_name = pu.get("_originalName") or pu.get("name") or ""
 
             # Find existing children at the next rank contained in this parent
-            # (consider ALL units — real and synthetic — for containment)
-            kids = [
-                cu for cu in child_units
-                if _is_contained(cu.get("topMa"), cu.get("baseMa"), p_top, p_base)
-            ]
+            # (by age containment OR parentName match)
+            kids = [cu for cu in child_units if _child_of(cu, pu)]
+
+            # Age-based gap-fill only possible when parent has age range
+            if p_top is None or p_base is None:
+                continue
 
             if not kids:
                 # No children at all → insert one synthetic placeholder
@@ -1853,6 +1876,19 @@ def _stratcol_to_model(col) -> dict:
                     "topMa": u.top_age_ma,
                     "baseMa": u.base_age_ma,
                     "color": u.color_html,
+                    "code": None,
+                    "parentName": u.parent_name or "",
+                })
+        elif r.kind == "chrono":
+            # Chrono names are SRNs or display names — include them
+            # so RESQML conversion can create unit objects for them
+            for cn in r.chrono_names:
+                name = cn.split(":")[-2] if cn.endswith(":") else cn
+                units_model.append({
+                    "name": name,
+                    "topMa": None,
+                    "baseMa": None,
+                    "color": None,
                     "code": None,
                 })
         ranks_model.append({
