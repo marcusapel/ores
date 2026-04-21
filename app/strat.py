@@ -127,14 +127,39 @@ def _flat_unit_fields(unit_rec: dict, chrono_rec: dict,
     )
     code = cd.get("Code") or ""
 
+    # Normalize ages: olderMa = bigger number, youngerMa = smaller number.
+    # SMDA stores top_age=younger (<) and base_age=older (>), while ICS chrono
+    # uses topMa=older (>) and baseMa=younger (<).  Always expose both the raw
+    # values (for display) and the normalized ones (for containment / sorting).
+    older_ma = None
+    younger_ma = None
+    if top is not None and base is not None:
+        older_ma = max(top, base)
+        younger_ma = min(top, base)
+    elif top is not None:
+        older_ma = younger_ma = top
+    elif base is not None:
+        older_ma = younger_ma = base
+
     result: Dict[str, Any] = {
-        "name": name, "topMa": top, "baseMa": base, "color": color, "code": code,
+        "name": name, "topMa": top, "baseMa": base,
+        "olderMa": older_ma, "youngerMa": younger_ma,
+        "color": color, "code": code,
     }
 
-    # ParentName — used by litho columns to establish hierarchy
-    parent_name = ud.get("ParentName") or ""
-    if parent_name:
-        result["parentName"] = parent_name
+    # ParentName — used by litho columns to establish hierarchy.
+    # Check structured field first, then VendorMetadata fallbacks (SMDA origin).
+    parent_name = (
+        ud.get("ParentName")
+        or ((ud.get("Relationships") or {}).get("Parent") or {}).get("Name")
+        or (ud.get("VendorMetadata") or {}).get("Raw", {}).get("ParentName")
+        or (ud.get("VendorMetadata") or {}).get("Raw", {}).get("strat_unit_parent")
+        or ""
+    )
+    if isinstance(parent_name, str):
+        parent_name = parent_name.strip()
+    if parent_name and str(parent_name).lower() not in ("", "null", "none"):
+        result["parentName"] = str(parent_name)
 
     # Attach horizon boundary info if the unit references HorizonInterpretation records
     hmap = horizons_by_id or {}
@@ -593,11 +618,15 @@ async def get_strat_column(
     ranks_model: List[Dict[str, Any]] = []
 
     def _age_key(u: Dict[str, Any]):
-        """Sort key using pre-computed flat fields: older (larger topMa) first."""
-        top = u.get("topMa")
-        base = u.get("baseMa")
-        if top is not None and base is not None:
-            return (-top, base)
+        """Sort key: older units first (bigger Ma value first).
+
+        Uses normalized olderMa / youngerMa which are convention-agnostic
+        (handles both SMDA top<base and ICS top>base).
+        """
+        older = u.get("olderMa")
+        younger = u.get("youngerMa")
+        if older is not None and younger is not None:
+            return (-older, younger)
         return (float("inf"), float("inf"))
 
     for rid in rank_ids:
@@ -629,7 +658,7 @@ async def get_strat_column(
                 units_model.append({"unit": {}, "chrono": crec, **ff})
 
         # B) Rank-level unit interpretations: attach chrono if the unit points to one (ChronoStratigraphyID)
-        for uid in unit_ids:
+        for oidx, uid in enumerate(unit_ids):
             urec = units_by_id.get(uid)
             if not urec:
                 continue
@@ -637,10 +666,17 @@ async def get_strat_column(
             cid = _as_id(ud.get("ChronoStratigraphyID") or ud.get("ChronostratigraphyID") or "")
             cobj = chron_by_id.get(cid) if cid else {}
             ff = _flat_unit_fields(urec, cobj, horizons_by_id)
+            ff["_origIdx"] = oidx  # preserve OSDU record order
             units_model.append({"unit": urec, "chrono": cobj, **ff})
 
-        # C) Order units older→younger for non-overlap per rank (as intended by the OSDU model)
-        units_model.sort(key=_age_key)
+        # C) Order: for chrono ranks use age, for litho preserve the OSDU
+        #    StratigraphicUnitInterpretationSet order — that IS the
+        #    authoritative stratigraphic ordering.  Litho formations can
+        #    cross chronostratigraphic boundaries so age-sorting is wrong.
+        if is_chrono_rank:
+            units_model.sort(key=_age_key)
+        else:
+            units_model.sort(key=lambda u: u.get("_origIdx", 0))
 
         ranks_model.append({
             "rankName": rank_name,
@@ -665,34 +701,59 @@ async def get_strat_column(
     #    propagates to System, SubSystem, Series, etc. — ensuring every cell
     #    in the table is accounted for.  The `_originalName` field preserves
     #    the real ancestor name so labels stay clean (no nested nesting).
-    def _is_contained(child_top, child_base, parent_top, parent_base, tol=0.5):
-        """True if child age range fits within parent (with 0.5 Ma tolerance)."""
-        if None in (child_top, child_base, parent_top, parent_base):
+    def _norm_name(s: str) -> str:
+        """Normalize a name for fuzzy matching: lowercase, strip trailing
+        punctuation (.,-) and extra whitespace."""
+        return (s or "").strip().lower().rstrip(".,- ").strip()
+
+    def _is_age_contained(child_unit, parent_unit, tol=0.5):
+        """True if child's normalized age range fits within parent's.
+
+        Uses olderMa/youngerMa which are convention-agnostic (handles both
+        SMDA top<base and ICS top>base).  0.5 Ma tolerance for boundary
+        rounding between geological schemes.
+        """
+        co = child_unit.get("olderMa")
+        cy = child_unit.get("youngerMa")
+        po = parent_unit.get("olderMa")
+        py = parent_unit.get("youngerMa")
+        if None in (co, cy, po, py):
             return False
-        return child_top <= parent_top + tol and child_base >= parent_base - tol
+        return co <= po + tol and cy >= py - tol
 
     def _child_of(child_unit, parent_unit):
-        """True if child belongs to parent — by age containment OR parentName."""
-        ct, cb = child_unit.get("topMa"), child_unit.get("baseMa")
-        pt, pb = parent_unit.get("topMa"), parent_unit.get("baseMa")
-        if _is_contained(ct, cb, pt, pb):
-            return True
-        # Litho fallback: parentName matches parent name (case-insensitive)
-        pn = (child_unit.get("parentName") or "").strip().lower()
-        nn = (parent_unit.get("name") or "").strip().lower()
-        if pn and nn and pn == nn:
-            return True
-        return False
+        """True if child belongs to parent — by parentName or age containment.
+
+        ParentName (fuzzy-matched) is checked first; when it's set but doesn't
+        match, falls back to age containment (handles data inconsistencies
+        like 'Alke Fm' vs 'Alke Fm.').  When parentName is absent, uses
+        normalized-age containment directly.
+        """
+        pn = _norm_name(child_unit.get("parentName") or "")
+        if pn:
+            nn = _norm_name(parent_unit.get("name") or "")
+            if pn == nn:
+                return True
+            # parentName set but no name match — fall through to age
+        return _is_age_contained(child_unit, parent_unit)
 
     for ri in range(len(ranks_model) - 1):
         parent_rank = ranks_model[ri]
         child_rank = ranks_model[ri + 1]
         child_units = child_rank["units"]
 
+        # For ranks where ALL children use parentName hierarchy, skip
+        # age-based gap-fill (litho formations cross age boundaries).
+        # When only some children have parentName, still do age gap-fill
+        # for the rest (mixed columns like biozonation).
+        all_have_parent = all(cu.get("parentName") for cu in child_units) if child_units else False
+        if all_have_parent:
+            continue
+
         new_children: List[Dict[str, Any]] = []
         for pu in parent_rank["units"]:
-            p_top = pu.get("topMa")
-            p_base = pu.get("baseMa")
+            p_older = pu.get("olderMa")
+            p_younger = pu.get("youngerMa")
             # Use original ancestor name for clean labels (avoid nested "((...) — undifferentiated)")
             p_name = pu.get("_originalName") or pu.get("name") or ""
 
@@ -701,7 +762,7 @@ async def get_strat_column(
             kids = [cu for cu in child_units if _child_of(cu, pu)]
 
             # Age-based gap-fill only possible when parent has age range
-            if p_top is None or p_base is None:
+            if p_older is None or p_younger is None:
                 continue
 
             if not kids:
@@ -712,8 +773,10 @@ async def get_strat_column(
                     "chrono": {},
                     "name": f"({p_name} — undifferentiated)",
                     "_originalName": p_name,
-                    "topMa": p_top,
-                    "baseMa": p_base,
+                    "topMa": p_older,
+                    "baseMa": p_younger,
+                    "olderMa": p_older,
+                    "youngerMa": p_younger,
                     "color": None,
                     "code": "",
                     "_synthetic": True,
@@ -728,37 +791,41 @@ async def get_strat_column(
                 if not real_kids:
                     # All children are synthetic from earlier rounds — skip
                     continue
-                kids_sorted = sorted(real_kids, key=lambda c: -(c.get("topMa") or 0))
-                # Gap at top: parent.topMa → first child.topMa
-                first_top = kids_sorted[0].get("topMa")
-                if first_top is not None and p_top - first_top > 0.5:
+                # Sort by normalized olderMa descending (oldest first)
+                kids_sorted = sorted(real_kids, key=lambda c: -(c.get("olderMa") or 0))
+                # Gap at older end: parent.olderMa → first child.olderMa
+                first_older = kids_sorted[0].get("olderMa")
+                if first_older is not None and p_older - first_older > 0.5:
                     new_children.append({
                         "unit": {}, "chrono": {},
-                        "name": f"(not defined, {_fmt_ma(p_top)}–{_fmt_ma(first_top)} Ma)",
-                        "_originalName": f"not defined {_fmt_ma(p_top)}–{_fmt_ma(first_top)} Ma",
-                        "topMa": p_top, "baseMa": first_top,
+                        "name": f"(not defined, {_fmt_ma(p_older)}–{_fmt_ma(first_older)} Ma)",
+                        "_originalName": f"not defined {_fmt_ma(p_older)}–{_fmt_ma(first_older)} Ma",
+                        "topMa": p_older, "baseMa": first_older,
+                        "olderMa": p_older, "youngerMa": first_older,
                         "color": None, "code": "", "_synthetic": True,
                     })
                 # Gaps between consecutive children
                 for ci in range(len(kids_sorted) - 1):
-                    cur_base = kids_sorted[ci].get("baseMa")
-                    nxt_top = kids_sorted[ci + 1].get("topMa")
-                    if cur_base is not None and nxt_top is not None and cur_base - nxt_top > 0.5:
+                    cur_younger = kids_sorted[ci].get("youngerMa")
+                    nxt_older = kids_sorted[ci + 1].get("olderMa")
+                    if cur_younger is not None and nxt_older is not None and cur_younger - nxt_older > 0.5:
                         new_children.append({
                             "unit": {}, "chrono": {},
-                            "name": f"(not defined, {_fmt_ma(cur_base)}–{_fmt_ma(nxt_top)} Ma)",
-                            "_originalName": f"not defined {_fmt_ma(cur_base)}–{_fmt_ma(nxt_top)} Ma",
-                            "topMa": cur_base, "baseMa": nxt_top,
+                            "name": f"(not defined, {_fmt_ma(cur_younger)}–{_fmt_ma(nxt_older)} Ma)",
+                            "_originalName": f"not defined {_fmt_ma(cur_younger)}–{_fmt_ma(nxt_older)} Ma",
+                            "topMa": cur_younger, "baseMa": nxt_older,
+                            "olderMa": cur_younger, "youngerMa": nxt_older,
                             "color": None, "code": "", "_synthetic": True,
                         })
-                # Gap at base: last child.baseMa → parent.baseMa
-                last_base = kids_sorted[-1].get("baseMa")
-                if last_base is not None and last_base - p_base > 0.5:
+                # Gap at younger end: last child.youngerMa → parent.youngerMa
+                last_younger = kids_sorted[-1].get("youngerMa")
+                if last_younger is not None and last_younger - p_younger > 0.5:
                     new_children.append({
                         "unit": {}, "chrono": {},
-                        "name": f"(not defined, {_fmt_ma(last_base)}–{_fmt_ma(p_base)} Ma)",
-                        "_originalName": f"not defined {_fmt_ma(last_base)}–{_fmt_ma(p_base)} Ma",
-                        "topMa": last_base, "baseMa": p_base,
+                        "name": f"(not defined, {_fmt_ma(last_younger)}–{_fmt_ma(p_younger)} Ma)",
+                        "_originalName": f"not defined {_fmt_ma(last_younger)}–{_fmt_ma(p_younger)} Ma",
+                        "topMa": last_younger, "baseMa": p_younger,
+                        "olderMa": last_younger, "youngerMa": p_younger,
                         "color": None, "code": "", "_synthetic": True,
                     })
 
