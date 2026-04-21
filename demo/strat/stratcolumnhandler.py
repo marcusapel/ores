@@ -1218,9 +1218,11 @@ class StratColumn:
                     _set_path(rec, "data.VendorMetadata.Raw.Level", u.level)
                 records.append(rec)
 
-        # Ranks
+        # Ranks – scope each rank ID by column name so that different columns
+        # never collide on the same generic "Level0 / Level1 / …" identifier.
         for r in self.ranks:
-            rid = wpc_id(partition, "StratigraphicColumnRankInterpretation", r.name)
+            rank_id_token = f"{self.name}_{r.name}"
+            rid = wpc_id(partition, "StratigraphicColumnRankInterpretation", rank_id_token)
             data = {"Name": r.name, "OrderingCriteria": r.ordering}
             if r.kind == "litho":
                 data["StratigraphicUnitInterpretationSet"] = [unit_id_by_uuid[u.uuid] for u in r.units]

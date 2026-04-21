@@ -357,23 +357,37 @@
   /* ------------------------------------------------------------------ */
   /*  CONTAINMENT helpers                                               */
   /* ------------------------------------------------------------------ */
+  /** Normalize a name for fuzzy matching: strip trailing punctuation. */
+  function _normName(s) {
+    return (s || '').toLowerCase().trim().replace(/[.\-,]+$/g, '').trim();
+  }
+
+  /** Normalize age pair to (olderMa, youngerMa) regardless of convention. */
+  function ageNorm(a, b) {
+    if (a == null || b == null) return [null, null];
+    return a >= b ? [a, b] : [b, a];
+  }
+
+  /** Convention-agnostic age containment check (0.5 Ma tolerance). */
+  function ageContained(child, parent) {
+    const [co, cy] = ageNorm(child.topMa, child.baseMa);
+    const [po, py] = ageNorm(parent.topMa, parent.baseMa);
+    if (co == null || po == null) return false;
+    return co <= po + 0.5 && cy >= py - 0.5;
+  }
+
   function isContainedIn(child, parent) {
-    // Age containment: topMa = older (bigger), baseMa = younger (smaller)
-    // Use 0.5 Ma tolerance for boundary rounding between geological schemes
-    if (child.topMa != null && child.baseMa != null &&
-        parent.topMa != null && parent.baseMa != null) {
-      return child.topMa <= parent.topMa + 0.5 &&
-             child.baseMa >= parent.baseMa - 0.5;
+    // 1. ParentName: authoritative parent declaration (fuzzy match)
+    if (child.parentName) {
+      if (_normName(child.parentName) === _normName(parent.name)) return true;
+      // parentName set but doesn't match this parent — fall through to age
     }
-    // Chrono Code hierarchy (e.g. "Phanerozoic.Paleozoic.Silurian")
+    // 2. Chrono Code hierarchy (e.g. "Phanerozoic.Paleozoic.Silurian")
     if (child.code && parent.code) {
       return child.code.startsWith(parent.code + '.') || child.code === parent.code;
     }
-    // Litho ParentName: child.parentName matches parent.name (case-insensitive)
-    if (child.parentName && parent.name) {
-      return child.parentName.toLowerCase().trim() === parent.name.toLowerCase().trim();
-    }
-    return false;
+    // 3. Age containment: convention-agnostic (works for both SMDA and ICS)
+    return ageContained(child, parent);
   }
 
   /* ------------------------------------------------------------------ */
@@ -385,17 +399,25 @@
   function buildHierarchy(model) {
     const ranks = (model.ranks || []).map((rk, ri) => ({
       rankName: rk.rankName || 'Unspecified',
-      units: (rk.units || []).map(u => ({
-        name:   u.name   || '(unit)',
-        topMa:  (u.topMa  != null) ? u.topMa  : null,
-        baseMa: (u.baseMa != null) ? u.baseMa : null,
-        color:  u.color  || null,
-        code:   u.code   || '',
-        parentName: u.parentName || '',
-        _synthetic: !!u._synthetic,
-        horizonTop:  u.horizonTop  || null,
-        horizonBase: u.horizonBase || null,
-      }))
+      isChrono: !!rk.isChrono,
+      units: (rk.units || []).map((u, ui) => {
+        const [olderMa, youngerMa] = ageNorm(
+          (u.topMa != null) ? u.topMa : (u.olderMa ?? null),
+          (u.baseMa != null) ? u.baseMa : (u.youngerMa ?? null));
+        return {
+          name:   u.name   || '(unit)',
+          topMa:  (u.topMa  != null) ? u.topMa  : null,
+          baseMa: (u.baseMa != null) ? u.baseMa : null,
+          olderMa, youngerMa,
+          color:  u.color  || null,
+          code:   u.code   || '',
+          parentName: u.parentName || '',
+          _synthetic: !!u._synthetic,
+          _origIdx: (u._origIdx != null) ? u._origIdx : ui,
+          horizonTop:  u.horizonTop  || null,
+          horizonBase: u.horizonBase || null,
+        };
+      })
     })).filter(rk => rk.units.length > 0);
 
     if (!ranks.length) return null;
@@ -416,30 +438,139 @@
       }))
     );
 
-    // Assign parents: for each node at rank ri, find nearest ancestor with tightest fit
+    // ── Helper: make a synthetic stub node at a given rank ──
+    function _makeSynth(name, rankIdx, children) {
+      const olders   = children.map(c => c.olderMa).filter(v => v != null);
+      const youngers = children.map(c => c.youngerMa).filter(v => v != null);
+      const older  = olders.length  ? Math.max(...olders)  : null;
+      const younger = youngers.length ? Math.min(...youngers) : null;
+      const node = {
+        name, topMa: older, baseMa: younger,
+        olderMa: older, youngerMa: younger,
+        color: null, code: '', parentName: '', _synthetic: true,
+        _origIdx: 9999, horizonTop: null, horizonBase: null,
+        rankIdx, rankName: ranks[rankIdx].rankName,
+        children: [], parent: null, leafCount: 0, rowStart: 0,
+        isLeaf: false, colSpan: 1,
+      };
+      levels[rankIdx].push(node);
+      for (const c of children) { node.children.push(c); c.parent = node; }
+      return node;
+    }
+
+    // ── Helper: find a node by name at any rank ≤ maxRank ──
+    function _findByName(name, maxRank) {
+      const key = _normName(name);
+      if (!key) return null;
+      for (let pi = maxRank; pi >= 0; pi--)
+        for (const p of levels[pi])
+          if (_normName(p.name) === key) return p;
+      return null;
+    }
+
+    // ── Helper: find best age-containment parent for a child ──
+    function _findByAge(child, maxRank) {
+      let bestParent = null, bestRange = Infinity, bestRank = -1;
+      for (let pi = maxRank; pi >= 0; pi--) {
+        for (const p of levels[pi]) {
+          if (!ageContained(child, p)) continue;
+          const range = (p.olderMa != null && p.youngerMa != null)
+            ? (p.olderMa - p.youngerMa) : Infinity;
+          if (pi > bestRank || (pi === bestRank && range < bestRange)) {
+            bestParent = p; bestRange = range; bestRank = pi;
+          }
+        }
+        if (bestParent && bestRank === pi) break;
+      }
+      return bestParent;
+    }
+
+    // ── Assign parents ──
+    // For each child unit, try these strategies in order:
+    //   1. parentName match (fuzzy) — authoritative for litho columns
+    //   2. Age containment fallback — when parentName is set but no name
+    //      match exists (data inconsistency) or when parentName is absent
+    //   3. Code hierarchy — chrono code containment
+    // If the named parent exists at a NON-ADJACENT rank, synthesize
+    // intermediate stubs at every skipped rank.
+    function _linkToTarget(child, target, ri) {
+      if (target.rankIdx === ri - 1) {
+        target.children.push(child);
+        child.parent = target;
+      } else {
+        // Parent is 2+ ranks above — fill intermediate ranks
+        let cur = target;
+        for (let mid = target.rankIdx + 1; mid < ri; mid++) {
+          let label = child.parentName || child.name;
+          let stub = cur.children.find(
+            c => c.rankIdx === mid && c._synthetic &&
+                 _normName(c.name) === _normName(label));
+          if (!stub) {
+            stub = _makeSynth(label, mid, []);
+            cur.children.push(stub); stub.parent = cur;
+          }
+          cur = stub;
+        }
+        cur.children.push(child);
+        child.parent = cur;
+      }
+    }
+
     for (let ri = 1; ri < nRanks; ri++) {
       for (const child of levels[ri]) {
-        let bestParent = null;
-        let bestRange  = Infinity;    // narrowest age-span wins
-        let bestRank   = -1;
-        for (let pi = ri - 1; pi >= 0; pi--) {
-          for (const p of levels[pi]) {
-            if (!isContainedIn(child, p)) continue;
-            const range = (p.topMa != null && p.baseMa != null)
-              ? (p.topMa - p.baseMa) : Infinity;
-            // Prefer nearest rank; within same rank, prefer narrowest range
-            if (pi > bestRank || (pi === bestRank && range < bestRange)) {
-              bestParent = p;
-              bestRange  = range;
-              bestRank   = pi;
+        // 1. Try parentName match (fuzzy)
+        if (child.parentName) {
+          const target = _findByName(child.parentName, ri - 1);
+          if (target) {
+            _linkToTarget(child, target, ri);
+            continue;
+          }
+        }
+        // 2. Try age containment (works for all column types)
+        const agePar = _findByAge(child, ri - 1);
+        if (agePar) {
+          _linkToTarget(child, agePar, ri);
+          continue;
+        }
+        // 3. Try code hierarchy
+        if (child.code) {
+          for (let pi = ri - 1; pi >= 0; pi--) {
+            const codePar = levels[pi].find(p => p.code && child.code.startsWith(p.code + '.'));
+            if (codePar) {
+              _linkToTarget(child, codePar, ri);
+              break;
             }
           }
-          if (bestParent && bestRank === pi) break;   // found at nearest possible rank
         }
-        if (bestParent) {
-          bestParent.children.push(child);
-          child.parent = bestParent;
+        // If still orphan, handled by synthesis below
+      }
+    }
+
+    // ── Synthesize stubs for remaining orphans with parentName ──
+    for (let ri = 1; ri < nRanks; ri++) {
+      const orphans = levels[ri].filter(n => !n.parent && n.parentName);
+      if (!orphans.length) continue;
+      const byParent = new Map();
+      for (const o of orphans) {
+        const key = _normName(o.parentName);
+        if (!byParent.has(key)) byParent.set(key, { displayName: o.parentName, children: [] });
+        byParent.get(key).children.push(o);
+      }
+      for (const [, group] of byParent) {
+        _makeSynth(group.displayName, ri - 1, group.children);
+      }
+    }
+
+    // ── Nest remaining orphan stubs under higher-rank ancestors ──
+    for (let ri = nRanks - 1; ri >= 1; ri--) {
+      for (const node of levels[ri]) {
+        if (node.parent) continue;
+        if (node.parentName) {
+          const t = _findByName(node.parentName, ri - 1);
+          if (t) { t.children.push(node); node.parent = t; continue; }
         }
+        const agePar = _findByAge(node, ri - 1);
+        if (agePar) { agePar.children.push(node); node.parent = agePar; continue; }
       }
     }
 
@@ -449,8 +580,13 @@
       for (const n of levels[ri])
         if (!n.parent) roots.push(n);
 
-    // Sort roots older-first (bigger topMa first)
-    roots.sort((a, b) => (b.topMa || 0) - (a.topMa || 0));
+    // Sort roots: older (bigger Ma) first, then by data-model order as tiebreaker
+    function _sortKey(a, b) {
+      const ao = a.olderMa ?? -Infinity, bo = b.olderMa ?? -Infinity;
+      if (ao !== bo) return bo - ao;                      // older first
+      return (a._origIdx ?? 9999) - (b._origIdx ?? 9999); // then model order
+    }
+    roots.sort(_sortKey);
 
     // Compute leaf counts + colSpan
     function computeLeaf(node) {
@@ -460,7 +596,7 @@
         node.colSpan = nRanks - node.rankIdx;   // span to rightmost column
       } else {
         node.isLeaf = false;
-        node.children.sort((a, b) => (b.topMa || 0) - (a.topMa || 0));
+        node.children.sort(_sortKey);
         node.leafCount = 0;
         for (const c of node.children) {
           computeLeaf(c);
@@ -621,11 +757,11 @@
           nameEl.textContent = node.name;
           td.appendChild(nameEl);
 
-          // Age (supplementary info)
-          if (node.topMa != null && node.baseMa != null) {
+          // Age (supplementary info — always show older–younger)
+          if (node.olderMa != null && node.youngerMa != null) {
             const ageEl = document.createElement('div');
             ageEl.className = 'sc-age';
-            ageEl.textContent = `${fmtAge(node.topMa)}\u2013${fmtAge(node.baseMa)} Ma`;
+            ageEl.textContent = `${fmtAge(node.youngerMa)}\u2013${fmtAge(node.olderMa)} Ma`;
             td.appendChild(ageEl);
           }
 
@@ -646,7 +782,7 @@
           }
 
           td.title = node.name
-            + (node.topMa != null ? `\n${node.topMa}\u2013${node.baseMa} Ma` : '')
+            + (node.olderMa != null ? `\n${node.youngerMa}\u2013${node.olderMa} Ma` : '')
             + (node.code  ? `\n${node.code}` : '');
 
           tr.appendChild(td);
