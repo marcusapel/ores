@@ -767,6 +767,7 @@
         return;
       }
       // Sort: Columns first, then Ranks, then Units
+      const cols  = items.filter(i => i.type === 'column');
       const ranks = items.filter(i => i.type === 'rank');
       const units = items.filter(i => i.type === 'unit');
       for (const it of [...cols, ...ranks, ...units]) {
