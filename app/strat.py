@@ -1313,15 +1313,19 @@ def _generate_horizons_for_column(
         for ui, unit in enumerate(rank.get("units") or []):
             if unit.get("_synthetic"):
                 continue
-            top_ma = unit.get("topMa")
-            base_ma = unit.get("baseMa")
+            # Use normalized ages (convention-agnostic: works for both
+            # ICS chrono where topMa=older and SMDA litho where topMa=younger).
+            older = unit.get("olderMa")
+            younger = unit.get("youngerMa")
             name = unit.get("name") or f"Unit_{ui}"
             key = f"{ri}:{ui}"
 
-            if top_ma is not None and base_ma is not None:
-                unit_ages[key] = (top_ma, base_ma)
-                age_info.setdefault(top_ma, []).append((name, "base"))
-                age_info.setdefault(base_ma, []).append((name, "top"))
+            if older is not None and younger is not None:
+                unit_ages[key] = (older, younger)
+                # olderMa = base of unit (stratigraphically deeper)
+                # youngerMa = top of unit (stratigraphically shallower)
+                age_info.setdefault(older, []).append((name, "base"))
+                age_info.setdefault(younger, []).append((name, "top"))
 
     # 2) Generate a HorizonInterpretation record per distinct age
     #    SKIP ages that already have a real horizon linked.
@@ -1384,19 +1388,21 @@ def _generate_horizons_for_column(
             key = f"{ri}:{ui}"
             if key not in unit_ages:
                 continue
-            older, younger = unit_ages[key]
+            older_age, younger_age = unit_ages[key]
             # Check which links the unit already has
             has_base = bool(unit.get("horizonBase"))
             has_top = bool(unit.get("horizonTop"))
             patch: Dict[str, Any] = {}
-            if not has_base and older in horizon_id_by_age:
-                patch["ColumnStratigraphicHorizonBaseID"] = horizon_id_by_age[older]
-            if not has_top and younger in horizon_id_by_age:
-                patch["ColumnStratigraphicHorizonTopID"] = horizon_id_by_age[younger]
-            if older is not None and not has_base:
-                patch["OlderPossibleAge"] = older
-            if younger is not None and not has_top:
-                patch["YoungerPossibleAge"] = younger
+            # Base = stratigraphically deeper = older boundary
+            if not has_base and older_age in horizon_id_by_age:
+                patch["ColumnStratigraphicHorizonBaseID"] = horizon_id_by_age[older_age]
+            # Top = stratigraphically shallower = younger boundary
+            if not has_top and younger_age in horizon_id_by_age:
+                patch["ColumnStratigraphicHorizonTopID"] = horizon_id_by_age[younger_age]
+            if older_age is not None and not has_base:
+                patch["OlderPossibleAge"] = older_age
+            if younger_age is not None and not has_top:
+                patch["YoungerPossibleAge"] = younger_age
             unit_rec = unit.get("unit") or {}
             unit_id = unit_rec.get("id", "")
             if patch:
@@ -1525,10 +1531,12 @@ def _generate_units_from_horizons(
         for unit in rank.get("units") or []:
             if unit.get("_synthetic"):
                 continue
-            t = unit.get("topMa")
-            b = unit.get("baseMa")
-            if t is not None and b is not None:
-                existing_intervals.add((round(float(t), 4), round(float(b), 4)))
+            # Use normalized ages so the interval key is always (older, younger)
+            # regardless of whether the source was ICS chrono or SMDA litho.
+            o = unit.get("olderMa")
+            y = unit.get("youngerMa")
+            if o is not None and y is not None:
+                existing_intervals.add((round(float(o), 4), round(float(y), 4)))
                 existing_unit_count += 1
 
     # ── Collect horizons ──────────────────────────────────────────────
@@ -1551,17 +1559,19 @@ def _generate_units_from_horizons(
                 horizon_tuples.append((float(age), h.get("name", f"{age} Ma"), h.get("id")))
 
     # (b) Fall back: extract distinct ages from unit boundaries (no real horizon records)
+    #     Use normalized olderMa/youngerMa so labels are correct regardless
+    #     of whether topMa means "older" (ICS) or "younger" (SMDA).
     if not horizon_tuples:
         for rank in model.get("ranks") or []:
             for unit in rank.get("units") or []:
                 if unit.get("_synthetic"):
                     continue
-                for age_key in ("topMa", "baseMa"):
+                name = unit.get("name") or ""
+                for age_key, side in (("olderMa", "base"), ("youngerMa", "top")):
                     age = unit.get(age_key)
                     if age is not None and age not in seen_ages:
                         seen_ages.add(age)
-                        name = unit.get("name") or ""
-                        label = f"Top {name}" if age_key == "baseMa" else f"Base {name}"
+                        label = f"Top {name}" if side == "top" else f"Base {name}"
                         horizon_tuples.append((float(age), label.strip(), None))
 
     if len(horizon_tuples) < 2:

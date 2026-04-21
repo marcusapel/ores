@@ -674,9 +674,13 @@ def _chrono_column_model(with_horizons: bool = False) -> dict:
     """
     def _u(name, top, base, uid, hztop=None, hzbase=None):
         """Helper: build one unit entry in the model."""
+        # Normalized ages: olderMa = bigger Ma, youngerMa = smaller Ma
+        older = max(top, base) if top is not None and base is not None else top
+        younger = min(top, base) if top is not None and base is not None else base
         u: Dict[str, Any] = {
             "unit": {"id": uid}, "chrono": {},
             "name": name, "topMa": top, "baseMa": base,
+            "olderMa": older, "youngerMa": younger,
         }
         if hztop:
             u["horizonTop"] = hztop
@@ -892,3 +896,91 @@ class TestGenerateUnitsFromHorizons:
             json={"ingest": False},
         )
         assert resp.status_code == 400
+
+
+class TestSmdaLithoAgeConvention:
+    """Verify horizon/unit generation handles SMDA litho convention
+    where topMa=younger (small Ma) and baseMa=older (big Ma) — the
+    inverse of ICS chrono convention."""
+
+    @staticmethod
+    def _smda_litho_model(with_horizons=False):
+        """Build a 2-unit litho model in SMDA convention (topMa < baseMa)."""
+        def _hz(age, label):
+            return {"id": f"test:hz:{age}:", "name": label, "ageMa": age}
+
+        return {
+            "column": {
+                "id": "test:wpc--StratigraphicColumn:smda-litho:",
+                "data": {"Name": "SMDA Litho Test"},
+            },
+            "ranks": [{
+                "rankName": "Formation", "isChrono": False,
+                "units": [
+                    {
+                        "unit": {"id": "test:u:hugin:"},
+                        "chrono": {},
+                        "name": "Hugin Fm",
+                        # SMDA convention: topMa=younger, baseMa=older
+                        "topMa": 149.2, "baseMa": 163.5,
+                        "olderMa": 163.5, "youngerMa": 149.2,
+                        "horizonTop": _hz(163.5, "Base Hugin") if with_horizons else None,
+                        "horizonBase": _hz(149.2, "Top Hugin") if with_horizons else None,
+                    },
+                    {
+                        "unit": {"id": "test:u:draupne:"},
+                        "chrono": {},
+                        "name": "Draupne Fm",
+                        "topMa": 140.0, "baseMa": 149.2,
+                        "olderMa": 149.2, "youngerMa": 140.0,
+                        "horizonTop": _hz(149.2, "Base Draupne") if with_horizons else None,
+                        "horizonBase": _hz(140.0, "Top Draupne") if with_horizons else None,
+                    },
+                ],
+                "unitCount": 2,
+            }],
+        }
+
+    def test_horizons_smda_litho_no_inversion(self):
+        """Horizon labels use correct Top/Base even when topMa < baseMa (SMDA)."""
+        from app.strat import _generate_horizons_for_column
+        model = self._smda_litho_model(with_horizons=False)
+        result = _generate_horizons_for_column(model, partition="test")
+
+        # Should produce 3 horizons at ages 163.5, 149.2, 140.0
+        ages = sorted(h["data"]["MeanPossibleAge"] for h in result["horizons"])
+        assert ages == [140.0, 149.2, 163.5]
+
+        # Verify labels: 163.5 = base of Hugin, 149.2 = shared boundary, 140.0 = top of Draupne
+        by_age = {h["data"]["MeanPossibleAge"]: h["data"]["Name"] for h in result["horizons"]}
+        assert "Base" in by_age[163.5]   # oldest boundary = base of deepest unit
+        assert "Top" in by_age[140.0]    # youngest boundary = top of shallowest unit
+
+    def test_units_smda_litho_skips_existing(self):
+        """Existing SMDA litho units are recognized even when topMa < baseMa."""
+        from app.strat import _generate_units_from_horizons
+        model = self._smda_litho_model(with_horizons=True)
+        result = _generate_units_from_horizons(model, partition="test")
+
+        # Both intervals are already covered → nothing generated
+        assert result["stats"]["existingUnits"] == 2
+        assert result["stats"]["unitCount"] == 0
+
+    def test_horizon_patches_smda_litho_correct_links(self):
+        """Horizon patches assign correct Base/Top IDs for SMDA convention."""
+        from app.strat import _generate_horizons_for_column
+        model = self._smda_litho_model(with_horizons=False)
+        result = _generate_horizons_for_column(model, partition="test")
+
+        hid_by_age = {}
+        for h in result["horizons"]:
+            hid_by_age[h["data"]["MeanPossibleAge"]] = h["id"]
+
+        # Check patches for Hugin Fm (olderMa=163.5, youngerMa=149.2)
+        hugin_patches = [p for p in result["unitPatches"] if p["name"] == "Hugin Fm"]
+        assert len(hugin_patches) == 1
+        patch = hugin_patches[0]["patch"]
+        # Base horizon = older boundary (163.5 Ma)
+        assert patch["ColumnStratigraphicHorizonBaseID"] == hid_by_age[163.5]
+        # Top horizon = younger boundary (149.2 Ma)
+        assert patch["ColumnStratigraphicHorizonTopID"] == hid_by_age[149.2]
