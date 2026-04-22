@@ -417,7 +417,7 @@
       h += `<tr><td>${esc(label)}</td>`;
       gates.forEach(g => {
         const v = _get(g.development_concept || {}, path);
-        const s = v != null ? String(v) : '\u2014';
+        const s = v != null ? String(v) : '-';
         h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${esc(s)}</td>`;
       });
       h += '</tr>';

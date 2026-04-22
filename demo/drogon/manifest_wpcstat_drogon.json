@@ -25,7 +25,7 @@
           ]
         },
         "data": {
-          "Name": "Drogon Valysar \u2014 Reservoir Estimated Volumes (statistics)",
+          "Name": "Drogon Valysar - Reservoir Estimated Volumes (statistics)",
           "Description": "Statistics aggregated across Realisations by SegmentID, Zone, Facies. Includes per-segment totals, per-facies totals, and grand total.",
           "EstimatedVolumeTypeID": "dev:reference-data--ReservoirEstimatedVolumeType:EstimatedInPlaceVolumes",
           "ParentObjectID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",

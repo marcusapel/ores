@@ -294,7 +294,7 @@ async function buildManifest() {
       } else {
         info = `workflow run=${res.runId || '?'}`;
       }
-      setText(buildSummary, `Ingest OK \u2014 ${info}`);
+      setText(buildSummary, `Ingest OK - ${info}`);
     } catch (e) {
       console.warn('ingest error:', e);
       setText(buildSummary, `Ingest failed: ${e.message}`);

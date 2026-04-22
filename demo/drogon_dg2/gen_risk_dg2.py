@@ -174,7 +174,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 \u2014 Schedule risk (FPSO and long-lead equipment)",
+            "Name": "Drogon DG2 - Schedule risk (FPSO and long-lead equipment)",
             "Summary": (
                 "FPSO conversion drydock availability and subsea template fabrication "
                 "lead times threaten the 2028-H1 first oil target."
@@ -182,8 +182,8 @@ def main():
             "Description": (
                 "SRA Monte Carlo schedule analysis (1000 iterations) gives P50 first "
                 "oil June 2028 and P90 first oil March 2029. Key drivers: (1) FPSO "
-                "drydock slot availability \u2014 only two qualifying yards confirmed for "
-                "2027-Q1 window, (2) subsea template fabrication \u2014 18-month lead time "
+                "drydock slot availability - only two qualifying yards confirmed for "
+                "2027-Q1 window, (2) subsea template fabrication - 18-month lead time "
                 "from order to delivery, (3) drilling rig market tightness with 2027 "
                 "contracting window. Mitigation: early FEED commitment, dual-yard "
                 "tendering strategy, and pre-ordering of long-lead subsea equipment."
@@ -215,7 +215,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 \u2014 Fluid contact depth uncertainty",
+            "Name": "Drogon DG2 - Fluid contact depth uncertainty",
             "Summary": (
                 "Free water level and gas\u2013oil contact depths are uncertain across "
                 "the 7 fault-bounded reservoir regions, directly impacting STOIIP."
@@ -261,7 +261,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 \u2014 Recovery factor uncertainty (dynamic)",
+            "Name": "Drogon DG2 - Recovery factor uncertainty (dynamic)",
             "Summary": (
                 "Dynamic simulation recovery factor ranges from 28% (P90) to 37% (P10) "
                 "driven by Kv/Kh, relperm, and fault seal uncertainties."

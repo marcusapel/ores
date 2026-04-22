@@ -22,7 +22,7 @@
         ]
       },
       "data": {
-        "Name": "Drogon \u2014 Decision Gate 1 DG1 Identify & Assess",
+        "Name": "Drogon - Decision Gate 1 DG1 Identify & Assess",
         "Description": "DG1 evaluation of the Valysar fluvial formation in the Drogon field, covering static in-place volume estimation across 7 reservoir segments (NorthSea, NorthHorst, CentralHorst, CentralFlanks, CentralSouth, SouthWing, EastLobe) with three facies types (Channel, Crevasse, Floodplain). The assessment uses FMU-driven uncertainty realisations to derive P10/P50/P90 oil and gas volumes, forming the basis for the DG2 Concept Select recommendation.",
         "ProjectName": "Drogon Field Development",
         "DecisionLevelID": "dev:reference-data--DecisionLevel:DG1:1",
@@ -197,13 +197,13 @@
                 "RecommendedAction": "Approve"
               },
               {
-                "Name": "Reduced scope \u2014 focus on CentralHorst and CentralSouth",
+                "Name": "Reduced scope - focus on CentralHorst and CentralSouth",
                 "Rank": 2,
                 "Rationale": "CentralHorst and CentralSouth carry the highest Oil density and lowest porosity uncertainty (Channel facies dominant). De-risks early production but leaves ~40% of upside for later phases.",
                 "RecommendedAction": "Consider"
               },
               {
-                "Name": "Defer \u2014 acquire additional appraisal data",
+                "Name": "Defer - acquire additional appraisal data",
                 "Rank": 3,
                 "Rationale": "Floodplain facies porosity (avg 0.10) and cementation effects in deeper segments remain poorly constrained. Additional core data from NorthSea and EastLobe segments would reduce volume uncertainty range before committing to DG2.",
                 "RecommendedAction": "Fallback"

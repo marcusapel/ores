@@ -83,7 +83,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Fault transmissibility and reservoir compartmentalization",
+            "Name": "Drogon - Fault transmissibility and reservoir compartmentalization",
             "Summary": (
                 "Sealing or partially-sealing faults may compartmentalise the Valysar "
                 "reservoir, restricting pressure communication and drainage across segments, "

@@ -679,7 +679,7 @@
       const info = `${hierarchy.totalRows} rows \u00d7 ${hierarchy.nRanks} ranks`;
       const isSingleRank = !!(_cachedModel.column || {})._singleRank;
       const prefix = isSingleRank ? 'Single Rank' : 'OK';
-      setStatus(`${prefix} \u2014 ${info}`);
+      setStatus(`${prefix} - ${info}`);
     }
   }
 
@@ -843,7 +843,7 @@
         ? `${hierarchy.totalRows} rows \u00d7 ${hierarchy.nRanks} ranks`
         : 'empty';
       const prefix = isSingleRank ? 'Single Rank' : 'OK';
-      setStatus(`${prefix} \u2014 ${info}`);
+      setStatus(`${prefix} - ${info}`);
       // Enable RDDMS push after successful load
       currentColumnId = rid;
       const colName = (model.column || {}).name || rid;
@@ -913,7 +913,7 @@
           : it.type === 'unit' ? 'Unit'
           : 'Column';
         const extra = it.source === 'storage' ? ' \u23f3 (indexing)' : '';
-        opt.textContent = `[${badge}] ${it.name||it.id} \u2014 ${it.id}${extra}`;
+        opt.textContent = `[${badge}] ${it.name||it.id} - ${it.id}${extra}`;
         resSelect.appendChild(opt);
       }
       resSelect.selectedIndex = 0;
@@ -1496,7 +1496,7 @@
         html += '<details style="margin-top:.4rem;"><summary>Sample horizons</summary><ul style="font-size:12px;margin:.3rem 0;">';
         for (const h of samples) {
           const hd = h.data || {};
-          html += `<li><strong>${hd.Name}</strong> \u2014 ${hd.MeanPossibleAge} Ma</li>`;
+          html += `<li><strong>${hd.Name}</strong> - ${hd.MeanPossibleAge} Ma</li>`;
         }
         if (data.horizons.length > 5) html += `<li>\u2026 and ${data.horizons.length - 5} more</li>`;
         html += '</ul></details>';
@@ -1508,7 +1508,7 @@
         resultEl.style.background = '#e8f5e9';
         resultEl.style.border = '1px solid #4caf50';
       }
-      if (statusEl) statusEl.textContent = ingest ? 'Done \u2014 horizons ingested' : 'Preview ready';
+      if (statusEl) statusEl.textContent = ingest ? 'Done - horizons ingested' : 'Preview ready';
 
       // Auto-refresh column to show horizon data
       if (ingest) setTimeout(() => loadColumnById(currentColumnId), 2000);
@@ -1570,7 +1570,7 @@
         html += '<details style="margin-top:.4rem;"><summary>Sample units</summary><ul style="font-size:12px;margin:.3rem 0;">';
         for (const u of samples) {
           const ud = u.data || {};
-          html += `<li><strong>${ud.Name}</strong> \u2014 ${ud.OlderPossibleAge}\u2013${ud.YoungerPossibleAge} Ma</li>`;
+          html += `<li><strong>${ud.Name}</strong> - ${ud.OlderPossibleAge}\u2013${ud.YoungerPossibleAge} Ma</li>`;
         }
         if (data.units.length > 5) html += `<li>\u2026 and ${data.units.length - 5} more</li>`;
         html += '</ul></details>';
@@ -1582,7 +1582,7 @@
         resultEl.style.background = '#e3f2fd';
         resultEl.style.border = '1px solid #1976d2';
       }
-      if (statusEl) statusEl.textContent = ingest ? 'Done \u2014 units ingested' : 'Preview ready';
+      if (statusEl) statusEl.textContent = ingest ? 'Done - units ingested' : 'Preview ready';
 
       // Auto-refresh column after ingest
       if (ingest) setTimeout(() => loadColumnById(currentColumnId), 2000);
