@@ -1044,10 +1044,10 @@ def _parse_cbt_production(d: Dict[str, Any], target_id: str = "") -> Dict[str, A
 # BD enrichment: DevelopmentConcept WPC → ext.equinor.DevelopmentConcept
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Fields to extract from the DevelopmentConcept v2 WPC data block.
-# v2 uses structured sub-objects; we pass them through wholesale.
+# Fields to extract from the DevelopmentConcept v4 WPC data block.
+# v4 uses structured sub-objects with OSDU *ID fields; we pass them through wholesale.
 _DEVCONCEPT_FIELDS = (
-    "Name", "Summary", "DecisionGate",
+    "Name", "Summary", "DecisionGate", "DecisionLevelID",
     "FacilityConcept", "WellPlan", "DrainageStrategy",
     "ReservoirTarget", "ProductionTechnology",
     "ConceptID",
