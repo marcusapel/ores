@@ -130,20 +130,24 @@ Reservoir drainage and injection approach.
 
 Which reservoir interval and structure this concept targets.
 
+Zone, formation and group are **lithostratigraphic** concepts. In OSDU they are modelled as `work-product-component--StratigraphicUnitInterpretation` (SUI) records, each carrying a `UnitType` (group / formation / member). The `*ID` fields link directly to these SUI records. Age is **chronostratigraphic** and links to `reference-data--ChronoStratigraphy`.
+
 | Field | Type | Notes |
 |---|---|---|
 | `FormationName` | string | Lithostratigraphic formation name (display label) |
-| `FormationID` | WPC ID | -> `work-product-component--StratigraphicUnitInterpretation` |
+| `FormationID` | WPC ID | -> SUI record with `UnitType=formation` |
 | `GroupName` | string | Lithostratigraphic group name (display label) |
-| `GroupID` | WPC ID | -> `work-product-component--StratigraphicUnitInterpretation` |
-| `Age` | string | Geological age (display label) |
-| `AgeID` | ref-data ID | -> `reference-data--ChronoStratigraphy` |
+| `GroupID` | WPC ID | -> SUI record with `UnitType=group` |
+| `Age` | string | Chronostratigraphic age (display label) |
+| `AgeID` | ref-data ID | -> `reference-data--ChronoStratigraphy` (chrono, not litho) |
 | `FieldArea` | string | |
 | `FieldID` | master-data ID | -> `master-data--Field` |
 | `DepthRange_mTVDMSL` | object | `{ Min, Max }` |
-| `Zones[]` | string[] | Reservoir zone names (display labels) |
-| `ZoneIDs[]` | WPC IDs | -> `work-product-component--StratigraphicUnitInterpretation` |
+| `Zones[]` | string[] | Lithostratigraphic zone/formation/member names targeted |
+| `ZoneIDs[]` | WPC IDs | -> SUI records (formation or member `UnitType`) |
 | `ReservoirSegmentIDs[]` | master-data IDs | -> `master-data--ReservoirSegment` (OWC/GOC/fault properties live there) |
+
+> **OSDU lithostratigraphic hierarchy on this instance**: `StratigraphicUnitFeature` (master-data) has 0 records. All lithostratigraphic units live as `StratigraphicUnitInterpretation` (WPC) records (2,950 from SMDA). Hierarchy is encoded via `ParentName` in VendorMetadata: ROGALAND GP. (group, level 1) -> Lista Fm. (formation, level 2) -> Heimdal Fm. (formation, level 3). This is why we reference SUI, not SUF.
 
 ### 3.5 ProductionTechnology
 
@@ -175,13 +179,30 @@ The schema provides `*ID` fields alongside human-readable labels for cross-refer
 | `DecisionLevelID` | `reference-data--DecisionLevel` | `dev:reference-data--DecisionLevel:DG2` | **Live** - 5 records (DG0-DG4) on platform |
 | `AgeID` | `reference-data--ChronoStratigraphy` | `dev:reference-data--ChronoStratigraphy:Phanerozoic.Cenozoic.Paleogene.Paleocene:` | **Live** - 2528 chrono records on platform |
 
-### 4.2 Stratigraphic references (new in v3.1.0)
+### 4.2 Lithostratigraphic references (new in v4.0.0)
+
+Zone, formation and group are **lithostratigraphic** concepts. In OSDU, the canonical model has two tiers:
+
+- **`master-data--StratigraphicUnitFeature`** (the "feature" - the rock body itself, location-independent)
+- **`work-product-component--StratigraphicUnitInterpretation`** (the "interpretation" - a specific project/column interpretation of that feature)
+
+On the `equinorswedev` instance, **StratigraphicUnitFeature has 0 records**. All 2,950 lithostratigraphic units from SMDA are loaded as SUI (interpretation) records. Each SUI carries `VendorMetadata.Raw.UnitType` = `group`, `formation`, or `member`, and `ParentName` for the hierarchy. This is the de facto lithostratigraphic register on the platform.
+
+**Example hierarchy** (GRAND):
+```
+ROGALAND GP.  (UnitType=group,  level 1)
+  └── Lista Fm.     (UnitType=formation, level 2, parent=ROGALAND GP.)
+        └── Heimdal Fm.  (UnitType=formation, level 3, parent=Lista Fm.)
+              └── Heimdal Mbr. (UnitType=member, level 4, parent=Lista Fm.)
+```
+
+`AgeID` is separate - it references **chronostratigraphic** records (`reference-data--ChronoStratigraphy`), not litho. Age = "when", Formation/Group/Zone = "what rock".
 
 | Field | OSDU Entity | Example ID | Status |
 |---|---|---|---|
-| `FormationID` | `work-product-component--StratigraphicUnitInterpretation` | `dev:…StratigraphicUnitInterpretation:b124c957-…:` (Heimdal Fm.) | **Live** for GRAND; Drogon zones are synthetic |
-| `GroupID` | `work-product-component--StratigraphicUnitInterpretation` | `dev:…StratigraphicUnitInterpretation:ad215072-…:` (ROGALAND GP.) | **Live** for GRAND |
-| `ZoneIDs[]` | `work-product-component--StratigraphicUnitInterpretation` | Heimdal Fm. + Lista Fm. SUI records | **Live** for GRAND; Drogon zones not on platform |
+| `FormationID` | SUI with `UnitType=formation` | `dev:…SUI:b124c957-…:` (Heimdal Fm.) | **Live** for GRAND; Drogon zones are synthetic |
+| `GroupID` | SUI with `UnitType=group` | `dev:…SUI:ad215072-…:` (ROGALAND GP.) | **Live** for GRAND |
+| `ZoneIDs[]` | SUI with `UnitType=formation` or `member` | Heimdal Fm. + Lista Fm. | **Live** for GRAND; Drogon zones not on platform |
 
 ### 4.3 Master-data references
 
