@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-register_schema_devconcept.py — Register the custom DevelopmentConcept WPC
+register_schema_devconcept.py - Register the custom DevelopmentConcept WPC
 schema with the OSDU Schema Service.
 
 The schema definition lives in ``schema_devconcept.json`` (same directory).
@@ -10,7 +10,7 @@ It creates the kind:
     dev:wks:work-product-component--DevelopmentConcept:3.0.0
 
 This must be run ONCE before ingesting DevelopmentConcept WPC records.
-Re-running is safe — the Schema Service will return 409 if the version
+Re-running is safe - the Schema Service will return 409 if the version
 already exists.
 
 Usage:
@@ -69,7 +69,7 @@ def register_schema(env: Dict[str, str], token: str, payload: dict,
     if r.status_code == 201:
         print(f"\n  ✓ Schema registered successfully ({r.status_code})")
     elif r.status_code == 409:
-        print(f"\n  ⚠ Schema already exists ({r.status_code}) — no action needed.")
+        print(f"\n  ⚠ Schema already exists ({r.status_code}) - no action needed.")
     elif r.status_code == 200:
         print(f"\n  ✓ Schema updated ({r.status_code})")
     else:

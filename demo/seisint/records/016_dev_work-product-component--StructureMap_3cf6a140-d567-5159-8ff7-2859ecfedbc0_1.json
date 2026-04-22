@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "BaseVolantis Depth Map (inline 25 m grid)",
-    "Description": "Depth structure map for Base Volantis reservoir — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
+    "Description": "Depth structure map for Base Volantis reservoir - same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
     "InterpretationName": "BaseVolantis Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",

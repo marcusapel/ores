@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-manifest2records_dg2.py — Split DG2 manifests into individual JSON record
+manifest2records_dg2.py - Split DG2 manifests into individual JSON record
 files under demo/drogon_dg2/records/.
 
 DG2 shares only master data (Reservoir, Segments, RefData) and GeoModel

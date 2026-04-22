@@ -1,12 +1,12 @@
-# GeoLabelSet for Reservoir Volumes & Statistics — README (Aligned & Expanded)
+# GeoLabelSet for Reservoir Volumes & Statistics - README (Aligned & Expanded)
 
 > **Scope:** This guide explains **how to use the `work-product-component--GeoLabelSet` manifest** to publish consolidated **volumetrics** and **volume statistics** (e.g., Net, Oil, Associated Gas, Pore, Hydrocarbon Pore, Bulk with **P10/P50/P90**, **ArithmeticMean**, **Minimum**, **Maximum**, **StandardDeviation**) for a **Reservoir** and its **ReservoirSegments** in OSDU. It preserves the **background**, **use cases**, and **options** from the original README and updates all sections to match your **actual example** with **reference-data values**.
 
 > **References:**
-> • GeoLabelSet WPC definition and schema — [OSDU Data Definitions — GeoLabelSet][ref-geolabelset-md] · [Shared schema JSON][ref-geolabelset-json]
-> • GeoLabelType & Facets usage (statistics facets, unit quantity) — [GeoLabelType 1.0.x][ref-geolabeltype] · Worked Examples (GeoLabels README)[ref-worked-examples]
-> • ColumnBasedTableType & ColumnBasedTable usage — [ColumnBasedTableType 1.1.0][ref-columntype-md] · Example record[ref-columntype-json]
-> • OSDU platform docs and schema usage guide — [Platform Documentation][ref-platform] · [Data Definitions overview][ref-overview]
+> • GeoLabelSet WPC definition and schema - [OSDU Data Definitions - GeoLabelSet][ref-geolabelset-md] · [Shared schema JSON][ref-geolabelset-json]
+> • GeoLabelType & Facets usage (statistics facets, unit quantity) - [GeoLabelType 1.0.x][ref-geolabeltype] · Worked Examples (GeoLabels README)[ref-worked-examples]
+> • ColumnBasedTableType & ColumnBasedTable usage - [ColumnBasedTableType 1.1.0][ref-columntype-md] · Example record[ref-columntype-json]
+> • OSDU platform docs and schema usage guide - [Platform Documentation][ref-platform] · [Data Definitions overview][ref-overview]
 
 ---
 
@@ -18,7 +18,7 @@ The pattern used is **ColumnBasedTable** to store a dense matrix of **statistics
 - one or more **FacetIDs** (e.g., statistics roles `P10`, `P50`, `P90`, `ArithmeticMean`, `Minimum`, `Maximum`, `StandardDeviation`),
 - a **UnitOfMeasureID** (e.g., `m3`).
 
-> Avoid GeoLabelSet if you need to store **raw arrays/grids** or **document narratives** — use **RESQML representation datasets** or **Document WPC** instead.
+> Avoid GeoLabelSet if you need to store **raw arrays/grids** or **document narratives** - use **RESQML representation datasets** or **Document WPC** instead.
 
 ---
 
@@ -28,9 +28,9 @@ Use **GeoLabelSet** when you want to:
 - **Label** a **Reservoir** or **ReservoirSegment(s)** with results from modeling or evaluation.
 - **Attach scenario/context facets** (e.g., `statistics:P50`, `scenario:BASE/LOW/HIGH`) to enable robust filtering and comparisons.
 - **Provide spatial/geopolitical context** (`SpatialArea` GeoJSON, `GeoContexts`) for map‑based discovery and queries.
-- **Link provenance** to inputs (`RelatedDatasets` — RESQML grid properties, CSV summaries, simulation outputs).
+- **Link provenance** to inputs (`RelatedDatasets` - RESQML grid properties, CSV summaries, simulation outputs).
 
-**Do not use** GeoLabelSet as a replacement for raw subsurface data — use Energistics/RESQML datasets for arrays/grids.
+**Do not use** GeoLabelSet as a replacement for raw subsurface data - use Energistics/RESQML datasets for arrays/grids.
 
 ---
 
@@ -53,7 +53,7 @@ Use **GeoLabelSet** when you want to:
 
 ---
 
-## 4. Data model — aligned to your example
+## 4. Data model - aligned to your example
 
 ### 4.1 Core identity & governance
 - **Kind**: `osdu:wks:work-product-component--GeoLabelSet:1.0.0`
@@ -257,7 +257,7 @@ When scenario facets are present:
 
 ## 7. Options & design choices (from original README + example)
 - **Scenario support**: add `FacetType=scenario` with roles for CASE or vintage separation (e.g., `BASE`, `LOW`, `HIGH`, `2025Q3_BASE`).
-- **Segmentation strategy**: keys can be `Zone` + `SegmentID`, or alternative keys like `Layer`, `WellGroup`, `Block`, `Compartment` — choose what matches your reservoir architecture.
+- **Segmentation strategy**: keys can be `Zone` + `SegmentID`, or alternative keys like `Layer`, `WellGroup`, `Block`, `Compartment` - choose what matches your reservoir architecture.
 - **Metrics extension**: beyond the example metrics (Net, Oil, AssociatedGas, Pore, HydrocarbonPore, Bulk), add `Water`, `GasCap`, `RecoveryFactor`, etc., each with **GeoLabelType**, **FacetIDs**, and **UnitOfMeasure**.
 - **Units per column**: the example uses `m3`; you can mix units (e.g., `bbl` for Oil, `Sm3` for gas) if each column declares its unit explicitly.
 - **Totals/aggregates**: include `Zone="TOTAL"` (and `SegmentID="Totals"`) for portfolio roll‑ups.

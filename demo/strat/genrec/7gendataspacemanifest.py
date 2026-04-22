@@ -104,7 +104,7 @@ def get_access_token_from_refresh_token(
     timeout: int = 20,
     debug: bool = False,
 ) -> Tuple[str, int]:
-    """Obtain access_token — delegates to central _auth module (v2), with v1 fallback."""
+    """Obtain access_token - delegates to central _auth module (v2), with v1 fallback."""
     if not refresh_token:
         raise RuntimeError("Missing refresh_token (env var 'refresh_token')")
 

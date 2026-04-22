@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_activity_drogon.py — Generate OSDU ActivityTemplate + Activity manifest
+gen_activity_drogon.py - Generate OSDU ActivityTemplate + Activity manifest
 for the Drogon / Valysar DG1 volumetrics workflow.
 
 The Activity record consolidates the three-step execution formerly split as:
@@ -13,13 +13,13 @@ All scenario configuration is taken from obj_Activity_MISSING.xml (design
 matrix, OWC variables, PHIT variables, number of realisations).
 
 Canonical IDs (Reservoir, Segments, WPCs) are sourced from the existing
-Drogon manifests — no hard-coding here.
+Drogon manifests - no hard-coding here.
 
 Reads:
-  manifest_masterwp_drogon.json    — Reservoir + WP IDs, acl, legal
-  manifest_wpcparams_drogon.json   — ColumnBasedTable WPC ID (input parameters)
-  manifest_wpcraw_drogon.json      — RAW REV WPC ID
-  manifest_wpcstat_drogon.json     — Statistics REV WPC ID
+  manifest_masterwp_drogon.json    - Reservoir + WP IDs, acl, legal
+  manifest_wpcparams_drogon.json   - ColumnBasedTable WPC ID (input parameters)
+  manifest_wpcraw_drogon.json      - RAW REV WPC ID
+  manifest_wpcstat_drogon.json     - Statistics REV WPC ID
 
 Output:
   manifest_activity_drogon.json
@@ -143,7 +143,7 @@ def build_template(prefix: str, acl: dict, legal: dict) -> Dict[str, Any]:
         "acl": acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon Valysar — Volumetrics Workflow Template",
+            "Name": "Drogon Valysar - Volumetrics Workflow Template",
             "Description": (
                 "ActivityTemplate for the Drogon / Valysar DG1 volumetrics ensemble workflow. "
                 "Covers three sequential steps: (1) generate per-realisation input parameters "
@@ -273,7 +273,7 @@ def build_activity(
             "Description": "RMS reservoir model workflow that executes the realisations",
             "ParameterKindID": f"{prefix}:reference-data--ParameterKind:String:1",
             "ParameterRoleID": f"{prefix}:reference-data--ParameterRole:Input:1",
-            "StringParameter": "RMS DecisionExample — Drogon Valysar",
+            "StringParameter": "RMS DecisionExample - Drogon Valysar",
         },
         {
             "Title": "NumberOfRealizations",
@@ -369,7 +369,7 @@ def build_activity(
         "acl": acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon Valysar — DG1 Volumetrics Workflow Run",
+            "Name": "Drogon Valysar - DG1 Volumetrics Workflow Run",
             "Description": (
                 "Single merged activity capturing the full three-step DG1 volumetrics "
                 "workflow for the Valysar formation of the Drogon field. "

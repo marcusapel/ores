@@ -1,10 +1,10 @@
-# Drogon DG2 — BusinessDecision Demo Documentation
+# Drogon DG2 - BusinessDecision Demo Documentation
 
-> **Scope:** This document summarises the **Drogon DG2 (Decision Gate 2 — Concept Select)** demo built for the ORES project. It covers the OSDU data model, schemas, metadata, relationships, the analysis UI, geomodel data residency, and activity-based workflow provenance. The demo illustrates how **BusinessDecision** records can serve as the backbone of subsurface uncertainty, risk, and performance tracking across decision gates.
+> **Scope:** This document summarises the **Drogon DG2 (Decision Gate 2 - Concept Select)** demo built for the ORES project. It covers the OSDU data model, schemas, metadata, relationships, the analysis UI, geomodel data residency, and activity-based workflow provenance. The demo illustrates how **BusinessDecision** records can serve as the backbone of subsurface uncertainty, risk, and performance tracking across decision gates.
 
 ---
 
-## 1. Schemas Used — Kinds and Relationships
+## 1. Schemas Used - Kinds and Relationships
 
 The DG2 demo ingests **~25 records** spanning master-data, reference-data, work-product-components, datasets, and a custom schema. Each kind is listed below with its OSDU kind identifier.
 
@@ -12,7 +12,7 @@ The DG2 demo ingests **~25 records** spanning master-data, reference-data, work-
 
 | # | Category | OSDU Kind | Purpose in Demo |
 |---|----------|-----------|-----------------|
-| 1 | Master-data | `osdu:wks:master-data--BusinessDecision:1.0.0` | The DG2 decision record — the central hub linking all evidence |
+| 1 | Master-data | `osdu:wks:master-data--BusinessDecision:1.0.0` | The DG2 decision record - the central hub linking all evidence |
 | 2 | Master-data | `osdu:wks:master-data--Reservoir:2.0.0` | Drogon reservoir (shared with DG1) |
 | 3 | Master-data | `osdu:wks:master-data--ReservoirSegment:2.0.0` | 7 segments: NorthSea, NorthHorst, CentralHorst, CentralFlanks, CentralSouth, SouthWing, EastLobe |
 | 4 | Master-data | `osdu:wks:master-data--Risk:1.2.0` | 6 DG2 risks (porosity, fault, HSE, schedule, OWC, recovery factor) |
@@ -22,7 +22,7 @@ The DG2 demo ingests **~25 records** spanning master-data, reference-data, work-
 | 8 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Production forecast (20-year oil/gas/water profile) |
 | 9 | WPC | `osdu:wks:work-product-component--Activity:1.0.0` | DG2 volumetrics workflow run |
 | 10 | WPC | `osdu:wks:work-product-component--ActivityTemplate:1.0.0` | Workflow template (3-step: params → RMS → aggregate) |
-| 11 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | SRA, CRA, PDO (draft), PTR — 4 documents |
+| 11 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | SRA, CRA, PDO (draft), PTR - 4 documents |
 | 12 | WPC | `osdu:wks:work-product-component--GeoLabelSet:1.0.0` | Headline P10/P50/P90 volumes per segment for dashboards |
 | 13 | Dataset | `osdu:wks:dataset--ETPDataspace:1.0.0` | RDDMS dataspace pointer for geomodel EPC files |
 | 14 | Reference-data | `osdu:wks:reference-data--DecisionLevel:1.0.0` | DG2 |
@@ -33,7 +33,7 @@ The DG2 demo ingests **~25 records** spanning master-data, reference-data, work-
 | 19 | Reference-data | `osdu:wks:reference-data--RiskAcceptanceCriteria:1.0.0` | RAC-2025-01 (Z-013 aligned) |
 | 20 | Reference-data | Facet roles, property types, UoM | Statistics (P10/P50/P90/Mean/Min/Max/StdDev), volume property types (Bulk, Net, Pore, HydrocarbonPore, Oil, AssociatedGas), units (m³) |
 
-### 1.2 Custom Schema — DevelopmentConcept WPC
+### 1.2 Custom Schema - DevelopmentConcept WPC
 
 The demo introduces a **custom (LOCAL) schema** registered under the `dev` authority:
 
@@ -76,18 +76,18 @@ graph TD
     end
 
     subgraph "Work Product Components"
-        REV_RAW["REV — RAW<br/><i>50 realisations</i>"]
-        REV_STAT["REV — Statistics<br/><i>P10/P50/P90</i>"]
+        REV_RAW["REV - RAW<br/><i>50 realisations</i>"]
+        REV_STAT["REV - Statistics<br/><i>P10/P50/P90</i>"]
         PARAMS["ColumnBasedTable<br/><i>Input Parameters ×0.8</i>"]
         PP["ColumnBasedTable<br/><i>Production Forecast 20yr</i>"]
         GLS["GeoLabelSet<br/><i>Headline volumes</i>"]
         DEV["DevelopmentConcept<br/><i>custom schema</i>"]
         ACT["Activity<br/><i>DG2 Workflow Run</i>"]
         TMPL["ActivityTemplate<br/><i>Volumetrics Template</i>"]
-        SRA["Document — SRA"]
-        CRA["Document — CRA"]
-        PDO["Document — PDO"]
-        PTR["Document — PTR"]
+        SRA["Document - SRA"]
+        CRA["Document - CRA"]
+        PDO["Document - PDO"]
+        PTR["Document - PTR"]
     end
 
     subgraph "Datasets"
@@ -161,7 +161,7 @@ graph TD
 
 ---
 
-## 2. BusinessDecision Metadata — Key Fields (Illustrative)
+## 2. BusinessDecision Metadata - Key Fields (Illustrative)
 
 The DG2 `BusinessDecision` record carries rich metadata across canonical fields, inherited activity semantics, and Equinor extensions. Below is an illustrative inventory of the key data fields and their DG2 values.
 
@@ -169,7 +169,7 @@ The DG2 `BusinessDecision` record carries rich metadata across canonical fields,
 
 | Key Name | Value (DG2) |
 |----------|-------------|
-| `Name` | Drogon — Decision Gate 2 DG2 Concept Select |
+| `Name` | Drogon - Decision Gate 2 DG2 Concept Select |
 | `ProjectName` | Drogon Field Development |
 | `DecisionLevelID` | `dev:ref…DecisionLevel:DG2:1` |
 | `ApprovalStatusID` | `dev:ref…DecisionApprovalStatus:Pending:1` |
@@ -212,7 +212,7 @@ The DG2 `BusinessDecision` record carries rich metadata across canonical fields,
 | 2028-06-01 | Planned | First Oil |
 | 2029-01-01 | Planned | Plateau Production |
 
-### 2.5 Parameters[] — Typed Evidence Links
+### 2.5 Parameters[] - Typed Evidence Links
 
 Each parameter carries `ParameterKindID`, `ParameterRoleID`, and `DataObjectParameter`:
 
@@ -232,13 +232,13 @@ Each parameter carries `ParameterKindID`, `ParameterRoleID`, and `DataObjectPara
 | PDO (draft) | InputReference | Document WPC |
 | Petroleum Technology Report | InputReference | Document WPC |
 
-### 2.6 ext.equinor — Enrichment Payload
+### 2.6 ext.equinor - Enrichment Payload
 
 These are the registered extension keys that survive OSDU ingestion:
 
 | Key | DG2 Content |
 |-----|-------------|
-| `Alternatives` | 3 concepts ranked: (A) Full subsea tie-back — Approve; (B) Reduced scope — Consider; (C) Defer — Fallback. Per-alternative NPV/CAPEX/IRR. |
+| `Alternatives` | 3 concepts ranked: (A) Full subsea tie-back - Approve; (B) Reduced scope - Consider; (C) Defer - Fallback. Per-alternative NPV/CAPEX/IRR. |
 | `UncertaintySummary` | 50 realisations, selected P90/P50/P10 realisations, StaticInPlace (33.8/45.4/59.4 MSm³), Recoverable (10.0/14.8/20.6 MSm³), RF (28/32.5/37 %) |
 
 ---
@@ -251,34 +251,34 @@ Understanding the separation between **master-data** (long-lived anchors) and **
 
 Master-data records are the **identity layer** that rarely change:
 
-- **Reservoir** — the field entity. Created once at DG1, shared across all gate iterations.
-- **ReservoirSegment** — compartments/zones. Also shared across gates.
-- **Risk** — formal risk records. New versions per gate (DG1 risks evolve into DG2 risks with updated severity/probability).
-- **BusinessDecision** — one per decision gate. The decision record itself is master-data because it represents a business event.
+- **Reservoir** - the field entity. Created once at DG1, shared across all gate iterations.
+- **ReservoirSegment** - compartments/zones. Also shared across gates.
+- **Risk** - formal risk records. New versions per gate (DG1 risks evolve into DG2 risks with updated severity/probability).
+- **BusinessDecision** - one per decision gate. The decision record itself is master-data because it represents a business event.
 
 ### 3.2 WPCs: Versioned Evidence
 
 WPCs hold the **analytical content** that changes between gates:
 
-- **ReservoirEstimatedVolumes** — per-gate volumes (DG1 had 3 realisations; DG2 has 50 with revised porosity ×0.8).
-- **ColumnBasedTable** — input parameters, production forecasts.
-- **DevelopmentConcept** — structured concept data (custom schema).
-- **Document** — SRA, CRA, PDO, PTR reports.
-- **GeoLabelSet** — dashboard-ready headline values.
-- **Activity / ActivityTemplate** — workflow provenance.
+- **ReservoirEstimatedVolumes** - per-gate volumes (DG1 had 3 realisations; DG2 has 50 with revised porosity ×0.8).
+- **ColumnBasedTable** - input parameters, production forecasts.
+- **DevelopmentConcept** - structured concept data (custom schema).
+- **Document** - SRA, CRA, PDO, PTR reports.
+- **GeoLabelSet** - dashboard-ready headline values.
+- **Activity / ActivityTemplate** - workflow provenance.
 
-### 3.3 Relationship Diagram — Master vs WPC
+### 3.3 Relationship Diagram - Master vs WPC
 
 ```mermaid
 flowchart LR
-    subgraph "Master Data — Stable"
+    subgraph "Master Data - Stable"
         RES[Reservoir<br/>shared DG1→DG2→DG3]
         SEG[Segments ×7<br/>shared across gates]
         BD1[BD DG1]
         BD2[BD DG2]
     end
 
-    subgraph "WPCs — Gate-specific"
+    subgraph "WPCs - Gate-specific"
         REV1[REV stats DG1<br/>3 realisations]
         REV2[REV stats DG2<br/>50 real, ×0.8]
         ACT1[Activity DG1]
@@ -333,51 +333,51 @@ For each `RiskIDs[]` entry on the BusinessDecision, fetch the Risk record and ex
 
 ---
 
-## 4. The Analysis Page — Capabilities and Possibilities
+## 4. The Analysis Page - Capabilities and Possibilities
 
 The **Analyse** page (`/analyse`) in the ORES web client provides a multi-gate comparison dashboard for a selected reservoir.
 
 ### 4.1 Current Capabilities
 
-1. **Reservoir selection** — dropdown of all `master-data--Reservoir` records in the partition
-2. **Auto-discovery of BDs** — searches for all `BusinessDecision` records that reference the selected reservoir via `Parameters[].DataObjectParameter`
-3. **Gate-by-gate comparison** — sorts BDs by DecisionLevel (DG1 → DG2 → DG3 → …) and renders side-by-side cards
-4. **Metric extraction and deltas** — for consecutive gates, computes absolute and percentage changes in:
+1. **Reservoir selection** - dropdown of all `master-data--Reservoir` records in the partition
+2. **Auto-discovery of BDs** - searches for all `BusinessDecision` records that reference the selected reservoir via `Parameters[].DataObjectParameter`
+3. **Gate-by-gate comparison** - sorts BDs by DecisionLevel (DG1 → DG2 → DG3 → …) and renders side-by-side cards
+4. **Metric extraction and deltas** - for consecutive gates, computes absolute and percentage changes in:
    - STOIIP P90/P50/P10
    - Recoverable P90/P50/P10
    - Recovery factor P90/P50/P10
    - NPV, CAPEX, OPEX, IRR, breakeven, wells
-5. **GeoLabelSet enrichment** — fetches headline volumes per segment from GeoLabelSet for dashboard rendering
-6. **Risk tracking** — fetches Risk records, displays severity/probability ratings, tracks risk evolution (added/removed/changed severity between gates)
-7. **Property delta computation** — compares reservoir properties (porosity, NTG, etc.) between gates
+5. **GeoLabelSet enrichment** - fetches headline volumes per segment from GeoLabelSet for dashboard rendering
+6. **Risk tracking** - fetches Risk records, displays severity/probability ratings, tracks risk evolution (added/removed/changed severity between gates)
+7. **Property delta computation** - compares reservoir properties (porosity, NTG, etc.) between gates
 
-### 4.2 What Can Be Shown — Expanded Vision
+### 4.2 What Can Be Shown - Expanded Vision
 
 The analysis page architecture supports several extensions that would make it a powerful decision-support tool:
 
 #### Volume evolution across gates
 - **Tornado/waterfall charts** showing what drove the DG1→DG2 volume change (e.g., porosity revision ×0.8 → −20% STOIIP, expanded ensemble → tighter uncertainty range).
 - **Box-plot overlays** of raw realisations per gate, showing how the distribution shape narrows with better data.
-- **Segment-level drill-down** — compare P50 Oil per segment between DG1 and DG2, identifying which segments improved or degraded.
+- **Segment-level drill-down** - compare P50 Oil per segment between DG1 and DG2, identifying which segments improved or degraded.
 
 #### Risk evolution dashboard
 - **Risk matrix heat-map** comparing inherent vs residual severity×probability across gates.
-- **Risk closure tracking** — visualise which DG1 risks were mitigated, which escalated, and which new risks emerged at DG2.
-- **Mitigation action timeline** — link Document WPCs (mitigation evidence) to risk records and show closure status.
+- **Risk closure tracking** - visualise which DG1 risks were mitigated, which escalated, and which new risks emerged at DG2.
+- **Mitigation action timeline** - link Document WPCs (mitigation evidence) to risk records and show closure status.
 
 #### Queries to improve input quality
-- **Parameter sensitivity** — join the DesignMatrix (ColumnBasedTable) with raw REV volumes to identify which input parameters drive the most volume variance (tornado plot).
-- **Facies contribution** — break down STOIIP by facies type (Channel/Crevasse/Floodplain) per segment to guide appraisal focus.
-- **OWC sensitivity** — plot Oil volume vs OWC contact depth across realisations per segment.
+- **Parameter sensitivity** - join the DesignMatrix (ColumnBasedTable) with raw REV volumes to identify which input parameters drive the most volume variance (tornado plot).
+- **Facies contribution** - break down STOIIP by facies type (Channel/Crevasse/Floodplain) per segment to guide appraisal focus.
+- **OWC sensitivity** - plot Oil volume vs OWC contact depth across realisations per segment.
 
 #### Production and economics tracking
-- **Production forecast comparison** — overlay 20-year profiles from DG1 and DG2, highlighting plateau rate changes and first-oil timing.
-- **Economics sensitivity** — show how NPV/IRR change across the P10/P50/P90 volume range.
-- **Alternative comparison** — render the 3 development alternatives (A: Full scope, B: Reduced, C: Defer) with their economics side by side.
+- **Production forecast comparison** - overlay 20-year profiles from DG1 and DG2, highlighting plateau rate changes and first-oil timing.
+- **Economics sensitivity** - show how NPV/IRR change across the P10/P50/P90 volume range.
+- **Alternative comparison** - render the 3 development alternatives (A: Full scope, B: Reduced, C: Defer) with their economics side by side.
 
 #### Schedule and milestone tracking
 - **Gantt-style milestone view** from ActivityStates, comparing planned dates at each gate.
-- **Schedule risk overlay** — integrate SRA Monte Carlo results (P50/P90 first-oil dates).
+- **Schedule risk overlay** - integrate SRA Monte Carlo results (P50/P90 first-oil dates).
 
 ### 4.3 Example Queries for Enhanced Analytics
 
@@ -395,7 +395,7 @@ ORDER BY dg, segment
 ```
 For each BD gate:
   1. Fetch RiskIDs[] → Risk records
-  2. Match risks by topic name (strip "Drogon DGx —" prefix)
+  2. Match risks by topic name (strip "Drogon DGx -" prefix)
   3. Compare residual_severity + residual_probability
   4. Flag: reduced, increased, mitigated, new, removed
 ```
@@ -410,7 +410,7 @@ For each BD gate with a ProductionForecast parameter:
 
 ---
 
-## 5. Geomodel Data Residency — RDDMS and Beyond
+## 5. Geomodel Data Residency - RDDMS and Beyond
 
 ### 5.1 Where the Actual Geomodel Data Resides
 
@@ -459,29 +459,29 @@ In a complete OSDU deployment, additional data streams complement the static vol
 
 ---
 
-## 6. Activity Records — Workflow Provenance and Reproducibility
+## 6. Activity Records - Workflow Provenance and Reproducibility
 
 ### 6.1 Purpose: The "Macro" for BD Workflows
 
-The `Activity` + `ActivityTemplate` pattern in OSDU serves as a **workflow macro** — a machine-readable, reproducible record of what was done, with what inputs, producing what outputs.
+The `Activity` + `ActivityTemplate` pattern in OSDU serves as a **workflow macro** - a machine-readable, reproducible record of what was done, with what inputs, producing what outputs.
 
 For the DG2 demo:
 
 - **ActivityTemplate** defines the 10 parameter slots (3 inputs, 7 outputs/metadata) for the volumetrics workflow.
 - **Activity** is the concrete execution record that fills each slot with actual values/references.
 
-### 6.2 ActivityTemplate — Parameter Slots
+### 6.2 ActivityTemplate - Parameter Slots
 
 | Slot | Direction | Kind | Description |
 |------|-----------|------|-------------|
 | `InputParameters` | Input | DataObject | ColumnBasedTable WPC with revised porosity ×0.8 |
-| `Process` | Input | String | `"RMS DecisionExample — Drogon Valysar (DG2, revised PHIT)"` |
+| `Process` | Input | String | `"RMS DecisionExample - Drogon Valysar (DG2, revised PHIT)"` |
 | `NumberOfRealizations` | Input | Integer | `50` |
 | `Workflow` | Input | String | `"DecisionExample"` |
 | `Method` | Input | String | `"Latin_Hypercube"` |
 | `Variables` | Input | String | JSON: 7 OWC contacts + 3 PHIT per facies (revised ×0.8) |
 | `DesignMatrix` | Input | String | JSON: 50 realisations (3 anchored + 47 LH draws) |
-| `OutputParameters` | Output | DataObject | Generated ColumnBasedTable (same as input — round-trip) |
+| `OutputParameters` | Output | DataObject | Generated ColumnBasedTable (same as input - round-trip) |
 | `OutputVolumes` | Output | DataObject | RAW REV WPC |
 | `ReportTable` | Output | DataObject | STAT REV WPC (P10/P50/P90) |
 
@@ -490,9 +490,9 @@ For the DG2 demo:
 ```mermaid
 flowchart TB
     TMPL["ActivityTemplate<br/><i>defines allowed slots</i>"]
-    ACT["Activity — DG2 Run<br/><i>fills slots with actual values</i>"]
+    ACT["Activity - DG2 Run<br/><i>fills slots with actual values</i>"]
     
-    subgraph "Inputs — captured"
+    subgraph "Inputs - captured"
         I1["ColumnBasedTable<br/>OWC + porosity ×0.8"]
         I2["Process: RMS DecisionExample"]
         I3["50 Realisations, Latin Hypercube"]
@@ -500,7 +500,7 @@ flowchart TB
         I5["DesignMatrix JSON<br/>50 rows"]
     end
 
-    subgraph "Outputs — linked"
+    subgraph "Outputs - linked"
         O1["REV RAW<br/>50 realisations"]
         O2["REV STAT<br/>P10/P50/P90"]
         O3["ColumnBasedTable<br/>generated params"]
@@ -527,11 +527,11 @@ flowchart TB
 
 **What this gives us:**
 
-1. **Full input capture** — every parameter (OWC contacts, porosity values, number of realisations, sampling method, design matrix) is stored in the Activity record. Anyone can inspect what went into the DG2 volumetrics.
-2. **Output linkage** — the Activity's output parameters point to the exact REV and ColumnBasedTable WPCs that were produced. No ambiguity about which volumes came from which run.
-3. **Reproducibility** — given the same inputs (Activity parameters), the same RMS workflow should produce equivalent results.
-4. **Comparison across gates** — DG1 Activity used 3 User_Defined realisations with original porosity; DG2 Activity used 50 Latin_Hypercube realisations with ×0.8 porosity. The difference is explicit in the parameter values.
-5. **Chain to BusinessDecision** — the BD's `PriorActivityIDs` points to the Activity, creating a clear provenance chain: Decision → Activity → Evidence.
+1. **Full input capture** - every parameter (OWC contacts, porosity values, number of realisations, sampling method, design matrix) is stored in the Activity record. Anyone can inspect what went into the DG2 volumetrics.
+2. **Output linkage** - the Activity's output parameters point to the exact REV and ColumnBasedTable WPCs that were produced. No ambiguity about which volumes came from which run.
+3. **Reproducibility** - given the same inputs (Activity parameters), the same RMS workflow should produce equivalent results.
+4. **Comparison across gates** - DG1 Activity used 3 User_Defined realisations with original porosity; DG2 Activity used 50 Latin_Hypercube realisations with ×0.8 porosity. The difference is explicit in the parameter values.
+5. **Chain to BusinessDecision** - the BD's `PriorActivityIDs` points to the Activity, creating a clear provenance chain: Decision → Activity → Evidence.
 
 ### 6.4 Evolution from DG1 to DG2
 
@@ -568,7 +568,7 @@ The DG2 demo registers 6 formal risks, each as a canonical `master-data--Risk:1.
 The analysis page tracks how risks change between gates:
 
 - **DG1** had 1 risk (Porosity & Cementation, S3/P3 inherent)
-- **DG2** has 6 risks — the original was **updated** (severity reduced from S3 to S2 based on core data) and 5 new risks were **added** (fault, HSE, schedule, OWC, RF)
+- **DG2** has 6 risks - the original was **updated** (severity reduced from S3 to S2 based on core data) and 5 new risks were **added** (fault, HSE, schedule, OWC, RF)
 - The analysis page computes: added(5), reduced_severity(1), new_risks(5)
 
 ### 7.3 Uncertainty Summary Tracking
@@ -580,8 +580,8 @@ Each BusinessDecision carries an `ext.equinor.UncertaintySummary` that captures 
 | STOIIP P90 (MSm³) | 42.3 | 33.8 | −20.1% |
 | STOIIP P50 (MSm³) | 56.8 | 45.4 | −20.1% |
 | STOIIP P10 (MSm³) | 74.2 | 59.4 | −19.9% |
-| Recoverable P50 (MSm³) | — | 14.8 | new at DG2 |
-| Recovery Factor P50 (%) | — | 32.5 | new at DG2 |
+| Recoverable P50 (MSm³) | - | 14.8 | new at DG2 |
+| Recovery Factor P50 (%) | - | 32.5 | new at DG2 |
 | Realisations | 3 | 50 | +47 |
 | Uncertainty width (P10−P90) | 31.9 | 25.6 | −19.7% |
 
@@ -627,17 +627,17 @@ flowchart LR
 
 ---
 
-## 9. Broader Context — BD-Driven Uncertainty, Risk and Performance Tracking
+## 9. Broader Context - BD-Driven Uncertainty, Risk and Performance Tracking
 
 ### 9.1 The OSDU Strategy for Decision Gates
 
 This demo is part of a broader effort to standardize subsurface decision-gate workflows in OSDU. The key principles (from the project's Digest and supporting documentation):
 
-1. **One BusinessDecision per gate** — the decision record is the spine of the workflow, linking all evidence through `Parameters[]`.
-2. **Lossless traceability** — every input, output, and context reference is preserved in typed parameters with role semantics (`Input`, `Output`, `InputReference`).
-3. **Risk evolution is explicit** — risk records are canonical master-data with Equinor severity/probability ratings; the analysis page tracks how they change gate-to-gate.
-4. **Volumes are authoritative** — `ReservoirEstimatedVolumes` is the domain WPC for in-place volumes; `GeoLabelSet` publishes headlines for dashboards.
-5. **Activity provides reproducibility** — the Activity record captures the full workflow configuration (method, realisations, variable definitions, design matrix) so results can be verified or re-run.
+1. **One BusinessDecision per gate** - the decision record is the spine of the workflow, linking all evidence through `Parameters[]`.
+2. **Lossless traceability** - every input, output, and context reference is preserved in typed parameters with role semantics (`Input`, `Output`, `InputReference`).
+3. **Risk evolution is explicit** - risk records are canonical master-data with Equinor severity/probability ratings; the analysis page tracks how they change gate-to-gate.
+4. **Volumes are authoritative** - `ReservoirEstimatedVolumes` is the domain WPC for in-place volumes; `GeoLabelSet` publishes headlines for dashboards.
+5. **Activity provides reproducibility** - the Activity record captures the full workflow configuration (method, realisations, variable definitions, design matrix) so results can be verified or re-run.
 
 ### 9.2 What We Demonstrated
 
@@ -656,13 +656,13 @@ This demo is part of a broader effort to standardize subsurface decision-gate wo
 
 ### 9.3 Potential Extensions Toward DG3/DG4
 
-- **Dynamic simulation integration** — link simulation deck records from RDDMS, including SCHEDULE files, PVT data, and relative permeability curves, as Activity inputs.
-- **Well planning** — reference `WellboreTrajectory` WPCs for planned well paths and link them to the DevelopmentConcept.
-- **Production history matching** (DG4) — compare forecast vs actual production using `ProductionValues` WPCs.
-- **Risk closure verification** — automate checks that all "Open" risks from DG2 have been addressed by DG3 (closed or accepted with rationale).
-- **Multi-field portfolio view** — aggregate BusinessDecisions across fields for portfolio-level decision support.
-- **FMU ensemble packaging** — use `WorkProduct` or `CollaborationProjectCollection` to bundle the full design matrix + static model + outputs per scenario as a reusable case package.
-- **Automated quality gates** — validate that prerequisite data (volumes, risks, documents) exist before allowing a BD to transition to "Approved".
+- **Dynamic simulation integration** - link simulation deck records from RDDMS, including SCHEDULE files, PVT data, and relative permeability curves, as Activity inputs.
+- **Well planning** - reference `WellboreTrajectory` WPCs for planned well paths and link them to the DevelopmentConcept.
+- **Production history matching** (DG4) - compare forecast vs actual production using `ProductionValues` WPCs.
+- **Risk closure verification** - automate checks that all "Open" risks from DG2 have been addressed by DG3 (closed or accepted with rationale).
+- **Multi-field portfolio view** - aggregate BusinessDecisions across fields for portfolio-level decision support.
+- **FMU ensemble packaging** - use `WorkProduct` or `CollaborationProjectCollection` to bundle the full design matrix + static model + outputs per scenario as a reusable case package.
+- **Automated quality gates** - validate that prerequisite data (volumes, risks, documents) exist before allowing a BD to transition to "Approved".
 
 ### 9.4 Key Design Documents
 
@@ -684,4 +684,4 @@ The following guides in the `demo/md/` catalogue provide detailed technical back
 
 ## 10. Summary
 
-The Drogon DG2 demo proves that OSDU's canonical schemas — augmented with a single custom `DevelopmentConcept` WPC and Equinor risk extensions — can capture a complete decision-gate package: volumes with uncertainty quantification, formal risk records, governance documents, development concept, economics, schedule milestones, production forecasts, and full workflow provenance. The `BusinessDecision.Parameters[]` mechanism provides the "glue" that connects all artefacts with typed roles, enabling the analysis page to discover, compare, and track evolution across DG1 → DG2 → DG3 automatically. The Activity record acts as a reproducible macro, capturing every input assumption and linking it to the evidence outputs. Together, this forms the foundation for traceable, auditable subsurface decision-making in OSDU.
+The Drogon DG2 demo proves that OSDU's canonical schemas - augmented with a single custom `DevelopmentConcept` WPC and Equinor risk extensions - can capture a complete decision-gate package: volumes with uncertainty quantification, formal risk records, governance documents, development concept, economics, schedule milestones, production forecasts, and full workflow provenance. The `BusinessDecision.Parameters[]` mechanism provides the "glue" that connects all artefacts with typed roles, enabling the analysis page to discover, compare, and track evolution across DG1 → DG2 → DG3 automatically. The Activity record acts as a reproducible macro, capturing every input assumption and linking it to the evidence outputs. Together, this forms the foundation for traceable, auditable subsurface decision-making in OSDU.

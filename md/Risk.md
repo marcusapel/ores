@@ -1,4 +1,4 @@
-# README — Equinor Subsurface **Risk** Data Management in OSDU
+# README - Equinor Subsurface **Risk** Data Management in OSDU
 
 > **Purpose.** This guide documents our **conceptual risk data management approach**, the **OSDU ↔ Equinor** mapping, and the **implementation** using three ingest artifacts:
 >
@@ -102,11 +102,11 @@ sequenceDiagram
 
 ---
 
-## 4) Implementation — Three Manifests (Snippets)
+## 4) Implementation - Three Manifests (Snippets)
 
 > Full files are included alongside this README in the ZIP archive.
 
-### 4.1 ReferenceData (Equinor LOCAL catalogs) — `risk_refval_manifest.json`
+### 4.1 ReferenceData (Equinor LOCAL catalogs) - `risk_refval_manifest.json`
 
 ```json
 {
@@ -117,7 +117,7 @@ sequenceDiagram
       "kind": "osdu:wks:reference-data--RiskCategory:1.0.0",
       "acl": { "owners": ["data.default.owners@dev.dataservices.energy"], "viewers": ["data.office.global.viewers@dev.dataservices.energy"] },
       "legal": { "legaltags": ["dev-equinor-private-default"], "otherRelevantDataCountries": ["NO"] },
-      "data": { "Name": "Subsurface — Static", "Code": "Subsurface-Static", "Description": "Geological/structural/NTG/in-place risks." }
+      "data": { "Name": "Subsurface - Static", "Code": "Subsurface-Static", "Description": "Geological/structural/NTG/in-place risks." }
     },
     {
       "id": "dev:reference-data--RiskSeverityScale:Equinor-5x5",
@@ -159,7 +159,7 @@ sequenceDiagram
       "acl": { "owners": ["data.default.owners@dev.dataservices.energy"], "viewers": ["data.office.global.viewers@dev.dataservices.energy"] },
       "legal": { "legaltags": ["dev-equinor-private-default"], "otherRelevantDataCountries": ["NO"] },
       "data": {
-        "Name": "Project RAC (2025) — Z-013 aligned",
+        "Name": "Project RAC (2025) - Z-013 aligned",
         "Code": "RAC-2025-01",
         "Description": "Project-level acceptance criteria (ALARP) used at DG2/DG3.",
         "Source": "Equinor MS & NORSOK Z-013"
@@ -169,7 +169,7 @@ sequenceDiagram
 }
 ```
 
-### 4.2 Risk master‑data + mitigation `Document` WPCs — `risk_manifest.json`
+### 4.2 Risk master‑data + mitigation `Document` WPCs - `risk_manifest.json`
 
 ```json
 {
@@ -181,7 +181,7 @@ sequenceDiagram
       "acl": { "owners": ["data.default.owners@dev.dataservices.energy"], "viewers": ["data.office.global.viewers@dev.dataservices.energy"] },
       "legal": { "legaltags": ["dev-equinor-private-default"], "otherRelevantDataCountries": ["NO"] },
       "data": {
-        "Name": "GRAND — Depth conversion & top reservoir uncertainty",
+        "Name": "GRAND - Depth conversion & top reservoir uncertainty",
         "Summary": "Depth conversion uncertainty may lower structural elevation and volumes.",
         "Description": "Seismic time interpretation and time–depth conversion limitations drive static volumetric uncertainty.",
         "TypeID": "osdu:reference-data--RiskType:risk:1.0.0",
@@ -218,7 +218,7 @@ sequenceDiagram
         "acl": { "owners": ["data.default.owners@dev.dataservices.energy"], "viewers": ["data.office.global.viewers@dev.dataservices.energy"] },
         "legal": { "legaltags": ["dev-equinor-private-default"], "otherRelevantDataCountries": ["NO"] },
         "data": {
-          "Name": "MA-017 — Depth conversion calibration plan",
+          "Name": "MA-017 - Depth conversion calibration plan",
           "DocumentTypeID": "osdu:reference-data--DocumentType:Report:1.0.0",
           "FileAssociation": { "FileName": "MA-017_DepthConversionPlan.pdf" }
         }
@@ -229,7 +229,7 @@ sequenceDiagram
 }
 ```
 
-### 4.3 BusinessDecision (DG2) — `businessdecision_manifest.json`
+### 4.3 BusinessDecision (DG2) - `businessdecision_manifest.json`
 
 ```json
 {

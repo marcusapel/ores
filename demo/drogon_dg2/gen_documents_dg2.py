@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_documents_dg2.py — Generate Document WPC records for the Drogon DG2
+gen_documents_dg2.py - Generate Document WPC records for the Drogon DG2
 (Concept Select) decision gate package.
 
 Creates:
-  work-product-component--Document  "Drogon — Subsurface Risk Assessment (SRA) DG2"
-  work-product-component--Document  "Drogon — Cost Risk Assessment (CRA) DG2"
-  work-product-component--Document  "Drogon — Plan for Development and Operation (PDO) DG2"
-  work-product-component--Document  "Drogon — Petroleum Technology Report (PTR) DG2"
+  work-product-component--Document  "Drogon - Subsurface Risk Assessment (SRA) DG2"
+  work-product-component--Document  "Drogon - Cost Risk Assessment (CRA) DG2"
+  work-product-component--Document  "Drogon - Plan for Development and Operation (PDO) DG2"
+  work-product-component--Document  "Drogon - Petroleum Technology Report (PTR) DG2"
 
 These are stub records (no file blob) that serve as typed references from
 the BusinessDecision Parameters[] and RiskAssessmentDocument fields.

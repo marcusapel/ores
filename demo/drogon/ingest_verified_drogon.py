@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ingest_verified_drogon.py — Ingest Drogon manifests one-by-one via the OSDU
+ingest_verified_drogon.py - Ingest Drogon manifests one-by-one via the OSDU
 Workflow API, **verifying** before and after each step:
 
-  1. PRE-CHECK  — all cross-manifest referenced IDs already exist in Storage
-  2. SUBMIT     — POST manifest to Workflow API
-  3. POST-CHECK — every record in the manifest is retrievable via Storage GET
+  1. PRE-CHECK  - all cross-manifest referenced IDs already exist in Storage
+  2. SUBMIT     - POST manifest to Workflow API
+  3. POST-CHECK - every record in the manifest is retrievable via Storage GET
 
 Stops on the first failure so you can fix before continuing.
 
@@ -243,7 +243,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true",
                     help="Pre-check refs only, don't submit")
     ap.add_argument("--verify-only", action="store_true",
-                    help="Check which records already exist — no ingestion")
+                    help="Check which records already exist - no ingestion")
     ap.add_argument("--start", type=int, default=0,
                     help="Skip first N manifests (already ingested)")
     ap.add_argument("--poll-interval", type=float, default=10)
@@ -326,7 +326,7 @@ def main():
                         missing_refs.append(ref)
 
                 if missing_refs:
-                    print(f"\n  ❌ PRE-CHECK FAILED — {len(missing_refs)} missing references!")
+                    print(f"\n  ❌ PRE-CHECK FAILED - {len(missing_refs)} missing references!")
                     print(f"     Stopping. Fix references before re-running with --start {idx}")
                     fail += 1
                     break
@@ -336,7 +336,7 @@ def main():
                 print(f"  PRE-CHECK: no external references (standalone)")
 
             if args.dry_run:
-                print(f"  [dry-run] Would submit {path.name} — skipping")
+                print(f"  [dry-run] Would submit {path.name} - skipping")
                 ok += 1
                 continue
 
@@ -382,7 +382,7 @@ def main():
                 print(f"  ✅ All {len(record_ids)} records verified in Storage")
                 ok += 1
             else:
-                print(f"  ⚠️  Some records missing after 'finished' — possible schema issue")
+                print(f"  ⚠️  Some records missing after 'finished' - possible schema issue")
                 print(f"     Stopping. Investigate before re-running with --start {idx}")
                 fail += 1
                 break

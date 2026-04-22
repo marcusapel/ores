@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gettoken.py — Mint an OSDU access token for any configured instance.
+gettoken.py - Mint an OSDU access token for any configured instance.
 
 Thin CLI wrapper.  Core k8s-loading and token-minting lives in
 :mod:`_auth`; this module adds the rich CLI (``--list``, ``--export``,
@@ -37,7 +37,7 @@ from typing import Any, Dict, List, Optional
 try:
     import httpx
 except ImportError:
-    sys.exit("Missing httpx — pip install httpx")
+    sys.exit("Missing httpx - pip install httpx")
 
 # _auth.py is the single source of truth for k8s YAML loading.
 # Re-export so ``gettoken._load_k8s_yaml`` / ``gettoken.load_k8s_env``
@@ -188,7 +188,7 @@ def _mint_from_config(inst: Dict[str, Any], *, verbose: bool = False) -> str:
     if verbose:
         exp = data.get("expires_in", "?")
         lbl = inst.get("label", "?")
-        print(f"# {lbl} ({label}) — expires_in={exp}s", file=sys.stderr)
+        print(f"# {lbl} ({label}) - expires_in={exp}s", file=sys.stderr)
 
     return token
 
@@ -198,7 +198,7 @@ def mint_token(name: str, *, verbose: bool = False, from_k8s: bool = False,
     """Mint an access token for the named instance.
 
     Resolution order:
-      1. If ``from_k8s`` — read k8s/secret.yaml + configmap.yaml
+      1. If ``from_k8s`` - read k8s/secret.yaml + configmap.yaml
       2. Env vars with INSTANCE_<NAME>_* pattern
       3. Legacy hard-coded INSTANCES dict + old env var names
     """

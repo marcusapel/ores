@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Analyse — Reservoir Decision Tracking{% endblock %}
+{% block title %}Analyse - Reservoir Decision Tracking{% endblock %}
 
 {% block head %}
 <style>
@@ -84,7 +84,7 @@
 
 {% block content %}
 <div class="analyse-wrap">
-  <h2>Analyse — Reservoir Decision Gate Tracking</h2>
+  <h2>Analyse - Reservoir Decision Gate Tracking</h2>
   <p class="muted" style="margin-top:-.5rem;margin-bottom:.75rem;">
     Select a reservoir to compare Business Decisions across decision gates.
     Track how input parameters, volumes, economics, and risks evolve from early screening to concept selection.
@@ -100,10 +100,10 @@
     <select id="reservoir-results" size="8">
       {% if reservoirs %}
         {% for res in reservoirs %}
-        <option value="{{ res.id }}" title="{{ res.id }}">{{ res.name }}  —  {{ res.id }}</option>
+        <option value="{{ res.id }}" title="{{ res.id }}">{{ res.name }}  -  {{ res.id }}</option>
         {% endfor %}
       {% else %}
-      <option value="">— no reservoirs found —</option>
+      <option value="">- no reservoirs found -</option>
       {% endif %}
     </select>
     <div id="res-status" class="status-msg"></div>
@@ -156,7 +156,7 @@
         const o = document.createElement('option');
         o.value = res.id;
         o.title = res.id;
-        o.textContent = res.name + '  —  ' + res.id;
+        o.textContent = res.name + '  -  ' + res.id;
         resSel.appendChild(o);
       });
     } catch (e) {
@@ -221,8 +221,8 @@
       const statusCls = (g.status || '').toLowerCase().includes('approved') ? 'approved' : 'pending';
       pill.innerHTML = `
         <div class="gate-name">${esc(g.gate_label)}</div>
-        <div class="gate-date">${esc(g.decision_date || '—')}</div>
-        <span class="gate-status ${statusCls}">${esc(g.status || '—')}</span>`;
+        <div class="gate-date">${esc(g.decision_date || '-')}</div>
+        <span class="gate-status ${statusCls}">${esc(g.status || '-')}</span>`;
       tl.appendChild(pill);
     });
 
@@ -247,7 +247,7 @@
     // ── PER-SEGMENT STOIIP P50 ──
     const segKeys = collectSegmentKeys(gates);
     if (segKeys.length) {
-      html += '<div class="cmp-section"><div class="cmp-title">STOIIP by Segment — P50 (MSm³)</div>';
+      html += '<div class="cmp-section"><div class="cmp-title">STOIIP by Segment - P50 (MSm³)</div>';
       html += '<div style="overflow-x:auto;"><table class="cmp-table"><thead><tr><th>Segment</th>';
       gates.forEach(g => { html += `<th>${esc(g.gate_label)}</th>`; });
       if (gates.length > 1) html += '<th>Δ Last</th>';
@@ -257,7 +257,7 @@
         let prev = null;
         gates.forEach((g, i) => {
           const v = ((g.gls_volumes || {})[seg] || {})['Oil.P50'];
-          html += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmtVol(v) : '—'}</td>`;
+          html += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmtVol(v) : '-'}</td>`;
           if (i === gates.length - 1 && gates.length > 1) {
             const pv = ((gates[i-1].gls_volumes || {})[seg] || {})['Oil.P50'];
             if (pv != null && v != null) {
@@ -277,13 +277,13 @@
       html += '</tbody></table></div></div>';
     }
 
-    // ── CHARTS — visual comparison of key metrics ──
+    // ── CHARTS - visual comparison of key metrics ──
     html += '<div class="chart-row">';
     html += '<div class="chart-card"><h4>STOIIP Uncertainty Range by Gate</h4><div class="chart-wrap"><canvas id="chartVolRange"></canvas></div></div>';
     html += '<div class="chart-card"><h4>Oil in Place by Segment</h4><div class="chart-wrap"><canvas id="chartSegBar"></canvas></div></div>';
     html += '</div>';
     html += '<div class="chart-row">';
-    html += '<div class="chart-card"><h4>Delta Tornado — Last Gate Change</h4><div class="chart-wrap"><canvas id="chartTornado"></canvas></div></div>';
+    html += '<div class="chart-card"><h4>Delta Tornado - Last Gate Change</h4><div class="chart-wrap"><canvas id="chartTornado"></canvas></div></div>';
     html += '<div class="chart-card"><h4>Risk Evolution</h4><div class="chart-wrap"><canvas id="chartRiskEvo"></canvas></div></div>';
     html += '</div>';
 
@@ -332,7 +332,7 @@
       h += `<tr><td>${esc(label)}</td>`;
       gates.forEach((g, i) => {
         const v = (g.metrics || {})[key];
-        h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmt(v, key) : '—'}</td>`;
+        h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmt(v, key) : '-'}</td>`;
       });
       if (gates.length > 1) {
         const lastD = deltas[deltas.length - 1] || {};
@@ -379,7 +379,7 @@
       return v;
     }
 
-    // v3 structured fields — [dotPath, label]
+    // v3 structured fields - [dotPath, label]
     const fields = [
       // Facility Concept
       ['FacilityConcept.FacilityType',       'Facility Type'],
@@ -452,7 +452,7 @@
           gates.forEach(g => {
             const obj = (g.properties || {})[key];
             const v = (obj && typeof obj === 'object') ? obj[fk] : null;
-            h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmtNum(v) : '—'}</td>`;
+            h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmtNum(v) : '-'}</td>`;
           });
           if (gates.length > 1) {
             const lastPD = propDiffs[propDiffs.length - 1] || {};
@@ -466,7 +466,7 @@
         h += `<tr><td>${esc(key)}</td>`;
         gates.forEach(g => {
           const v = (g.properties || {})[key];
-          h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmtNum(v) : '—'}</td>`;
+          h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${v != null ? fmtNum(v) : '-'}</td>`;
         });
         if (gates.length > 1) {
           const lastPD = propDiffs[propDiffs.length - 1] || {};
@@ -510,7 +510,7 @@
           const cls = ch.direction === 'mitigated' ? 'mitigated' : (ch.direction === 'reduced' ? 'reduced' : 'added');
           const arrow = ch.direction === 'increased' ? '↑' : '↓';
           const label = ch.direction === 'mitigated' ? '✓ Mitigated' : `${arrow} ${ch.prev_sev} → ${ch.curr_sev}`;
-          const shortNm = ch.name.split(' — ').pop() || ch.name;
+          const shortNm = ch.name.split(' - ').pop() || ch.name;
           h += `<span class="risk-chip ${cls}">${esc(shortNm)}: ${label}</span>`;
         });
         // Newly added risks
@@ -548,7 +548,7 @@
         const impact = (ku.Impact || '').toLowerCase();
         const color = impact === 'high' ? '#c53030' : impact === 'medium' ? '#c05621' : '#276749';
         h += `<div style="margin-bottom:.3rem;"><strong style="color:${color};">[${esc(ku.Impact || '?')}]</strong> ${esc(ku.Factor || '')}`;
-        if (ku.Description) h += ` — <span class="muted">${esc(ku.Description)}</span>`;
+        if (ku.Description) h += ` - <span class="muted">${esc(ku.Description)}</span>`;
         h += '</div>';
       });
       if (!(g.key_uncertainties || []).length) h += '<span class="muted">None recorded</span>';
@@ -603,7 +603,7 @@
         if (sample && sample.pct != null && sample.pct !== 0) {
           const dir = sample.pct < 0 ? 'reduced' : 'increased';
           insights.push({
-            text: `Porosity ${dir} (${facies[0]}: ${sample.pct > 0 ? '+' : ''}${sample.pct}%) — this likely explains the proportional change in STOIIP volumes.`,
+            text: `Porosity ${dir} (${facies[0]}: ${sample.pct > 0 ? '+' : ''}${sample.pct}%) - this likely explains the proportional change in STOIIP volumes.`,
             cls: 'warning'
           });
         }
@@ -640,7 +640,7 @@
     }
 
     let h = '<div class="cmp-section"><div class="synthesis-card">';
-    h += '<div class="synthesis-header"><h4>Synthesis — Cross-Gate Change Analysis</h4></div>';
+    h += '<div class="synthesis-header"><h4>Synthesis - Cross-Gate Change Analysis</h4></div>';
     h += '<div class="synthesis-body">';
     insights.forEach(ins => {
       h += `<div class="insight-item ${ins.cls}">${esc(ins.text)}</div>`;
@@ -662,7 +662,7 @@
 
     if (typeof Chart === 'undefined' || !gates.length) return;
 
-    // 1. STOIIP Uncertainty Range — grouped bar with error-bar feel (P10 / P50 / P90)
+    // 1. STOIIP Uncertainty Range - grouped bar with error-bar feel (P10 / P50 / P90)
     const volCtx = document.getElementById('chartVolRange');
     if (volCtx) {
       const labels = gates.map(g => g.gate_label);
@@ -690,7 +690,7 @@
       }));
     }
 
-    // 2. Oil by Segment — stacked bar per gate
+    // 2. Oil by Segment - stacked bar per gate
     const segCtx = document.getElementById('chartSegBar');
     if (segCtx) {
       const segKeys = collectSegmentKeys(gates).filter(s => s !== 'TOTAL');
@@ -718,7 +718,7 @@
       }
     }
 
-    // 3. Delta Tornado — horizontal bar showing metric changes (last gate step)
+    // 3. Delta Tornado - horizontal bar showing metric changes (last gate step)
     const torCtx = document.getElementById('chartTornado');
     if (torCtx && deltas.length > 1) {
       const lastD = deltas[deltas.length - 1] || {};
@@ -766,7 +766,7 @@
       }
     }
 
-    // 4. Risk Evolution — bar chart showing risk changes per gate
+    // 4. Risk Evolution - bar chart showing risk changes per gate
     const riskCtx = document.getElementById('chartRiskEvo');
     if (riskCtx && gates.length > 0) {
       const labels = gates.map(g => g.gate_label);
@@ -825,7 +825,7 @@
   }
 
   function fmtNum(v) {
-    if (v == null) return '—';
+    if (v == null) return '-';
     const n = parseFloat(v);
     if (isNaN(n)) return String(v);
     if (Number.isInteger(n)) return n.toLocaleString();
@@ -834,9 +834,9 @@
 
   /** Format a volume value stored in m³ as MSm³ (divide by 1e6) */
   function fmtVol(v) {
-    if (v == null) return '—';
+    if (v == null) return '-';
     const n = parseFloat(v);
-    if (isNaN(n)) return '—';
+    if (isNaN(n)) return '-';
     const msm3 = n / 1e6;
     return msm3.toFixed(Math.abs(msm3) >= 10 ? 1 : Math.abs(msm3) >= 1 ? 2 : 3);
   }

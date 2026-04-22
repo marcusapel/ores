@@ -1,5 +1,5 @@
 """
-tests/test_gettoken.py — Tests for demo/gettoken.py k8s secret loading.
+tests/test_gettoken.py - Tests for demo/gettoken.py k8s secret loading.
 
 Covers:
   • _load_k8s_yaml: parses both PyYAML and the minimal fallback parser
@@ -236,7 +236,7 @@ class TestMintFromK8s:
     def test_mint_k8s_not_found_falls_through(self, tmp_path):
         """If k8s dir has no matching instance, falls through to env/legacy.
         'swedev' exists in the hard-coded INSTANCES dict but needs
-        SWEDEV_REFRESH_TOKEN — without it, mint_token exits."""
+        SWEDEV_REFRESH_TOKEN - without it, mint_token exits."""
         (tmp_path / "configmap.yaml").write_text("data:\n  UNRELATED: value\n")
         (tmp_path / "secret.yaml").write_text("stringData:\n  ALSO_UNRELATED: value\n")
         # Ensure the legacy env var is NOT set

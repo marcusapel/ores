@@ -1,5 +1,5 @@
 
-/* app/static/app.js — nav + robust manifest UI with type and name filters */
+/* app/static/app.js - nav + robust manifest UI with type and name filters */
 (function () {
   // ---------- helpers ----------
   const $ = (sel) => document.querySelector(sel);
@@ -124,7 +124,7 @@
     const ds = dsSel.value;
     const typ = (typeSel && typeSel.value) ? typeSel.value : null;
     if (!ds) {
-      objSel.innerHTML = '<option value="">— select dataspace/type —</option>';
+      objSel.innerHTML = '<option value="">- select dataspace/type -</option>';
       return;
     }
     const qRaw = (nameFilter && nameFilter.value || '').trim();
@@ -256,7 +256,7 @@ async function buildManifest() {
     manifestBox.textContent = JSON.stringify(mf, null, 2);
     let msg = `Built manifest (uris=${res.countUris || 0})`;
     if (res.skippedUris) {
-      msg += ` — ${res.skippedUris} URI(s) skipped (${(res.skippedTypes||[]).join(', ')})`;
+      msg += ` - ${res.skippedUris} URI(s) skipped (${(res.skippedTypes||[]).join(', ')})`;
     }
     setText(buildSummary, msg);
     if (btnIngest) btnIngest.disabled = false;
@@ -312,7 +312,7 @@ async function buildManifest() {
   // ---- Dataspace two-segment filter for the <select> dropdown ----
   const mfDsF1 = $('#mf-ds-filter-1');
   const mfDsF2 = $('#mf-ds-filter-2');
-  let _allDsOptions = [];  // [{value, text}] — filled after dataspaces load
+  let _allDsOptions = [];  // [{value, text}] - filled after dataspaces load
 
   function _captureDsOptions() {
     if (!dsSel) return;

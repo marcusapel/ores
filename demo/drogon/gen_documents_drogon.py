@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_documents_drogon.py — Generate placeholder Document WPC records for
+gen_documents_drogon.py - Generate placeholder Document WPC records for
 the Drogon DG1 decision gate package.
 
 Creates:
-  work-product-component--Document  "Drogon — Subsurface Risk Assessment (SRA)"
-  work-product-component--Document  "Drogon — Cost Risk Assessment (CRA)"
-  work-product-component--Document  "Drogon — Plan for Development and Operation (PDO)"
+  work-product-component--Document  "Drogon - Subsurface Risk Assessment (SRA)"
+  work-product-component--Document  "Drogon - Cost Risk Assessment (CRA)"
+  work-product-component--Document  "Drogon - Plan for Development and Operation (PDO)"
 
 These are stub records (no file blob attached) that serve as typed
 references from the BusinessDecision Parameters[] and

@@ -19,13 +19,13 @@ data:
   # OIDC_REDIRECT_URI: "https://ores.equinor.com/auth/callback"
 
   # ────────────────────────────────────────────────────────────────
-  # OSDU instances — non-secret config
+  # OSDU instances - non-secret config
   # Pattern: INSTANCE_<NAME>_<KEY>
   # Secrets (client IDs, tokens, client secrets) go in secret.yaml.
   # Tenant IDs are public identifiers and belong here.
   # ────────────────────────────────────────────────────────────────
 
-  # ── "eqndev" — Equinor SWE dev ──
+  # ── "eqndev" - Equinor SWE dev ──
   INSTANCE_EQNDEV_TENANT_ID: ""
   INSTANCE_EQNDEV_HOSTNAME: "equinorswedev.energy.azure.com"
   INSTANCE_EQNDEV_DATA_PARTITION_ID: "dev"
@@ -36,7 +36,7 @@ data:
   INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
   INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
 
-  # ── "preship" — Microsoft pre-ship M26 test env ──
+  # ── "preship" - Microsoft pre-ship M26 test env ──
   INSTANCE_PRESHIP_TENANT_ID: ""
   INSTANCE_PRESHIP_HOSTNAME: "osdu-ship.msft-osdu-test.org"
   INSTANCE_PRESHIP_DATA_PARTITION_ID: "opendes"

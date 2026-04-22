@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-resolve_schemas.py — Resolve Generated schemas into the platform-ready
+resolve_schemas.py - Resolve Generated schemas into the platform-ready
 format that the OSDU Schema Service expects.
 
 The Generated schemas from the Data Definitions repo use file-path

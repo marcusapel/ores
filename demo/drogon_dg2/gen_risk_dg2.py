@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_risk_dg2.py — Generate a Risk manifest for Drogon DG2 (Concept Select).
+gen_risk_dg2.py - Generate a Risk manifest for Drogon DG2 (Concept Select).
 
 Carries forward the two DG1 risks (updated residual ratings reflecting
 appraisal data) and adds two new DG2-level risks:
@@ -46,7 +46,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 — Porosity and cementation uncertainty",
+            "Name": "Drogon DG2 - Porosity and cementation uncertainty",
             "Summary": (
                 "Porosity and cementation quality in the Valysar fluvial deposits "
                 "drive uncertainty in pore volume and hydrocarbon recovery. "
@@ -89,7 +89,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 — Fault transmissibility and reservoir compartmentalization",
+            "Name": "Drogon DG2 - Fault transmissibility and reservoir compartmentalization",
             "Summary": (
                 "Sealing or partially-sealing faults may compartmentalise the Valysar "
                 "reservoir, restricting drainage and requiring additional infill wells."
@@ -132,7 +132,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 — HSE and environmental impact",
+            "Name": "Drogon DG2 - HSE and environmental impact",
             "Summary": (
                 "Marine discharge and accidental spill risk during subsea installation "
                 "and production operations in the Drogon area."
@@ -208,7 +208,7 @@ def main():
         },
     }
 
-    # ── Risk 5: Fluid contact depth uncertainty (new — from actual model) ──
+    # ── Risk 5: Fluid contact depth uncertainty (new - from actual model) ──
     risk_owc = {
         "id":    f"{pfx}:master-data--Risk:Drogon-DG2-OWCDepth:1",
         "kind":  "osdu:wks:master-data--Risk:1.2.0",
@@ -254,7 +254,7 @@ def main():
         },
     }
 
-    # ── Risk 6: Recovery factor uncertainty (new — from dynamic simulation) ──
+    # ── Risk 6: Recovery factor uncertainty (new - from dynamic simulation) ──
     risk_rf = {
         "id":    f"{pfx}:master-data--Risk:Drogon-DG2-RecoveryFactor:1",
         "kind":  "osdu:wks:master-data--Risk:1.2.0",

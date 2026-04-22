@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genstatmanifest_drogon.py — Aggregate RAW ReservoirEstimatedVolumes into
+genstatmanifest_drogon.py - Aggregate RAW ReservoirEstimatedVolumes into
 a statistics manifest for Drogon / Valysar.
 
 Groups by (SegmentID, Zone, Facies), computes P10/P50/P90/Mean/Min/Max/StdDev
 across Realisations.  Adds segment-level and grand TOTALs.
 
 Reads:
-  manifest_wpcraw_drogon.json   — RAW REV manifest
-  reftypes_facetroles.json      — FacetRole reference data
+  manifest_wpcraw_drogon.json   - RAW REV manifest
+  reftypes_facetroles.json      - FacetRole reference data
 
 Output:
   manifest_wpcstat_drogon.json
@@ -36,7 +36,7 @@ def ref_id(prefix: str, entity: str, name: str) -> str:
     return f"{prefix}:reference-data--{entity}:{name}:"
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    """Reference-data ID WITHOUT trailing colon (UoM, TableType, VolumeType, FacetType — matches GRAND)."""
+    """Reference-data ID WITHOUT trailing colon (UoM, TableType, VolumeType, FacetType - matches GRAND)."""
     return f"{prefix}:reference-data--{entity}:{name}"
 
 def wpc_id(prefix: str, entity: str, uid: str) -> str:
@@ -76,7 +76,7 @@ def _compute_total_stats(rows: List[Dict], properties: List[str]) -> Dict[str, f
     """Compute statistics for TOTAL rows: SUM per-realisation first, then
     compute P10/P50/P90 across those realisation-level sums.
 
-    This is the correct volumetric aggregation — field-level totals must be
+    This is the correct volumetric aggregation - field-level totals must be
     formed by summing zone/segment/facies volumes within each realisation,
     then deriving statistics across realisations.
     """
@@ -217,7 +217,7 @@ def build_statistics(raw_manifest: Dict, facet_roles: Dict, id_prefix: str) -> D
                 "acl":   acl,
                 "legal": legal,
                 "data": {
-                    "Name": "Drogon Valysar — Reservoir Estimated Volumes (statistics)",
+                    "Name": "Drogon Valysar - Reservoir Estimated Volumes (statistics)",
                     "Description": (
                         "Statistics aggregated across Realisations by SegmentID, Zone, Facies. "
                         "Includes per-segment totals, per-facies totals, and grand total."

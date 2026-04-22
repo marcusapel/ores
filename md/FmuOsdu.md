@@ -1,11 +1,11 @@
 ## **OSDU Support for FMU Data Handling – System of Record**
 
 > **Reference links**:
-> - [fmu-dataio](https://github.com/equinor/fmu-dataio) — FMU data standard & metadata export library (v2.24, schema v0.20.0)
-> - [fmu-sumo](https://github.com/equinor/fmu-sumo) — Interaction with Sumo (current SoR for FMU results)
-> - [fmu-drogon](https://github.com/equinor/fmu-drogon) — Public Drogon reference case
-> - [ERT](https://github.com/equinor/ert) — Ensemble-based Reservoir Tool (workflow orchestrator)
-> - [fmu-dataio data model](https://fmu-dataio.readthedocs.io/en/latest/datamodel/index.html) — FMU results metadata schema
+> - [fmu-dataio](https://github.com/equinor/fmu-dataio) - FMU data standard & metadata export library (v2.24, schema v0.20.0)
+> - [fmu-sumo](https://github.com/equinor/fmu-sumo) - Interaction with Sumo (current SoR for FMU results)
+> - [fmu-drogon](https://github.com/equinor/fmu-drogon) - Public Drogon reference case
+> - [ERT](https://github.com/equinor/ert) - Ensemble-based Reservoir Tool (workflow orchestrator)
+> - [fmu-dataio data model](https://fmu-dataio.readthedocs.io/en/latest/datamodel/index.html) - FMU results metadata schema
 
 ***
 
@@ -22,22 +22,22 @@
 
 FMU data currently flows through the **Sumo** cloud storage platform, which serves as the primary System of Record for FMU results. The pipeline is:
 
-1. **ERT** orchestrates the FMU workflow — defines cases, iterations/ensembles, realizations, and FORWARD_MODELs (RMS, Eclipse/OPM, etc.)
+1. **ERT** orchestrates the FMU workflow - defines cases, iterations/ensembles, realizations, and FORWARD_MODELs (RMS, Eclipse/OPM, etc.)
 2. **fmu-dataio** exports data from within FORWARD_MODELs with rich metadata sidecars (denormalized YAML/JSON, one per file)
 3. **Sumo** receives and indexes the exported data for querying, visualization (Webviz), and consumption
 4. **OSDU** can complement or replace Sumo as the persistent SoR, with structured data management via the OSDU data model
 
 The fmu-dataio metadata schema (currently v0.20.0) defines a **parent/child data model**: `case → ensemble → realization → files`. Each exported file has a metadata sidecar containing:
-- `fmu.case` — case identity (name, uuid, user, model template)
-- `fmu.ensemble` — ensemble/iteration identity (name, uuid)
-- `fmu.realization` — realization identity (id, uuid, is_reference)
-- `fmu.ert` — ERT experiment context (experiment.id, simulation_mode)
-- `data.content` — content type (volumes, surfaces, grids, tables, cubes, etc.)
-- `data.standard_result` — standardized result name (e.g., `inplace_volumes`)
-- `masterdata` — field/country references
-- `access` — classification and security
+- `fmu.case` - case identity (name, uuid, user, model template)
+- `fmu.ensemble` - ensemble/iteration identity (name, uuid)
+- `fmu.realization` - realization identity (id, uuid, is_reference)
+- `fmu.ert` - ERT experiment context (experiment.id, simulation_mode)
+- `data.content` - content type (volumes, surfaces, grids, tables, cubes, etc.)
+- `data.standard_result` - standardized result name (e.g., `inplace_volumes`)
+- `masterdata` - field/country references
+- `access` - classification and security
 
-**Standard results** (via `fmu.dataio.export.rms.export_inplace_volumes` etc.) are the recommended export path — they enforce column conventions, naming, and validation against the FMU data standard.
+**Standard results** (via `fmu.dataio.export.rms.export_inplace_volumes` etc.) are the recommended export path - they enforce column conventions, naming, and validation against the FMU data standard.
 
 ***
 
@@ -52,7 +52,7 @@ The fmu-dataio metadata schema (currently v0.20.0) defines a **parent/child data
 
 ***
 
-### **3. Canonical Data Model — FMU ↔ OSDU Mapping**
+### **3. Canonical Data Model - FMU ↔ OSDU Mapping**
 
 The FMU data model (fmu-dataio) is denormalized and file-centric. The OSDU data model is normalized and record-centric. The mapping between them:
 
@@ -162,9 +162,9 @@ A small sidecar (JSON/YAML) accompanying every deck export and OSDU write-back:
 
 ### **7. Minimal Responsibilities per Component**
 
-*   **ERT**: Orchestrate FMU workflows — define cases, iterations/ensembles, realizations, FORWARD_MODELs. Owner of case definitions and experiment identity.
+*   **ERT**: Orchestrate FMU workflows - define cases, iterations/ensembles, realizations, FORWARD_MODELs. Owner of case definitions and experiment identity.
 *   **fmu-dataio**: Export data with rich metadata (denormalized YAML/JSON sidecar per file). Enforces the FMU data standard (schema v0.20.0). Provides standard results for validated exports (e.g., `export_inplace_volumes`).
-*   **Sumo (fmu-sumo)**: Current cloud SoR — receives fmu-dataio exports, indexes metadata, serves queries for Webviz/clients. Upload via `fmu-sumo` library.
+*   **Sumo (fmu-sumo)**: Current cloud SoR - receives fmu-dataio exports, indexes metadata, serves queries for Webviz/clients. Upload via `fmu-sumo` library.
 *   **pyetp**: Discover WPCs (grid + properties), stream arrays, respect dataspace/ACL.
 *   **resqpy**: Build in-memory model, convert to GRDECL/EGRID, emit Deck Manifest.
 *   **xtgeo (resdata)**: support ROFF/GRDECL/EGRID conversion/validation

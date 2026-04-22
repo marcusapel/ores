@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}RDDMS — Resources{% endblock %}
+{% block title %}RDDMS - Resources{% endblock %}
 
 {% block head %}
 <style>
@@ -238,10 +238,10 @@
       // Spatial origin: UTM coords are typically > 1000
       const hasSpatialOrigin = ox > 1000 || oy > 1000;
 
-      // Tables are rare — only when explicit STL markers exist and no spatial origin
+      // Tables are rare - only when explicit STL markers exist and no spatial origin
       if (hasStlMarkers && !hasSpatialOrigin) return 'table';
       if (hasStlMarkers && hasSpatialOrigin) return 'both';
-      // Default: treat as map (spatial surface) — the common case
+      // Default: treat as map (spatial surface) - the common case
       return 'map';
     }
 
@@ -317,7 +317,7 @@
         (js.items || []).forEach(x => {
           const o = document.createElement('option');
           o.value = x.uuid;
-          o.textContent = `${x.title || x.uuid} — ${x.uuid}`;
+          o.textContent = `${x.title || x.uuid} - ${x.uuid}`;
           o.setAttribute('data-uri', x.uri || '');
           objSel.appendChild(o);
         });
@@ -406,7 +406,7 @@
             const src = (g.sources || []).filter(e => typeof e === 'object').map(parseEdge);
             const crs = g.crs;
             const edgeLi = (items) => items.length
-              ? `<ul>${items.map(e => `<li><code>${esc(e.ct)}</code> — <code>${esc(e.uid)}</code> — ${esc(e.title)}</li>`).join('')}</ul>`
+              ? `<ul>${items.map(e => `<li><code>${esc(e.ct)}</code> - <code>${esc(e.uid)}</code> - ${esc(e.title)}</li>`).join('')}</ul>`
               : '<p class="muted">None</p>';
             edgesEl.innerHTML = `
               <details open>
@@ -450,7 +450,7 @@
           btnMap.style.display   = (mode === 'map'   || mode === 'both') ? '' : 'none';
           const hint = mode === 'table' ? 'Detected as a data table (resqpy DataFrame).'
                      : mode === 'map'   ? 'Detected as a spatial depth surface.'
-                     : 'Could not auto-detect — try either view.';
+                     : 'Could not auto-detect - try either view.';
           grid2dView.innerHTML = `<p class="muted">${hint}</p>`;
         }
 
@@ -482,9 +482,9 @@
           const c = meta.crs || {};
           const d = meta.dims || [0,0];
           statsHtml = `<div style="font-size:13px;color:#605e5c;margin-bottom:6px;">`
-            + `<b>${esc(meta.title || '')}</b> — ${d[0]}×${d[1]}`
-            + (s.min !== undefined ? ` — z: ${s.min} … ${s.max} ${c.verticalUom || 'm'}` : '')
-            + (c.projectedUom ? ` — xy: ${c.projectedUom}` : '')
+            + `<b>${esc(meta.title || '')}</b> - ${d[0]}×${d[1]}`
+            + (s.min !== undefined ? ` - z: ${s.min} … ${s.max} ${c.verticalUom || 'm'}` : '')
+            + (c.projectedUom ? ` - xy: ${c.projectedUom}` : '')
             + `</div>`;
         }
 

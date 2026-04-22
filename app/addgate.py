@@ -1,5 +1,5 @@
 """
-Add DG page — Create and ingest a new BusinessDecision for an existing Reservoir.
+Add DG page - Create and ingest a new BusinessDecision for an existing Reservoir.
 
 Provides:
   GET  /add-dg               → render the addgate.html template
@@ -59,10 +59,10 @@ async def add_dg_page(request: Request):
 # ── Decision-level reference data ──────────────────────────────────────────
 
 _FALLBACK_LEVELS = [
-    {"id": "DG1", "name": "DG1 — Identify & Assess"},
-    {"id": "DG2", "name": "DG2 — Concept Select"},
-    {"id": "DG3", "name": "DG3 — Define & Execute"},
-    {"id": "DG4", "name": "DG4 — Operate & Improve"},
+    {"id": "DG1", "name": "DG1 - Identify & Assess"},
+    {"id": "DG2", "name": "DG2 - Concept Select"},
+    {"id": "DG3", "name": "DG3 - Define & Execute"},
+    {"id": "DG4", "name": "DG4 - Operate & Improve"},
 ]
 
 
@@ -105,7 +105,7 @@ async def _search_decision_levels(
         code = data.get("Code", "") or data.get("Name", "")
         name = data.get("Name", "") or code
         desc = data.get("Description", "")
-        display = f"{code} — {desc}" if desc and desc != name else name
+        display = f"{code} - {desc}" if desc and desc != name else name
         out.append({"id": code, "name": display, "record_id": rec.get("id", "")})
 
     out.sort(key=lambda x: x["id"])
@@ -134,7 +134,7 @@ async def wpc_search(
     q: str = Query("*", description="Search query"),
     limit: int = Query(20),
 ):
-    """Search for WPC records of a given kind — used to populate link dropdowns."""
+    """Search for WPC records of a given kind - used to populate link dropdowns."""
     at = _access_token(request)
     search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
     storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
@@ -193,7 +193,7 @@ async def create_bd(request: Request):
     id_prefix = reservoir_id.split(":")[0] if ":" in reservoir_id else "dev"
 
     # Generate a deterministic-ish BD ID from the name
-    bd_slug = name.replace(" ", "-").replace("—", "-")[:80]
+    bd_slug = name.replace(" ", "-").replace("-", "-")[:80]
     bd_id = f"{id_prefix}:master-data--BusinessDecision:{bd_slug}:1"
 
     decision_level = body.get("decision_level", "DG1")

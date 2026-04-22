@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genstatmanifest_dg2.py — Aggregate DG2 RAW REV into statistics manifest.
+genstatmanifest_dg2.py - Aggregate DG2 RAW REV into statistics manifest.
 
 Reads manifest_wpcraw_dg2.json (already scaled by 0.8) and computes
 P10/P50/P90/Mean/Min/Max/StdDev, identical logic to genstatmanifest_drogon.py.
@@ -193,7 +193,7 @@ def build_statistics(raw_manifest: Dict, facet_roles: Dict, id_prefix: str) -> D
                 "acl":   acl,
                 "legal": legal,
                 "data": {
-                    "Name": "Drogon Valysar — DG2 Reservoir Estimated Volumes (statistics, ×0.8)",
+                    "Name": "Drogon Valysar - DG2 Reservoir Estimated Volumes (statistics, ×0.8)",
                     "Description": (
                         "DG2 statistics aggregated from DG2 RAW realisations (volumes ×0.8). "
                         "Grouped by SegmentID, Zone, Facies. "

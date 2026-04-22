@@ -117,7 +117,7 @@ def flush(
                     ok = True
                     break
                 if rd.status_code == 412 and attempt < retries:
-                    # FK constraint — retry after other dependents are removed
+                    # FK constraint - retry after other dependents are removed
                     continue
                 failed += 1
                 print(f"  FAIL {tname}/{uid}: HTTP {rd.status_code} {rd.text[:120]}")
@@ -161,7 +161,7 @@ def flush(
 # ---------------------------------------------------------------------------
 
 def load_env_file(path: str) -> None:
-    """Minimal .env loader — delegates to central _auth module."""
+    """Minimal .env loader - delegates to central _auth module."""
     from _auth import parse_dotenv as _pd
     from pathlib import Path as _P
     for k, v in _pd(_P(path)).items():

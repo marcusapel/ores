@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon — Full FMU Workflow Template (ERT → RMS → OPM Flow)",
+    "Name": "Drogon - Full FMU Workflow Template (ERT → RMS → OPM Flow)",
     "Description": "Comprehensive ActivityTemplate for the Drogon FMU reservoir model. Captures the complete input-to-output pipeline for one decision gate: seismic + horizons + wells + stratigraphy + uncertainty distributions → ERT orchestration (DESIGN2PARAMS → RMS MAIN → OPM Flow) → volumes, production profiles, maps, grid properties. Based on the official equinor/fmu-drogon tutorial model (24.3.1). 250 realisations, one-by-one sensitivity design.",
     "Originator": "markuslund.vevle@emerson.com",
     "ParameterTemplates": [
@@ -214,7 +214,7 @@
       },
       {
         "Title": "OutputVolumesRaw",
-        "Description": "Per-realisation reservoir estimated volumes (RAW REV WPC) — by region, zone, and facies.",
+        "Description": "Per-realisation reservoir estimated volumes (RAW REV WPC) - by region, zone, and facies.",
         "IsInput": false,
         "IsOutput": true,
         "MinOccurs": 1,

@@ -1,5 +1,5 @@
 """
-demo/_auth.py — Single auth & env helper for all demo scripts.
+demo/_auth.py - Single auth & env helper for all demo scripts.
 
 Replaces the scattered inline ``httpx.post`` / ``requests.post`` token
 flows found across drogon/, seisint/, strat/, and top-level demo scripts
@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 try:
     import httpx
 except ImportError:
-    sys.exit("Missing httpx — pip install httpx")
+    sys.exit("Missing httpx - pip install httpx")
 
 # ── Paths ────────────────────────────────────────────────────────────────
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -44,7 +44,7 @@ _token_cache: Dict[str, tuple[str, float]] = {}   # name → (token, expiry_ts)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1.  k8s YAML loader  (canonical — re-exported by gettoken.py)
+# 1.  k8s YAML loader  (canonical - re-exported by gettoken.py)
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _load_k8s_yaml(path: Path) -> Dict[str, str]:
@@ -90,7 +90,7 @@ def load_k8s_env(k8s_dir: Optional[Path] = None) -> Dict[str, str]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2.  .env file loader  (legacy — still supported for backward compat)
+# 2.  .env file loader  (legacy - still supported for backward compat)
 # ═══════════════════════════════════════════════════════════════════════════
 
 def parse_dotenv(path: Path) -> Dict[str, str]:
@@ -123,7 +123,7 @@ def _first(env: Dict[str, str], keys: List[str]) -> str:
 # 3.  Instance resolution  (k8s → env → .env file)
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Canonical alias map — used everywhere
+# Canonical alias map - used everywhere
 ALIASES: Dict[str, str] = {"eqndev": "swedev", "swedev": "swedev", "preship": "preship"}
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ingest_resqml_rddms.py — Import RESQML 2.0.1 EPC files into the
+ingest_resqml_rddms.py - Import RESQML 2.0.1 EPC files into the
 OSDU Reservoir DDMS via the open-etp Docker client image.
 
 Supports two modes:
@@ -18,12 +18,12 @@ Prerequisites:
   - Docker image tagged as 'osdu-etp-client' (local) or 'osdu-etp-sslclient' (cloud)
   - For cloud mode: .env file with refresh_token, tenant, client_id, etc.
 
-Usage — local RDDMS (localhost:9100):
+Usage - local RDDMS (localhost:9100):
   py demo/drogon/resqml/ingest_resqml_rddms.py --local
   py demo/drogon/resqml/ingest_resqml_rddms.py --local --dry-run
   py demo/drogon/resqml/ingest_resqml_rddms.py --local --dataspace demo/Drogon
 
-Usage — cloud OSDU RDDMS:
+Usage - cloud OSDU RDDMS:
   py demo/drogon/resqml/ingest_resqml_rddms.py
   py demo/drogon/resqml/ingest_resqml_rddms.py --dataspace maap/drogon-resqml
 """
@@ -47,7 +47,7 @@ EPC_FILES = [
     HERE / "drogon_activity.epc",
 ]
 
-# Docker images — tagged locally for convenience
+# Docker images - tagged locally for convenience
 IMAGE_LOCAL = "osdu-etp-client"          # non-SSL, for ws://localhost
 IMAGE_CLOUD = "osdu-etp-sslclient"      # SSL-enabled, for wss://
 
@@ -189,7 +189,7 @@ def main():
     parser.add_argument("--server-url",
                         help="Override ETP server URL (default depends on --local)")
     parser.add_argument("--env-file", default=str(REPO_ROOT / ".env"),
-                        help="Path to .env file — cloud mode only (default: <repo>/.env)")
+                        help="Path to .env file - cloud mode only (default: <repo>/.env)")
     parser.add_argument("--dataspace",
                         help=f"Dataspace path (default: {LOCAL_DATASPACE} local, "
                              f"{DEFAULT_DATASPACE} cloud)")
@@ -258,7 +258,7 @@ def main():
     print(f"\n=== Import {len(epc_files)} EPC file(s) ===")
     for epc in epc_files:
         if not epc.exists() and not args.dry_run:
-            print(f"  ERROR: {epc} not found — run gen_resqml.py first")
+            print(f"  ERROR: {epc} not found - run gen_resqml.py first")
             sys.exit(1)
         rc = import_epc(**kw, dataspace=dataspace, epc_path=epc)
         if rc != 0 and not args.dry_run:

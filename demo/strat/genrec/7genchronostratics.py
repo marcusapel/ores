@@ -167,7 +167,7 @@ def main():
         print(f"countries: {countries}")
         print(f"include-scheme: {args.include_scheme}  scheme: {args.scheme_name} / {args.scheme_code}")
         print(f"source-path: {args.source_path or '(none)'}")
-        print(f"source-url : {args.source_url if not args.source_path else '(ignored — using source-path)'}")
+        print(f"source-url : {args.source_url if not args.source_path else '(ignored - using source-path)'}")
         print("================================\n")
 
     # Load source JSON (prefer local path if provided)

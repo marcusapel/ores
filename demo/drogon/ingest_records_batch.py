@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ingest_records_batch.py — Fast batch ingestion of Drogon records via
+ingest_records_batch.py - Fast batch ingestion of Drogon records via
 Storage API (PUT /api/storage/v2/records).
 
 Authenticates ONCE via refresh_token (httpx + authlib, same as app/auth.py),
@@ -70,10 +70,10 @@ def put_one_record(env: Dict[str, str], record: Dict[str, Any],
         r = client.put(url, json=[record], timeout=60)
         if r.is_success:
             return r.json()
-        # Retry only on 404 (ancestry parent not found yet — eventual consistency)
+        # Retry only on 404 (ancestry parent not found yet - eventual consistency)
         if r.status_code == 404 and attempt < MAX_RETRIES:
             wait = RETRY_BACKOFF[attempt]
-            print(f"        ↳ 404 parent not indexed yet — retry in {wait}s …")
+            print(f"        ↳ 404 parent not indexed yet - retry in {wait}s …")
             time.sleep(wait)
             continue
         raise RuntimeError(f"PUT failed ({r.status_code}): {r.text[:1000]}")
@@ -106,7 +106,7 @@ def main():
     print(f"\n{len(records)} records loaded")
 
     if args.dry_run:
-        print("\n[dry-run] Would PUT these records — exiting.")
+        print("\n[dry-run] Would PUT these records - exiting.")
         return
 
     print("\nAuthenticating …")
@@ -134,7 +134,7 @@ def main():
                 resp = put_records_batch(env, active, client)
                 created.extend(resp.get("recordIds", []))
                 skipped.extend(resp.get("skippedRecordIds", []))
-                print(f"  Batch OK — created={len(resp.get('recordIds',[]))}  "
+                print(f"  Batch OK - created={len(resp.get('recordIds',[]))}  "
                       f"skipped={len(resp.get('skippedRecordIds',[]))}")
             except RuntimeError as e:
                 print(f"  Batch PUT failed ({e}); falling back to sequential …")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_activity_dg2.py — Generate comprehensive OSDU ActivityTemplate + Activity
+gen_activity_dg2.py - Generate comprehensive OSDU ActivityTemplate + Activity
 manifest for the Drogon DG2 FMU workflow.
 
 Designed to capture the **complete model reproduction** for one decision gate:
@@ -19,11 +19,11 @@ Based on the real Drogon FMU model (equinor/fmu-drogon, tutorial 24.3.1):
   - Production vectors: FOPR, FGPR, FWPR, FOPT, FGPT, FWPT, FPR, FWCT, FGOR
 
 Reads:
-  ../drogon/manifest_masterwp_drogon.json   — Reservoir + WP IDs, acl, legal
-  manifest_wpcparams_dg2.json               — DG2 ColumnBasedTable WPC ID
-  manifest_wpcraw_dg2.json                  — DG2 RAW REV WPC ID
-  manifest_wpcstat_dg2.json                 — DG2 Statistics REV WPC ID
-  manifest_wpc_production_dg2.json          — DG2 Production forecast WPC ID
+  ../drogon/manifest_masterwp_drogon.json   - Reservoir + WP IDs, acl, legal
+  manifest_wpcparams_dg2.json               - DG2 ColumnBasedTable WPC ID
+  manifest_wpcraw_dg2.json                  - DG2 RAW REV WPC ID
+  manifest_wpcstat_dg2.json                 - DG2 Statistics REV WPC ID
+  manifest_wpc_production_dg2.json          - DG2 Production forecast WPC ID
 
 Output:
   manifest_activity_dg2.json
@@ -49,7 +49,7 @@ _NS = uuid.UUID("a0000000-d509-4e00-8000-000000000000")
 TEMPLATE_UUID_DG2 = str(uuid.uuid5(_NS, "dg2-volumetrics-template"))
 ACTIVITY_UUID_DG2 = str(uuid.uuid5(_NS, "dg2-volumetrics-activity"))
 
-# ETP Dataspace — shared with DG1 (same geomodel)
+# ETP Dataspace - shared with DG1 (same geomodel)
 DATASPACE_NAME = "maap/drogon_dg"
 DATASPACE_ID_SUFFIX = DATASPACE_NAME.replace("/", "-")
 
@@ -64,7 +64,7 @@ DEFAULT_LEGAL = {
 
 # ── Real Drogon FMU model reference data ─────────────────────────────
 
-# Uncertainty parameters — from global_variables.dist (tutorial 24.3.1)
+# Uncertainty parameters - from global_variables.dist (tutorial 24.3.1)
 UNCERTAINTY_PARAMETERS = [
     # Permeability anisotropy (Kv/Kh ratios)
     {"Name": "KVKH_CHANNEL",   "Distribution": "UNIFORM", "Min": 0.4,  "Max": 0.8},
@@ -91,7 +91,7 @@ UNCERTAINTY_PARAMETERS = [
     {"Name": "VOLON_APS_PROB_CHANNEL",        "Distribution": "UNIFORM", "Min": 0.52, "Max": 0.72},
 ]
 
-# Model switches — from global_variables_switches.dist
+# Model switches - from global_variables_switches.dist
 MODEL_SWITCHES = {
     "DCONV_ALTERNATIVE": 2,         # 1: constant V overburden, 2: V=a*Tmap+b
     "HUM_MODEL_MODE": 1,            # 0: prediction, 1: simulation
@@ -117,7 +117,7 @@ REFERENCE_PROPERTIES = {
     },
 }
 
-# Reservoir regions — 7 segments with fluid contacts
+# Reservoir regions - 7 segments with fluid contacts
 REGIONS = {
     "WestLowland":  {"NUM": 1, "OWC": 1660.0, "GOC": 1000.0},
     "CentralSouth": {"NUM": 2, "OWC": 1677.0, "GOC": 1000.0},
@@ -395,9 +395,9 @@ def _pt(title, desc, *, is_in=True, is_out=False, kind="DataObject",
         min_occ=0, max_occ=1, role="Input"):
     """Create a ParameterTemplate entry.
 
-    role: 'Input'    — spatial/physical data (seismic, wells, horizons etc.)
-          'Workflow' — apps, process config, design, sequence definitions
-          'Output'  — generated artefacts
+    role: 'Input'    - spatial/physical data (seismic, wells, horizons etc.)
+          'Workflow' - apps, process config, design, sequence definitions
+          'Output'  - generated artefacts
     """
     entry = {
         "Title": title,
@@ -425,7 +425,7 @@ def build_template(prefix, acl, legal):
         "acl": acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon — Full FMU Workflow Template (ERT → RMS → OPM Flow)",
+            "Name": "Drogon - Full FMU Workflow Template (ERT → RMS → OPM Flow)",
             "Description": (
                 "Comprehensive ActivityTemplate for the Drogon FMU reservoir model. "
                 "Captures the complete input-to-output pipeline for one decision gate: "
@@ -517,7 +517,7 @@ def build_template(prefix, acl, legal):
                     "parameter table (ColumnBasedTable WPC).",
                     is_in=False, is_out=True),
                 _pt("OutputVolumesRaw", "Per-realisation reservoir estimated "
-                    "volumes (RAW REV WPC) — by region, zone, and facies.",
+                    "volumes (RAW REV WPC) - by region, zone, and facies.",
                     is_in=False, is_out=True, min_occ=1),
                 _pt("OutputVolumesStats", "Statistical aggregation P10/P50/P90 "
                     "of volumes across realisations (STAT REV WPC).",
@@ -574,7 +574,7 @@ def build_dataspace(prefix, acl, legal):
             "Description": (
                 "RDDMS dataspace holding the Drogon geomodel EPC files exported "
                 "from RMS (drogon_activity.epc, drogon_tables.epc). "
-                "Shared between DG1 and DG2 — same structural model."
+                "Shared between DG1 and DG2 - same structural model."
             ),
             "DatasetProperties": {
                 "URI": f"eml:///dataspace({DATASPACE_NAME})",
@@ -855,7 +855,7 @@ def build_activity(
             "Title": "GeoModelDataspace",
             "Description": (
                 "RDDMS ETP dataspace with Drogon geomodel EPC files. "
-                "Shared structural model — same dataspace as DG1."
+                "Shared structural model - same dataspace as DG1."
             ),
             "ParameterKindID": _kind("DataObject"),
             "ParameterRoleID": _role("Input"),
@@ -1047,7 +1047,7 @@ def build_activity(
         "legal": legal,
         "data": {
             "Name": (
-                "Drogon — Full FMU Workflow Run "
+                "Drogon - Full FMU Workflow Run "
                 "(ERT design, 250 realisations, OPM Flow)"
             ),
             "Description": (

@@ -99,7 +99,7 @@ async def inject_access_token(request: Request, call_next):
         except Exception as e:
             log.warning("Env-token mint failed: %s", e)
 
-    # 2. Fallback — per-user session token (PKCE flow)
+    # 2. Fallback - per-user session token (PKCE flow)
     if not access_token:
         try:
             sess_tokens = await tokens_from_session(request)
@@ -108,7 +108,7 @@ async def inject_access_token(request: Request, call_next):
         except Exception as e:
             log.warning("Session token failed: %s", e)
 
-    # 3. No token at all — redirect to login page (for browser) or 401 (for API)
+    # 3. No token at all - redirect to login page (for browser) or 401 (for API)
     if not access_token:
         if path.startswith("/api"):
             return JSONResponse({"error": "Authentication required. No env token and no session."}, status_code=401)
@@ -118,7 +118,7 @@ async def inject_access_token(request: Request, call_next):
     return await call_next(request)
 
 # Attach routers & static
-# Session middleware — added LAST so it is outermost and runs FIRST,
+# Session middleware - added LAST so it is outermost and runs FIRST,
 # making request.session available to all inner middleware.
 app.add_middleware(
     SessionMiddleware,
@@ -158,7 +158,7 @@ templates.env.globals["auth_mode"] = AUTH_MODE
 def _jinja_pretty_val(val):
     """Jinja filter: prettify metadata values that may contain JSON."""
     if val is None:
-        return "—"
+        return "-"
     s = str(val)
     # Try to parse residual JSON strings and re-format them
     if s.startswith(("[", "{")):
@@ -178,13 +178,13 @@ _pid = os.getpid()
 _banner = (
     f"\n"
     f"  ╔══════════════════════════════════════════════╗\n"
-    f"  ║  ORES  —  OSDU Record Explorer & Stratigraphy ║\n"
+    f"  ║  ORES  -  OSDU Record Explorer & Stratigraphy ║\n"
     f"  ║  PID: {_pid:<39d} ║\n"
     f"  ║  Kill: kill {_pid:<34d} ║\n"
     f"  ╚══════════════════════════════════════════════╝\n"
 )
 print(_banner, file=_sys.stderr, flush=True)
-log.info("ORES starting — PID %d", _pid)
+log.info("ORES starting - PID %d", _pid)
 
 # Log routes at startup (helps when a route goes missing)
 log.info("Routes registered: %d routes", len(app.routes))
@@ -298,14 +298,14 @@ async def api_add_instance(request: Request):
 
     try:
         # ── Append to configmap.yaml ──
-        cm_lines = [f"\n  # ── \"{name}\" — added via ORES UI ──"]
+        cm_lines = [f"\n  # ── \"{name}\" - added via ORES UI ──"]
         for field, val in config_fields.items():
             cm_lines.append(f'  {PREFIX}{field}: "{val}"')
         with open(cm_path, "a") as f:
             f.write("\n".join(cm_lines) + "\n")
 
         # ── Append to secret.yaml ──
-        sec_lines = [f"\n  # ── \"{name}\" — added via ORES UI ──"]
+        sec_lines = [f"\n  # ── \"{name}\" - added via ORES UI ──"]
         for field, val in secret_fields.items():
             if val:
                 sec_lines.append(f'  {PREFIX}{field}: "{val}"')
@@ -373,7 +373,7 @@ def _access_token(request: Request) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Helpers — volume / BD enrichment
+# Helpers - volume / BD enrichment
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -744,7 +744,7 @@ def _is_proper_grid2d_map(title: str) -> bool:
     t = title.strip()
     tl = t.lower()
 
-    # Known table markers — skip these
+    # Known table markers - skip these
     _TABLE_MARKERS = (
         "parameter", "volume", "estimated", "statistic",
         "per realisation", "per realization", "raw,", "(raw",
@@ -1236,7 +1236,7 @@ async def root_redirect():
 
 @app.get("/admin", response_class=HTMLResponse, summary="Admin: list dataspaces")
 async def home(request: Request):
-    # Render the shell immediately — dataspaces loaded async via JS
+    # Render the shell immediately - dataspaces loaded async via JS
     return templates.TemplateResponse(
         request, "admin.html",
         {
@@ -1337,10 +1337,10 @@ async def dataspaces_create(
     return RedirectResponse(url=f"/d/{urllib.parse.quote(path, safe='')}", status_code=302)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Shared record enrichment — used by both search_run() and view_record()
+# Shared record enrichment - used by both search_run() and view_record()
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Keys whose values are large arrays / blobs — shown separately, not in metadata pairs
+# Keys whose values are large arrays / blobs - shown separately, not in metadata pairs
 _HEAVY_DATA_KEYS = frozenset({
     "ColumnBasedTable", "Columns", "ColumnValues", "ColumnNames",
     "SpatialPoint.AsIngestedCoordinates.persistableReferenceCrs",
@@ -1506,7 +1506,7 @@ async def _enrich_record(
     metadata_pairs: list = []
     try:
         if "Citation" in data_block or "$type" in data_block:
-            # RDDMS/RESQML object — use schema-aware extractor
+            # RDDMS/RESQML object - use schema-aware extractor
             md = extract_metadata_generic(
                 data_block, ds="",
                 typ=full.get("kind", "") or "",
@@ -1519,7 +1519,7 @@ async def _enrich_record(
                         and str(p.get("value") or "").startswith("eml:///"))
             ]
         else:
-            # OSDU Storage record — flatten data{} directly
+            # OSDU Storage record - flatten data{} directly
             metadata_pairs = _flatten_osdu_data(data_block)
     except Exception as e:
         log.warning("[ENRICH] metadata_pairs extraction failed for %s: %s", rid, e)
@@ -1560,7 +1560,7 @@ async def _enrich_record(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Search (OSDU search v2) — enrich with storage fetch, ancestry, links, metadata
+# Search (OSDU search v2) - enrich with storage fetch, ancestry, links, metadata
 # ──────────────────────────────────────────────────────────────────────────────
 
 @app.get("/search", response_class=HTMLResponse, summary="Search form (OSDU search v2)")
@@ -1617,7 +1617,7 @@ async def search_run(
         seen_record_ids: Set[str] = set()
         merged_total_count = 0
         async with httpx.AsyncClient(timeout=60) as client:
-            # ── Phase 1: Search all kinds (sequential — each is one API call) ──
+            # ── Phase 1: Search all kinds (sequential - each is one API call) ──
             all_hit_ids: List[str] = []
             for current_kind in search_kinds:
                 payload = {
@@ -1781,7 +1781,7 @@ async def view_record(request: Request, record_id: str):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# HowTo — rendered markdown articles from the md/ directory
+# HowTo - rendered markdown articles from the md/ directory
 # ──────────────────────────────────────────────────────────────────────────────
 
 _MD_DIR = _Path(__file__).resolve().parent.parent / "md"
@@ -1835,7 +1835,7 @@ _HOWTO_SECTIONS: list[dict] = [
     },
 ]
 
-# Flat lookup: slug → (filename, title)  — used by the article route
+# Flat lookup: slug → (filename, title)  - used by the article route
 _HOWTO_FLAT: dict[str, tuple[str, str]] = {}
 for _sec in _HOWTO_SECTIONS:
     for _item in _sec["items"]:

@@ -1,4 +1,4 @@
-"""Tests for app.cache — in-memory TTL cache with thundering-herd protection."""
+"""Tests for app.cache - in-memory TTL cache with thundering-herd protection."""
 import asyncio
 import time
 import pytest
@@ -87,7 +87,7 @@ async def test_cached_call_expires():
     await cached_call("exp", 0.01, _fn)
     await asyncio.sleep(0.02)
     await cached_call("exp", 0.01, _fn)
-    assert call_count == 2  # called twice — first expired
+    assert call_count == 2  # called twice - first expired
 
 
 @pytest.mark.asyncio

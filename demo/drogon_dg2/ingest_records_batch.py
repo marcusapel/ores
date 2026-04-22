@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ingest_records_batch.py — Batch ingestion of DG2 records via Storage API.
+ingest_records_batch.py - Batch ingestion of DG2 records via Storage API.
 
 Identical logic to demo/drogon/ingest_records_batch.py but reads from
 the drogon_dg2/records/ directory by default.
@@ -87,7 +87,7 @@ def main():
     records = load_records(Path(args.records_dir))
 
     if not records:
-        print("No records found — nothing to ingest.")
+        print("No records found - nothing to ingest.")
         return
 
     print(f"\n  {len(records)} records to ingest → {env['host']}")
@@ -116,7 +116,7 @@ def main():
             result = put_records_batch(env, active, client)
             created.extend(result.get("recordIds", []))
             skipped.extend(result.get("skippedRecordIds", []))
-            print(f"  Batch OK — created={len(result.get('recordIds',[]))}  "
+            print(f"  Batch OK - created={len(result.get('recordIds',[]))}  "
                   f"skipped={len(result.get('skippedRecordIds',[]))}")
         except Exception as e:
             print(f"  Batch PUT failed ({e}); falling back to sequential …")
@@ -135,7 +135,7 @@ def main():
                         break
                     if resp.status_code == 404 and attempt < MAX_RETRIES:
                         wait = RETRY_BACKOFF[attempt]
-                        print(f"        ↳ 404 — retry in {wait}s …")
+                        print(f"        ↳ 404 - retry in {wait}s …")
                         time.sleep(wait)
                         continue
                     failed.append(f"{rid}: {resp.status_code} {resp.text[:200]}")

@@ -71,7 +71,7 @@ def get_rank(data: Dict) -> str:
       2) ChronostratigraphicHierarchy.Rank (rare)
       3) data.Rank / data.RankName (rare)
     """
-    # Source 1: StratigraphicColumnRankUnitTypeID — always present on reference chrono records
+    # Source 1: StratigraphicColumnRankUnitTypeID - always present on reference chrono records
     rtid = data.get("StratigraphicColumnRankUnitTypeID") or ""
     if rtid:
         # format: "{{NS}}:reference-data--StratigraphicColumnRankUnitType:Chronostratigraphic.GTS2020.Stage:"
@@ -301,7 +301,7 @@ def main():
         # If scheme id missing on records, include all
         filtered = chrono_refs
 
-    # Normalize units — deduplicate by chrono record id
+    # Normalize units - deduplicate by chrono record id
     units: List[Dict] = []
     seen_chrono_ids: set = set()
     for r in filtered:

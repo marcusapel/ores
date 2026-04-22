@@ -266,7 +266,7 @@
         {% set raw_name = d.get('Name') or '' %}
         {# Fall back to FeatureName when Name is missing or |UNNAMED| #}
         {% set feature_name = d.get('FeatureName') or '' %}
-        {% set display_name = raw_name if (raw_name and raw_name != '|UNNAMED|') else (feature_name or raw_name or '—') %}
+        {% set display_name = raw_name if (raw_name and raw_name != '|UNNAMED|') else (feature_name or raw_name or '-') %}
         {% set desc = d.get('Description') %}
         {# Extract short dataspace name from DDMSDatasets URI #}
         {% set ddms_ds = d.get('DDMSDatasets', []) %}
@@ -276,15 +276,15 @@
         {% elif 'dataspace(' in ds_raw %}
           {% set ds_label = ds_raw.split('dataspace(')[1].split(')')[0] %}
         {% else %}
-          {% set ds_label = ds_raw or '—' %}
+          {% set ds_label = ds_raw or '-' %}
         {% endif %}
         <tr data-rec-idx="{{ loop.index }}"{% if loop.first %} class="active-row"{% endif %}>
           <td title="Name={{ raw_name }}  FeatureName={{ feature_name }}">{{ display_name }}</td>
-          <td>{{ desc or '—' }}</td>
-          <td title="{{ rec.kind or '' }}">{{ rec.kind or '—' }}</td>
+          <td>{{ desc or '-' }}</td>
+          <td title="{{ rec.kind or '' }}">{{ rec.kind or '-' }}</td>
           <td title="{{ ds_raw }}">{{ ds_label }}</td>
           <td><a href="/search/view/{{ rec.id }}">View Details</a></td>
-          <td title="{{ rec.id }}">{{ rec.id or '—' }}</td>
+          <td title="{{ rec.id }}">{{ rec.id or '-' }}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -377,7 +377,7 @@
         {% set gp50 = (vmap.get('Gas.P50') or []) %}{% if gp50|length > gi %}{% set volns.g50 = gp50[gi]|float %}{% set volns.has_g50 = true %}{% endif %}
         {% set gp90 = (vmap.get('Gas.P90') or []) %}{% if gp90|length > gi %}{% set volns.g90 = gp90[gi]|float %}{% set volns.has_g90 = true %}{% endif %}
       {% else %}
-        {# No grand total row — sum only non-TOTAL rows to avoid double-counting #}
+        {# No grand total row - sum only non-TOTAL rows to avoid double-counting #}
         {% for i in range(nrows) %}
           {% set z = (zones[i]|string if zones|length > i else '') %}
           {% set s = (seg_ids[i]|string if seg_ids|length > i else '') %}
@@ -420,12 +420,12 @@
           <section class="section-card">
             <h5>Overview</h5>
             <div class="mini-grid">
-              <div class="k">Name</div><div>{{ name or '—' }}</div>
-              <div class="k">Description</div><div>{{ (rec.data or {}).get('Description') or '—' }}</div>
-              <div class="k">Kind</div><div>{{ rec.kind or '—' }}</div>
-              <div class="k">ID</div><div>{{ rec.id or '—' }}</div>
-              <div class="k">Version</div><div>{{ rec.version if rec.version is not none else '—' }}</div>
-              <div class="k">ParentObjectID</div><div>{{ (rec.data or {}).get('ParentObjectID') or '—' }}</div>
+              <div class="k">Name</div><div>{{ name or '-' }}</div>
+              <div class="k">Description</div><div>{{ (rec.data or {}).get('Description') or '-' }}</div>
+              <div class="k">Kind</div><div>{{ rec.kind or '-' }}</div>
+              <div class="k">ID</div><div>{{ rec.id or '-' }}</div>
+              <div class="k">Version</div><div>{{ rec.version if rec.version is not none else '-' }}</div>
+              <div class="k">ParentObjectID</div><div>{{ (rec.data or {}).get('ParentObjectID') or '-' }}</div>
             </div>
           </section>
 
@@ -441,7 +441,7 @@
             </div>
             <div class="sources-body">
               {% if ds_uri %}
-              <div style="margin-bottom:.35rem;font-size:.85rem;color:#4a5568;">EML URI — use this to address the dataspace in ETP / RESQML clients:</div>
+              <div style="margin-bottom:.35rem;font-size:.85rem;color:#4a5568;">EML URI - use this to address the dataspace in ETP / RESQML clients:</div>
               <div class="eml-block" id="eml-uri-{{ rec_index }}">
                 {{ ds_uri }}
                 <button class="eml-copy-btn" onclick="navigator.clipboard.writeText('{{ ds_uri }}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" type="button">Copy</button>
@@ -518,23 +518,23 @@
               <div class="bd-meta-grid">
                 <div class="bd-meta-item">
                   <div class="bd-label">Project</div>
-                  <div class="bd-value">{{ (rec.data or {}).get('ProjectName') or '—' }}</div>
+                  <div class="bd-value">{{ (rec.data or {}).get('ProjectName') or '-' }}</div>
                 </div>
                 <div class="bd-meta-item">
                   <div class="bd-label">Decision Gate</div>
-                  <div class="bd-value">{{ ((rec.data or {}).get('DecisionLevelID') or '—').split(':')[-2] if ':' in ((rec.data or {}).get('DecisionLevelID') or '') else (rec.data or {}).get('DecisionLevelID') or '—' }}</div>
+                  <div class="bd-value">{{ ((rec.data or {}).get('DecisionLevelID') or '-').split(':')[-2] if ':' in ((rec.data or {}).get('DecisionLevelID') or '') else (rec.data or {}).get('DecisionLevelID') or '-' }}</div>
                 </div>
                 <div class="bd-meta-item">
                   <div class="bd-label">Status</div>
-                  <div class="bd-value">{{ ((rec.data or {}).get('ApprovalStatusID') or '—').split(':')[-2] if ':' in ((rec.data or {}).get('ApprovalStatusID') or '') else (rec.data or {}).get('ApprovalStatusID') or '—' }}</div>
+                  <div class="bd-value">{{ ((rec.data or {}).get('ApprovalStatusID') or '-').split(':')[-2] if ':' in ((rec.data or {}).get('ApprovalStatusID') or '') else (rec.data or {}).get('ApprovalStatusID') or '-' }}</div>
                 </div>
                 <div class="bd-meta-item">
                   <div class="bd-label">Decision Date</div>
-                  <div class="bd-value">{{ (rec.data or {}).get('DecisionDate') or '—' }}</div>
+                  <div class="bd-value">{{ (rec.data or {}).get('DecisionDate') or '-' }}</div>
                 </div>
                 <div class="bd-meta-item">
                   <div class="bd-label">Due Date</div>
-                  <div class="bd-value">{{ (rec.data or {}).get('DecisionDueDate') or '—' }}</div>
+                  <div class="bd-value">{{ (rec.data or {}).get('DecisionDueDate') or '-' }}</div>
                 </div>
                 {% if ext_eq.get('DevelopmentConcept') %}
                 {% set dcon = ext_eq.get('DevelopmentConcept') %}
@@ -571,9 +571,9 @@
                 <div class="bd-kpi oil">
                   <div class="bd-kpi-label">STOIIP Total</div>
                   <div class="bd-kpi-stat">
-                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{% set v = gtot.get('Oil.P90') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
-                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{% set v = gtot.get('Oil.P50') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
-                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{% set v = gtot.get('Oil.P10') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
+                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{% set v = gtot.get('Oil.P90') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
+                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{% set v = gtot.get('Oil.P50') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
+                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{% set v = gtot.get('Oil.P10') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
                   </div>
                   <div class="bd-kpi-pct" style="margin-top:.2rem">MSm³</div>
                 </div>
@@ -582,9 +582,9 @@
                 <div class="bd-kpi gas">
                   <div class="bd-kpi-label">Recoverable Oil</div>
                   <div class="bd-kpi-stat">
-                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{% set v = gls_unc.get('Recoverable.P90') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
-                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{% set v = gls_unc.get('Recoverable.P50') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
-                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{% set v = gls_unc.get('Recoverable.P10') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
+                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{% set v = gls_unc.get('Recoverable.P90') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
+                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{% set v = gls_unc.get('Recoverable.P50') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
+                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{% set v = gls_unc.get('Recoverable.P10') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
                   </div>
                   <div class="bd-kpi-pct" style="margin-top:.2rem">MSm³</div>
                 </div>
@@ -593,9 +593,9 @@
                 <div class="bd-kpi total">
                   <div class="bd-kpi-label">Recovery Factor</div>
                   <div class="bd-kpi-stat">
-                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{{ gls_unc.get('RecoveryFactor.P90', '—') }}%</div></div>
-                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{{ gls_unc.get('RecoveryFactor.P50', '—') }}%</div></div>
-                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{{ gls_unc.get('RecoveryFactor.P10', '—') }}%</div></div>
+                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{{ gls_unc.get('RecoveryFactor.P90', '-') }}%</div></div>
+                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{{ gls_unc.get('RecoveryFactor.P50', '-') }}%</div></div>
+                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{{ gls_unc.get('RecoveryFactor.P10', '-') }}%</div></div>
                   </div>
                 </div>
                 {% endif %}
@@ -604,9 +604,9 @@
                 <div class="bd-kpi {{ loop.cycle('gas','total','oil') }}">
                   <div class="bd-kpi-label">{{ sname }}</div>
                   <div class="bd-kpi-stat">
-                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{% set v = svals.get('Oil.P90') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
-                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{% set v = svals.get('Oil.P50') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
-                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{% set v = svals.get('Oil.P10') %}{{ '%.2f'|format(v/1000000) if v is not none else '—' }}</div></div>
+                    <div><div class="bd-kpi-pct">P90</div><div class="bd-kpi-num">{% set v = svals.get('Oil.P90') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
+                    <div><div class="bd-kpi-pct">P50</div><div class="bd-kpi-num">{% set v = svals.get('Oil.P50') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
+                    <div><div class="bd-kpi-pct">P10</div><div class="bd-kpi-num">{% set v = svals.get('Oil.P10') %}{{ '%.2f'|format(v/1000000) if v is not none else '-' }}</div></div>
                   </div>
                   <div class="bd-kpi-pct" style="margin-top:.2rem">MSm³</div>
                 </div>
@@ -685,7 +685,7 @@
 
               {% if dcon.get('Summary') %}<div style="font-size:.85rem;color:#4a5568;line-height:1.45;margin-bottom:.5rem;">{{ dcon.get('Summary') }}</div>{% endif %}
 
-              {# — Facility Concept — #}
+              {# - Facility Concept - #}
               {% if fac %}
               <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.5rem 0 .2rem;">Facility Concept</div>
               <div class="bd-devcon-grid">
@@ -724,7 +724,7 @@
               </div>
               {% endif %}
 
-              {# — Well Plan — #}
+              {# - Well Plan - #}
               {% if wp %}
               <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Well Plan</div>
               <div class="bd-devcon-grid">
@@ -750,7 +750,7 @@
               </div>
               {% endif %}
 
-              {# — Drainage Strategy — #}
+              {# - Drainage Strategy - #}
               {% if ds %}
               <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Drainage Strategy</div>
               <div class="bd-devcon-grid">
@@ -763,7 +763,7 @@
                 {% if ds.get('DevelopmentPhases') %}
                 <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Phases</div><div class="bd-value" style="display:flex;gap:.6rem;flex-wrap:wrap;">
                   {% for ph in ds.get('DevelopmentPhases') %}
-                  <span><strong>{{ ph.get('Phase', '') }}</strong>: {{ ph.get('Description', '') }}{% if ph.get('Wells') %} ({{ ph.get('Wells') }} wells){% endif %}{% if ph.get('StartDate') %} — {{ ph.get('StartDate') }}{% endif %}</span>
+                  <span><strong>{{ ph.get('Phase', '') }}</strong>: {{ ph.get('Description', '') }}{% if ph.get('Wells') %} ({{ ph.get('Wells') }} wells){% endif %}{% if ph.get('StartDate') %} - {{ ph.get('StartDate') }}{% endif %}</span>
                   {% endfor %}
                 </div></div>
                 {% endif %}
@@ -773,7 +773,7 @@
               </div>
               {% endif %}
 
-              {# — Reservoir Target — #}
+              {# - Reservoir Target - #}
               {% if rtgt %}
               <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Reservoir Target</div>
               <div class="bd-devcon-grid">
@@ -792,7 +792,7 @@
               </div>
               {% endif %}
 
-              {# — Production Technology — #}
+              {# - Production Technology - #}
               {% if pt %}
               <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Production Technology</div>
               <div class="bd-devcon-grid">
@@ -909,8 +909,8 @@
               <div class="bd-section-title">Schedule</div>
               <div class="bd-schedule">
                 {% for st in act_states if st is mapping %}
-                <div class="sched-ms">{{ st.get('Remark') or '—' }}</div>
-                <div class="sched-date">{{ st.get('EffectiveDateTime') or '—' }}</div>
+                <div class="sched-ms">{{ st.get('Remark') or '-' }}</div>
+                <div class="sched-date">{{ st.get('EffectiveDateTime') or '-' }}</div>
                 {% set st_raw = st.get('ActivityStatusID', '') %}
                 {% set st_label = st_raw.split(':')[-2] if ':' in st_raw else (st_raw or 'Planned') %}
                 <div class="sched-status {{ st_label | lower }}">{{ st_label }}</div>
@@ -920,9 +920,9 @@
               <div class="bd-section-title">Schedule</div>
               <div class="bd-schedule">
                 {% for ms in sched if ms is mapping %}
-                <div class="sched-ms">{{ ms.get('Milestone') or '—' }}</div>
-                <div class="sched-date">{{ ms.get('Date') or '—' }}</div>
-                <div class="sched-status {{ (ms.get('Status') or 'planned') | lower }}">{{ ms.get('Status') or '—' }}</div>
+                <div class="sched-ms">{{ ms.get('Milestone') or '-' }}</div>
+                <div class="sched-date">{{ ms.get('Date') or '-' }}</div>
+                <div class="sched-status {{ (ms.get('Status') or 'planned') | lower }}">{{ ms.get('Status') or '-' }}</div>
                 {% endfor %}
               </div>
               {% endif %}
@@ -997,33 +997,33 @@
                     {% if stoiip %}
                     <tr style="border-bottom:1px solid #f7fafc;">
                       <td style="padding:.25rem .4rem;">STOIIP (MSm³)</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ stoiip.get('P90', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ stoiip.get('REF') or stoiip.get('P50', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ stoiip.get('P10', '—') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ stoiip.get('P90', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ stoiip.get('REF') or stoiip.get('P50', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ stoiip.get('P10', '-') }}</td>
                     </tr>
                     {% endif %}
                     {% if tstoiip %}
                     <tr style="border-bottom:1px solid #f7fafc;">
                       <td style="padding:.25rem .4rem;">Target STOIIP (MSm³)</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ tstoiip.get('P90', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ tstoiip.get('REF') or tstoiip.get('P50', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ tstoiip.get('P10', '—') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ tstoiip.get('P90', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ tstoiip.get('REF') or tstoiip.get('P50', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ tstoiip.get('P10', '-') }}</td>
                     </tr>
                     {% endif %}
                     {% if recov %}
                     <tr style="border-bottom:1px solid #f7fafc;">
                       <td style="padding:.25rem .4rem;">Recoverable (MSm³)</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ recov.get('P90', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ recov.get('REF') or recov.get('P50', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ recov.get('P10', '—') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ recov.get('P90', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ recov.get('REF') or recov.get('P50', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ recov.get('P10', '-') }}</td>
                     </tr>
                     {% endif %}
                     {% if rf %}
                     <tr>
                       <td style="padding:.25rem .4rem;">Recovery Factor (%)</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ rf.get('P90', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ rf.get('REF') or rf.get('P50', '—') }}</td>
-                      <td style="text-align:right;padding:.25rem .4rem;">{{ rf.get('P10', '—') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ rf.get('P90', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ rf.get('REF') or rf.get('P50', '-') }}</td>
+                      <td style="text-align:right;padding:.25rem .4rem;">{{ rf.get('P10', '-') }}</td>
                     </tr>
                     {% endif %}
                   </tbody>
@@ -1083,7 +1083,7 @@
                 {% for p in personnel %}
                 <div class="bd-meta-item">
                   <div class="bd-label">{{ p.get('ProjectRoleID', '').split(':')[-2] | replace('_', ' ') if p.get('ProjectRoleID') and ':' in p.get('ProjectRoleID', '') else 'Author' }}</div>
-                  <div class="bd-value">{{ p.get('Name') or '—' }}</div>
+                  <div class="bd-value">{{ p.get('Name') or '-' }}</div>
                   {% if p.get('Organisation') %}<div style="font-size:.75rem;color:#a0aec0;">{{ p.get('Organisation') }}</div>{% endif %}
                 </div>
                 {% endfor %}
@@ -1091,7 +1091,7 @@
                 {% for a in authors %}
                 <div class="bd-meta-item">
                   <div class="bd-label">{{ a.get('Role') or 'Author' }}</div>
-                  <div class="bd-value">{{ a.get('Name') or '—' }}</div>
+                  <div class="bd-value">{{ a.get('Name') or '-' }}</div>
                   {% if a.get('Organisation') %}<div style="font-size:.75rem;color:#a0aec0;">{{ a.get('Organisation') }}</div>{% endif %}
                 </div>
                 {% endfor %}
@@ -1117,7 +1117,7 @@
                 {% for o in d_owners %}
                 <div class="bd-meta-item" style="border-left:2px solid #d69e2e;">
                   <div class="bd-label">Decision Owner</div>
-                  <div class="bd-value">{{ o.get('Name') or '—' }}</div>
+                  <div class="bd-value">{{ o.get('Name') or '-' }}</div>
                   {% if o.get('Organisation') %}<div style="font-size:.75rem;color:#a0aec0;">{{ o.get('Organisation') }}</div>{% endif %}
                 </div>
                 {% endfor %}
@@ -1130,7 +1130,7 @@
                 {% set c_color = '#90cdf4' if 'QA' in c_org else '#e2e8f0' %}
                 <div class="bd-meta-item" style="border-left:2px solid {{ c_color }};">
                   <div class="bd-label">{{ c_role }}</div>
-                  <div class="bd-value">{{ c.get('Name') or '—' }}</div>
+                  <div class="bd-value">{{ c.get('Name') or '-' }}</div>
                   {% if c_org %}<div style="font-size:.75rem;color:#a0aec0;">{{ c_org }}</div>{% endif %}
                 </div>
                 {% endfor %}
@@ -1185,7 +1185,7 @@
                 </div>
                 {% endif %}
 
-                {# Activity Parameters — grouped by role #}
+                {# Activity Parameters - grouped by role #}
                 {% set act_params = bd_act.get('Parameters') or [] %}
                 {% set act_labels = bd_act.get('param_labels') or {} %}
                 {% if act_params %}
@@ -1276,10 +1276,10 @@
                     {% endif %}
                   </div>
                   {% elif bd_maps %}
-                  {# No existing outputs but hero depth-surface discovered — show standalone #}
+                  {# No existing outputs but hero depth-surface discovered - show standalone #}
                   <div style="background:#f0fff4;border-radius:6px;padding:.5rem;">
                     {% set hero_act2 = bd_maps[0] %}
-                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Output — Depth Surface</div>
+                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Output - Depth Surface</div>
                     <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
                       <span style="font-weight:500;">{{ hero_act2.title }}</span>
                       <div style="font-size:.72rem;word-break:break-all;">
@@ -1612,18 +1612,18 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
                 <tr{% if rit.total %} class="vol-total-row"{% endif %}>
                   {% for h in headers %}
                     {% set col_vals = vmap.get(h) or [] %}
-                    <td>{% if (col_vals|length) > i %}{{ col_vals[i] }}{% else %}—{% endif %}</td>
+                    <td>{% if (col_vals|length) > i %}{{ col_vals[i] }}{% else %}-{% endif %}</td>
                   {% endfor %}
                 </tr>
                 {% endfor %}
-                <tr class="vol-ellipsis-row"><td colspan="{{ headers|length }}" style="text-align:center;color:#a0aec0;font-size:.82rem;padding:.35rem;">… {{ nrows - 4 }} more rows — click <em>Expand Table</em> to see all</td></tr>
+                <tr class="vol-ellipsis-row"><td colspan="{{ headers|length }}" style="text-align:center;color:#a0aec0;font-size:.82rem;padding:.35rem;">… {{ nrows - 4 }} more rows - click <em>Expand Table</em> to see all</td></tr>
                 {# Always show grand total row (last row) in preview #}
                 {% if volns.grand_idx >= 0 %}
                 {% set gi = volns.grand_idx %}
                 <tr class="vol-total-row vol-grand-total">
                   {% for h in headers %}
                     {% set col_vals = vmap.get(h) or [] %}
-                    <td>{% if (col_vals|length) > gi %}{{ col_vals[gi] }}{% else %}—{% endif %}</td>
+                    <td>{% if (col_vals|length) > gi %}{{ col_vals[gi] }}{% else %}-{% endif %}</td>
                   {% endfor %}
                 </tr>
                 {% endif %}
@@ -1637,7 +1637,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
                 <tr{% if rit.total %} class="vol-total-row"{% endif %}>
                   {% for h in headers %}
                     {% set col_vals = vmap.get(h) or [] %}
-                    <td>{% if (col_vals|length) > i %}{{ col_vals[i] }}{% else %}—{% endif %}</td>
+                    <td>{% if (col_vals|length) > i %}{{ col_vals[i] }}{% else %}-{% endif %}</td>
                   {% endfor %}
                 </tr>
                 {% endfor %}
@@ -1710,15 +1710,15 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
                 {% for yr in prod_years %}
                 <tr>
                   <td>{{ yr }}</td>
-                  <td>{{ pp_wells[loop.index0] if pp_wells|length > loop.index0 else '—' }}</td>
-                  <td>{{ pp_injwells[loop.index0] if pp_injwells|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.0f' | format(pp_oil[loop.index0]) if pp_oil|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.0f' | format(pp_gas[loop.index0]) if pp_gas|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.0f' | format(pp_water[loop.index0]) if pp_water|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.0f' | format(pp_inj[loop.index0]) if pp_inj|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.0f' | format(pp_cum[loop.index0]) if pp_cum|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.1f' | format(pp_fpr[loop.index0]) if pp_fpr|length > loop.index0 else '—' }}</td>
-                  <td>{{ '%.3f' | format(pp_wcut[loop.index0]) if pp_wcut|length > loop.index0 else '—' }}</td>
+                  <td>{{ pp_wells[loop.index0] if pp_wells|length > loop.index0 else '-' }}</td>
+                  <td>{{ pp_injwells[loop.index0] if pp_injwells|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.0f' | format(pp_oil[loop.index0]) if pp_oil|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.0f' | format(pp_gas[loop.index0]) if pp_gas|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.0f' | format(pp_water[loop.index0]) if pp_water|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.0f' | format(pp_inj[loop.index0]) if pp_inj|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.0f' | format(pp_cum[loop.index0]) if pp_cum|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.1f' | format(pp_fpr[loop.index0]) if pp_fpr|length > loop.index0 else '-' }}</td>
+                  <td>{{ '%.3f' | format(pp_wcut[loop.index0]) if pp_wcut|length > loop.index0 else '-' }}</td>
                 </tr>
                 {% endfor %}
               </table>
@@ -1825,7 +1825,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
         .catch(function(err) {
           clearTimeout(timer);
           if (err.name === 'AbortError') {
-            status.textContent = 'Timed out after 90s — try from the Resources page with lower DPI.';
+            status.textContent = 'Timed out after 90s - try from the Resources page with lower DPI.';
           } else {
             status.textContent = 'Map failed: ' + err.message;
           }
@@ -1925,7 +1925,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
         controlsHTML += '</div>';
 
         modal.innerHTML = '<button class="vol-modal-close" onclick="closeVolModal()" title="Close">&times;</button>'
-          + '<h4>Volume Histogram — per Segment</h4>'
+          + '<h4>Volume Histogram - per Segment</h4>'
           + controlsHTML
           + '<div class="vol-chart-wrap"><canvas id="volHistCanvas"></canvas></div>';
 
@@ -1990,7 +1990,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
               interaction: { mode: 'index', intersect: false },
               plugins: {
                 legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
-                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toLocaleString(undefined, {maximumFractionDigits: 2}) : '—') } }
+                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toLocaleString(undefined, {maximumFractionDigits: 2}) : '-') } }
               },
               scales: {
                 x: {
@@ -2043,10 +2043,10 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
         const headers = ths.map(th => th.textContent.trim());
         if (!headers.length) return;
 
-        // We need the full data — read from the Jinja-embedded data attributes
+        // We need the full data - read from the Jinja-embedded data attributes
         // Actually, the preview table only has 3 rows. We'll rebuild from the hidden full data.
         // Strategy: find ALL vol-data-table rows (skip ellipsis), but full data is in the DOM
-        //   We'll use a data attribute approach — embed full JSON in a hidden element.
+        //   We'll use a data attribute approach - embed full JSON in a hidden element.
         //   Simpler: the full data is available in the hidden sibling.
         // Best approach: clone the preview table and populate from data attributes.
 
@@ -2066,7 +2066,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
         modal.className = 'vol-modal';
 
         let h = '<button class="vol-modal-close" onclick="closeVolModal()" title="Close">&times;</button>';
-        h += '<h4>Volume Table — ' + fullData.rows.length + ' rows</h4>';
+        h += '<h4>Volume Table - ' + fullData.rows.length + ' rows</h4>';
         h += '<div style="margin-bottom:.5rem;display:flex;gap:.5rem;align-items:center;"><input type="text" id="volTblFilter" placeholder="Filter rows…" style="flex:1;max-width:20rem;font-size:.85rem;padding:.25rem .5rem;border:1px solid #cbd5e0;border-radius:4px;"><button type="button" class="btn-vol-expand" onclick="copyVolTableCSV()" title="Copy as CSV">📋 Copy CSV</button></div>';
         h += '<div class="table-scroll" style="max-height:60vh;overflow:auto;"><table class="vol-data-table" id="volFullTable">';
         h += '<tr>' + fullData.headers.map(hd => '<th>' + hd + '</th>').join('') + '</tr>';
@@ -2079,7 +2079,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
             if (keySet.has(hd) && String(row[ci]) !== 'TOTAL') isGrand = false;
           });
           const cls = (isTotal && isGrand) ? ' class="vol-grand-total"' : isTotal ? ' class="vol-total-row"' : '';
-          h += '<tr' + cls + '>' + row.map(v => '<td>' + (v != null ? v : '—') + '</td>').join('') + '</tr>';
+          h += '<tr' + cls + '>' + row.map(v => '<td>' + (v != null ? v : '-') + '</td>').join('') + '</tr>';
         });
         h += '</table></div>';
 

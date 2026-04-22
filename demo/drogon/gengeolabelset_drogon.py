@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gengeolabelset_drogon.py — Generate a GeoLabelSet record derived from the
+gengeolabelset_drogon.py - Generate a GeoLabelSet record derived from the
 statistics REV manifest.
 
 Volumes are extracted from the per-segment TOTAL rows of the stat REV
@@ -9,8 +9,8 @@ and stored in m³ (consistent with REV).  Petro-physical properties are
 synthetic but realistic for the Drogon model.
 
 Reads:
-  manifest_wpcstat_drogon.json   — stat REV manifest (corrected TOTALs)
-  manifest_masterwp_drogon.json  — for Reservoir ID, ACL, legal
+  manifest_wpcstat_drogon.json   - stat REV manifest (corrected TOTALs)
+  manifest_masterwp_drogon.json  - for Reservoir ID, ACL, legal
 
 Output:
   Overwrites the existing GeoLabelSet record file in records/
@@ -192,7 +192,7 @@ def build_geolabelset(
         "acl":  acl,
         "legal": legal,
         "data": {
-            "Name": f"Drogon Valysar — GeoLabelSet ({gate_name})",
+            "Name": f"Drogon Valysar - GeoLabelSet ({gate_name})",
             "Description": (
                 f"GeoLabelSet for {gate_name}, derived from stat REV. "
                 "All volumes in m³. Includes per-segment Oil P10/P50/P90, "

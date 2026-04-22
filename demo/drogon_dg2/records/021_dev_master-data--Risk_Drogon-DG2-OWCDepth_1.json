@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon DG2 — Fluid contact depth uncertainty",
+    "Name": "Drogon DG2 - Fluid contact depth uncertainty",
     "Summary": "Free water level and gas–oil contact depths are uncertain across the 7 fault-bounded reservoir regions, directly impacting STOIIP.",
     "Description": "FWL Central = UNIFORM(1672, 1682) m, FWL NorthHorst = UNIFORM(1655, 1665) m, GOC NorthHorst = UNIFORM(1635, 1645) m (from global_variables.dist). The 10 m uncertainty range in each region translates to ~8–12 % STOIIP uncertainty per segment. Combined effect: P90–P10 range of ~25 MSm³ total oil in place. NorthHorst GOC is particularly critical as it controls the gas cap volume and associated-gas recovery. Sensitivity analysis shows FWL_CENTRAL and FWL_NORTH_HORST are top 3 STOIIP drivers.",
     "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",

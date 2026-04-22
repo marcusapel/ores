@@ -11,7 +11,7 @@ Split the raw Valysar uncertainty‑volume CSV into two OSDU‑canonical CSVs:
 Column names follow OSDU canonical conventions:
   - Volume property names  = ReservoirEstimatedVolumePropertyType codes
       (Bulk, Pore, HydrocarbonPore, Oil, Gas, AssociatedGas …)
-  - Unit (Sm³ / m³) is NOT in the column name — it is defined per property
+  - Unit (Sm³ / m³) is NOT in the column name - it is defined per property
     in the OSDU reference data (UnitOfMeasureID).
   - Key columns use OSDU entity names: RealizationID, ZoneID, SegmentID, FaciesID.
 

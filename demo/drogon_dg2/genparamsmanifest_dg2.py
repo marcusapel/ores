@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genparamsmanifest_dg2.py — Generate DG2 ColumnBasedTable manifest from
+genparamsmanifest_dg2.py - Generate DG2 ColumnBasedTable manifest from
 DG1 valysar_parameters.csv with porosity columns scaled by 0.8.
 
 Reads DG1 CSVs and master data, produces new WPC with DG2-specific UUID.
@@ -155,7 +155,7 @@ def main():
         "acl":   acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon Valysar — DG2 Input Parameters (porosity revised ×0.8)",
+            "Name": "Drogon Valysar - DG2 Input Parameters (porosity revised ×0.8)",
             "Description": (
                 "DG2 per-realisation input parameters for the Valysar zone. "
                 "Porosity values revised downward by factor 0.8 compared to DG1 "

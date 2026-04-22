@@ -142,7 +142,7 @@ def _patch_epc_uuids(epc_path: pathlib.Path, uuid_map: dict[str, str]):
 def _patch_h5_uuids(h5_path: pathlib.Path, uuid_map: dict[str, str]):
     """Rename HDF5 groups whose names contain old UUIDs to use new UUIDs.
 
-    resqpy stores data under ``RESQML/<uuid>/...`` — this renames those groups.
+    resqpy stores data under ``RESQML/<uuid>/...`` - this renames those groups.
     """
     import h5py
 
@@ -650,7 +650,7 @@ def build_activity_epc(params_uuid, raw_vol_uuid, stat_vol_uuid) -> pathlib.Path
     # UUID matches the OSDU Activity record (gen_activity_drogon.py).
     _add_activity(
         model, tmpl,
-        title="Drogon Valysar — DG1 Volumetrics Workflow Run",
+        title="Drogon Valysar - DG1 Volumetrics Workflow Run",
         act_uuid=ACT_UUID,
         input_ref={
             "key": "InputParameters",
@@ -658,7 +658,7 @@ def build_activity_epc(params_uuid, raw_vol_uuid, stat_vol_uuid) -> pathlib.Path
             "uuid": params_uuid,
             "content_type": "obj_Grid2dRepresentation",
         },
-        process_title="RMS DecisionExample — Drogon Valysar (3 realisations: Base / Low / High)",
+        process_title="RMS DecisionExample - Drogon Valysar (3 realisations: Base / Low / High)",
         output_ref={
             "key": "OutputVolumes",
             "title": "Drogon Valysar RAW Volumes",

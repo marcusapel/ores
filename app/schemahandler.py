@@ -97,7 +97,7 @@ def extract_osdu_links(data_block: Dict[str, Any]) -> List[Dict[str, Any]]:
         if isinstance(c, str) and _looks_like_osdu_id(c):
             links.append({"id": c, "role": "ancestry-child", "source_path": "ancestry.children"})
 
-    # generic walk across all properties — skip 'ancestry' (handled above)
+    # generic walk across all properties - skip 'ancestry' (handled above)
     for k, v in data_block.items():
         if k == "ancestry":
             continue
@@ -183,7 +183,7 @@ def extract_metadata_generic(
         }
     )
 
-    # Identity pairs (added first — no duplication with curated_keys below)
+    # Identity pairs (added first - no duplication with curated_keys below)
     pairs: List[Dict[str, Any]] = [
         {"name": "Title", "value": title},
         {"name": "UUID", "value": uuid},

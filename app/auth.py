@@ -32,7 +32,7 @@ TENANT = os.getenv("AZURE_TENANT_ID", "") or os.getenv("INSTANCE_EQNDEV_TENANT_I
 CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "") or os.getenv("INSTANCE_EQNDEV_CLIENT_ID", "")
 SCOPES = (os.getenv("AZURE_SCOPE", "") or os.getenv("INSTANCE_EQNDEV_SCOPE", "openid offline_access")).split()
 
-# SMDA API resource App ID (audience) — used by az CLI to mint tokens.
+# SMDA API resource App ID (audience) - used by az CLI to mint tokens.
 SMDA_CLIENT_ID = os.getenv("SMDA_CLIENT_ID", "")
 
 AUTH_BASE = f"https://login.microsoftonline.com/{TENANT}/oauth2/v2.0"
@@ -55,7 +55,7 @@ PUBLIC_PATHS: set[str] = {"/login", "/login-page",
                           "/auth/callback", "/auth", "/logout"}
 
 # ─────────────────────────────────────────────────────────────
-# Mode 1 — shared env token
+# Mode 1 - shared env token
 # ─────────────────────────────────────────────────────────────
 _cached_env_token: Dict[str, Any] = {}
 _cached_env_token_exp: float = 0.0
@@ -99,7 +99,7 @@ async def tokens_from_env() -> Optional[Dict[str, Any]]:
 
 
 # ─────────────────────────────────────────────────────────────
-# Mode 2 — per-user PKCE login (Authorization Code + PKCE)
+# Mode 2 - per-user PKCE login (Authorization Code + PKCE)
 # ─────────────────────────────────────────────────────────────
 
 def _build_redirect_uri(request: Request) -> str:
@@ -126,7 +126,7 @@ async def login(request: Request):
     login_scopes = list(SCOPES)
     if "offline_access" not in login_scopes:
         login_scopes.append("offline_access")
-        log.warning("offline_access missing from SCOPES — added for PKCE login")
+        log.warning("offline_access missing from SCOPES - added for PKCE login")
 
     async with AsyncOAuth2Client(
         client_id=CLIENT_ID,
@@ -152,7 +152,7 @@ async def auth_callback(request: Request):
 
     expected_state = request.session.get("pkce_state")
     if state != expected_state:
-        return JSONResponse({"error": "State mismatch — possible CSRF"}, status_code=400)
+        return JSONResponse({"error": "State mismatch - possible CSRF"}, status_code=400)
 
     code_verifier = request.session.get("pkce_verifier", "")
     redirect_uri = request.session.get("redirect_uri", _build_redirect_uri(request))
@@ -270,12 +270,12 @@ async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
         log.info("Minted AT from stored RT for oid=%s inst=%s", oid[:8], instance_name)
         return {"access_token": new_at}
     except Exception as e:
-        log.warning("Session refresh failed: %s — redirecting to login", e)
+        log.warning("Session refresh failed: %s - redirecting to login", e)
         return None
 
 
 # ─────────────────────────────────────────────────────────────
-# SMDA token  (separate audience — uses session SMDA refresh token)
+# SMDA token  (separate audience - uses session SMDA refresh token)
 # ─────────────────────────────────────────────────────────────
 
 async def smda_access_token(request: Request) -> Optional[str]:
@@ -301,7 +301,7 @@ async def smda_access_token(request: Request) -> Optional[str]:
         _smda_cached_exp = result["exp"]
         return result["access_token"]
 
-    log.debug("No SMDA token available — run 'az login'")
+    log.debug("No SMDA token available - run 'az login'")
     return None
 
 
@@ -342,7 +342,7 @@ async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
         log.info("Got SMDA token via az CLI (expires %s)", data.get("expiresOn", "?"))
         return {"access_token": at, "exp": exp}
     except FileNotFoundError:
-        log.debug("az CLI not found — skipping az token strategy")
+        log.debug("az CLI not found - skipping az token strategy")
     except asyncio.TimeoutError:
         log.warning("az CLI timed out getting SMDA token")
     except Exception as e:

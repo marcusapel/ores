@@ -1,8 +1,8 @@
 """
-app/instances.py — Multi-instance OSDU configuration.
+app/instances.py - Multi-instance OSDU configuration.
 
 Every instance is defined by env vars with the pattern INSTANCE_<NAME>_<KEY>.
-There is no special "default" instance — eqndev (or whatever DEFAULT_INSTANCE
+There is no special "default" instance - eqndev (or whatever DEFAULT_INSTANCE
 points to) is loaded with the same INSTANCE_<NAME>_* scanner as every other.
 
 Token strategies (tried in order of preference):
@@ -24,7 +24,7 @@ import httpx
 
 log = logging.getLogger("rddms-admin.instances")
 
-# Lock for instance switching — serialises _apply_instance to prevent
+# Lock for instance switching - serialises _apply_instance to prevent
 # partially-updated module globals during concurrent requests (#8).
 _switch_lock = threading.Lock()
 
@@ -208,7 +208,7 @@ def _load_instances():
         _rt = os.getenv("REFRESH_TOKEN", "") or os.getenv("refresh_token", "")
         hostname = os.getenv("OSDU_BASE_URL", "")
         if hostname:
-            log.warning("No INSTANCE_* env vars found — falling back to legacy "
+            log.warning("No INSTANCE_* env vars found - falling back to legacy "
                         "top-level env vars (OSDU_BASE_URL, AZURE_TENANT_ID, …). "
                         "Please migrate to INSTANCE_<NAME>_* format.")
             legacy = OsduInstance(

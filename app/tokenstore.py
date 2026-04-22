@@ -1,5 +1,5 @@
 """
-app/tokenstore.py — Persistent per-user refresh-token store.
+app/tokenstore.py - Persistent per-user refresh-token store.
 
 Security features:
   • Refresh tokens are **encrypted at rest** using Fernet symmetric
@@ -48,12 +48,12 @@ def _get_fernet():
         from cryptography.fernet import Fernet
         key = os.getenv("SECRET_KEY", "")
         if not key:
-            log.warning("SECRET_KEY not set — token encryption uses empty key (INSECURE)")
+            log.warning("SECRET_KEY not set - token encryption uses empty key (INSECURE)")
             key = "insecure-default"
         dk = hashlib.sha256(key.encode()).digest()
         _fernet = Fernet(base64.urlsafe_b64encode(dk))
     except ImportError:
-        log.warning("cryptography package not installed — tokens stored unencrypted")
+        log.warning("cryptography package not installed - tokens stored unencrypted")
         _fernet = None
     return _fernet
 
@@ -72,7 +72,7 @@ def _decrypt(ciphertext: str) -> Optional[str]:
     try:
         return f.decrypt(ciphertext.encode()).decode()
     except Exception:
-        log.warning("tokenstore: decryption failed (SECRET_KEY changed?) — token invalidated")
+        log.warning("tokenstore: decryption failed (SECRET_KEY changed?) - token invalidated")
         return None
 
 

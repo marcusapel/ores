@@ -18,8 +18,8 @@
     ]
   },
   "data": {
-    "Name": "BaseVolantis Depth — Grid2dRepresentation",
-    "Description": "RDDMS catalog entry for BaseVolantis (Depth) — Grid2dRepresentation 0c6ab8e7-c793-4ab5-a88c-ccf457d9266d in dataspace maap/drogon",
+    "Name": "BaseVolantis Depth - Grid2dRepresentation",
+    "Description": "RDDMS catalog entry for BaseVolantis (Depth) - Grid2dRepresentation 0c6ab8e7-c793-4ab5-a88c-ccf457d9266d in dataspace maap/drogon",
     "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
     "InterpretationName": "BaseVolantis Interpretation",

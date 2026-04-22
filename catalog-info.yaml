@@ -2,7 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: ores
-  description: OSDU/RDDMS UI — search & manage
+  description: OSDU/RDDMS UI - search & manage
   annotations:
     github.com/project-slug: equinor/ores
 spec:

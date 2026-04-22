@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-peek_rddms_grid2d.py — Fetch a Grid2dRepresentation from the Reservoir DDMS
+peek_rddms_grid2d.py - Fetch a Grid2dRepresentation from the Reservoir DDMS
 and display its structure: grid geometry, CRS, Z-value statistics.
 
 This script demonstrates the data that lives *behind* DDMSDatasets[] on an

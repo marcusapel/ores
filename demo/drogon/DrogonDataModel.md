@@ -1,4 +1,4 @@
-# Drogon — OSDU Data Model & Pipeline
+# Drogon - OSDU Data Model & Pipeline
 
 ## Overview
 
@@ -6,7 +6,7 @@ The Drogon use case demonstrates a complete **FMU-to-OSDU** pipeline for
 static in-place reservoir volumes. Starting from a single FMU export CSV
 (`valysar_volumes.csv`), the pipeline generates OSDU-compliant records
 covering master data, work products, volume tables, input parameters,
-activity provenance, risk assessment, and a decision gate — all linked
+activity provenance, risk assessment, and a decision gate - all linked
 through typed references and ancestry.
 
 The result is **17 records** in OSDU Storage that form a self-contained,
@@ -32,8 +32,8 @@ graph TD
 
     subgraph "Work Product Bundle"
         WP["WorkProduct<br/><i>Drogon Reservoir Study</i>"]
-        RAW["REV — RAW<br/><i>per realisation</i>"]
-        STAT["REV — Statistics<br/><i>P10 / P50 / P90</i>"]
+        RAW["REV - RAW<br/><i>per realisation</i>"]
+        STAT["REV - Statistics<br/><i>P10 / P50 / P90</i>"]
         PARAMS["ColumnBasedTable<br/><i>Input Parameters</i>"]
     end
 
@@ -125,14 +125,14 @@ graph TD
 
 The Drogon BD manifest (`manifest_bd_drogon.json`) carries the following `ext.equinor` sections for rich UI rendering:
 
-- **Authors / ReviewTeam** — names and roles
-- **Alternatives** — 3 development concepts with rank, action (Pursue/Monitor/Reject)
-- **DevelopmentConcept** — Subsea tieback, 4 production wells, 2 injectors, FPSO host
-- **ReservoirProperties** — depth, temperature, pressure, porosity, permeability
-- **KeyUncertainties** — reservoir connectivity, OWC depth, aquifer support (with impact ratings)
-- **UncertaintySummary** — P10/P50/P90 STOIIP range, Monte Carlo method
-- **Recommendations** — next-gate action items (generic, not DG-specific)
-- **KeyEconomics** — placeholder (DG1 economics not yet finalised)
+- **Authors / ReviewTeam** - names and roles
+- **Alternatives** - 3 development concepts with rank, action (Pursue/Monitor/Reject)
+- **DevelopmentConcept** - Subsea tieback, 4 production wells, 2 injectors, FPSO host
+- **ReservoirProperties** - depth, temperature, pressure, porosity, permeability
+- **KeyUncertainties** - reservoir connectivity, OWC depth, aquifer support (with impact ratings)
+- **UncertaintySummary** - P10/P50/P90 STOIIP range, Monte Carlo method
+- **Recommendations** - next-gate action items (generic, not DG-specific)
+- **KeyEconomics** - placeholder (DG1 economics not yet finalised)
 
 > **Note:** OSDU only persists 7 registered ext.equinor keys (see `demo/md/BusinessDecision.md` Appendix A). The remaining keys are restored at runtime by the local enrichment overlay in `app/main.py`.
 
@@ -167,22 +167,22 @@ The `ActivityTemplate` declares all parameter slots for the workflow. The
 | Parameter | Role | Value |
 |-----------|------|-------|
 | `InputParameters` | Input (DataObject) | ColumnBasedTable WPC (`d8e4e9ba…`) |
-| `Process` | Input (String) | `"RMS DecisionExample — Drogon Valysar"` |
+| `Process` | Input (String) | `"RMS DecisionExample - Drogon Valysar"` |
 | `NumberOfRealizations` | Input (Integer) | `3` |
 | `Workflow` | Input (String) | `"DecisionExample"` |
 | `Method` | Input (String) | `"User_Defined"` |
 | `ReportTableName` | Input (String) | `"DecisionExample_report"` |
-| `Variables` | Input (String) | JSON — 7 OWC contacts + 3 PHIT facies (Low/Base/High) |
-| `DesignMatrix` | Input (String) | JSON — 3 realisations (Base / Low / High, all correlated) |
+| `Variables` | Input (String) | JSON - 7 OWC contacts + 3 PHIT facies (Low/Base/High) |
+| `DesignMatrix` | Input (String) | JSON - 3 realisations (Base / Low / High, all correlated) |
 | `OutputParameters` | Output (DataObject) | ColumnBasedTable WPC (`d8e4e9ba…`) |
 | `OutputVolumes` | Output (DataObject) | RAW REV WPC (`68f57fdc…`) |
 | `ReportTable` | Output (DataObject) | STAT REV WPC (`0ed7364d…`) |
 
 > The `Variables` and `DesignMatrix` values are taken verbatim from
-> `resqml/obj_Activity_MISSING.xml` — the original RESQML activity descriptor
+> `resqml/obj_Activity_MISSING.xml` - the original RESQML activity descriptor
 > provided by the RMS workflow.
 
-**Design rationale — one Activity, not three:**
+**Design rationale - one Activity, not three:**
 One `ActivityTemplate` + one `Activity` is the correct OSDU pattern for an
 atomic workflow execution. The three *logical* steps (generate parameters →
 run RMS → aggregate statistics) belong in the activity *description*, not
@@ -198,7 +198,7 @@ The BD record is the decision-support hub:
 - `RiskIDs` → Risk record(s)
 
 Previously `PriorActivityIDs` pointed directly to the three WPCs. It now
-points to the Activity, which is the correct OSDU intent — the BD cites *the
+points to the Activity, which is the correct OSDU intent - the BD cites *the
 activity that produced the evidence*, not the evidence artefacts directly.
 
 ### Volume Table Structure
@@ -270,7 +270,7 @@ flowchart LR
 | 5 | `gen_risk_drogon.py` | master + stat manifests | `manifest_risk_drogon.json` (Risk) |
 | 5b | `gen_activity_drogon.py` | master + raw + stat + params manifests | `manifest_activity_drogon.json` (ActivityTemplate + Activity) |
 | 6 | `gen_businessdecision_drogon.py` | all prior manifests incl. activity | `manifest_bd_drogon.json` (BusinessDecision) |
-| 7 | `manifest2records_drogon.py` | 7 manifests + 1 reftype | `records/` — 17 individual JSON files |
+| 7 | `manifest2records_drogon.py` | 7 manifests + 1 reftype | `records/` - 17 individual JSON files |
 | 8 | `ingest_records_batch.py` | `records/*.json` + `.env` | Single batch PUT to OSDU Storage API (auto-fallback to sequential on failure) |
 | 8b | `gen_resqml.py` + `ingest_rddms.ps1` | `records/*.json` | RESQML EPC → Reservoir DDMS via Docker ETP |
 
@@ -306,10 +306,10 @@ the `open-etp-sslclient` Docker image.
 | `resqml/drogon_tables.epc` | 3 × `obj_Grid2dRepresentation` (params, RAW volumes, STAT volumes) + `StringTableLookup` objects for column names/UoMs |
 | `resqml/drogon_activity.epc` | 1 × `obj_ActivityTemplate` + 1 × `obj_Activity` (merged, matching OSDU record UUIDs) |
 
-### RESQML Activity — merged single Activity
+### RESQML Activity - merged single Activity
 
 The EPC carries **one** `obj_ActivityTemplate` and **one** `obj_Activity`
-(same design rationale as the OSDU record — one atomic workflow execution).
+(same design rationale as the OSDU record - one atomic workflow execution).
 
 The Activity parameters mirror the OSDU record exactly, with data-object
 references pointing to the `Grid2dRepresentation` UUIDs in `drogon_tables.epc`:
@@ -317,7 +317,7 @@ references pointing to the `Grid2dRepresentation` UUIDs in `drogon_tables.epc`:
 | Parameter | RESQML type | Value / UUID |
 |-----------|-------------|--------------|
 | `InputParameters` | `DataObjectParameter` | params `Grid2dRepresentation` (`38458cd4…`) |
-| `Process` | `StringParameter` | `"RMS DecisionExample — Drogon Valysar"` |
+| `Process` | `StringParameter` | `"RMS DecisionExample - Drogon Valysar"` |
 | `NumberOfRealizations` | `IntegerQuantityParameter` | `3` |
 | `Workflow` | `StringParameter` | `"DecisionExample"` |
 | `ReportTableName` | `StringParameter` | `"DecisionExample_report"` |
@@ -337,7 +337,7 @@ references pointing to the `Grid2dRepresentation` UUIDs in `drogon_tables.epc`:
 The `obj_ActivityTemplate` UUID in the EPC (`b727ee57…`) and the `obj_Activity`
 UUID (`aea6e528…`) are generated deterministically by `gen_resqml.py`. The
 corresponding OSDU WPC IDs (`aa2791c8…` template, `ead6e342…` activity) are
-generated by `gen_activity_drogon.py` from the same namespace seeds — ensuring
+generated by `gen_activity_drogon.py` from the same namespace seeds - ensuring
 cross-system traceability.
 
 ---
@@ -349,10 +349,10 @@ cross-system traceability.
 | **Ancestry in `data.ancestry`** | Top-level `ancestry` requires numeric timestamp versions (unavailable at generation time). The indexer mirrors `data.ancestry` → `ancestry.*` automatically. |
 | **Single batch PUT for all 17 records** | The OSDU Storage API accepts up to 500 records in one PUT. A single call is far faster than sequential; the script auto-falls back to sequential-with-retry if the batch call fails. |
 | **Two REV WPCs** (raw + stats) | Separates per-realisation detail from P10/P50/P90 summary. Both share the same WorkProduct container and Reservoir context. |
-| **ColumnBasedTable for parameters** | OWC depths and porosity values are per-segment, per-facies, per-realisation — fits the ColumnBasedTable schema (key/value columns with UoM). |
+| **ColumnBasedTable for parameters** | OWC depths and porosity values are per-segment, per-facies, per-realisation - fits the ColumnBasedTable schema (key/value columns with UoM). |
 | **One Activity, not three** | One `ActivityTemplate` + one `Activity` is the correct OSDU pattern for an atomic workflow execution. The three logical steps belong in the description, not in three records. |
 | **BD.PriorActivityIDs → Activity** | The BD cites the *activity that produced the evidence*, not the artefacts directly. The Activity in turn links to all evidence via its output parameters and `ancestry.children`. |
-| **`ReportTableName` vs `ReportTable`** | `ReportTable` as a title was used twice — once for the input string name and once for the output DataObject. Renamed the input slot to `ReportTableName` to avoid the collision. |
+| **`ReportTableName` vs `ReportTable`** | `ReportTable` as a title was used twice - once for the input string name and once for the output DataObject. Renamed the input slot to `ReportTableName` to avoid the collision. |
 | **Human-readable IDs for singletons** | Risk (`Drogon-PorosityAndCementation`) and BD (`Drogon-DG1-Identify`) use descriptive IDs instead of UUIDs since there's one of each. |
 | **Dual ingestion (REST + RDDMS)** | OSDU Storage REST API holds the searchable WPC metadata; Reservoir DDMS holds the RESQML EPC (geometry + tabular data + activity chain) for interoperability with subsurface tools. |
 
@@ -362,8 +362,8 @@ cross-system traceability.
 
 The Record Explorer (`/strat`) provides:
 
-- **Type dropdown** — prepopulated with all Drogon record types
-- **Mermaid relationship graph** — ancestry + data references, colored by type, using Names
-- **Metadata cards** — grouped into Identity, Details, References, Extensions
-- **Table viewer** — renders both `Volumes` and `Table` ColumnBasedTable data with key highlighting and UoM
-- **Clickable links** — OSDU ID references navigate to the linked record
+- **Type dropdown** - prepopulated with all Drogon record types
+- **Mermaid relationship graph** - ancestry + data references, colored by type, using Names
+- **Metadata cards** - grouped into Identity, Details, References, Extensions
+- **Table viewer** - renders both `Volumes` and `Table` ColumnBasedTable data with key highlighting and UoM
+- **Clickable links** - OSDU ID references navigate to the linked record

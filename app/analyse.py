@@ -1,5 +1,5 @@
 """
-Analyse page — Reservoir → BusinessDecision comparison across decision gates.
+Analyse page - Reservoir → BusinessDecision comparison across decision gates.
 
 Provides:
   GET  /analyse              → render the analyse.html template
@@ -34,7 +34,7 @@ def _access_token(request: Request) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Lazy import helpers — main.py owns the enrichment machinery.
+# Lazy import helpers - main.py owns the enrichment machinery.
 # We import at call time to avoid circular imports.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -232,8 +232,8 @@ def _compute_deltas(gates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _risk_topic(name: str) -> str:
-    """Extract the common topic from a risk name (part after ' — ')."""
-    parts = name.split(" — ", 1)
+    """Extract the common topic from a risk name (part after ' - ')."""
+    parts = name.split(" - ", 1)
     return parts[1].strip().lower() if len(parts) > 1 else name.strip().lower()
 
 
@@ -389,7 +389,7 @@ async def analyse_compare(
     # reservoir id (which is embedded in Parameters[].DataObjectParameter)
     # and then filter the results in-memory to ensure the match is real.
 
-    # Build a short search token from the reservoir id — use the UUID
+    # Build a short search token from the reservoir id - use the UUID
     # portion so we don't hit Lucene special-char issues with colons.
     _rid_parts = reservoir_id.split(":")
     # Typical id: dev:master-data--Reservoir:<uuid>:<ver>
@@ -406,7 +406,7 @@ async def analyse_compare(
     gates: List[Dict[str, Any]] = []
     try:
         async with httpx.AsyncClient(timeout=120) as client:
-            # OSDU search (may return false positives — filtered below)
+            # OSDU search (may return false positives - filtered below)
             all_bd_ids: list = []
             try:
                 r = await client.post(search_url, headers=hdr, json=payload)
@@ -450,7 +450,7 @@ async def analyse_compare(
                     )
                     if not refs_reservoir:
                         log.debug(
-                            "[ANALYSE] BD %s does not reference reservoir %s — skipping",
+                            "[ANALYSE] BD %s does not reference reservoir %s - skipping",
                             bid, reservoir_id,
                         )
                         return None

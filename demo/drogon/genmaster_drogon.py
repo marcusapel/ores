@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genmaster_drogon.py — Generate Reservoir + ReservoirSegment MasterData + WorkProduct
+genmaster_drogon.py - Generate Reservoir + ReservoirSegment MasterData + WorkProduct
 for Drogon / Valysar, reading segment names from valysar_volumes.csv.
 
 Output: manifest_masterwp_drogon.json
@@ -45,9 +45,9 @@ SEGMENT_DESCRIPTIONS = {
     "WestLowland":  "Western lowland fault block of the Valysar formation, Drogon field",
     "CentralSouth": "Central-south structural compartment of the Valysar formation, Drogon field",
     "CentralNorth": "Central-north structural compartment of the Valysar formation, Drogon field",
-    "NorthHorst":   "Northern horst block of the Valysar formation, Drogon field — contains gas cap",
+    "NorthHorst":   "Northern horst block of the Valysar formation, Drogon field - contains gas cap",
     "CentralRamp":  "Central ramp structure of the Valysar formation, Drogon field",
-    "CentralHorst": "Central horst block of the Valysar formation, Drogon field — largest oil accumulation",
+    "CentralHorst": "Central horst block of the Valysar formation, Drogon field - largest oil accumulation",
     "EastLowland":  "Eastern lowland fault block of the Valysar formation, Drogon field",
 }
 
@@ -148,7 +148,7 @@ def main():
     ap.add_argument("--manifest", default=str(SCRIPT_DIR / "manifest_masterwp_drogon.json"))
     ap.add_argument("--id-prefix", default="dev")
     ap.add_argument("--reservoir-name", default="Drogon")
-    ap.add_argument("--reservoir-description", default="Drogon field — Valysar formation")
+    ap.add_argument("--reservoir-description", default="Drogon field - Valysar formation")
     ap.add_argument("--is-segmented", action="store_true", default=True)
     args = ap.parse_args()
 

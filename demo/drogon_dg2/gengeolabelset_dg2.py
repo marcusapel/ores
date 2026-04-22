@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gengeolabelset_dg2.py — Generate DG2 GeoLabelSet from the DG2 stat REV.
+gengeolabelset_dg2.py - Generate DG2 GeoLabelSet from the DG2 stat REV.
 
 Thin wrapper around the DG1 ``gengeolabelset_drogon.py`` which already
 supports ``--gate DG2`` via CLI arguments.  This script just supplies the
 correct defaults for the DG2 pipeline.
 
 Reads:
-  manifest_wpcstat_dg2.json            — DG2 stat REV manifest
-  ../drogon/manifest_masterwp_drogon.json — Reservoir ID, acl, legal
+  manifest_wpcstat_dg2.json            - DG2 stat REV manifest
+  ../drogon/manifest_masterwp_drogon.json - Reservoir ID, acl, legal
 
 Output:
-  manifest_geolabelset_dg2.json        — Manifest envelope (consumed by
+  manifest_geolabelset_dg2.json        - Manifest envelope (consumed by
                                          manifest2records_dg2.py)
 
 Usage:

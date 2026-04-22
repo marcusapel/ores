@@ -1,5 +1,5 @@
 """
-Tests for demo/_auth.py — the centralised auth & env helper for all demo scripts.
+Tests for demo/_auth.py - the centralised auth & env helper for all demo scripts.
 
 Covers:
   - k8s YAML loading (configmap + secret)

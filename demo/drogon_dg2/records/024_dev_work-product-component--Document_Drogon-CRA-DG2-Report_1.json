@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon — Cost Risk Assessment (CRA) DG2",
+    "Name": "Drogon - Cost Risk Assessment (CRA) DG2",
     "Description": "Cost Risk Assessment for the Drogon field development DG2 Concept Select gate. Probabilistic cost estimate (1000 iterations) covering subsea CAPEX, FPSO conversion, drilling (12+2 contingent wells), and project management. P50 total CAPEX 8,500 MNOK; P90 10,400 MNOK. Main cost drivers: drilling duration uncertainty (12–16 wells depending on compartmentalisation), FPSO water treatment module scope, and steel/fabrication market prices.",
     "DocumentType": "CRA",
     "DocumentDate": "2026-02-15"

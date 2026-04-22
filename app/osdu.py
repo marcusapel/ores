@@ -456,7 +456,7 @@ async def put_resources(
 
 
 # ======================================================================
-# Grid2dRepresentation — full surface fetch + CRS-aware PNG rendering
+# Grid2dRepresentation - full surface fetch + CRS-aware PNG rendering
 # ======================================================================
 
 def _normalize_obj(raw: Any, uuid: str) -> dict[str, Any]:
@@ -472,7 +472,7 @@ def _normalize_obj(raw: Any, uuid: str) -> dict[str, Any]:
                 uid = it.get("Uuid") or it.get("UUID") or it.get("uuid")
                 if uid and str(uid).lower() == uuid.lower():
                     return it
-        # Exact match failed — fall back to first dict (with warning)
+        # Exact match failed - fall back to first dict (with warning)
         for it in raw:
             if isinstance(it, dict):
                 log.warning("_normalize_obj: UUID %s not found, using first dict", uuid)
@@ -487,7 +487,7 @@ async def fetch_grid2d_surface(
 ) -> dict[str, Any]:
     """
     Fetch a Grid2dRepresentation object, its z-values array, and its
-    referenced LocalDepth3dCrs — everything needed to render a map.
+    referenced LocalDepth3dCrs - everything needed to render a map.
 
     Returns a dict with:
       grid     – the Grid2d RESQML object (dict)
@@ -640,8 +640,8 @@ def _apply_crs_rotation(
     Apply the CRS ArealRotation + XOffset/YOffset to the geometry.
 
     RESQML LocalDepth3dCrs defines:
-      - XOffset, YOffset   — translation of local origin w.r.t. projected CRS
-      - ArealRotation      — counter-clockwise angle (degrees) from projected
+      - XOffset, YOffset   - translation of local origin w.r.t. projected CRS
+      - ArealRotation      - counter-clockwise angle (degrees) from projected
                              CRS north to local CRS Y-axis
 
     The grid's origin and offset vectors are in local CRS coordinates.
@@ -809,7 +809,7 @@ def render_grid2d_png(
     cbar = fig.colorbar(pcm, ax=ax, shrink=0.85, pad=0.02)
     depth_label = f"Depth ({unit})"
     if z_down:
-        depth_label += " — increasing downward"
+        depth_label += " - increasing downward"
     cbar.set_label(depth_label, fontsize=10)
 
     # Axis labels

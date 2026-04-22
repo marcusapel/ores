@@ -319,7 +319,7 @@ class StratColumn:
     ) -> List["StratColumn"]:
         """Import SMDA column headers from a CSV export.
 
-        Each row becomes one StratColumn (no ranks/units — just header metadata).
+        Each row becomes one StratColumn (no ranks/units - just header metadata).
         All 15 SMDA fields are preserved in StratColumn.vendor.
 
         Returns
@@ -357,7 +357,7 @@ class StratColumn:
     ) -> List["StratColumn"]:
         """Import SMDA column headers from an XLSX export.
 
-        Each row becomes one StratColumn (no ranks/units — just header metadata).
+        Each row becomes one StratColumn (no ranks/units - just header metadata).
         All 15 SMDA fields are preserved in StratColumn.vendor.
 
         Returns
@@ -709,7 +709,7 @@ class StratColumn:
                 f"No strat units returned from SMDA for column "
                 f"'{column_identifier}'.  The column header exists in SMDA but "
                 f"has no units in the strat-units table.  This is an SMDA data "
-                f"gap — the column may not have been populated yet."
+                f"gap - the column may not have been populated yet."
             )
 
         def _float(x):

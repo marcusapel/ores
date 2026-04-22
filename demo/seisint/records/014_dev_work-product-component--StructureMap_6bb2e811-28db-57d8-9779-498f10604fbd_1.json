@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "TopTherys Depth Map (own 20 m grid)",
-    "Description": "Depth structure map for Top Therys source rock — references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
+    "Description": "Depth structure map for Top Therys source rock - references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
     "InterpretationName": "TopTherys Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",

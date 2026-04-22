@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_structuremap_from_resqml.py — Demonstrate the bidirectional mapping
+gen_structuremap_from_resqml.py - Demonstrate the bidirectional mapping
 between RESQML 2.2 Grid2dRepresentation and OSDU StructureMap:1.0.0.
 
 Two modes:
@@ -104,7 +104,7 @@ def _extract_lattice_grid(geometry: dict) -> Optional[Dict[str, Any]]:
         dir_slow = dim_slow.get("Direction", {})
         dir_fast = dim_fast.get("Direction", {})
 
-        # Spacing — can be constant or variable
+        # Spacing - can be constant or variable
         slow_spacing = dim_slow.get("Spacing", {})
         fast_spacing = dim_fast.get("Spacing", {})
 
@@ -123,7 +123,7 @@ def _extract_lattice_grid(geometry: dict) -> Optional[Dict[str, Any]]:
         # Compute bearings from direction vectors
         # bearing = clockwise angle from north = atan2(dx, dy) in degrees
         if abs(dx_slow) < 1e-10 and abs(dy_slow) < 1e-10:
-            # Slow axis is vertical (Z-only) — not a standard 2D grid for mapping
+            # Slow axis is vertical (Z-only) - not a standard 2D grid for mapping
             # Use fast axis as the J-axis and derive I from orthogonality
             bearing_j, _ = offsets_to_bearing(dx_fast, dy_fast)
             bearing_i = (bearing_j + 90.0) % 360
@@ -305,7 +305,7 @@ def resqml_to_structuremap(
                 sup_uuid = grid_info["supporting_rep_uuid"]
                 if sup_uuid:
                     grid_osdu_uuid = stable_uuid(f"resqml-grid:{sup_uuid}")
-                    # Could be GenericBinGrid or SeismicBinGrid — default to GenericBinGrid
+                    # Could be GenericBinGrid or SeismicBinGrid - default to GenericBinGrid
                     smap_data["BinGridID"] = wpc_id(prefix, "GenericBinGrid", grid_osdu_uuid)
 
         smap_record = {
@@ -572,7 +572,7 @@ def structuremap_to_resqml(
             "$type": "eml23.VerticalAxis",
             "Direction": "down",
             "Uom": "m",
-            "IsTime": False,  # DEPTH domain — this is the key flag
+            "IsTime": False,  # DEPTH domain - this is the key flag
         },
         "LocalEngineering2dCrs": {
             "$type": "eml23.DataObjectReference",
@@ -646,7 +646,7 @@ def demo_osdu_to_resqml():
 
     manifest_path = SCRIPT_DIR / "manifest_volantis_interp.json"
     if not manifest_path.exists():
-        print(f"  ERROR: {manifest_path} not found — run gen_volantis_interp.py first")
+        print(f"  ERROR: {manifest_path} not found - run gen_volantis_interp.py first")
         return []
 
     manifest = json.loads(manifest_path.read_text("utf-8"))
@@ -686,7 +686,7 @@ def demo_round_trip():
 
     smaps = resqml_to_structuremap(resqml_objects)
     if not smaps:
-        print("  No StructureMap generated — cannot round-trip")
+        print("  No StructureMap generated - cannot round-trip")
         return
 
     smap = smaps[0]
@@ -708,7 +708,7 @@ def demo_round_trip():
     print(f"  Original Title:     {orig_g2d['Citation']['Title']}")
     print(f"  Round-trip Title:   {g2d['Citation']['Title']}")
     print(f"  Original UUID:      {orig_g2d['Uuid']}")
-    print(f"  Round-trip UUID:    {g2d['Uuid']} (new — deterministic from OSDU ID)")
+    print(f"  Round-trip UUID:    {g2d['Uuid']} (new - deterministic from OSDU ID)")
     print(f"  RepresentedObject match: {g2d.get('RepresentedObject', {}).get('QualifiedType') == orig_g2d.get('RepresentedObject', {}).get('QualifiedType')}")
 
     if g2d.get("ExtraMetadata"):
