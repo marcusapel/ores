@@ -1044,13 +1044,13 @@ def _parse_cbt_production(d: Dict[str, Any], target_id: str = "") -> Dict[str, A
 # BD enrichment: DevelopmentConcept WPC → ext.equinor.DevelopmentConcept
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Fields to extract from the DevelopmentConcept WPC data block
+# Fields to extract from the DevelopmentConcept v2 WPC data block.
+# v2 uses structured sub-objects; we pass them through wholesale.
 _DEVCONCEPT_FIELDS = (
-    "Summary", "WellCount", "ContingentWells", "MultilateralWells",
-    "TemplateSlots", "DrillingCentres", "ReservoirFormation", "FieldArea",
-    "WaterDepth_m", "DistanceToHost_km", "HostFacility", "TargetStartUp",
-    "FlowlineSpec", "SubseaBoostingPump", "WaterTreatmentCapacity_m3d",
-    "InjectionStrategy", "WellPlan",
+    "Name", "Summary", "DecisionGate",
+    "FacilityConcept", "WellPlan", "DrainageStrategy",
+    "ReservoirTarget", "ProductionTechnology",
+    "ConceptID",
 )
 
 
@@ -1175,7 +1175,7 @@ def _collect_manifest_kinds() -> List[Dict[str, Any]]:
         "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0",
         "osdu:wks:work-product-component--PersistedCollection:1.2.0",
         "osdu:wks:work-product-component--StructureMap:1.0.0",
-        "dev:wks:work-product-component--DevelopmentConcept:1.0.0",
+        "dev:wks:work-product-component--DevelopmentConcept:3.0.0",
         "osdu:wks:reference-data--ChronoStratigraphicScheme:1.0.0",
         "osdu:wks:reference-data--ChronoStratigraphy:1.0.0",
     ]
@@ -1669,6 +1669,11 @@ async def search_run(
                 _enrich_record(full, client, storage_url, search_url, hdr)
                 for full in valid_records
             ]))
+
+            # Sort results alphabetically by name
+            enriched_results.sort(
+                key=lambda r: ((r.get("data") or {}).get("Name") or r.get("id") or "").lower()
+            )
 
         return templates.TemplateResponse(
             request, "search.html",

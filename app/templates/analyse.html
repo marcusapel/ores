@@ -372,12 +372,38 @@
     const hasAny = gates.some(g => Object.keys(g.development_concept || {}).length > 0);
     if (!hasAny) return '';
 
+    // Helper: resolve a dot-path like 'FacilityConcept.FacilityType' from the dev concept dict
+    function _get(dc, path) {
+      let v = dc;
+      for (const k of path.split('.')) { v = (v || {})[k]; if (v == null) return null; }
+      return v;
+    }
+
+    // v3 structured fields — [dotPath, label]
     const fields = [
-      ['WellCount', 'Wells'], ['MultilateralWells', 'Multilateral Wells'], ['TemplateSlots', 'Template Slots'],
-      ['DrillingCentres', 'Drilling Centres'], ['HostFacility', 'Host Facility'],
-      ['DistanceToHost_km', 'Distance to Host (km)'], ['WaterDepth_m', 'Water Depth (m)'],
-      ['ReservoirFormation', 'Formation'], ['FieldArea', 'Field Area'], ['TargetStartUp', 'Target Start-up'],
-      ['InjectionStrategy', 'Injection Strategy'], ['Summary', 'Summary'],
+      // Facility Concept
+      ['FacilityConcept.FacilityType',       'Facility Type'],
+      ['FacilityConcept.HostFacility',        'Host Facility'],
+      ['FacilityConcept.DistanceToHost_km',   'Distance to Host (km)'],
+      ['FacilityConcept.WaterDepth_m',        'Water Depth (m)'],
+      ['FacilityConcept.TotalSlots',          'Template Slots'],
+      ['FacilityConcept.ArtificialLift',      'Artificial Lift'],
+      // Well Plan
+      ['WellPlan.Producers',                  'Producers'],
+      ['WellPlan.Injectors',                  'Injectors'],
+      ['WellPlan.ContingentWells',            'Contingent Wells'],
+      ['WellPlan.MultilateralWells',          'Multilateral Wells'],
+      ['WellPlan.CompletionType',             'Completion'],
+      // Drainage Strategy
+      ['DrainageStrategy.PrimaryRecoveryMechanism', 'Recovery Mechanism'],
+      ['DrainageStrategy.InjectionType',      'Injection Type'],
+      // Reservoir Target
+      ['ReservoirTarget.FormationName',       'Formation'],
+      ['ReservoirTarget.FieldArea',           'Field Area'],
+      ['ReservoirTarget.Age',                 'Age'],
+      // Top-level
+      ['Summary',                             'Summary'],
+      ['ConceptID',                          'Concept Lineage'],
     ];
 
     let h = '<div class="cmp-section"><div class="cmp-title">Development Concept</div>';
@@ -385,13 +411,13 @@
     gates.forEach(g => { h += `<th>${esc(g.gate_label)}</th>`; });
     h += '</tr></thead><tbody>';
 
-    fields.forEach(([key, label]) => {
-      const anyVal = gates.some(g => (g.development_concept || {})[key] != null);
+    fields.forEach(([path, label]) => {
+      const anyVal = gates.some(g => _get(g.development_concept || {}, path) != null);
       if (!anyVal) return;
       h += `<tr><td>${esc(label)}</td>`;
       gates.forEach(g => {
-        const v = (g.development_concept || {})[key];
-        const s = v != null ? String(v) : '—';
+        const v = _get(g.development_concept || {}, path);
+        const s = v != null ? String(v) : '\u2014';
         h += `<td class="${v != null ? 'cmp-val' : 'cmp-empty'}">${esc(s)}</td>`;
       });
       h += '</tr>';
