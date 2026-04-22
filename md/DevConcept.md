@@ -1,6 +1,6 @@
 # DevelopmentConcept - Schema, Data Model & OSDU Integration
 
-> **Schema version**: `dev:wks:work-product-component--DevelopmentConcept:3.0.0`
+> **Schema version**: `dev:wks:work-product-component--DevelopmentConcept:4.0.0`
 > **Kind registered on**: `equinorswedev.energy.azure.com` (partition `dev`)
 > **Schema source**: [`demo/drogon/schema_devconcept.json`](../demo/drogon/schema_devconcept.json)
 > **Generators**: [`gen_devconcept_dg2.py`](../demo/drogon_dg2/gen_devconcept_dg2.py) (Drogon synthetic), GRAND populated from actual plan doc
@@ -51,7 +51,7 @@ BusinessDecision (master-data, the hub)
 At render time, `app/main.py::_enrich_bd_developmentconcept()` fetches the DevConcept WPC from Storage API and injects its data into `ext.equinor.DevelopmentConcept` on the BD, so templates can render it inline.
 
 
-## 3. Schema Structure (v3.0.0)
+## 3. Schema Structure (v4.0.0)
 
 The schema has 5 structured sub-objects plus top-level scalars. All fields are optional except `Name`.
 
@@ -63,6 +63,7 @@ The schema has 5 structured sub-objects plus top-level scalars. All fields are o
 | `Description` | string | Full description of concept and context |
 | `Summary` | string | Executive summary |
 | `DecisionGate` | enum | `DG0` / `DG1` / `DG2` / `DG3` / `DG4` |
+| `DecisionLevelID` | ref-data ID | -> `reference-data--DecisionLevel` |
 | `ConceptID` | string | OSDU ID of a related DevConcept (lineage to prior gate) |
 | `ParentObjectID` | string | Reservoir or field master-data ID |
 | `ancestry.parents[]` | string[] | OSDU ancestry (typically the Reservoir ID) |
@@ -131,13 +132,17 @@ Which reservoir interval and structure this concept targets.
 
 | Field | Type | Notes |
 |---|---|---|
-| `FormationName` | string | |
-| `GroupName` | string | |
-| `Age` | string | Geological age |
+| `FormationName` | string | Lithostratigraphic formation name (display label) |
+| `FormationID` | WPC ID | -> `work-product-component--StratigraphicUnitInterpretation` |
+| `GroupName` | string | Lithostratigraphic group name (display label) |
+| `GroupID` | WPC ID | -> `work-product-component--StratigraphicUnitInterpretation` |
+| `Age` | string | Geological age (display label) |
+| `AgeID` | ref-data ID | -> `reference-data--ChronoStratigraphy` |
 | `FieldArea` | string | |
 | `FieldID` | master-data ID | -> `master-data--Field` |
 | `DepthRange_mTVDMSL` | object | `{ Min, Max }` |
-| `Zones[]` | string[] | Reservoir zone names |
+| `Zones[]` | string[] | Reservoir zone names (display labels) |
+| `ZoneIDs[]` | WPC IDs | -> `work-product-component--StratigraphicUnitInterpretation` |
 | `ReservoirSegmentIDs[]` | master-data IDs | -> `master-data--ReservoirSegment` (OWC/GOC/fault properties live there) |
 
 ### 3.5 ProductionTechnology
@@ -162,13 +167,23 @@ The schema provides `*ID` fields alongside human-readable labels for cross-refer
 
 ### 4.1 Reference-data types used
 
-| Field | OSDU Entity | Example ID |
-|---|---|---|
-| `FacilityTypeID` | `reference-data--FacilityType` | `dev:reference-data--FacilityType:SubseaTieback:` |
-| `ArtificialLiftTypeID` | `reference-data--ArtificialLiftType` | `dev:reference-data--ArtificialLiftType:GasLift:` |
-| `ReservoirDriveMechanismTypeID` | `reference-data--ReservoirDriveMechanismType` | `dev:reference-data--ReservoirDriveMechanismType:WaterDrive:` |
+| Field | OSDU Entity | Example ID | Status |
+|---|---|---|---|
+| `FacilityTypeID` | `reference-data--FacilityType` | `dev:reference-data--FacilityType:SubseaTieback:` | Populated in manifests; ref-data record not yet on platform |
+| `ArtificialLiftTypeID` | `reference-data--ArtificialLiftType` | `dev:reference-data--ArtificialLiftType:GasLift:` | Populated in manifests; ref-data record not yet on platform |
+| `ReservoirDriveMechanismTypeID` | `reference-data--ReservoirDriveMechanismType` | `dev:reference-data--ReservoirDriveMechanismType:WaterDrive:` | Populated in manifests; ref-data record not yet on platform |
+| `DecisionLevelID` | `reference-data--DecisionLevel` | `dev:reference-data--DecisionLevel:DG2` | **Live** - 5 records (DG0-DG4) on platform |
+| `AgeID` | `reference-data--ChronoStratigraphy` | `dev:reference-data--ChronoStratigraphy:Phanerozoic.Cenozoic.Paleogene.Paleocene:` | **Live** - 2528 chrono records on platform |
 
-### 4.2 Master-data references
+### 4.2 Stratigraphic references (new in v3.1.0)
+
+| Field | OSDU Entity | Example ID | Status |
+|---|---|---|---|
+| `FormationID` | `work-product-component--StratigraphicUnitInterpretation` | `dev:…StratigraphicUnitInterpretation:b124c957-…:` (Heimdal Fm.) | **Live** for GRAND; Drogon zones are synthetic |
+| `GroupID` | `work-product-component--StratigraphicUnitInterpretation` | `dev:…StratigraphicUnitInterpretation:ad215072-…:` (ROGALAND GP.) | **Live** for GRAND |
+| `ZoneIDs[]` | `work-product-component--StratigraphicUnitInterpretation` | Heimdal Fm. + Lista Fm. SUI records | **Live** for GRAND; Drogon zones not on platform |
+
+### 4.3 Master-data references
 
 | Field | OSDU Entity | Purpose |
 |---|---|---|
@@ -177,7 +192,7 @@ The schema provides `*ID` fields alongside human-readable labels for cross-refer
 | `ReservoirSegmentIDs[]` | `master-data--ReservoirSegment` | Links to fault-bounded segments with OWC/GOC/seal properties |
 | `ParentObjectID` | `master-data--Reservoir` | The parent reservoir (also in `ancestry.parents[]`) |
 
-### 4.3 Why both label + ID?
+### 4.4 Why both label + ID?
 
 - **Label** (e.g. `FacilityType: "SubseaTieback"`) - immediately readable in templates, search results, and raw JSON without requiring extra lookups
 - **ID** (e.g. `FacilityTypeID: "dev:reference-data--FacilityType:SubseaTieback:"`) - enables machine-to-machine linking, schema validation, and relationship graph traversal
@@ -213,7 +228,7 @@ The schema provides `*ID` fields alongside human-readable labels for cross-refer
 
 ### 5.4 DecisionGate enum vs DecisionLevel ref-data
 
-The schema has a `DecisionGate` enum (`DG0`-`DG4`) for the display label. A formal `DecisionLevelID` referencing `reference-data--DecisionLevel` could be added but wasn't needed for the current use case - the BD already carries the gate reference.
+The schema has both: a `DecisionGate` enum (`DG0`-`DG4`) for the display label, and a `DecisionLevelID` referencing `reference-data--DecisionLevel`. Both are populated in the manifests. The BD already carries DecisionLevelID too, so there is intentional redundancy - the DevConcept is self-describing even without looking up the BD.
 
 ### 5.5 ConceptID for gate lineage
 
@@ -274,16 +289,58 @@ Currently, OSDU has no community-standard `DevelopmentConcept` WPC schema. The c
 
 **Suggested scope**: Facility concept, well plan, drainage strategy, reservoir target - these are universal across operators. Production technology specifics may be more operator-dependent and could go in `ext.*`.
 
-### 8.2 Better reference-data coverage
+### 8.2 Reference-data and master-data coverage
 
-Some concept aspects lack canonical OSDU reference-data types:
+Many DevConcept fields that are currently free-text strings or local enums have natural counterparts in the OSDU data model. The table below classifies them by confidence level.
 
-| Concept | Current approach | Desired OSDU type |
-|---|---|---|
-| Completion type (frac-pack, ICD, gravel pack) | Free-text `CompletionType` | `reference-data--CompletionType` |
-| Injection fluid type (water, gas, WAG, polymer) | Enum on schema | `reference-data--InjectionFluidType` |
-| Subsea infrastructure type (template, manifold, PLET) | Free-text / integer counts | `reference-data--SubseaInfrastructureType` |
-| Well type (horizontal producer, multilateral, injector) | Free-text `Type` in `WellTypes[]` | `reference-data--WellType` (beyond existing `WellTypeAcronym`) |
+#### Fields already mapped (have companion `*ID` + `x-osdu-relationship`)
+
+These fields follow the dual label + ID pattern and are well-connected:
+
+| Schema field | Label field | ID field | OSDU type |
+|---|---|---|---|
+| Facility type | `FacilityConcept.FacilityType` (enum) | `FacilityTypeID` | `reference-data--FacilityType` |
+| Artificial lift | `FacilityConcept.ArtificialLift` (enum) | `ArtificialLiftTypeID` | `reference-data--ArtificialLiftType` |
+| Recovery mechanism | `DrainageStrategy.PrimaryRecoveryMechanism` (enum) | `ReservoirDriveMechanismTypeID` | `reference-data--ReservoirDriveMechanismType` |
+| Host facility | `FacilityConcept.HostFacility` (string) | `HostFacilityID` | `master-data--GenericFacility` |
+| Field | `ReservoirTarget.FieldArea` (string) | `FieldID` | `master-data--Field` |
+| Reservoir segments | *(names on Segment records)* | `ReservoirSegmentIDs[]` | `master-data--ReservoirSegment` |
+
+#### Fields that SHOULD be mapped - confirmed OSDU types exist
+
+These fields are currently free-text or enums with **no companion ID**, but matching OSDU types already exist in the platform and are used elsewhere in this repo:
+
+| Schema field | Current type | Example values | OSDU type to add | Evidence |
+|---|---|---|---|---|
+| `ReservoirTarget.Zones[]` | `string[]` | `["Valysar", "Therys", "Volon"]` | `ZoneIDs[]` -> `work-product-component--StratigraphicUnitInterpretation` | SUI records exist in `demo/strat/`; every zone corresponds to a StratigraphicUnit interpretation |
+| `ReservoirTarget.Age` | `string` | `"Palaeocene"`, `"Jurassic"` | `AgeID` -> `reference-data--ChronoStratigraphy` | ChronoStratigraphy records loaded in `demo/strat/` (e.g. `opendes:reference-data--ChronoStratigraphy:paleocene:`) |
+| `ReservoirTarget.FormationName` | `string` | `"Valysar"`, `"Heimdal"` | `FormationID` -> `work-product-component--StratigraphicUnitInterpretation` | Same SUI records; formation is the primary lithostratigraphic unit |
+| `ReservoirTarget.GroupName` | `string` | `"Volantis Group"` | `GroupID` -> `work-product-component--StratigraphicUnitInterpretation` | SUI records cover group-rank units too |
+| `DecisionGate` | `enum` | `DG0`-`DG4` | `DecisionLevelID` -> `reference-data--DecisionLevel` | Already used on BD records (`dev:reference-data--DecisionLevel:DG2:1`); adding the ID here makes the DevConcept machine-linkable to the same vocabulary |
+| `ParentObjectID` | `string` | Reservoir ID | Already a ref, needs `x-osdu-relationship` | Used as parent reservoir but lacks the formal relationship annotation |
+
+#### Fields that SHOULD be mapped - OSDU type exists but coverage is thin
+
+| Schema field | Current type | Candidate OSDU type | Gap |
+|---|---|---|---|
+| `WellPlan.WellTypes[].Type` | free-text | `reference-data--WellType` | OSDU has `WellTypeAcronym` but no rich well-type ref-data for concept-level classification (horizontal producer, multilateral, contingent injector, etc.) |
+| `FacilityConcept.Flowlines[].Material` | free-text | `reference-data--PipeMaterial` or `MaterialType` | No canonical pipeline material type in OSDU |
+
+#### Fields with no OSDU counterpart today - candidates for new ref-data proposals
+
+| Schema field | Current type | Proposed OSDU type | Rationale |
+|---|---|---|---|
+| `WellPlan.CompletionType` | free-text | `reference-data--CompletionType` | Frac-pack, standalone screen, ICD, gravel pack are universal concepts across operators |
+| `DrainageStrategy.InjectionType` | enum | `reference-data--InjectionFluidType` | Water, gas, WAG, polymer, CO2, steam - standard vocabulary |
+| `FacilityConcept.Flowlines[].Type` | enum | `reference-data--SubseaInfrastructureType` | Production, gas-lift, water-injection, umbilical - well-established categories |
+| `WellPlan.SandControl` | free-text | `reference-data--SandControlType` | Standalone screen, gravel pack, frac-pack, chemical consolidation |
+| `WellPlan.InflowControl` | free-text | `reference-data--InflowControlType` | ICD, AICD, autonomous ICV - increasingly standardised |
+| `ProductionTechnology.CorrosionStrategy` | free-text | `reference-data--CorrosionMitigationType` | CRA tubing, inhibitor injection, coatings |
+| `ProductionTechnology.ScaleRisk` / `WaxRisk` / `EmulsionRisk` | free-text | `reference-data--ProductionChemistryRiskType` | Shared vocabulary for flow assurance risks |
+
+#### Net assessment
+
+Of our ~45 schema fields, **6 already have OSDU IDs**, **6 more could be connected to types that already exist on the platform** (the high-value quick wins), **2 have partial coverage**, and **~7 would benefit from new OSDU reference-data types** that don't exist yet. The remaining fields (counts, dimensions, narrative strings) are inherently free-form and don't need ref-data links.
 
 ### 8.3 Schema extension mechanism
 
@@ -311,6 +368,7 @@ Currently, rejected concept alternatives are stored as `ext.equinor.Alternatives
 | 1.0.0 | Flat top-level keys (WellCount, TemplateSlots, etc.) |
 | 2.0.0 | Restructured into 5 sub-objects. Added `PriorConceptID` for gate lineage. Added OSDU reference-data IDs. Moved segment/fault properties to ReservoirSegment master-data records. |
 | 3.0.0 | Renamed `PriorConceptID` to `ConceptID` (breaking). Clarified that ConceptID can reference any related concept, not just a prior gate. |
+| 4.0.0 | Added `DecisionLevelID`, `AgeID`, `FormationID`, `GroupID`, `ZoneIDs[]` (all with `x-osdu-relationship`). Added `x-osdu-relationship` on `ParentObjectID`. Populated all `*ID` fields in both manifests. OSDU Schema Service required major bump. |
 
 > **Note**: The ConceptID rename from v2 to v3 is a breaking change. Re-registration as v4.0.0 is recommended if the v3.0.0 schema was already ingested with the old field name.
 
@@ -319,7 +377,7 @@ Currently, rejected concept alternatives are stored as `ext.equinor.Alternatives
 
 | File | Purpose |
 |---|---|
-| `demo/drogon/schema_devconcept.json` | JSON Schema definition (v3.0.0) |
+| `demo/drogon/schema_devconcept.json` | JSON Schema definition (v4.0.0) |
 | `demo/drogon/register_schema_devconcept.py` | Registers schema with OSDU Schema Service |
 | `demo/drogon_dg2/gen_devconcept_dg2.py` | Generator for Drogon DG2 DevConcept manifest |
 | `demo/drogon_dg2/manifest_devconcept_dg2.json` | Generated manifest (Drogon DG2) |

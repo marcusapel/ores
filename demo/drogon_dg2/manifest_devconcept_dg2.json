@@ -7,7 +7,7 @@
     "WorkProductComponents": [
       {
         "id": "dev:work-product-component--DevelopmentConcept:Drogon-DG2:1",
-        "kind": "dev:wks:work-product-component--DevelopmentConcept:3.0.0",
+        "kind": "dev:wks:work-product-component--DevelopmentConcept:4.0.0",
         "acl": {
           "owners": [
             "data.default.owners@dev.dataservices.energy"
@@ -29,8 +29,10 @@
           "Description": "Development concept for Drogon DG2 Concept Select, aligned with the official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). Subsea tie-back to FPSO with 4 producers (A1\u2013A4), 2 water injectors (A5\u2013A6), targeting the Volantis Group (Valysar, Therys, Volon formations) across 7 fault-bounded reservoir regions. 250 FMU realisations with one-by-one sensitivity design and OPM Flow dynamic simulation.",
           "Summary": "Subsea development targeting the Volantis Group (Valysar, Therys, Volon) across 7 fault-bounded regions at ~1650\u20131690 m TVD MSL. 4 producers (A1\u2013A4) and 2 water injectors (A5\u2013A6) tied back to FPSO via dual 10\" production flowlines and 6\" gas-lift line. Distance to FPSO ~8 km. Water depth 108 m. Gas cap in NorthHorst region (GOC ~1640 m). APS facies model with seismic conditioning drives reservoir property assignment. FMU workflow: ERT \u2192 RMS (geomodel + Eclipse grid) \u2192 OPM Flow.",
           "DecisionGate": "DG2",
+          "DecisionLevelID": "dev:reference-data--DecisionLevel:DG2",
           "FacilityConcept": {
             "FacilityType": "SubseaTieback",
+            "FacilityTypeID": "dev:reference-data--FacilityType:SubseaTieback:",
             "HostFacility": "Drogon FPSO (converted)",
             "HostModifications": "Brownfield scope: inlet arrangement, start-up heater, debottlenecking of LP gas capacity, upgrade of produced water system (capacity and efficiency).",
             "TemplateCount": 2,
@@ -57,6 +59,7 @@
             ],
             "SubseaBoostingPump": true,
             "ArtificialLift": "GasLift",
+            "ArtificialLiftTypeID": "dev:reference-data--ArtificialLiftType:GasLift:",
             "ProcessingCapacity": {
               "OilRate_Sm3d": 5500,
               "WaterTreatment_m3d": 5000,
@@ -113,6 +116,7 @@
           },
           "DrainageStrategy": {
             "PrimaryRecoveryMechanism": "WaterInjection",
+            "ReservoirDriveMechanismTypeID": "dev:reference-data--ReservoirDriveMechanismType:WaterDrive:",
             "InjectionType": "Water",
             "InjectionStrategy": "Water injection for pressure support via A5 and A6. Rate scaling controlled by fmuconfig rate_scaling.yml. Phase 2: 2\u20134 additional infill wells depending on fault compartmentalisation (contingent slots in template).",
             "IORStrategy": "Base case: water injection. Options under evaluation: low-salinity water injection, polymer flooding (pending lab screening results). Real options provisioned in template design.",
@@ -136,6 +140,7 @@
             "FormationName": "Heimdal Formation (Drogon analogue: Valysar)",
             "GroupName": "Volantis Group (Valysar, Therys, Volon)",
             "Age": "Palaeocene",
+            "AgeID": "dev:reference-data--ChronoStratigraphy:Phanerozoic.Cenozoic.Paleogene.Paleocene:",
             "FieldArea": "Drogon",
             "DepthRange_mTVDMSL": {
               "Min": 1650,
