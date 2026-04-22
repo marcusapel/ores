@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon — Full FMU Workflow Run (ERT design, 250 realisations, OPM Flow)",
+    "Name": "Drogon - Full FMU Workflow Run (ERT design, 250 realisations, OPM Flow)",
     "Description": "Comprehensive FMU activity for the Drogon reservoir model, capturing the complete input-to-output pipeline for decision gate assessment. Based on the official equinor/fmu-drogon tutorial (24.3.1). INPUTS: 3D/4D seismic, 4 horizons (Volantis Group), stratigraphic column (3 formations, 8 facies types), 6 active wells + 5 RFT wells, reservoir properties per zone/facies, 7-region fault model, history observations. WORKFLOW: ERT orchestration with 250 one-by-one sensitivity realisations. Forward model: DESIGN2PARAMS → DESIGN_KW → RMS (MAIN workflow: structural + facies + petro + grid) → ECLCOMPRESS → OPM Flow → post-processing (volumes, maps, sim2seis, RFT, tracers). 17 continuous uncertainty parameters (Kv/Kh, FWL, GOC, fault seal, relperm, facies probabilities) + 6 discrete model switches. OUTPUTS: STOIIP/GIIP volumes by region/zone/facies (P10/P50/P90), production forecasts (FOPR, FGPR, FWPR, FPR), HC thickness maps, grid properties (ROFF), synthetic seismic, well data (RFT, tracers, completions), Eclipse tables.",
     "Originator": "markuslund.vevle@emerson.com",
     "CreationDateTime": "2026-03-21T10:00:00.000Z",
@@ -168,7 +168,7 @@
       },
       {
         "Title": "GeoModelDataspace",
-        "Description": "RDDMS ETP dataspace with Drogon geomodel EPC files. Shared structural model — same dataspace as DG1.",
+        "Description": "RDDMS ETP dataspace with Drogon geomodel EPC files. Shared structural model - same dataspace as DG1.",
         "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
         "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
         "DataObjectParameter": "dev:dataset--ETPDataspace:maap-drogon_dg:1",

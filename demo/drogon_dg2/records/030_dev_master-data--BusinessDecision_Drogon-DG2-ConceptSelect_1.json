@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon — Decision Gate 2 DG2 Concept Select (FMU-aligned)",
+    "Name": "Drogon - Decision Gate 2 DG2 Concept Select (FMU-aligned)",
     "Description": "DG2 Concept Select for the Drogon field development, aligned with the official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). Volantis Group (Valysar, Therys, Volon formations) across 7 fault-bounded reservoir regions (WestLowland, CentralSouth, CentralNorth, NorthHorst, CentralRamp, CentralHorst, EastLowland). 250 FMU realisations with one-by-one sensitivity design, OPM Flow simulator. 4 producers (A1–A4), 2 water injectors (A5–A6). STOIIP P50 45.4 MSm³, EUR P50 10.4 MSm³ oil, RF P50 33.5%. Recommended concept: subsea tie-back to FPSO with 2×4-slot templates, 6 active wells + 2 contingent infill. NPV@10% 520 MUSD, CAPEX 8,500 MNOK, first oil 2028-H1.",
     "ProjectName": "Drogon Field Development",
     "DecisionLevelID": "dev:reference-data--DecisionLevel:DG2:1",
@@ -175,7 +175,7 @@
       },
       {
         "Title": "DG2 Evidence Package (persisted collection)",
-        "Selection": "WorkProduct bundling all DG2 input/output artifacts — volumes, parameters, forecast, risks, documents, GeoLabelSet, activity, and ETP dataspace reference",
+        "Selection": "WorkProduct bundling all DG2 input/output artifacts - volumes, parameters, forecast, risks, documents, GeoLabelSet, activity, and ETP dataspace reference",
         "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
         "ParameterRoleID": "dev:reference-data--ParameterRole:InputReference:1",
         "DataObjectParameter": "dev:work-product-component--PersistedCollection:Drogon-DG2-EvidencePackage:1",
@@ -365,7 +365,7 @@
             "IRR_pct": 17
           },
           {
-            "Name": "Alt-B: Reduced scope — CentralHorst + CentralSouth only (3 prod + 1 inj)",
+            "Name": "Alt-B: Reduced scope - CentralHorst + CentralSouth only (3 prod + 1 inj)",
             "Rank": 2,
             "Rationale": "Focus on the two highest-confidence regions (CentralHorst + CentralSouth, FIPNUM 2,6). Channel facies dominant, lowest FWL uncertainty. 3 producers + 1 injector, single 4-slot template. Lower investment but captures only ~55% of recoverable resource. OPM Flow sensitivity: EUR ~5.8 MSm³, RF ~30%. Provides first-oil option if FPSO schedule slips.",
             "RecommendedAction": "Consider",
@@ -374,7 +374,7 @@
             "IRR_pct": 20
           },
           {
-            "Name": "Alt-C: Defer — acquire DG3-quality appraisal data",
+            "Name": "Alt-C: Defer - acquire DG3-quality appraisal data",
             "Rank": 3,
             "Rationale": "NorthHorst and EastLobe fault compartmentalisation remains poorly constrained. Additional well test data (est. 12 months, 200 MNOK) would reduce dynamic uncertainty range by ~40%. Risk of losing FPSO drydock window if deferred beyond 2026-Q3.",
             "RecommendedAction": "Fallback",

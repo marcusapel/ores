@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genrawmanifest_dg2.py — Generate DG2 ReservoirEstimatedVolumes (RAW) manifest
+genrawmanifest_dg2.py - Generate DG2 ReservoirEstimatedVolumes (RAW) manifest
 from DG1 valysar_volumes.csv with all pore/oil/gas volume columns scaled by 0.8.
 
 The 0.8 factor reflects the reduced porosity interpretation at DG2.
@@ -45,7 +45,7 @@ VOLUME_COLUMNS = [
     ("Pore",               "Pore",            "m3"),
 ]
 
-# Columns that are scaled — pore-dependent volumes.  Bulk rock volumes stay unchanged.
+# Columns that are scaled - pore-dependent volumes.  Bulk rock volumes stay unchanged.
 SCALED_COLS = {
     "PoreOil", "HydrocarbonPoreOil", "Oil", "AssociatedGas",
     "PoreGas", "HydrocarbonPoreGas", "Gas", "AssociatedLiquid", "Pore",
@@ -176,7 +176,7 @@ def main():
         "acl":   acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon Valysar — DG2 Reservoir Estimated Volumes (RAW, per realisation, ×0.8)",
+            "Name": "Drogon Valysar - DG2 Reservoir Estimated Volumes (RAW, per realisation, ×0.8)",
             "Description": (
                 "DG2 uncertainty realisation table for the Valysar zone. "
                 "Pore-dependent volume columns (PoreOil, Oil, Gas, etc.) scaled by 0.8 "

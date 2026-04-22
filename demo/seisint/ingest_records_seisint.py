@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ingest_records_seisint.py — Ingest seisint records one-by-one via
+ingest_records_seisint.py - Ingest seisint records one-by-one via
 the OSDU Storage API (PUT /api/storage/v2/records).
 
 Records must first be split into individual files via
@@ -11,7 +11,7 @@ manifest2records_seisint.py.  Files are ingested in sorted order
 Prerequisites:
   1. Run gen_volantis_interp.py           → manifest_volantis_interp.json
   2. Run manifest2records_seisint.py      → records/*.json
-  3. Run register_m27_schemas.py          (M27 schemas — one-time, safe to re-run)
+  3. Run register_m27_schemas.py          (M27 schemas - one-time, safe to re-run)
   5. Run THIS script                      → records ingested to OSDU
 
 Usage:
@@ -71,7 +71,7 @@ def put_one_record(env: Dict[str, str], record: Dict[str, Any],
             return r.json()
         if r.status_code == 404 and attempt < MAX_RETRIES:
             wait = RETRY_BACKOFF[attempt]
-            print(f"        -> 404 parent not indexed yet — retry in {wait}s")
+            print(f"        -> 404 parent not indexed yet - retry in {wait}s")
             time.sleep(wait)
             continue
         raise RuntimeError(f"PUT failed ({r.status_code}): {r.text[:1000]}")
@@ -125,7 +125,7 @@ def main():
     print(f"\n{len(records)} records loaded")
 
     if args.dry_run:
-        print("\n[dry-run] Would PUT these records — exiting.")
+        print("\n[dry-run] Would PUT these records - exiting.")
         for i, r in enumerate(records):
             rid = r.get("id", "?")
             kind = r.get("kind", "?")
@@ -154,7 +154,7 @@ def main():
                 resp = put_records_batch(env, active, client)
                 created.extend(resp.get("recordIds", []))
                 skipped.extend(resp.get("skippedRecordIds", []))
-                print(f"  Batch OK — created={len(resp.get('recordIds', []))}  "
+                print(f"  Batch OK - created={len(resp.get('recordIds', []))}  "
                       f"skipped={len(resp.get('skippedRecordIds', []))}")
                 # If batch succeeds, skip sequential
                 active = []

@@ -1,7 +1,7 @@
 # RESQML / RDDMS ⇄ OSDU CRS Mapping Guide
 
 Practical mapping between **RESQML 2.0.1 / 2.2** CRS usage (as stored in **RDDMS**) and **OSDU** CRS best practice.  
-Key takeaway: **OSDU prefers Bound CRS** — a projected CRS pinned to an explicit datum transformation.
+Key takeaway: **OSDU prefers Bound CRS** - a projected CRS pinned to an explicit datum transformation.
 
 ---
 
@@ -16,13 +16,13 @@ RESQML uses a two-level design:
 
 Every geometry object (grids, surfaces, point sets) references a **Local 3D CRS**, which in turn references the global CRS. This keeps coordinates numerically stable in a local frame while preserving full geodetic traceability.
 
-**RESQML 2.0.1 vs 2.2** — CRS semantics are identical. 2.2 uses EnergyML Common v2.3 (JSON support, better WKT handling) but the local/global split and CRS identification are unchanged.
+**RESQML 2.0.1 vs 2.2** - CRS semantics are identical. 2.2 uses EnergyML Common v2.3 (JSON support, better WKT handling) but the local/global split and CRS identification are unchanged.
 
 **CRS identification forms** (EnergyML Common):
 
 | Form | Projected class | Vertical class | When to use |
 |------|----------------|----------------|-------------|
-| EPSG | `ProjectedEpsgCrs` | `VerticalEpsgCrs` | **Preferred** — well-known code |
+| EPSG | `ProjectedEpsgCrs` | `VerticalEpsgCrs` | **Preferred** - well-known code |
 | WKT | `ProjectedWktCrs` | `VerticalWktCrs` | Custom or non-EPSG definitions |
 | GML | `ProjectedGmlCrs` | `VerticalGmlCrs` | Rare; ISO GML encoding |
 | LocalAuthority | `ProjectedLocalAuthorityCrs` | `VerticalLocalAuthorityCrs` | Operator-specific (e.g. NPD codes) |
@@ -55,20 +55,20 @@ flowchart LR
 
 ---
 
-## 3) The mapping — RESQML/RDDMS → OSDU
+## 3) The mapping - RESQML/RDDMS → OSDU
 
 ### 3.1 Core mapping rules
 
 | RESQML source | Maps to in OSDU | Notes |
 |---------------|-----------------|-------|
-| `LocalDepth3dCrs` / `LocalTime3dCrs` | **Dataset metadata → `localFrame`** | Offsets, rotation, axis order, units, Z direction — all stay with the data |
-| `ProjectedCrs` (EPSG code) | CRS record `Projected:EPSG::<code>` | Direct 1:1 — but consider if Bound CRS is more appropriate |
+| `LocalDepth3dCrs` / `LocalTime3dCrs` | **Dataset metadata → `localFrame`** | Offsets, rotation, axis order, units, Z direction - all stay with the data |
+| `ProjectedCrs` (EPSG code) | CRS record `Projected:EPSG::<code>` | Direct 1:1 - but consider if Bound CRS is more appropriate |
 | `ProjectedCrs` (WKT/GML/LocalAuthority) | CRS record `Projected:LocalAuthority::<code>` | Register in CRS Catalog with definition |
 | `VerticalCrs` (EPSG code) | CRS record `Vertical:EPSG::<code>` | Direct 1:1 |
 | `VerticalCrs` (Unknown) | `verticalCRSID: null` | Keep uom/direction in `localFrame` |
 | Projected + known datum shift | **CRS record `BoundProjected:EPSG::<proj>_EPSG::<ct>`** | **★ Recommended OSDU path** |
 
-### 3.2 Bound CRS — the OSDU recommended approach
+### 3.2 Bound CRS - the OSDU recommended approach
 
 RESQML has no explicit Bound CRS class. The datum transformation is either:
 - Embedded in a WKT `TOWGS84[...]` clause, or
@@ -84,7 +84,7 @@ OSDU ID  :  ...:BoundProjected:EPSG::23031_EPSG::1612
 
 This is the preferred approach for any legacy or regional CRS where the datum shift matters. CRS Convert v3 uses this ID to perform unambiguous transformations.
 
-> **When you don't need Bound CRS**: ETRS89-based data (EPSG:25831–25836) is already WGS84-aligned — a plain Projected CRS is sufficient.
+> **When you don't need Bound CRS**: ETRS89-based data (EPSG:25831–25836) is already WGS84-aligned - a plain Projected CRS is sufficient.
 
 ### 3.3 OSDU dataset metadata structure
 
@@ -107,9 +107,9 @@ This is the preferred approach for any legacy or regional CRS where the datum sh
 
 ---
 
-## 4) Examples — RESQML JSON (RDDMS) → OSDU
+## 4) Examples - RESQML JSON (RDDMS) → OSDU
 
-### 4.1 Typical NCS model — ETRS89, no datum shift needed
+### 4.1 Typical NCS model - ETRS89, no datum shift needed
 
 **RESQML (RDDMS)**
 ```json
@@ -125,7 +125,7 @@ This is the preferred approach for any legacy or regional CRS where the datum sh
 }
 ```
 
-**OSDU** — plain Projected is enough (ETRS89 ≈ WGS84)
+**OSDU** - plain Projected is enough (ETRS89 ≈ WGS84)
 ```json
 {
   "coordinateReferenceSystemID": "opendes:reference-data--CoordinateReferenceSystem:Projected:EPSG::25832",
@@ -138,9 +138,9 @@ This is the preferred approach for any legacy or regional CRS where the datum sh
 }
 ```
 
-### 4.2 Legacy ED50 model — needs Bound CRS
+### 4.2 Legacy ED50 model - needs Bound CRS
 
-**RESQML (RDDMS)** — WKT with TOWGS84
+**RESQML (RDDMS)** - WKT with TOWGS84
 ```json
 {
   "$type": "resqml20.obj_LocalDepth3dCrs",
@@ -151,7 +151,7 @@ This is the preferred approach for any legacy or regional CRS where the datum sh
 }
 ```
 
-**OSDU** — use BoundProjected (extract TOWGS84 → match EPSG CT)
+**OSDU** - use BoundProjected (extract TOWGS84 → match EPSG CT)
 ```json
 {
   "coordinateReferenceSystemID": "opendes:reference-data--CoordinateReferenceSystem:BoundProjected:EPSG::23031_EPSG::1612",
@@ -160,7 +160,7 @@ This is the preferred approach for any legacy or regional CRS where the datum sh
 }
 ```
 
-### 4.3 Full CRS pair — projected + vertical (both EPSG)
+### 4.3 Full CRS pair - projected + vertical (both EPSG)
 
 **RESQML (RDDMS)**
 ```json
@@ -173,7 +173,7 @@ This is the preferred approach for any legacy or regional CRS where the datum sh
 }
 ```
 
-**OSDU** — BoundProjected for ED50, plus vertical
+**OSDU** - BoundProjected for ED50, plus vertical
 ```json
 {
   "coordinateReferenceSystemID": "opendes:reference-data--CoordinateReferenceSystem:BoundProjected:EPSG::23031_EPSG::1612",
@@ -208,7 +208,7 @@ If RESQML uses `ProjectedLocalAuthorityCrs` or `ProjectedWktCrs` with no EPSG eq
 
 ---
 
-## 5) Ingestion workflow — RDDMS dataspace → OSDU
+## 5) Ingestion workflow - RDDMS dataspace → OSDU
 
 ```
 1. Read LocalDepth3dCrs / LocalTime3dCrs from RDDMS dataspace
@@ -233,10 +233,10 @@ If RESQML uses `ProjectedLocalAuthorityCrs` or `ProjectedWktCrs` with no EPSG eq
 | EPSG:25832 | ETRS89 / UTM 32N | `Projected:EPSG::25832` | No |
 | EPSG:23031 | ED50 / UTM 31N | `BoundProjected:EPSG::23031_EPSG::1612` | **Yes** |
 | EPSG:23032 | ED50 / UTM 32N | `BoundProjected:EPSG::23032_EPSG::1612` | **Yes** |
-| EPSG:5714 | MSL height (Norway) | `Vertical:EPSG::5714` | — |
-| EPSG:6230 | ED50 ellipsoidal height | `Vertical:EPSG::6230` | — |
+| EPSG:5714 | MSL height (Norway) | `Vertical:EPSG::5714` | - |
+| EPSG:6230 | ED50 ellipsoidal height | `Vertical:EPSG::6230` | - |
 | WKT ED50 + TOWGS84 | Legacy WKT | → map to BoundProjected | **Yes** |
-| Unknown vertical | Old models | `verticalCRSID: null` | — |
+| Unknown vertical | Old models | `verticalCRSID: null` | - |
 
 ---
 
@@ -255,14 +255,14 @@ If RESQML uses `ProjectedLocalAuthorityCrs` or `ProjectedWktCrs` with no EPSG eq
 
 ## 8) References
 
-- [RESQML CRS overview][r-crs] — one-projected-2D-CRS-per-dataspace rule
-- [AbstractLocal3dCrs attributes][r-abs] — offsets, rotation, axis order, Z
-- [EnergyML Common CRS classes][c-crs] — EPSG/GML/WKT/LocalAuthority/Unknown
-- [RESQML 2.2 overview][r-22] — Common v2.3, JSON support
-- [OSDU CRS Catalog service][os-cat] — register & search CRS/CT records
-- [OSDU CRS Convert v3][os-conv] — transformation using record IDs (Apache SIS)
-- [OSDU ADR: dynamic CRS/CT][os-adr] — BoundProjected pattern
-- [resqpy CRS tutorial][rq-tut] — practical Python examples
+- [RESQML CRS overview][r-crs] - one-projected-2D-CRS-per-dataspace rule
+- [AbstractLocal3dCrs attributes][r-abs] - offsets, rotation, axis order, Z
+- [EnergyML Common CRS classes][c-crs] - EPSG/GML/WKT/LocalAuthority/Unknown
+- [RESQML 2.2 overview][r-22] - Common v2.3, JSON support
+- [OSDU CRS Catalog service][os-cat] - register & search CRS/CT records
+- [OSDU CRS Convert v3][os-conv] - transformation using record IDs (Apache SIS)
+- [OSDU ADR: dynamic CRS/CT][os-adr] - BoundProjected pattern
+- [resqpy CRS tutorial][rq-tut] - practical Python examples
 
 [r-crs]: https://docs.energistics.org/RESQML/RESQML_TOPICS/RESQML-000-066-0-C-sv2010.html
 [r-abs]: https://docs.energistics.org/RESQML/RESQML_TOPICS/RESQML-500-010-0-R-sv2010.html

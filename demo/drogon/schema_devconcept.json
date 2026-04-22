@@ -13,7 +13,7 @@
   "schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "DevelopmentConcept",
-    "description": "Work-product-component describing a proposed field development concept. Strictly the physical concept: what is built, how we drill, how we drain, where we target, how we manage production. Referenced as a sub-element of BusinessDecision via Parameters[]. The BD is the hub for risks, documents, activity, economics, production forecast, schedule — none of that is duplicated here. Where canonical OSDU reference-data types exist (FacilityType, ArtificialLiftType, ReservoirDriveMechanismType) a typed *ID field is provided alongside the human-readable value. Reservoir segments and faults are referenced by OSDU ID — their properties live in master-data--ReservoirSegment records. Optional fields allow sparser early-gate records (DG1 vs DG2+).",
+    "description": "Work-product-component describing a proposed field development concept. Strictly the physical concept: what is built, how we drill, how we drain, where we target, how we manage production. Referenced as a sub-element of BusinessDecision via Parameters[]. The BD is the hub for risks, documents, activity, economics, production forecast, schedule - none of that is duplicated here. Where canonical OSDU reference-data types exist (FacilityType, ArtificialLiftType, ReservoirDriveMechanismType) a typed *ID field is provided alongside the human-readable value. Reservoir segments and faults are referenced by OSDU ID - their properties live in master-data--ReservoirSegment records. Optional fields allow sparser early-gate records (DG1 vs DG2+).",
     "x-osdu-governance-authorities": ["dev"],
     "type": "object",
     "required": ["Name"],
@@ -31,7 +31,7 @@
 
       "FacilityConcept": {
         "type": "object",
-        "description": "Facility concept — what is being built / modified.",
+        "description": "Facility concept - what is being built / modified.",
         "properties": {
           "FacilityType": {
             "type": "string",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-manifest2records_seisint.py — Split the seisint manifest into individual
+manifest2records_seisint.py - Split the seisint manifest into individual
 JSON record files under demo/seisint/records/.
 
 One file per record, named from the record id, prefixed with a sequence
@@ -54,7 +54,7 @@ def _flatten_manifest(man: Dict[str, Any]) -> List[Dict[str, Any]]:
     if isinstance(wp, dict) and wp.get("data"):
         out.append(wp)
 
-    # 5. WorkProductComponents — sorted by kind so that referenced
+    # 5. WorkProductComponents - sorted by kind so that referenced
     #    entities (BinGrid, Interpretation) come before referencing
     #    ones (StructureMap, SeismicHorizon)
     wpcs = data.get("WorkProductComponents", [])

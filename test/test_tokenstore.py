@@ -1,11 +1,11 @@
 """
-tests/test_tokenstore.py — Unit tests for the per-user token store.
+tests/test_tokenstore.py - Unit tests for the per-user token store.
 
 Covers:
   • CRUD operations (upsert, fetch, delete)
-  • Fernet encryption at rest — tokens in DB are NOT plaintext
-  • Multi-user isolation — Alice's token ≠ Bob's token
-  • Multi-instance isolation — same user, different instances
+  • Fernet encryption at rest - tokens in DB are NOT plaintext
+  • Multi-user isolation - Alice's token ≠ Bob's token
+  • Multi-instance isolation - same user, different instances
   • Access-token in-memory cache behaviour
   • Encryption key rotation (SECRET_KEY change invalidates tokens)
   • Concurrent access from multiple threads
@@ -159,7 +159,7 @@ class TestEncryption:
         alice = USERS["alice"]
         upsert(alice["oid"], "inst1", alice["refresh_token"])
 
-        # Read raw from DB — should NOT be plaintext
+        # Read raw from DB - should NOT be plaintext
         conn = _get_conn()
         row = conn.execute(
             "SELECT refresh_token_enc FROM sessions WHERE oid = ?",

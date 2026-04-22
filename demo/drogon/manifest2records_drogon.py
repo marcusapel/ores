@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-manifest2records_drogon.py — Split all Drogon manifests into individual
+manifest2records_drogon.py - Split all Drogon manifests into individual
 JSON record files under demo/drogon/records/.
 
 One file per record, named from the record id.

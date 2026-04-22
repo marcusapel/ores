@@ -19,7 +19,7 @@
   },
   "data": {
     "Name": "BaseVolantis Depth Map (shared grid ref)",
-    "Description": "Depth structure map for Base Volantis reservoir — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
+    "Description": "Depth structure map for Base Volantis reservoir - references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
     "InterpretationName": "BaseVolantis Interpretation",
     "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",

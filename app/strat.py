@@ -18,7 +18,7 @@ from . import auth as _auth
 
 log = logging.getLogger("rddms-admin.strat")
 
-# SMDA API key (Ocp-Apim-Subscription-Key) — used when PKCE login is unavailable
+# SMDA API key (Ocp-Apim-Subscription-Key) - used when PKCE login is unavailable
 SMDA_API_KEY: str = os.getenv("SMDA_API_KEY", "")
 
 # Import the stratcolumnhandler from demo/strat/
@@ -83,7 +83,7 @@ def _extract_ages(unit_rec: dict, chrono_rec: dict):
     cd = _get_data(chrono_rec) if chrono_rec else {}
     ud = _get_data(unit_rec) if unit_rec else {}
 
-    # Use `is not None` checks — 0.0 is a valid age (present day) but falsy
+    # Use `is not None` checks - 0.0 is a valid age (present day) but falsy
     def _first(*vals):
         for v in vals:
             if v is not None:
@@ -147,7 +147,7 @@ def _flat_unit_fields(unit_rec: dict, chrono_rec: dict,
         "color": color, "code": code,
     }
 
-    # ParentName — used by litho columns to establish hierarchy.
+    # ParentName - used by litho columns to establish hierarchy.
     # Check structured field first, then VendorMetadata fallbacks (SMDA origin).
     parent_name = (
         ud.get("ParentName")
@@ -670,7 +670,7 @@ async def get_strat_column(
             units_model.append({"unit": urec, "chrono": cobj, **ff})
 
         # C) Order: for chrono ranks use age, for litho preserve the OSDU
-        #    StratigraphicUnitInterpretationSet order — that IS the
+        #    StratigraphicUnitInterpretationSet order - that IS the
         #    authoritative stratigraphic ordering.  Litho formations can
         #    cross chronostratigraphic boundaries so age-sorting is wrong.
         if is_chrono_rank:
@@ -690,7 +690,7 @@ async def get_strat_column(
     #    has no children at rank N+1 (i.e. no unit at N+1 whose age range
     #    is contained within the N-unit), insert a synthetic placeholder
     #    unit at rank N+1. This ensures the hierarchical table has no
-    #    undefined white cells — missing data is visually declared.
+    #    undefined white cells - missing data is visually declared.
     #
     #    The OSDU / ICS chrono model is inherently hierarchical and
     #    non-overlapping per rank.  Gaps in the data therefore represent
@@ -698,7 +698,7 @@ async def get_strat_column(
     #
     #    Synthetic placeholders cascade through subsequent ranks: if Eonothem
     #    "Hadean" has no Erathem children, the synthetic Erathem entry itself
-    #    propagates to System, SubSystem, Series, etc. — ensuring every cell
+    #    propagates to System, SubSystem, Series, etc. - ensuring every cell
     #    in the table is accounted for.  The `_originalName` field preserves
     #    the real ancestor name so labels stay clean (no nested nesting).
     def _norm_name(s: str) -> str:
@@ -722,7 +722,7 @@ async def get_strat_column(
         return co <= po + tol and cy >= py - tol
 
     def _child_of(child_unit, parent_unit):
-        """True if child belongs to parent — by parentName or age containment.
+        """True if child belongs to parent - by parentName or age containment.
 
         ParentName (fuzzy-matched) is checked first; when it's set but doesn't
         match, falls back to age containment (handles data inconsistencies
@@ -734,7 +734,7 @@ async def get_strat_column(
             nn = _norm_name(parent_unit.get("name") or "")
             if pn == nn:
                 return True
-            # parentName set but no name match — fall through to age
+            # parentName set but no name match - fall through to age
         return _is_age_contained(child_unit, parent_unit)
 
     for ri in range(len(ranks_model) - 1):
@@ -754,7 +754,7 @@ async def get_strat_column(
         for pu in parent_rank["units"]:
             p_older = pu.get("olderMa")
             p_younger = pu.get("youngerMa")
-            # Use original ancestor name for clean labels (avoid nested "((...) — undifferentiated)")
+            # Use original ancestor name for clean labels (avoid nested "((...) - undifferentiated)")
             p_name = pu.get("_originalName") or pu.get("name") or ""
 
             # Find existing children at the next rank contained in this parent
@@ -771,7 +771,7 @@ async def get_strat_column(
                 new_children.append({
                     "unit": {},
                     "chrono": {},
-                    "name": f"({p_name} — undifferentiated)",
+                    "name": f"({p_name} - undifferentiated)",
                     "_originalName": p_name,
                     "topMa": p_older,
                     "baseMa": p_younger,
@@ -789,7 +789,7 @@ async def get_strat_column(
                 # count as real coverage)
                 real_kids = [k for k in kids if not k.get("_synthetic")]
                 if not real_kids:
-                    # All children are synthetic from earlier rounds — skip
+                    # All children are synthetic from earlier rounds - skip
                     continue
                 # Sort by normalized olderMa descending (oldest first)
                 kids_sorted = sorted(real_kids, key=lambda c: -(c.get("olderMa") or 0))
@@ -1135,7 +1135,7 @@ async def list_smda_columns(
         log.warning("SMDA strat-column request error: %s", exc)
         raise HTTPException(502, f"SMDA API request failed: {exc}")
 
-    # Extract unique column identifiers — include type & area metadata
+    # Extract unique column identifiers - include type & area metadata
     # Group by identifier, keep the richest metadata row per column
     columns_map: Dict[str, Dict[str, str]] = {}
     for row in all_rows:
@@ -1248,7 +1248,7 @@ async def storage_put_strat_records(
 
 
 # =====================================================================
-# HORIZON GENERATION — derive HorizonInterpretation records from
+# HORIZON GENERATION - derive HorizonInterpretation records from
 # unit/chrono boundary ages in a loaded column model.
 # =====================================================================
 
@@ -1256,7 +1256,7 @@ _KIND_HORIZON = "osdu:wks:work-product-component--HorizonInterpretation:1.2.0"
 
 
 def _age_token(age: float) -> str:
-    """538.8 -> '538p8', 66.0 -> '66p0' — safe for OSDU record IDs."""
+    """538.8 -> '538p8', 66.0 -> '66p0' - safe for OSDU record IDs."""
     s = f"{age:g}"
     return s.replace(".", "p").replace("-", "m")
 
@@ -1489,7 +1489,7 @@ async def generate_horizons(request: Request):
 
 
 # =====================================================================
-# UNIT GENERATION — derive StratigraphicUnitInterpretation records
+# UNIT GENERATION - derive StratigraphicUnitInterpretation records
 # from a sorted sequence of HorizonInterpretation boundaries.
 # =====================================================================
 
@@ -1963,7 +1963,7 @@ def _stratcol_to_model(col) -> dict:
                     "parentName": u.parent_name or "",
                 })
         elif r.kind == "chrono":
-            # Chrono names are SRNs or display names — include them
+            # Chrono names are SRNs or display names - include them
             # so RESQML conversion can create unit objects for them
             for cn in r.chrono_names:
                 name = cn.split(":")[-2] if cn.endswith(":") else cn
@@ -2019,7 +2019,7 @@ async def _push_resqml_to_rddms(
             log.warning("[RDDMS] Could not list dataspaces: %s", e)
 
         if ds_exists:
-            log.info("[RDDMS] Dataspace %s already exists — skipping creation", dataspace)
+            log.info("[RDDMS] Dataspace %s already exists - skipping creation", dataspace)
         else:
             log.info("[RDDMS] Creating dataspace %s", dataspace)
             try:
@@ -2035,7 +2035,7 @@ async def _push_resqml_to_rddms(
                     log.info("[RDDMS] Dataspace %s already exists (%s)", dataspace, e.response.status_code)
                 elif e.response.status_code in (401, 403):
                     log.warning(
-                        "[RDDMS] No PutDataspaces permission (%s) — "
+                        "[RDDMS] No PutDataspaces permission (%s) - "
                         "continuing (dataspace may already exist)",
                         e.response.status_code,
                     )

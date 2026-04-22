@@ -25,7 +25,7 @@
           ]
         },
         "data": {
-          "Name": "Drogon DG2 — Evidence Package",
+          "Name": "Drogon DG2 - Evidence Package",
           "Description": "PersistedCollection bundling all artifacts used to create the Drogon DG2 Concept Select BusinessDecision. Includes input volumes (raw + statistics), parameters, production forecast, development concept, activity chain, risks, documents, GeoLabelSet, and RDDMS dataspace reference. 27 data references.",
           "DataReferences": [
             "dev:work-product-component--ReservoirEstimatedVolumes:5a021693-c20a-4b96-be28-68f2240791b4:1",

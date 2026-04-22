@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon DG2 — HSE and environmental impact",
+    "Name": "Drogon DG2 - HSE and environmental impact",
     "Summary": "Marine discharge and accidental spill risk during subsea installation and production operations in the Drogon area.",
     "Description": "Environmental impact assessment (EIA) identifies cold-water coral habitats within 2 km of the planned template locations. Produced water discharge exceeding 30 mg/L oil-in-water requires additional treatment capacity on the FPSO. Accidental spill scenarios (blowout, pipeline rupture) modelled with OSCAR show shoreline impact probability <2% under prevailing current conditions. Mitigation: coral avoidance routing for flowlines, enhanced produced-water treatment module, and subsea isolation valves at each template.",
     "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",

@@ -1,9 +1,9 @@
 """
-app/cache.py — Lightweight async-aware TTL cache for expensive API results.
+app/cache.py - Lightweight async-aware TTL cache for expensive API results.
 
 Provides a simple in-memory cache keyed by (function_name, *args) with a
 configurable time-to-live (TTL).  Designed for data that is expensive to
-fetch but changes infrequently — dataspace lists, reference data, etc.
+fetch but changes infrequently - dataspace lists, reference data, etc.
 
 Thread-safe for asyncio (single event-loop) by design.
 
@@ -111,7 +111,7 @@ async def cached_call(
         if hit is not None:
             return hit
 
-        log.debug("cache MISS: %s — calling backend", key)
+        log.debug("cache MISS: %s - calling backend", key)
         result = await fn(*args, **kwargs)
         cache_set(key, result, ttl)
         return result
@@ -132,7 +132,7 @@ def ttl_cache(ttl: float = 120, key_prefix: str = ""):
 
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
-            # Build cache key — include all positional args except
+            # Build cache key - include all positional args except
             # the access_token (first arg) since the data is the same
             # regardless of who fetches it.
             cache_key = f"{prefix}:{':'.join(str(a) for a in args[1:])}" if len(args) > 1 else prefix

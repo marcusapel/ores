@@ -19,16 +19,16 @@ Use `ReservoirEstimatedVolumes` for DG decision evidence. Use CBT only for wide 
 
 ---
 
-## 2) Two flavours — raw realizations & aggregated statistics
+## 2) Two flavours - raw realizations & aggregated statistics
 
 ### Raw realizations
 - Keys: `Realisation` (int), `Zone` (string), `SegmentID` (string → `ReservoirSegment:2.0.0`)
-- Columns: `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` — each with `PropertyTypeID` and `UnitOfMeasureID: m3`
+- Columns: `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` - each with `PropertyTypeID` and `UnitOfMeasureID: m3`
 - `ParentObjectID` → `master-data--Reservoir`
 
 ### Aggregated statistics
-- Keys: `Zone`, `SegmentID` (no Realisation — aggregated across runs)
-- Columns: dot-notation `<Property>.<Statistic>` — e.g. `Bulk.P10`, `Oil.ArithmeticMean`
+- Keys: `Zone`, `SegmentID` (no Realisation - aggregated across runs)
+- Columns: dot-notation `<Property>.<Statistic>` - e.g. `Bulk.P10`, `Oil.ArithmeticMean`
 - Each column carries `FacetIDs` with `FacetType:statistics` + `FacetRole:<P10|P50|P90|ArithmeticMean|Minimum|Maximum|StandardDeviation>`
 
 ---
@@ -114,7 +114,7 @@ Use `ReservoirEstimatedVolumes` for DG decision evidence. Use CBT only for wide 
 
 - Use `ArithmeticMean` (not Average), `StandardDeviation` (not StDev)
 - Dot-notation for stats columns: `<Property>.<Statistic>`
-- Units via `UnitOfMeasureID` — don't embed units in column names
+- Units via `UnitOfMeasureID` - don't embed units in column names
 - Consistent `m3` unless business rule requires `Mm3`
 
 ---

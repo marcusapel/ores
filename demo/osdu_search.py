@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick OSDU Search CLI — uses _auth.py for token management.
+Quick OSDU Search CLI - uses _auth.py for token management.
 
 Usage:
     # List StratigraphicColumn records
@@ -147,7 +147,7 @@ def cmd_search(args):
 
         short = kind.split("--")[-1].split(":")[0] if "--" in kind else kind
         print(f"\n{'━' * 60}")
-        print(f"  {short}  —  {total} total, showing {len(results)}")
+        print(f"  {short}  -  {total} total, showing {len(results)}")
         print(f"{'━' * 60}")
 
         if args.output == "json":

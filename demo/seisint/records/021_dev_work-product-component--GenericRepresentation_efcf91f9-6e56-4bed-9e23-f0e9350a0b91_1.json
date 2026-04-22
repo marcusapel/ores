@@ -18,8 +18,8 @@
     ]
   },
   "data": {
-    "Name": "BaseVolantis TWT — Grid2dRepresentation",
-    "Description": "RDDMS catalog entry for BaseVolantis (TWT) — Grid2dRepresentation efcf91f9-6e56-4bed-9e23-f0e9350a0b91 in dataspace maap/drogon",
+    "Name": "BaseVolantis TWT - Grid2dRepresentation",
+    "Description": "RDDMS catalog entry for BaseVolantis (TWT) - Grid2dRepresentation efcf91f9-6e56-4bed-9e23-f0e9350a0b91 in dataspace maap/drogon",
     "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
     "InterpretationName": "BaseVolantis Interpretation",

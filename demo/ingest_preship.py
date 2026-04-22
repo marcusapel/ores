@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ingest_preship.py — Ingest demo data into an OSDU instance.
+ingest_preship.py - Ingest demo data into an OSDU instance.
 
 Reads target-instance config from .env  (INSTANCE_<NAME>_* variables)
 so the same script works against any registered backend.
 
 Datasets
-  dg1       Drogon DG1 — business-decision, risks, volumes, master data
-  dg2       Drogon DG2 — development concepts, seismic, documents, …
+  dg1       Drogon DG1 - business-decision, risks, volumes, master data
+  dg2       Drogon DG2 - development concepts, seismic, documents, …
   seisint   Seismic interpretation demo
 
 Usage
@@ -207,7 +207,7 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
         else:
             print(f"    ≈ {kind} exists")
 
-    # 3. ActivityTemplate and work-product — these are standard OSDU schemas
+    # 3. ActivityTemplate and work-product - these are standard OSDU schemas
     #    that should exist on M26 but may not. We'll create minimal schemas.
     for missing_kind, entity_type, group in [
         ("osdu:wks:work-product-component--ActivityTemplate:1.0.0",
@@ -227,7 +227,7 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
         else:
             print(f"    ≈ {missing_kind} exists")
 
-    # 4. LocalBoundaryFeature — from seisint unresloved schemas
+    # 4. LocalBoundaryFeature - from seisint unresloved schemas
     lbf_schema = SCRIPT_DIR / "seisint" / "schemas" / "LocalBoundaryFeature.1.1.0.json"
     lbf_kind = "osdu:wks:master-data--LocalBoundaryFeature:1.1.0"
     if lbf_schema.exists() and not check_schema_exists(client, lbf_kind):
@@ -353,7 +353,7 @@ def ingest_records(client: httpx.Client, records: List[dict],
                     break
                 if resp.status_code == 404 and attempt < MAX_RETRIES:
                     wait = RETRY_BACKOFF[attempt]
-                    print(f"        ↳ 404 — retry in {wait}s …")
+                    print(f"        ↳ 404 - retry in {wait}s …")
                     time.sleep(wait)
                     continue
                 failed.append(f"{rid}: {resp.status_code} {resp.text[:150]}")
@@ -457,7 +457,7 @@ def main():
 
         totals = {"created": 0, "skipped": 0, "failed": 0}
 
-        # 2. Ingest drogon DG1 records  (master data first — DG2 may reference it)
+        # 2. Ingest drogon DG1 records  (master data first - DG2 may reference it)
         if "dg1" in selected:
             if DG1_RECORDS.is_dir() and any(DG1_RECORDS.glob("*.json")):
                 recs = load_and_transform(DG1_RECORDS)

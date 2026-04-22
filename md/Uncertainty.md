@@ -1,13 +1,13 @@
 
-# Uncertainty (FMU) in OSDU — Detailed Guide
+# Uncertainty (FMU) in OSDU - Detailed Guide
 
 > **Purpose**: Persist FMU ensemble / Monte Carlo **inputs**, **scenarios**, and **outputs** in OSDU; link **input design and static bundles** to **output volumes** by **Realisation**; use **Activity semantics** and **persisted collections** for robust provenance across DG1…DG4.
 >
 > **FMU ecosystem context**:
-> - [ERT](https://github.com/equinor/ert) orchestrates FMU workflows — defines cases, iterations/ensembles, realizations, and the design matrix (parameterization)
+> - [ERT](https://github.com/equinor/ert) orchestrates FMU workflows - defines cases, iterations/ensembles, realizations, and the design matrix (parameterization)
 > - [fmu-dataio](https://github.com/equinor/fmu-dataio) exports data with metadata including `fmu.realization.id`, `fmu.ensemble`, `fmu.case` identity
 > - [Sumo](https://github.com/equinor/fmu-sumo) is the current cloud SoR for FMU results; OSDU provides the structured data management layer described here
-> - The OSDU Activity model with `Parameters[]` is a **proposed mapping** for representing FMU provenance in OSDU — it is not how FMU currently stores provenance (which uses the denormalized fmu-dataio metadata schema v0.20.0)
+> - The OSDU Activity model with `Parameters[]` is a **proposed mapping** for representing FMU provenance in OSDU - it is not how FMU currently stores provenance (which uses the denormalized fmu-dataio metadata schema v0.20.0)
 
 ---
 
@@ -15,14 +15,14 @@
 
 In Equinor's FMU workflow:
 
-1. **ERT** manages the **design matrix** — a table of parameter combinations (e.g., porosity multiplier, rel-perm family, OWC shift) that defines each realization
+1. **ERT** manages the **design matrix** - a table of parameter combinations (e.g., porosity multiplier, rel-perm family, OWC shift) that defines each realization
 2. Each realization runs a chain of FORWARD_MODELs: RMS (geomodel) → Eclipse/OPM (simulator) → post-processing
 3. **fmu-dataio** exports results from each step with metadata tagging:
-   - `fmu.case.uuid` — the FMU case
-   - `fmu.ensemble.name` / `.uuid` — the ensemble (iteration)
-   - `fmu.realization.id` — the realization index (0, 1, 2, …)
-   - `data.content` — what kind of data (volumes, surfaces, tables, etc.)
-   - `data.standard_result.name` — standardized result name (e.g., `inplace_volumes`)
+   - `fmu.case.uuid` - the FMU case
+   - `fmu.ensemble.name` / `.uuid` - the ensemble (iteration)
+   - `fmu.realization.id` - the realization index (0, 1, 2, …)
+   - `data.content` - what kind of data (volumes, surfaces, tables, etc.)
+   - `data.standard_result.name` - standardized result name (e.g., `inplace_volumes`)
 4. **Sumo** receives all exports and indexes them for querying by case/ensemble/realization/content
 5. Post-processing aggregates results across realizations → statistical summaries (P10/P50/P90)
 
@@ -33,8 +33,8 @@ The **design matrix → realization → output** provenance chain is captured im
 ## 1. OSDU data model building blocks
 
 ### 1.1 Master‑data (anchors for scope)
-- `master-data--Reservoir` — the reservoir entity of interest.  
-- `master-data--ReservoirSegment` — segments or compartments under the reservoir.  
+- `master-data--Reservoir` - the reservoir entity of interest.  
+- `master-data--ReservoirSegment` - segments or compartments under the reservoir.  
 *Why:* `ReservoirEstimatedVolumes` is scoped by `ParentObjectID` to Field/Reservoir/ReservoirSegment.
 
 ### 1.2 Reference‑data (governed catalogs)
@@ -43,21 +43,21 @@ The **design matrix → realization → output** provenance chain is captured im
 - **Canonical volume property types**: `reference-data--ReservoirEstimatedVolumePropertyType:{Bulk,Net,Pore,HydrocarbonPore,Oil,AssociatedGas}`.
 
 ### 1.3 Work‑product components (WPCs)
-- **Design Matrix** — `work-product-component--ColumnBasedTable` (CBT).  
-- **Static bundles** — grids, properties, velocity as WPCs (e.g., `GenericRepresentation`, `VelocityModeling`).  
-- **Output volumes** — `work-product-component--ReservoirEstimatedVolumes` (REV), raw per‑realisation and aggregated statistics.  
-- **Optional KPIs** — `work-product-component--ColumnBasedTable` for generic KPI/time series.
+- **Design Matrix** - `work-product-component--ColumnBasedTable` (CBT).  
+- **Static bundles** - grids, properties, velocity as WPCs (e.g., `GenericRepresentation`, `VelocityModeling`).  
+- **Output volumes** - `work-product-component--ReservoirEstimatedVolumes` (REV), raw per‑realisation and aggregated statistics.  
+- **Optional KPIs** - `work-product-component--ColumnBasedTable` for generic KPI/time series.
 
 ### 1.4 Collections for scenarios/cases
-- **WorkProduct** — versioned case package (design + static bundle + chosen outputs).  
-- **CollaborationProjectCollection** — curated working set while iterating.
+- **WorkProduct** - versioned case package (design + static bundle + chosen outputs).  
+- **CollaborationProjectCollection** - curated working set while iterating.
 
 ### 1.5 Activity semantics (`AbstractProjectActivity`)
 Use `Parameters[]` with `ParameterRole = input|output|context` and `ObjectParameterKey` to enumerate run inputs/outputs and context. Keys (e.g., `realisation-index`, `seed`) keep the mapping explicit.
 
 ---
 
-## 2. Inputs — Design & static state
+## 2. Inputs - Design & static state
 
 ### 2.1 Design Matrix (CBT)
 **Recommended schema pattern**:
@@ -70,7 +70,7 @@ Use `Parameters[]` with `ParameterRole = input|output|context` and `ObjectParame
 {
   "kind": "osdu:wks:work-product-component--ColumnBasedTable:1.3.0",
   "data": {
-    "Name": "FMU Design Matrix — Case A",
+    "Name": "FMU Design Matrix - Case A",
     "KeyColumns": [
       {"ColumnName": "CaseID", "ColumnRole": "Key", "ValueType": "string"},
       {"ColumnName": "Realisation", "ColumnRole": "Key", "ValueType": "integer"},
@@ -119,7 +119,7 @@ For each run/iteration, create an Activity (or reuse `BusinessDecision` paramete
 
 ---
 
-## 4. Outputs — Volumes
+## 4. Outputs - Volumes
 
 ### 4.1 Raw per‑realisation (REV)
 Keys: `Realisation`, `Zone`, `SegmentID` with `KindID = master-data--ReservoirSegment:2.0.0`.  
@@ -178,14 +178,14 @@ Columns: dot notation with facet annotation, e.g., `Bulk.P10`, `Oil.P50`, `Assoc
 
 ---
 
-## 5. Realisation mapping — keeping provenance tight
+## 5. Realisation mapping - keeping provenance tight
 - **Join on keys**: raw REV `Realisation` ↔ Design Matrix row `Realisation`.  
 - **Activity link**: the run Activity carries both the **design row** and the **raw REV output** with the same `realisation-index` key in `Parameters[]`.  
 - **Case binding**: WorkProduct/Collection id referenced as `context` to bind the scenario.
 
 ---
 
-## 6. Mermaid diagrams — no parentheses in labels
+## 6. Mermaid diagrams - no parentheses in labels
 
 ### 6.1 Data flow
 ```mermaid
@@ -259,9 +259,9 @@ erDiagram
 | ERT (orchestrator) | [github.com/equinor/ert](https://github.com/equinor/ert) |
 | Sumo (current SoR) | [github.com/equinor/fmu-sumo](https://github.com/equinor/fmu-sumo) |
 | Drogon reference case | [github.com/equinor/fmu-drogon](https://github.com/equinor/fmu-drogon) |
-| REV schema (OSDU) | [OSDU Data Definitions — ReservoirEstimatedVolumes](https://community.opengroup.org/osdu/data/data-definitions) |
-| ColumnBasedTable (OSDU) | [OSDU Data Definitions — ColumnBasedTable](https://community.opengroup.org/osdu/data/data-definitions) |
-| Activity semantics (OSDU) | [OSDU Data Definitions — AbstractProjectActivity](https://community.opengroup.org/osdu/data/data-definitions) |
+| REV schema (OSDU) | [OSDU Data Definitions - ReservoirEstimatedVolumes](https://community.opengroup.org/osdu/data/data-definitions) |
+| ColumnBasedTable (OSDU) | [OSDU Data Definitions - ColumnBasedTable](https://community.opengroup.org/osdu/data/data-definitions) |
+| Activity semantics (OSDU) | [OSDU Data Definitions - AbstractProjectActivity](https://community.opengroup.org/osdu/data/data-definitions) |
 | Volume schemas (this repo) | [md/Volumes.md](Volumes.md) |
 | FMU ↔ OSDU mapping | [md/FmuOsdu.md](FmuOsdu.md) |
 

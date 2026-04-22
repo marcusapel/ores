@@ -1,5 +1,5 @@
 """
-tests/conftest.py — Shared fixtures for auth & tokenstore tests.
+tests/conftest.py - Shared fixtures for auth & tokenstore tests.
 
 Provides:
   • An isolated temporary SQLite DB per test (no leftover state).
@@ -28,7 +28,7 @@ def _b64url(data: bytes) -> str:
 
 
 def make_id_token(claims: dict) -> str:
-    """Build a fake JWT (header.payload.signature) — signature is 'fake'."""
+    """Build a fake JWT (header.payload.signature) - signature is 'fake'."""
     header = _b64url(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
     payload = _b64url(json.dumps(claims).encode())
     return f"{header}.{payload}.fakesig"
@@ -222,7 +222,7 @@ def authed_app():
 
 @pytest.fixture()
 def authed_client(authed_app):
-    """TestClient with a pre-authed app — every request gets an access_token."""
+    """TestClient with a pre-authed app - every request gets an access_token."""
     from starlette.testclient import TestClient
     with TestClient(authed_app, base_url="http://testserver") as c:
         yield c

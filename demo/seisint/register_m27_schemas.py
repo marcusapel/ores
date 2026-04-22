@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-register_m27_schemas.py — Register the M27 JSON Schema definitions with
+register_m27_schemas.py - Register the M27 JSON Schema definitions with
 the OSDU Schema Service on the dev platform.
 
 These schemas were fetched from the OSDU Data Definitions GitLab repo
@@ -63,7 +63,7 @@ def parse_kind(kind: str) -> dict:
     }
 
 
-# ── auth (delegated to central _auth module — imported above) ─────────
+# ── auth (delegated to central _auth module - imported above) ─────────
 
 
 # ── registration ──────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ def register_one(env: Dict[str, str], token: str, payload: dict,
     print(f"\n  Schema kind : {kind}")
 
     if dry_run:
-        print("  [DRY-RUN] Would PUT schema — skipping.")
+        print("  [DRY-RUN] Would PUT schema - skipping.")
         return True
 
     r = httpx.put(url, headers=headers, json=payload, timeout=60)
@@ -170,7 +170,7 @@ def main():
         files = discover_schemas(SCHEMAS_DIR)
 
     if not files:
-        print("  No schema files found — nothing to do.")
+        print("  No schema files found - nothing to do.")
         return
 
     print(f"\n  Found {len(files)} schema file(s):")

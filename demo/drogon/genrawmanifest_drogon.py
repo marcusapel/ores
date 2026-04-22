@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genrawmanifest_drogon.py — Generate OSDU ReservoirEstimatedVolumes (ColumnBasedTable)
+genrawmanifest_drogon.py - Generate OSDU ReservoirEstimatedVolumes (ColumnBasedTable)
 manifest from valysar_volumes.csv for the Drogon / Valysar dataset.
 
 Differences from the GRAND workflow (1genrawmanifest.py):
-  - No "Phases" key column — phase is encoded in column names (BulkOil, BulkGas …)
+  - No "Phases" key column - phase is encoded in column names (BulkOil, BulkGas …)
   - Facies is a key column
   - 12 value columns with phase-qualified names
   - All UoM = m3 (matching GRAND canonical form)
   - Key column order: Realisation, Zone, SegmentID, Facies (GRAND order)
 
 Reads:
-  valysar_volumes.csv              — volume data
-  manifest_masterwp_drogon.json    — Reservoir/WP/Segment IDs
-  reftypes_revpropertytypes.json   — PropertyTypeID mapping
+  valysar_volumes.csv              - volume data
+  manifest_masterwp_drogon.json    - Reservoir/WP/Segment IDs
+  reftypes_revpropertytypes.json   - PropertyTypeID mapping
 
 Output:
   manifest_wpcraw_drogon.json
@@ -58,7 +58,7 @@ def ref_id(prefix: str, entity: str, name: str) -> str:
     return f"{prefix}:reference-data--{entity}:{name}:"
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    """Reference-data ID WITHOUT trailing colon (UoM, TableType, VolumeType — matches GRAND)."""
+    """Reference-data ID WITHOUT trailing colon (UoM, TableType, VolumeType - matches GRAND)."""
     return f"{prefix}:reference-data--{entity}:{name}"
 
 def wpc_id(prefix: str, entity: str, uid: str) -> str:
@@ -118,7 +118,7 @@ def main():
     segments:     List[str]   = []
     facies_list:  List[str]   = []
 
-    # Value columns — one list per column
+    # Value columns - one list per column
     value_data: Dict[str, List[float]] = {col: [] for col, _, _ in VOLUME_COLUMNS}
 
     for row in rows:
@@ -186,7 +186,7 @@ def main():
         "acl":   acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon Valysar — Reservoir Estimated Volumes (RAW, per realisation)",
+            "Name": "Drogon Valysar - Reservoir Estimated Volumes (RAW, per realisation)",
             "Description": (
                 "Uncertainty realisation table for the Valysar zone of the Drogon field. "
                 "12 phase-qualified volume columns, 3 realisations × 7 segments × 4 facies."

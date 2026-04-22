@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon DG2 — Recovery factor uncertainty (dynamic)",
+    "Name": "Drogon DG2 - Recovery factor uncertainty (dynamic)",
     "Summary": "Dynamic simulation recovery factor ranges from 28% (P90) to 37% (P10) driven by Kv/Kh, relperm, and fault seal uncertainties.",
     "Description": "OPM Flow dynamic simulations (250 realisations, one-by-one sensitivity design) show recovery factor P90=28%, P50=32.5%, P10=37%. Key dynamic uncertainty drivers: KVKH_CHANNEL (UNIFORM 0.4–0.8), KVKH_CREVASSE (UNIFORM 0.1–0.5), RELPERM_INT_WO (UNIFORM -1–1), RELPERM_INT_GO (UNIFORM -1–1), and FAULT_SEAL_SCALING (LOGUNIF 0.1–10). Low Kv/Kh combined with high fault seal reduces sweep efficiency and pushes recovery below 30%. Mitigation: water injection strategy (A5, A6) and rate scaling optimisation. Phase 2 infill wells target remaining oil in poorly-swept segments.",
     "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",

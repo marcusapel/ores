@@ -1,5 +1,5 @@
 
-# OSDU Decision Gates with `BusinessDecision` — Implementation Guide
+# OSDU Decision Gates with `BusinessDecision` - Implementation Guide
 
 > **Scope:** Model DG1…DG4 decisions as `osdu:wks:master-data--BusinessDecision:1.0.0` records, linking inputs (e.g., Wells, Grid maps, Velocity models, Production tables) and outputs (e.g., GenericRepresentation, ReservoirEstimatedVolumes, ColumnBasedTable) using **activity parameters** and/or **persisted collections** (WorkProduct / PersistedCollection). This guide summarizes options, pros/cons, and gives example payloads and diagrams.
 
@@ -55,8 +55,8 @@ Use built-in properties for decision metadata and key relationships:
 ### C) Persisted collections: `WorkProduct` and `PersistedCollection`
 Bundle a set of WPCs into a **versioned container** and link that single id as an input/context parameter.
 
-- `work-product--WorkProduct` (deliverable bundle) — [ER doc](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product/WorkProduct.1.0.0.md).
-- `work-product-component--PersistedCollection` (evidence package / curated set) — [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md).
+- `work-product--WorkProduct` (deliverable bundle) - [ER doc](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product/WorkProduct.1.0.0.md).
+- `work-product-component--PersistedCollection` (evidence package / curated set) - [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md).
 
 **Pros**
 - One id represents **“the DG package”**; simpler governance and versioning.
@@ -69,8 +69,8 @@ Bundle a set of WPCs into a **versioned container** and link that single id as a
 ### D) Rely on WPC→master-data links
 Many WPCs natively reference reservoir entities (e.g., `ReservoirEstimatedVolumes` link to `Reservoir` / `ReservoirSegment`). Navigate via WPC to master-data without duplicating relationships.
 
-**Reference:** Reservoir Management worked examples (links between WPC and Reservoir/Segments) — [README](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Examples/WorkedExamples/ReservoirManagement/README.md);
-`ColumnBasedTable` usage — [README](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Examples/WorkedExamples/Reservoir%20Data/ColumnBasedTable/README.md).
+**Reference:** Reservoir Management worked examples (links between WPC and Reservoir/Segments) - [README](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Examples/WorkedExamples/ReservoirManagement/README.md);
+`ColumnBasedTable` usage - [README](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/Examples/WorkedExamples/Reservoir%20Data/ColumnBasedTable/README.md).
 
 ---
 
@@ -86,7 +86,7 @@ Many WPCs natively reference reservoir entities (e.g., `ReservoirEstimatedVolume
 - Inputs: `work-product-component--Well`, `GenericRepresentation` (e.g., Grid2d), `VelocityModeling`, `ProductionValues`, `ColumnBasedTable` (volumes), `IjkGridRepresentation` (DG3/4), `WellboreTrajectory` (DG3/4 planned wells).
 - Outputs: `GenericRepresentation`, `ReservoirEstimatedVolumes`, `ColumnBasedTable`.
 
-**References:** WPC catalogs and docs — [VelocityModeling](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/VelocityModeling.1.3.0.md), [ProductionValues](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/ProductionValues.1.0.0.md), [GenericRepresentation](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Examples/work-product-component/GenericRepresentation.1.0.0.json).
+**References:** WPC catalogs and docs - [VelocityModeling](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/VelocityModeling.1.3.0.md), [ProductionValues](https://github.com/jonslo/osdu/osdu-data-data-definitions/blob/master/E-R/work-product-component/ProductionValues.1.0.0.md), [GenericRepresentation](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Examples/work-product-component/GenericRepresentation.1.0.0.json).
 
 ---
 
@@ -117,13 +117,13 @@ graph LR
   R["Reservoir"]
   RS1["ReservoirSegment #1"]
   W1["Well"]
-  GRin["GenericRepresentation (Grid2d) — input"]
-  VM["VelocityModeling — input"]
-  PV["ProductionValues — input"]
-  CBTin["ColumnBasedTable — input"]
-  GRout["GenericRepresentation — output"]
-  REV["ReservoirEstimatedVolumes — output"]
-  CBTout["ColumnBasedTable — output"]
+  GRin["GenericRepresentation (Grid2d) - input"]
+  VM["VelocityModeling - input"]
+  PV["ProductionValues - input"]
+  CBTin["ColumnBasedTable - input"]
+  GRout["GenericRepresentation - output"]
+  REV["ReservoirEstimatedVolumes - output"]
+  CBTout["ColumnBasedTable - output"]
 
   BD --> DL
   BD --> AS
@@ -143,7 +143,7 @@ graph LR
 ```mermaid
 graph LR
   BD["BusinessDecision (DG2)"]
-  WP["WorkProduct — DG2 Package"]
+  WP["WorkProduct - DG2 Package"]
   GR["GenericRepresentation (Grid2d)"]
   VM["VelocityModeling"]
   PV["ProductionValues"]
@@ -168,7 +168,7 @@ graph LR
   "acl": { "owners": ["data.default.owners@dev.dataservices.energy"], "viewers": ["data.office.global.viewers@dev.dataservices.energy"] },
   "legal": { "legaltags": ["dev-equinor-private-default"], "otherRelevantDataCountries": ["NO"] },
   "data": {
-    "Name": "PROJECT X — Decision Gate 2",
+    "Name": "PROJECT X - Decision Gate 2",
     "DecisionLevelID": "osdu:reference-data--DecisionLevel:DG2:1.0.0",
     "ApprovalStatusID": "osdu:reference-data--DecisionApprovalStatus:Approved:1.0.0",
     "DecisionDate": "2025-12-10",
@@ -281,9 +281,9 @@ Then reference this WorkProduct from `BusinessDecision.Parameters[]` as a **sing
 
 ## 9. Related guides
 
-- [Volumes](Volumes.md) — ReservoirEstimatedVolumes WPC, raw vs aggregated, fmu-dataio column mapping
-- [Uncertainty](Uncertainty.md) — FMU ensemble/Monte Carlo inputs & outputs in OSDU, Activity provenance
-- [Risk](Risk.md) — Risk master-data, mitigation documents, risk catalogs
-- [Drogon DG2 Demo](BdDemo.md) — Full worked example: BusinessDecision + all evidence artifacts
+- [Volumes](Volumes.md) - ReservoirEstimatedVolumes WPC, raw vs aggregated, fmu-dataio column mapping
+- [Uncertainty](Uncertainty.md) - FMU ensemble/Monte Carlo inputs & outputs in OSDU, Activity provenance
+- [Risk](Risk.md) - Risk master-data, mitigation documents, risk catalogs
+- [Drogon DG2 Demo](BdDemo.md) - Full worked example: BusinessDecision + all evidence artifacts
 
 ---

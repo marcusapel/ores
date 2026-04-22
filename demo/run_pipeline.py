@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-run_pipeline.py — Generic OSDU demo pipeline runner.
+run_pipeline.py - Generic OSDU demo pipeline runner.
 
 Drives any dataset / decision-gate pipeline by auto-discovering generator
 scripts from a directory, or from a built-in profile, or a JSON config.
 Works cross-platform (unlike the .ps1 scripts).
 
-Auto-discovery mode (preferred — works with any DG dataset):
+Auto-discovery mode (preferred - works with any DG dataset):
     python demo/run_pipeline.py demo/drogon_dg2               # auto-discover from dir
     python demo/run_pipeline.py demo/my_field_dg3              # any dataset dir
     python demo/run_pipeline.py                                # default: demo/drogon_dg2
@@ -356,7 +356,7 @@ class PipelineRunner:
 
         # Build command
         cmd = [sys.executable, str(script_path)] + step.args
-        if step.number == 9:  # ingestion step — pass delay
+        if step.number == 9:  # ingestion step - pass delay
             cmd.extend(["--delay", str(self.delay)])
 
         if self.dry_run:
@@ -426,7 +426,7 @@ class PipelineRunner:
         if failed:
             print(self._c("  Pipeline FAILED", 31))
         else:
-            print(self._c(f"  {name} — complete", 32))
+            print(self._c(f"  {name} - complete", 32))
         print(self._c(f"{'='*60}\n", 1))
 
         if self.skip_ingest:

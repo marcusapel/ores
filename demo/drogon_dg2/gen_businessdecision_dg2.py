@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_businessdecision_dg2.py — Generate a BusinessDecision manifest for
-Drogon DG2 (Decision Gate 2 — Concept Select).
+gen_businessdecision_dg2.py - Generate a BusinessDecision manifest for
+Drogon DG2 (Decision Gate 2 - Concept Select).
 
 This is the enriched DG2 record including elements not present at DG1:
   - KeyEconomics (NPV, IRR, CAPEX, OPEX, Breakeven, Payback)
@@ -15,16 +15,16 @@ This is the enriched DG2 record including elements not present at DG1:
   - Extended UncertaintySummary with StaticInPlace AND Recoverable
   - 4 risks (porosity, fault, HSE, schedule)
 
-Reads (from DG1 folder — shared master data):
-  ../drogon/manifest_masterwp_drogon.json   — Reservoir ID, acl, legal
+Reads (from DG1 folder - shared master data):
+  ../drogon/manifest_masterwp_drogon.json   - Reservoir ID, acl, legal
 
-Reads (from DG2 folder — DG2-specific volume tables with ×0.8 porosity):
-  manifest_wpcraw_dg2.json      — DG2 Raw REV WPC ID (volumes ×0.8)
-  manifest_wpcstat_dg2.json     — DG2 Statistics REV WPC ID
-  manifest_wpcparams_dg2.json   — DG2 ColumnBasedTable WPC ID (porosity ×0.8)
-  manifest_activity_dg2.json    — DG2 Activity WPC ID
-  manifest_risk_dg2.json        — Risk IDs (4 risks)
-  manifest_documents_dg2.json   — Document IDs (SRA, CRA, PDO, PTR)
+Reads (from DG2 folder - DG2-specific volume tables with ×0.8 porosity):
+  manifest_wpcraw_dg2.json      - DG2 Raw REV WPC ID (volumes ×0.8)
+  manifest_wpcstat_dg2.json     - DG2 Statistics REV WPC ID
+  manifest_wpcparams_dg2.json   - DG2 ColumnBasedTable WPC ID (porosity ×0.8)
+  manifest_activity_dg2.json    - DG2 Activity WPC ID
+  manifest_risk_dg2.json        - Risk IDs (4 risks)
+  manifest_documents_dg2.json   - Document IDs (SRA, CRA, PDO, PTR)
 
 Output:
   manifest_bd_dg2.json
@@ -244,7 +244,7 @@ def main():
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Parameters[] — typed references to evidence artefacts
+# Parameters[] - typed references to evidence artefacts
 # ─────────────────────────────────────────────────────────────────────
 
 def _build_parameters(
@@ -342,7 +342,7 @@ def _build_parameters(
             "DataObjectParameter": devconcept_wpc_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "DevelopmentConcept"}],
         })
-    # GeoLabelSet — headline volumes & reservoir properties
+    # GeoLabelSet - headline volumes & reservoir properties
     if gls_id:
         params.append({
             "Title": "Headline volumes & reservoir properties (GeoLabelSet)",
@@ -357,7 +357,7 @@ def _build_parameters(
         params.append({
             "Title": "DG2 Evidence Package (persisted collection)",
             "Selection": (
-                "WorkProduct bundling all DG2 input/output artifacts — "
+                "WorkProduct bundling all DG2 input/output artifacts - "
                 "volumes, parameters, forecast, risks, documents, "
                 "GeoLabelSet, activity, and ETP dataspace reference"
             ),
@@ -433,7 +433,7 @@ def _build_canonical_fields(pfx: str) -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# ext.equinor — the enrichment payload
+# ext.equinor - the enrichment payload
 # ─────────────────────────────────────────────────────────────────────
 
 def _build_ext_equinor(pfx: str, risk_ids: List[str]) -> Dict[str, Any]:

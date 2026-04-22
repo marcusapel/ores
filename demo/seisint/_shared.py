@@ -29,7 +29,7 @@ NS_SEISINT = uuid.UUID("d1e2f3a4-b5c6-7890-abcd-ef0123456789")
 
 
 def stable_uuid(name: str) -> str:
-    """UUID5 from a fixed namespace — same name always gives same UUID."""
+    """UUID5 from a fixed namespace - same name always gives same UUID."""
     return str(uuid.uuid5(NS_SEISINT, name))
 
 
@@ -121,4 +121,4 @@ def save_json(data: Any, path: str | Path) -> None:
     print(f"  Written → {p}")
 
 
-# ── .env loader (delegated to demo/_auth.py — re-exported above) ────────
+# ── .env loader (delegated to demo/_auth.py - re-exported above) ────────

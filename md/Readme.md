@@ -1,4 +1,4 @@
-# OSDU RDDMS admin UI — web client and demo toolkit
+# OSDU RDDMS admin UI - web client and demo toolkit
 
 A FastAPI-based administrative UI for an OSDU-style RDDMS (Reservoir Data / Decision Management System) plus a demo pipeline toolkit for generating, ingesting and comparing Business Decisions, Volumes, Risks and Stratigraphy records.
 
@@ -8,7 +8,7 @@ A FastAPI-based administrative UI for an OSDU-style RDDMS (Reservoir Data / Deci
 
 | Page | Purpose |
 |------|---------|
-| **RddmsAdmin** (`/`) | List and manage OSDU Dataspaces — create, lock, unlock, delete, build manifests |
+| **RddmsAdmin** (`/`) | List and manage OSDU Dataspaces - create, lock, unlock, delete, build manifests |
 | **RddmsResources** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
 | **OsduSearch** (`/search`) | Query the OSDU Search API and view results with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet, etc.) |
 | **Analyse** (`/analyse`) | Select a Reservoir, compare Business Decisions across decision gates (DG1→DG4) with volume/risk/economics deltas and charts |
@@ -18,11 +18,11 @@ A FastAPI-based administrative UI for an OSDU-style RDDMS (Reservoir Data / Deci
 
 Key rendering features:
 
-- **BD cards** — gradient header, headline volume KPIs (three-tier fallback: stat WPC → GeoLabelSet → ext.equinor), development concept, reservoir properties, economics, schedule, production forecast chart, alternatives, risk chips, uncertainties, authors & governance.
-- **REV cards** — teal-themed with P10/P50/P90 headlines, metadata highlights, full volume table.
-- **Analyse comparison** — gate timeline, side-by-side metric deltas (STOIIP, NPV, CAPEX, etc.), risk diff chips (added/removed/mitigated), property diffs, synthesis insights, Chart.js overlay charts.
-- **Mermaid relationship graphs** — interactive record-relationship diagrams with ancestry, data references, type-based styling.
-- **Local BD enrichment overlay** — OSDU silently drops custom `ext.equinor` keys during ingestion; the app loads manifests at startup and merges them back at render time.
+- **BD cards** - gradient header, headline volume KPIs (three-tier fallback: stat WPC → GeoLabelSet → ext.equinor), development concept, reservoir properties, economics, schedule, production forecast chart, alternatives, risk chips, uncertainties, authors & governance.
+- **REV cards** - teal-themed with P10/P50/P90 headlines, metadata highlights, full volume table.
+- **Analyse comparison** - gate timeline, side-by-side metric deltas (STOIIP, NPV, CAPEX, etc.), risk diff chips (added/removed/mitigated), property diffs, synthesis insights, Chart.js overlay charts.
+- **Mermaid relationship graphs** - interactive record-relationship diagrams with ancestry, data references, type-based styling.
+- **Local BD enrichment overlay** - OSDU silently drops custom `ext.equinor` keys during ingestion; the app loads manifests at startup and merges them back at render time.
 
 ## Requirements
 
@@ -50,14 +50,14 @@ Config lives in two files under `k8s/`:
 |------|---------|---------|
 | `k8s/configmap.yaml` | Yes | Hostnames, partitions, legal tags, app settings |
 | `k8s/secret.yaml` | **No** (gitignored) | Tenant IDs, client IDs, tokens, API keys |
-| `k8s/secret.yaml.template` | Yes | Empty template — copy to `secret.yaml` and fill in |
+| `k8s/secret.yaml.template` | Yes | Empty template - copy to `secret.yaml` and fill in |
 
 Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars split across both files.
 
-### Frontend (CDN — no npm install)
+### Frontend (CDN - no npm install)
 
-- **Chart.js 4** — production forecast & comparison charts
-- **Mermaid 10** — relationship graph rendering
+- **Chart.js 4** - production forecast & comparison charts
+- **Mermaid 10** - relationship graph rendering
 
 ### Quick start
 
@@ -99,7 +99,7 @@ app/
   static/              # JS/CSS assets
 
 demo/
-  _auth.py             # Central auth module — k8s/env/.env resolution & token minting
+  _auth.py             # Central auth module - k8s/env/.env resolution & token minting
   gettoken.py          # CLI: mint token, list instances, --from-k8s, --export
   dataspacecopy.py     # Copy records between OSDU dataspaces
   run_pipeline.py      # Generic cross-platform pipeline runner
@@ -115,7 +115,7 @@ k8s/                   # Kubernetes manifests (configmap, secret, deployment)
 
 ---
 
-## Pipeline guide — adding a new field / decision gate dataset
+## Pipeline guide - adding a new field / decision gate dataset
 
 See [md/BdDemo.md](md/BdDemo.md) for the full DG data model guide, including:
 
@@ -187,15 +187,15 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 
 ## Demo token tools
 
-Token minting is centralised in `demo/_auth.py` — the single source of truth for
+Token minting is centralised in `demo/_auth.py` - the single source of truth for
 k8s YAML loading, instance resolution (k8s → env → `.env`), and OAuth2 token exchange
 (both `refresh_token` and `client_credentials` grants).
 
 | File | Purpose |
 |------|--------|
-| `demo/_auth.py` | Shared module: `get_token()`, `load_instance()`, `api_headers()`, `base_url()` — imported by all demo scripts |
-| `demo/gettoken.py` | Rich CLI: `--from-k8s`, `--list`, `--export`, `--json` — thin wrapper around `_auth` |
-| `app/get_token.py` | Minimal CLI: `--shell bash\|pwsh`, `--instance` — also delegates to `_auth` |
+| `demo/_auth.py` | Shared module: `get_token()`, `load_instance()`, `api_headers()`, `base_url()` - imported by all demo scripts |
+| `demo/gettoken.py` | Rich CLI: `--from-k8s`, `--list`, `--export`, `--json` - thin wrapper around `_auth` |
+| `app/get_token.py` | Minimal CLI: `--shell bash\|pwsh`, `--instance` - also delegates to `_auth` |
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-build_rddms_catalog.py — Fetch GenericRepresentation:1.2.0 records from
+build_rddms_catalog.py - Fetch GenericRepresentation:1.2.0 records from
 the RDDMS manifests/build API for our demo surfaces.
 
 The RDDMS manifests/build endpoint (POST /api/reservoir-ddms/v2/manifests/build)
@@ -18,9 +18,9 @@ These GenericRepresentation records complement the StructureMap + SeismicHorizon
 records from gen_volantis_interp.py.  Both kinds point to the same RDDMS objects
 via DDMSDatasets[], but serve different purposes:
 
-  GenericRepresentation  — universal RDDMS catalog layer (produced by RDDMS API)
-  StructureMap           — specialised depth map with grid geometry + typed refs
-  SeismicHorizon         — specialised TWT pick with seismic grid ref + domain type
+  GenericRepresentation  - universal RDDMS catalog layer (produced by RDDMS API)
+  StructureMap           - specialised depth map with grid geometry + typed refs
+  SeismicHorizon         - specialised TWT pick with seismic grid ref + domain type
 
 Usage:
   python build_rddms_catalog.py                    # fetch & save

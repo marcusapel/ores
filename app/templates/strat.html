@@ -75,7 +75,7 @@
   <div style="margin-top:.5rem;">
     <label for="strat-results">Results <span class="muted" style="font-weight:normal;font-size:.82rem;">(Columns, Ranks &amp; Units)</span></label>
     <select id="strat-results" size="7" style="width:100%;">
-      <option value="">— no results —</option>
+      <option value="">- no results -</option>
     </select>
     <div class="muted" style="font-size:.85rem;margin-top:.25rem;">
       Select a Column, Rank or Unit to render. Ranks and Units display as a single-rank view.
@@ -232,7 +232,7 @@
         First load a column from the search panel, then use this tab to push it.
       </p>
       <div id="rddms-col-info" class="muted" style="font-size:13px; margin-bottom:.5rem; font-style:italic;">
-        No column loaded yet — load one from the search panel first.
+        No column loaded yet - load one from the search panel first.
       </div>
       <div class="row" style="grid-template-columns:140px 1fr auto; gap:.4rem; align-items:center;">
         <label for="rddms-ds">Dataspace</label>
@@ -341,7 +341,7 @@
       if (val && typeof val === 'object' && !Array.isArray(val))
         for (const [k,v] of Object.entries(val)) flt(v, path ? `${path}.${k}` : k, out);
       else if (Array.isArray(val)) val.forEach((v,i)=>flt(v, path?`${path}.${i}`:`${i}`, out));
-      else out.push({name:path, value:(val===null||val===undefined)?'—':String(val)});
+      else out.push({name:path, value:(val===null||val===undefined)?'-':String(val)});
       return out;
     }
     const pairs = flt(obj);
@@ -380,7 +380,7 @@
     // 1. ParentName: authoritative parent declaration (fuzzy match)
     if (child.parentName) {
       if (_normName(child.parentName) === _normName(parent.name)) return true;
-      // parentName set but doesn't match this parent — fall through to age
+      // parentName set but doesn't match this parent - fall through to age
     }
     // 2. Chrono Code hierarchy (e.g. "Phanerozoic.Paleozoic.Silurian")
     if (child.code && parent.code) {
@@ -487,10 +487,10 @@
 
     // ── Assign parents ──
     // For each child unit, try these strategies in order:
-    //   1. parentName match (fuzzy) — authoritative for litho columns
-    //   2. Age containment fallback — when parentName is set but no name
+    //   1. parentName match (fuzzy) - authoritative for litho columns
+    //   2. Age containment fallback - when parentName is set but no name
     //      match exists (data inconsistency) or when parentName is absent
-    //   3. Code hierarchy — chrono code containment
+    //   3. Code hierarchy - chrono code containment
     // If the named parent exists at a NON-ADJACENT rank, synthesize
     // intermediate stubs at every skipped rank.
     function _linkToTarget(child, target, ri) {
@@ -498,7 +498,7 @@
         target.children.push(child);
         child.parent = target;
       } else {
-        // Parent is 2+ ranks above — fill intermediate ranks
+        // Parent is 2+ ranks above - fill intermediate ranks
         let cur = target;
         for (let mid = target.rankIdx + 1; mid < ri; mid++) {
           let label = child.parentName || child.name;
@@ -574,7 +574,7 @@
       }
     }
 
-    // Collect roots (no parent) — rank-0 nodes + orphans from deeper ranks
+    // Collect roots (no parent) - rank-0 nodes + orphans from deeper ranks
     const roots = [];
     for (let ri = 0; ri < nRanks; ri++)
       for (const n of levels[ri])
@@ -757,7 +757,7 @@
           nameEl.textContent = node.name;
           td.appendChild(nameEl);
 
-          // Age (supplementary info — always show older–younger)
+          // Age (supplementary info - always show older–younger)
           if (node.olderMa != null && node.youngerMa != null) {
             const ageEl = document.createElement('div');
             ageEl.className = 'sc-age';
@@ -847,7 +847,7 @@
       // Enable RDDMS push after successful load
       currentColumnId = rid;
       const colName = (model.column || {}).name || rid;
-      if (rddmsColInfo) rddmsColInfo.innerHTML = `Column loaded: <strong>${colName}</strong> — ready to push.`;
+      if (rddmsColInfo) rddmsColInfo.innerHTML = `Column loaded: <strong>${colName}</strong> - ready to push.`;
       if (btnRddmsPushEl) btnRddmsPushEl.disabled = false;
 
       // Count real (non-synthetic) units and horizons
@@ -888,7 +888,7 @@
     const lim = Math.max(1, Math.min(1000, parseInt(limitInput.value||'50', 10)));
     const stype = (typeSelect ? typeSelect.value : 'all') || 'all';
     searchStat.textContent = 'Searching\u2026';
-    resSelect.innerHTML = '<option value="">— searching —</option>';
+    resSelect.innerHTML = '<option value="">- searching -</option>';
     try {
       const url = `/api/strat/search.json?q=${encodeURIComponent(q)}&limit=${lim}&type=${stype}`;
       const r = await fetch(url, { headers:{'Cache-Control':'no-store'} });
@@ -897,7 +897,7 @@
       const items = data.items || [];
       resSelect.innerHTML = '';
       if (!items.length) {
-        resSelect.innerHTML = '<option value="">— no results —</option>';
+        resSelect.innerHTML = '<option value="">- no results -</option>';
         searchStat.textContent = 'No results';
         clear(legendBox); clear(matrixRoot);
         return;
@@ -926,7 +926,7 @@
       if (stype !== 'unit') loadColumnById(resSelect.value);
     } catch(e) {
       console.warn(e);
-      resSelect.innerHTML = '<option value="">— error —</option>';
+      resSelect.innerHTML = '<option value="">- error -</option>';
       searchStat.textContent = 'Search failed: ' + e.message;
     }
   }
@@ -996,7 +996,7 @@
     URL.revokeObjectURL(a.href);
   }
 
-  // Shared ingest function — sends records to OSDU Storage API
+  // Shared ingest function - sends records to OSDU Storage API
   async function doIngest(bundle, partition, statusId) {
     impStatus(statusId, 'Sending to OSDU…', 'info');
     try {
@@ -1009,7 +1009,7 @@
       if (!r.ok) throw new Error(data.detail || r.statusText);
       impStatus(statusId, `${data.status}: ${data.created || data.totalRecords || '?'} records sent to OSDU`, 'ok');
 
-      // Auto-refresh search — backend discovers un-indexed columns via Rank records
+      // Auto-refresh search - backend discovers un-indexed columns via Rank records
       setTimeout(() => doSearch(), 500);
     } catch(e) {
       impStatus(statusId, 'Send failed: ' + e.message, 'err');
@@ -1036,7 +1036,7 @@
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || r.statusText);
       owBundle = data.bundle;
-      impStatus('ow-status', `Converted: "${data.columnName}" — ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
+      impStatus('ow-status', `Converted: "${data.columnName}" - ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
       impPreview('ow-preview', owBundle);
       btnOwStorage.disabled = false;
       btnOwDownload.disabled = false;
@@ -1141,7 +1141,7 @@
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || r.statusText);
       smdaBundle = data.bundle;
-      impStatus('smda-status', `Fetched: "${data.columnName}" — ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
+      impStatus('smda-status', `Fetched: "${data.columnName}" - ${data.rankCount} ranks, ${data.unitCount} units`, 'ok');
       impPreview('smda-preview', smdaBundle);
       btnSmdaStorage.disabled = false;
       btnSmdaDownload.disabled = false;
@@ -1480,7 +1480,7 @@
       let html = `<strong>${s.horizonCount || 0} new horizon(s)</strong> from ${s.uniqueAges || 0} distinct ages, `;
       html += `${s.unitsPatchable || 0} units linkable`;
       if (s.existingHorizons) html += `<br><span class="muted">${s.existingHorizons} existing horizon(s) kept, ${s.skippedAges || 0} age(s) skipped (already linked)</span>`;
-      if (s.horizonCount === 0 && s.existingHorizons > 0) html += `<br><em>All boundary ages already have horizons — nothing to generate.</em>`;
+      if (s.horizonCount === 0 && s.existingHorizons > 0) html += `<br><em>All boundary ages already have horizons - nothing to generate.</em>`;
 
       if (ingest && data.ingest) {
         const ig = data.ingest;
@@ -1554,7 +1554,7 @@
       const s = data.stats || {};
       let html = `<strong>${s.unitCount || 0} new unit(s)</strong> derived from ${s.horizonCount || 0} horizon boundaries`;
       if (s.existingUnits) html += `<br><span class="muted">${s.existingUnits} existing unit(s) kept, ${s.skippedIntervals || 0} interval(s) skipped (already covered)</span>`;
-      if (s.unitCount === 0 && s.existingUnits > 0) html += `<br><em>All intervals already have units — nothing to generate.</em>`;
+      if (s.unitCount === 0 && s.existingUnits > 0) html += `<br><em>All intervals already have units - nothing to generate.</em>`;
 
       if (ingest && data.ingest) {
         const ig = data.ingest;

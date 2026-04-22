@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ingest_workflow_drogon.py — Ingest Drogon manifests via the OSDU Workflow API
+ingest_workflow_drogon.py - Ingest Drogon manifests via the OSDU Workflow API
 (same approach that succeeded for the GRAND manifests).
 
 Uses httpx (not requests) to avoid the corporate-proxy timeout.
 
 Submits each manifest to POST /api/workflow/v1/workflow/Osdu_ingest/workflowRun,
-which processes the manifest atomically — no eventual-consistency race on
+which processes the manifest atomically - no eventual-consistency race on
 ancestry parents.
 
 Usage:
@@ -29,7 +29,7 @@ import httpx
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent  # ores/
 
-# Manifest ingestion order — dependencies first.
+# Manifest ingestion order - dependencies first.
 # The Workflow API handles intra-manifest ancestry atomically, but
 # cross-manifest references (e.g. WPC → Reservoir) must already exist.
 DEFAULT_MANIFESTS = [
@@ -177,7 +177,7 @@ def print_summary(run_obj: Dict[str, Any]) -> None:
         for rid, st, msg in rows:
             line = f"      {st:10s} {rid}"
             if msg:
-                line += f"  — {msg}"
+                line += f"  - {msg}"
             print(line)
     else:
         print(f"    (no per-record details in workflow outputs; overall={status})")
@@ -190,7 +190,7 @@ def main():
     ap.add_argument("--env-file", action="append", default=[],
                     help=".env file(s) with auth credentials")
     ap.add_argument("--dry-run", action="store_true",
-                    help="Load manifests and validate — don't submit")
+                    help="Load manifests and validate - don't submit")
     ap.add_argument("--poll-interval", type=float, default=10,
                     help="Seconds between poll requests (default 10)")
     ap.add_argument("--max-wait", type=float, default=120,
@@ -236,7 +236,7 @@ def main():
     print(f"\n{len(manifests)} manifests loaded and validated")
 
     if args.dry_run:
-        print("\n[dry-run] Would submit these manifests — exiting.")
+        print("\n[dry-run] Would submit these manifests - exiting.")
         return
 
     print("\nAuthenticating …")

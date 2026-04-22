@@ -1,5 +1,5 @@
 """
-Keys / RDDMS explorer — browse dataspaces, types, objects, graphs, tables,
+Keys / RDDMS explorer - browse dataspaces, types, objects, graphs, tables,
 and build OSDU manifests from selected RESQML/EML resources.
 
 Provides:
@@ -10,7 +10,7 @@ Provides:
   GET  /keys/objects.json                   → JSON: aggregated object list
   GET  /keys/object/table.json              → JSON: Grid2d table reconstruction
   GET  /keys/object/graph.json              → JSON: object graph (refs)
-  POST /dataspaces/create                   → (remains in main.py — home page)
+  POST /dataspaces/create                   → (remains in main.py - home page)
   POST /dataspaces/delete                   → JSON: delete a dataspace
   POST /dataspaces/lock                     → JSON: lock a dataspace
   POST /dataspaces/unlock                   → JSON: unlock a dataspace
@@ -55,7 +55,7 @@ def _access_token(request: Request) -> str:
 
 @router.get("/keys", response_class=HTMLResponse)
 async def keys_page(request: Request):
-    # Render immediately — dataspaces loaded async via JS /keys/dataspaces.json
+    # Render immediately - dataspaces loaded async via JS /keys/dataspaces.json
     return templates.TemplateResponse(
         request, "keys.html",
         {"prefill_ds": []},
@@ -917,7 +917,7 @@ async def keys_object_table(
     n_cols = int(grid_patch.get("FastestAxisCount", 0))
     n_rows = int(grid_patch.get("SlowestAxisCount", 0))
 
-    # 2. Read the zvalues array — first discover the actual path via list_arrays
+    # 2. Read the zvalues array - first discover the actual path via list_arrays
     zvalues_data = {}
     zvalues_path = "zvalues"  # fallback
     try:
@@ -965,7 +965,7 @@ async def keys_object_table(
     # 3. Resolve StringTableLookups for column names, UoMs, and string decode maps.
     #    Strategy: (a) ExtraMetadata stl_columns/stl_uoms UUIDs (future-proof),
     #              (b) RDDMS graph targets (works if RDDMS exposes .rels),
-    #              (c) Fallback — scan all STLs in dataspace, match by entry-count.
+    #              (c) Fallback - scan all STLs in dataspace, match by entry-count.
     columns = [f"col_{i}" for i in range(n_cols)]
     uoms = ["" for _ in range(n_cols)]
     string_lookups: dict[str, dict] = {}
@@ -1231,7 +1231,7 @@ async def keys_object_map_png(
     interp = grid.get("RepresentedInterpretation") or {}
     interp_title = interp.get("Title") or ""
     if interp_title and interp_title != title:
-        title = f"{title} — {interp_title}"
+        title = f"{title} - {interp_title}"
 
     zvalues = surface["zvalues"]
     dims = surface["dims"]
@@ -1275,7 +1275,7 @@ async def keys_object_map_json(
 ):
     """
     Return the parsed surface metadata (geometry, CRS, dims, stats) as JSON
-    — useful for the front-end to know what it can plot before requesting
+    - useful for the front-end to know what it can plot before requesting
     the full PNG.
     """
     at = _access_token(request)

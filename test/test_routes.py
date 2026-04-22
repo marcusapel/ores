@@ -1,17 +1,17 @@
 """
-tests/test_routes.py — Integration tests for core application routes.
+tests/test_routes.py - Integration tests for core application routes.
 
 Covers three main flows, all running against mocked OSDU/RDDMS backends:
 
-  1. **RDDMS Keys — list dataspaces**
+  1. **RDDMS Keys - list dataspaces**
      GET /keys/dataspaces.json  → expects items[] with dataspace paths
      GET /keys/types.json?ds=…  → expects items[] with type names
 
-  2. **Business Decisions — search, fetch, compare**
+  2. **Business Decisions - search, fetch, compare**
      POST /search/run  → search for BD records, enrich with volumes
      GET  /search/view/{id} → single record detail
 
-  3. **Strat Column — search, fetch column model, rank/unit structure**
+  3. **Strat Column - search, fetch column model, rank/unit structure**
      GET /api/strat/search.json  → list strat columns
      GET /api/strat/column.json?id=… → full rank-by-age matrix
 
@@ -135,7 +135,7 @@ def _fake_chrono_record(chrono_id: str, name: str, top_ma: float, base_ma: float
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. RDDMS Keys — dataspaces & types
+# 1. RDDMS Keys - dataspaces & types
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestKeysDataspaces:
@@ -208,7 +208,7 @@ class TestKeysPage:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. Business Decisions — search & fetch
+# 2. Business Decisions - search & fetch
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _mock_httpx_for_search(records: list):
@@ -282,7 +282,7 @@ class TestBusinessDecisionSearch:
 
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
-        # The response is HTML — check that our record names appear
+        # The response is HTML - check that our record names appear
         body = resp.text
         assert "Drogon DG2" in body or "BusinessDecision" in body
 
@@ -295,7 +295,7 @@ class TestBusinessDecisionSearch:
 
 
 class TestBusinessDecisionView:
-    """GET /search/view/{id} — single record detail with enrichment."""
+    """GET /search/view/{id} - single record detail with enrichment."""
 
     def test_view_record(self, authed_client):
         bd = _fake_bd_record()
@@ -351,7 +351,7 @@ class TestBusinessDecisionCompare:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. Strat Column — search, fetch, rank/unit model
+# 3. Strat Column - search, fetch, rank/unit model
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestStratSearch:
@@ -535,7 +535,7 @@ class TestStratColumnFetch:
         unit_names = [u.get("name", "") for u in erathem["units"]]
         # Should have at least Paleozoic, Mesozoic, + a synthetic gap-filler
         assert len(erathem["units"]) >= 2
-        # Check that a synthetic "(not defined..." or "(Phanerozoic — undifferentiated)" entry exists
+        # Check that a synthetic "(not defined..." or "(Phanerozoic - undifferentiated)" entry exists
         has_synthetic = any(u.get("_synthetic") for u in erathem["units"])
         assert has_synthetic, f"Expected a synthetic gap-fill unit, got: {unit_names}"
 
@@ -630,7 +630,7 @@ class TestStratPage:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Admin page — dataspaces via main.py
+# Admin page - dataspaces via main.py
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestAdminPage:
@@ -655,7 +655,7 @@ class TestAdminPage:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Generation — horizons ↔ units bidirectional (complement-aware)
+# Generation - horizons ↔ units bidirectional (complement-aware)
 #
 # Uses the ICS demo chrono column as the realistic test fixture:
 #   Eonothem  rank → Phanerozoic (541–0 Ma), Proterozoic (2500–541 Ma)
@@ -900,7 +900,7 @@ class TestGenerateUnitsFromHorizons:
 
 class TestSmdaLithoAgeConvention:
     """Verify horizon/unit generation handles SMDA litho convention
-    where topMa=younger (small Ma) and baseMa=older (big Ma) — the
+    where topMa=younger (small Ma) and baseMa=older (big Ma) - the
     inverse of ICS chrono convention."""
 
     @staticmethod

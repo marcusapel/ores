@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-dataspacecopy.py — Copy a dataspace between OSDU RDDMS instances via the
+dataspacecopy.py - Copy a dataspace between OSDU RDDMS instances via the
 OpenETP Docker client.
 
 Supports three strategies:
@@ -231,7 +231,7 @@ def strategy_direct(src: Dict, dst: Dict, dataspace: str, *,
                       partition=dst["partition"], token=dst_token,
                       xdata=xdata, dry_run=dry_run)
     if rc != 0 and not dry_run:
-        print("  (may already exist — continuing)")
+        print("  (may already exist - continuing)")
 
     # 2. Direct copy
     print("\n=== Direct copy (from-remote) ===")

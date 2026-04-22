@@ -18,8 +18,8 @@
     ]
   },
   "data": {
-    "Name": "TopTherys Depth — Grid2dRepresentation",
-    "Description": "RDDMS catalog entry for TopTherys (Depth) — Grid2dRepresentation 0ce9278d-979c-450a-a3db-08ea96517463 in dataspace maap/drogon",
+    "Name": "TopTherys Depth - Grid2dRepresentation",
+    "Description": "RDDMS catalog entry for TopTherys (Depth) - Grid2dRepresentation 0ce9278d-979c-450a-a3db-08ea96517463 in dataspace maap/drogon",
     "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
     "InterpretationName": "TopTherys Interpretation",

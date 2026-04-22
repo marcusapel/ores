@@ -546,7 +546,7 @@ async def rddms_index(request: Request) -> JSONResponse:
 
 
 # ======================================================================
-# DELETE /api/records/delete — soft-delete an OSDU record via Storage API
+# DELETE /api/records/delete - soft-delete an OSDU record via Storage API
 # ======================================================================
 
 @router.post("/records/delete")
@@ -600,7 +600,7 @@ async def delete_record(request: Request) -> JSONResponse:
 
 
 # ======================================================================
-# POST /api/records/ingest — ingest records directly via Storage PUT
+# POST /api/records/ingest - ingest records directly via Storage PUT
 # ======================================================================
 
 @router.post("/records/ingest")

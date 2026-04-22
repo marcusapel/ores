@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon — Production History (OPM Flow, realization-0, 2018–2020)",
+    "Name": "Drogon - Production History (OPM Flow, realization-0, 2018–2020)",
     "Description": "Real OPM Flow simulation output from Drogon FMU model (equinor/webviz-subsurface-testdata, 01_drogon_ahm, realization-0, iter-0). Monthly summary vectors 2018-01 to 2020-07. 4 producers (A1-A4, phased start Jan–Oct 2018) and 2 water injectors (A5: Jun 2018, A6: Dec 2018). Peak oil rate 14,259 Sm³/d (Oct 2018). FOIP at start = 44.1 MSm³, cumulative oil = 7.41 MSm³ at end of history. Field pressure decline from 301 to 257 barsa. Water cut rising from 0 to 0.58. Source: unsmry--monthly.csv.",
     "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",
     "Table": {

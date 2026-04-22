@@ -228,7 +228,7 @@
     // Spacer
     root.appendChild(el('span', { 'class': 'nav-spacer' }));
 
-    // Auth links (only visible in per-user PKCE mode — no REFRESH_TOKEN)
+    // Auth links (only visible in per-user PKCE mode - no REFRESH_TOKEN)
     if (document.body.getAttribute('data-auth-mode') === 'per_user_pkce') {
       root.appendChild(linkSpan('/login-page', 'Sign in', 'nav-signin'));
       root.appendChild(linkSpan('/logout', 'Sign out', 'nav-signout'));

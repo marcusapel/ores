@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-get_token.py — Mint an access token from the active instance's credentials
+get_token.py - Mint an access token from the active instance's credentials
 and print it (plus shell-eval snippets so you can export it directly).
 
 Delegates the actual token exchange to ``demo/_auth.py`` so the logic
@@ -121,10 +121,10 @@ def main() -> None:
 
     if args.shell == "bash":
         print(f'export {var}="{token}"')
-        print(f'# expires_in={expires_in}s  —  eval $(python get_token.py --shell bash)')
+        print(f'# expires_in={expires_in}s  -  eval $(python get_token.py --shell bash)')
     elif args.shell == "pwsh":
         print(f'$env:{var} = "{token}"')
-        print(f'# expires_in={expires_in}s  —  run: Invoke-Expression (python get_token.py --shell pwsh)')
+        print(f'# expires_in={expires_in}s  -  run: Invoke-Expression (python get_token.py --shell pwsh)')
     else:
         # Default: human-readable summary
         print(f"access_token : {token}")

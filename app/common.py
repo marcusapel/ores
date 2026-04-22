@@ -1,5 +1,5 @@
 """
-app/common.py — Shared helpers used across app modules.
+app/common.py - Shared helpers used across app modules.
 
 Consolidates duplicated utilities (access_token extraction,
 reservoir search) into a single importable location.
@@ -22,7 +22,7 @@ log = logging.getLogger("rddms-admin.common")
 def access_token(request: Request) -> str:
     """Extract the access token set by the auth middleware.
 
-    Raises 401 if no token is available — use only in routes
+    Raises 401 if no token is available - use only in routes
     that require authentication (not in public paths).
     """
     at = getattr(request.state, "access_token", None)

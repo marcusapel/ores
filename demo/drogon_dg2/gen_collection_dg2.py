@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_collection_dg2.py — Generate a PersistedCollection WPC
+gen_collection_dg2.py - Generate a PersistedCollection WPC
 that bundles **all** artifacts feeding the DG2 BusinessDecision.
 
 This gives the BD a single "DG2 evidence package" reference in addition
-to the individual Parameters[] entries — the recommended OSDU pattern
+to the individual Parameters[] entries - the recommended OSDU pattern
 when the artifact set is large (see BusinessDecision guide §6–7).
 
 Uses the OSDU canonical schema:
   osdu:wks:work-product-component--PersistedCollection:1.0.0
 
 The PersistedCollection.DataReferences[] list collects every object
-referenced by the BD — inputs, outputs, context references, risks,
+referenced by the BD - inputs, outputs, context references, risks,
 documents, activity, GeoLabelSet, DevelopmentConcept, and the ETP
 dataspace dataset.
 
@@ -26,7 +26,7 @@ Reads (from DG2 folder):
   manifest_documents_dg2.json
   manifest_devconcept_dg2.json
 
-Reads (from DG1 folder — shared master data):
+Reads (from DG1 folder - shared master data):
   ../drogon/manifest_masterwp_drogon.json
 
 Output:
@@ -167,7 +167,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon DG2 — Evidence Package",
+            "Name": "Drogon DG2 - Evidence Package",
             "Description": (
                 "PersistedCollection bundling all artifacts used to create "
                 "the Drogon DG2 Concept Select BusinessDecision. "

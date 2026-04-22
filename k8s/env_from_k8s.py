@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-k8s/env_from_k8s.py — Export env vars from k8s ConfigMap + Secret YAML.
+k8s/env_from_k8s.py - Export env vars from k8s ConfigMap + Secret YAML.
 
-Usage (local development — replaces .env):
+Usage (local development - replaces .env):
 
     # Print export statements (inspect what will be set):
     python k8s/env_from_k8s.py
@@ -16,7 +16,7 @@ Usage (local development — replaces .env):
 
 This reads k8s/configmap.yaml and k8s/secret.yaml (gitignored),
 extracts the data/stringData fields, and prints shell export statements.
-No .env file needed — the k8s YAMLs are the single source of truth.
+No .env file needed - the k8s YAMLs are the single source of truth.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ except ImportError:
 
 
 def _parse_simple_yaml(text: str) -> dict:
-    """Minimal parser for flat k8s YAML — handles data:/stringData: blocks."""
+    """Minimal parser for flat k8s YAML - handles data:/stringData: blocks."""
     result: dict[str, str] = {}
     in_data_block = False
     for raw_line in text.splitlines():

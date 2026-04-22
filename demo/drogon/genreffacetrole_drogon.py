@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genreffacetrole_drogon.py — Generate FacetRole reference-data manifest
+genreffacetrole_drogon.py - Generate FacetRole reference-data manifest
 for the Drogon pipeline.
 
 Duplicated from demo/grand/py/5genreffacetrole.py so the Drogon tree is

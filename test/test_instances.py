@@ -1,5 +1,5 @@
 """
-tests/test_instances.py — Regression tests for app/instances.py.
+tests/test_instances.py - Regression tests for app/instances.py.
 
 Covers edge cases that the fixture-based tests skip because they mock out
 get_instances() / get_active().

@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon Valysar — DG1 Volumetrics Workflow Run",
+    "Name": "Drogon Valysar - DG1 Volumetrics Workflow Run",
     "Description": "Single merged activity capturing the full three-step DG1 volumetrics workflow for the Valysar formation of the Drogon field. Step 1: generate per-realisation input parameters (OWC depths for 7 fault blocks, PHIT for Floodplain/Channel/Crevasse). Step 2: run the RMS DecisionExample workflow producing 3 realisations of reservoir estimated volumes. Step 3: aggregate realisations into P10/P50/P90 statistical volumes. Scenario configuration (design matrix + variables) is taken verbatim from the RESQML obj_Activity document (obj_Activity_MISSING.xml → drogon_activity.epc).",
     "Originator": "markuslund.vevle@emerson.com",
     "CreationDateTime": "2026-02-13T10:21:57.365Z",
@@ -45,7 +45,7 @@
         "Description": "RMS reservoir model workflow that executes the realisations",
         "ParameterKindID": "dev:reference-data--ParameterKind:String:1",
         "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-        "StringParameter": "RMS DecisionExample — Drogon Valysar"
+        "StringParameter": "RMS DecisionExample - Drogon Valysar"
       },
       {
         "Title": "NumberOfRealizations",

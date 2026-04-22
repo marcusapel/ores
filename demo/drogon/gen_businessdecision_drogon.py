@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_businessdecision_drogon.py — Generate a BusinessDecision manifest for
-Drogon DG1 (Decision Gate 1 — Identify & Assess).
+gen_businessdecision_drogon.py - Generate a BusinessDecision manifest for
+Drogon DG1 (Decision Gate 1 - Identify & Assess).
 
 Reads:
-  manifest_masterwp_drogon.json    — Reservoir ID
-  manifest_wpcraw_drogon.json      — Raw REV WPC ID
-  manifest_wpcstat_drogon.json     — Statistics REV WPC ID
-  manifest_wpcparams_drogon.json   — ColumnBasedTable WPC ID (parameters)
-  manifest_risk_drogon.json        — Risk IDs
+  manifest_masterwp_drogon.json    - Reservoir ID
+  manifest_wpcraw_drogon.json      - Raw REV WPC ID
+  manifest_wpcstat_drogon.json     - Statistics REV WPC ID
+  manifest_wpcparams_drogon.json   - ColumnBasedTable WPC ID (parameters)
+  manifest_risk_drogon.json        - Risk IDs
 
 Output:
   manifest_bd_drogon.json

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_volantis_interp.py — Generate a complete OSDU manifest for the
+gen_volantis_interp.py - Generate a complete OSDU manifest for the
 Volantis 2025 Interpretation worked example.
 
 Demonstrates the full M27 interpretation chain:
@@ -35,7 +35,7 @@ from _shared import (
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 # ── Scenario Parameters ────────────────────────────────────────────────
-# Volantis field — Norwegian Sea, synthetic but realistic coordinates
+# Volantis field - Norwegian Sea, synthetic but realistic coordinates
 # CRS: EPSG:23031 (ED50 / UTM zone 31N)
 
 HORIZONS = OrderedDict([
@@ -72,7 +72,7 @@ DEPTH_GRID = {
     "transform": 9666,    # right-handed (EPSG 9666)
 }
 
-# Therys depth grid — derived from real RDDMS Grid2dRep geometry.
+# Therys depth grid - derived from real RDDMS Grid2dRep geometry.
 # The RDDMS object (DS_extract_postprocess) uses a rotated 20 m lattice
 # with origin at (461500, 5926500) in projected coordinates and a J-axis
 # bearing of ~150° (azimuth of the slow-axis direction vector).
@@ -128,7 +128,7 @@ def uid(name: str) -> str:
 # ── Record Builders ────────────────────────────────────────────────────
 
 def make_boundary_feature(prefix: str, hz_key: str, hz: dict) -> dict:
-    """LocalBoundaryFeature — the named geologic feature."""
+    """LocalBoundaryFeature - the named geologic feature."""
     u = uid(f"feature:{hz_key}")
     return {
         "id": md_id(prefix, "LocalBoundaryFeature", u),
@@ -144,7 +144,7 @@ def make_boundary_feature(prefix: str, hz_key: str, hz: dict) -> dict:
 
 
 def make_horizon_interpretation(prefix: str, hz_key: str, hz: dict) -> dict:
-    """HorizonInterpretation — geologic meaning of the horizon."""
+    """HorizonInterpretation - geologic meaning of the horizon."""
     u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
@@ -168,7 +168,7 @@ def make_horizon_interpretation(prefix: str, hz_key: str, hz: dict) -> dict:
 
 
 def make_seismic_bin_grid(prefix: str) -> dict:
-    """SeismicBinGrid — acquisition lattice."""
+    """SeismicBinGrid - acquisition lattice."""
     g = SEIS_GRID
     u = uid("seisbingrid:Volantis3D")
     di = bearing_to_offsets(g["il_bearing"], g["il_spacing"])
@@ -219,7 +219,7 @@ def make_seismic_bin_grid(prefix: str) -> dict:
 
 
 def make_generic_bin_grid(prefix: str) -> dict:
-    """GenericBinGrid:1.0.0 — shared depth grid (M27)."""
+    """GenericBinGrid:1.0.0 - shared depth grid (M27)."""
     g = DEPTH_GRID
     u = uid("genericbingrid:VolantisDepth25m")
     # I-axis bearing: for right-handed (9666), I = J + 90°
@@ -271,7 +271,7 @@ def make_generic_bin_grid(prefix: str) -> dict:
 
 
 def make_generic_bin_grid_therys(prefix: str) -> dict:
-    """GenericBinGrid:1.0.0 — Therys depth grid (M27).
+    """GenericBinGrid:1.0.0 - Therys depth grid (M27).
 
     Separate from the Volantis 25 m grid because Therys uses a different
     lattice (20 m spacing, 550×350 nodes, rotated ~30°).  Derived from the
@@ -332,7 +332,7 @@ def _ddms_uri(resqml_uuid: str) -> str:
 
 
 def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
-    """SeismicHorizon:2.1.0 — TWT surface pick (metadata only, geometry in RDDMS)."""
+    """SeismicHorizon:2.1.0 - TWT surface pick (metadata only, geometry in RDDMS)."""
     u = uid(f"seishz:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
     feat_u = uid(f"feature:{hz_key}")
@@ -389,7 +389,7 @@ def make_seismic_horizon(prefix: str, hz_key: str, hz: dict) -> dict:
 def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
     """StructureMap:1.0.0 using external GenericBinGrid ref (M27).
 
-    Metadata only — actual Z-values live in the RDDMS Grid2dRepresentation.
+    Metadata only - actual Z-values live in the RDDMS Grid2dRepresentation.
     """
     u = uid(f"smap:{hz_key}")
     interp_u = uid(f"interp:{hz_key}")
@@ -424,7 +424,7 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
         "legal": legal_block(),
         "data": {
             "Name": f"{hz_key} Depth Map (shared grid ref)",
-            "Description": f"Depth structure map for {hz['desc']} — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
+            "Description": f"Depth structure map for {hz['desc']} - references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
@@ -444,7 +444,7 @@ def make_structure_map_external(prefix: str, hz_key: str, hz: dict) -> dict:
 
 
 def make_structure_map_therys_external(prefix: str, hz_key: str, hz: dict) -> dict:
-    """StructureMap:1.0.0 for TopTherys — Pattern B with own GenericBinGrid (M27).
+    """StructureMap:1.0.0 for TopTherys - Pattern B with own GenericBinGrid (M27).
 
     References the Therys-specific 20 m GenericBinGrid and links to the
     real RDDMS Grid2dRepresentation (DS_extract_postprocess) via DDMSDatasets[].
@@ -482,7 +482,7 @@ def make_structure_map_therys_external(prefix: str, hz_key: str, hz: dict) -> di
         "legal": legal_block(),
         "data": {
             "Name": f"{hz_key} Depth Map (own 20 m grid)",
-            "Description": f"Depth structure map for {hz['desc']} — references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
+            "Description": f"Depth structure map for {hz['desc']} - references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
@@ -502,12 +502,12 @@ def make_structure_map_therys_external(prefix: str, hz_key: str, hz: dict) -> di
 
 
 def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict) -> dict:
-    """StructureMap:1.0.0 with inline grid geometry — Pattern A demo.
+    """StructureMap:1.0.0 with inline grid geometry - Pattern A demo.
 
     Uses the same DEPTH_GRID parameters but embeds them on the record
     instead of referencing GenericBinGrid.  Demonstrates the alternative
     to make_structure_map_external (Pattern B).
-    Metadata only — actual Z-values live in the RDDMS Grid2dRepresentation.
+    Metadata only - actual Z-values live in the RDDMS Grid2dRepresentation.
     """
     g = DEPTH_GRID
     u = uid(f"smap:inlineA:{hz_key}")
@@ -536,12 +536,12 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
         "legal": legal_block(),
         "data": {
             "Name": f"{hz_key} Depth Map (inline 25 m grid)",
-            "Description": f"Depth structure map for {hz['desc']} — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
+            "Description": f"Depth structure map for {hz['desc']} - same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
             "InterpretationID": interp_id,
             "InterpretationName": f"{hz_key} Interpretation",
             "SeismicHorizonID": sh_id,
             "DomainTypeID": f"{prefix}:reference-data--DomainType:Depth:",
-            # Inline grid (AbstractGenericBinGrid properties) — no BinGridID
+            # Inline grid (AbstractGenericBinGrid properties) - no BinGridID
             "BinGridName": f"{hz_key} inline depth grid",
             "ABCDBinGridSpatialLocation": {
                 "AsIngestedCoordinates": {
@@ -585,10 +585,10 @@ def make_structure_map_inline_from_depth_grid(prefix: str, hz_key: str, hz: dict
     }
 
 
-# ── GenericRepresentation — universal RDDMS catalog layer ──────────────
+# ── GenericRepresentation - universal RDDMS catalog layer ──────────────
 
 def _grep_id(prefix: str, rddms_uuid: str) -> str:
-    """GenericRepresentation record ID — uses the RDDMS UUID directly (1:1)."""
+    """GenericRepresentation record ID - uses the RDDMS UUID directly (1:1)."""
     return f"{prefix}:work-product-component--GenericRepresentation:{rddms_uuid}:1"
 
 
@@ -599,7 +599,7 @@ def make_generic_representation(
     rddms_uuid: str,
     domain: str,            # "Depth" or "Time"
 ) -> dict:
-    """GenericRepresentation:1.2.0 — thin catalog entry for one RDDMS Grid2dRep.
+    """GenericRepresentation:1.2.0 - thin catalog entry for one RDDMS Grid2dRep.
 
     Every RDDMS Grid2dRepresentation should be mirrored as a
     GenericRepresentation WPC so it is discoverable via OSDU Search
@@ -615,7 +615,7 @@ def make_generic_representation(
     feat_id = md_id(prefix, "LocalBoundaryFeature", feat_u)
 
     domain_label = "Depth" if domain == "Depth" else "TWT"
-    name = f"{hz_key} {domain_label} — Grid2dRepresentation"
+    name = f"{hz_key} {domain_label} - Grid2dRepresentation"
 
     return {
         "id": _grep_id(prefix, rddms_uuid),
@@ -625,7 +625,7 @@ def make_generic_representation(
         "data": {
             "Name": name,
             "Description": (
-                f"RDDMS catalog entry for {hz_key} ({domain_label}) — "
+                f"RDDMS catalog entry for {hz_key} ({domain_label}) - "
                 f"Grid2dRepresentation {rddms_uuid} in dataspace {DATASPACE}"
             ),
             "ExistenceKind": f"{prefix}:reference-data--ExistenceKind:Prototype:",
@@ -663,7 +663,7 @@ def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
     print("Generating seismic bin grid...")
     records.append(make_seismic_bin_grid(prefix))
 
-    # 4. GenericBinGrid:1.0.0 (M27) — before SeismicHorizon so grids exist first
+    # 4. GenericBinGrid:1.0.0 (M27) - before SeismicHorizon so grids exist first
     print("Generating generic bin grids (depth)...")
     records.append(make_generic_bin_grid(prefix))
     records.append(make_generic_bin_grid_therys(prefix))
@@ -673,19 +673,19 @@ def generate(prefix: str = "dev", dataspace: str | None = None) -> None:
     for k, v in HORIZONS.items():
         records.append(make_seismic_horizon(prefix, k, v))
 
-    # 6. StructureMap:1.0.0 (M27) — Pattern B: external GenericBinGrid ref
-    print("Generating structure maps — Pattern B (external BinGridID)...")
+    # 6. StructureMap:1.0.0 (M27) - Pattern B: external GenericBinGrid ref
+    print("Generating structure maps - Pattern B (external BinGridID)...")
     for k in ["TopVolantis", "BaseVolantis"]:
         records.append(make_structure_map_external(prefix, k, HORIZONS[k]))
-    # TopTherys — own 20 m GenericBinGrid + real RDDMS depth data
+    # TopTherys - own 20 m GenericBinGrid + real RDDMS depth data
     records.append(make_structure_map_therys_external(prefix, "TopTherys", HORIZONS["TopTherys"]))
 
-    # 7. StructureMap:1.0.0 (M27) — Pattern A: inline grid geometry
-    print("Generating structure maps — Pattern A (inline grid)...")
+    # 7. StructureMap:1.0.0 (M27) - Pattern A: inline grid geometry
+    print("Generating structure maps - Pattern A (inline grid)...")
     for k in ["TopVolantis", "BaseVolantis"]:
         records.append(make_structure_map_inline_from_depth_grid(prefix, k, HORIZONS[k]))
 
-    # 8. GenericRepresentation:1.2.0 — universal RDDMS catalog layer
+    # 8. GenericRepresentation:1.2.0 - universal RDDMS catalog layer
     #    One record per RDDMS Grid2dRep, using RDDMS UUID as record ID (1:1).
     #    Parallels the output of RDDMS manifests/build but with our own
     #    interpretation chain (RDDMS manifests/build uses RDDMS-native UUIDs).

@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon — Schedule Risk Assessment (SRA) DG2",
+    "Name": "Drogon - Schedule Risk Assessment (SRA) DG2",
     "Description": "Schedule Risk Assessment for the Drogon field development DG2 Concept Select gate. Monte Carlo schedule analysis (1000 iterations) covering subsea installation, FPSO conversion, drilling campaign, and commissioning timeline. P50 first oil June 2028, P90 first oil March 2029. Key risk drivers: FPSO drydock slot availability, subsea template fabrication (18-month lead), and drilling rig market.",
     "DocumentType": "SRA",
     "DocumentDate": "2026-02-15"

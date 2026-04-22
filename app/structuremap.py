@@ -5,9 +5,9 @@ Discovers depth-domain Grid2dRepresentations in a Reservoir DDMS dataspace
 and converts them to OSDU M27 StructureMap:1.0.0 records.
 
 Reuses:
-  - osdu.fetch_grid2d_surface()  — fetch object + z-values + CRS in one call
-  - osdu._parse_lattice()        — RESQML 2.0.1 lattice geometry parsing
-  - osdu.list_resources()        — enumerate objects by type
+  - osdu.fetch_grid2d_surface()  - fetch object + z-values + CRS in one call
+  - osdu._parse_lattice()        - RESQML 2.0.1 lattice geometry parsing
+  - osdu.list_resources()        - enumerate objects by type
   - Conversion logic adapted from demo/seisint/gen_structuremap_from_resqml.py
 
 Architecture note:
@@ -32,7 +32,7 @@ NS_SMAP = uuid.UUID("d1e2f3a4-b5c6-7890-abcd-ef0123456789")
 
 
 def stable_uuid(name: str) -> str:
-    """UUID5 from a fixed namespace — same name always gives same UUID."""
+    """UUID5 from a fixed namespace - same name always gives same UUID."""
     return str(uuid.uuid5(NS_SMAP, name))
 
 
@@ -103,7 +103,7 @@ def _is_depth_crs(crs: Optional[dict]) -> bool:
     if not crs:
         return True  # default assumption when CRS is unavailable
 
-    # 1. Check $type / contentType — fastest path
+    # 1. Check $type / contentType - fastest path
     ctype = (crs.get("$type") or crs.get("contentType") or "").lower()
     if "localtime" in ctype:
         return False
@@ -114,7 +114,7 @@ def _is_depth_crs(crs: Optional[dict]) -> bool:
     if crs.get("ZIncreasingDownward") is not None:
         return True
 
-    # 3. Check VerticalUom — 'ms' or 's' implies time
+    # 3. Check VerticalUom - 'ms' or 's' implies time
     vuom = (crs.get("VerticalUom") or "").lower()
     if vuom in ("ms", "s"):
         return False
@@ -334,7 +334,7 @@ async def discover_surfaces(
 ) -> List[Dict[str, Any]]:
     """List and classify all Grid2dRepresentations in a dataspace.
 
-    Returns a list of surface info dicts (lightweight — no z-value fetch).
+    Returns a list of surface info dicts (lightweight - no z-value fetch).
     """
     enc = urllib.parse.quote(ds_path, safe="")
     typ = "resqml20.obj_Grid2dRepresentation"
@@ -462,7 +462,7 @@ def wrap_as_manifest(
     """Wrap StructureMap records into an OSDU manifest envelope.
 
     This produces a client-side manifest (not from the RDDMS manifest/build
-    endpoint) that contains StructureMap:1.0.0 records — ready for ingestion
+    endpoint) that contains StructureMap:1.0.0 records - ready for ingestion
     via the OSDU Storage or Workflow service.
     """
     return {

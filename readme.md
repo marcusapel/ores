@@ -1,4 +1,4 @@
-# OSDU RDDMS admin UI — web client and demo toolkit
+# OSDU RDDMS admin UI - web client and demo toolkit
 
 A FastAPI-based administrative UI for an OSDU-style RDDMS (Reservoir Data / Decision Management System) plus a demo pipeline toolkit for generating, ingesting and comparing Business Decisions, Volumes, Risks and Stratigraphy records.
 
@@ -16,9 +16,9 @@ pip install -r requirements.txt
 
 # 3. Configure secrets
 cp k8s/secret.yaml.template k8s/secret.yaml
-# Edit k8s/secret.yaml — fill in your OSDU tenant IDs, client IDs, tokens, API keys
-# Edit k8s/configmap.yaml — verify hostnames, partitions, legal tags
-# secret.yaml is gitignored — never commit it
+# Edit k8s/secret.yaml - fill in your OSDU tenant IDs, client IDs, tokens, API keys
+# Edit k8s/configmap.yaml - verify hostnames, partitions, legal tags
+# secret.yaml is gitignored - never commit it
 
 # 4. Run
 eval "$(python k8s/env_from_k8s.py)" && python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
@@ -35,9 +35,9 @@ docker run -p 8000:8000 --env-file <(python k8s/env_from_k8s.py | sed 's/^export
 
 ### Troubleshooting
 
-- **Missing env vars?** — Run `python k8s/env_from_k8s.py` standalone to inspect what gets exported.
-- **Auth issues?** — Ensure `SECRET_KEY`, tenant IDs, and client IDs are set in `k8s/secret.yaml`.
-- **Port in use?** — Change `--port 8000` to another port.
+- **Missing env vars?** - Run `python k8s/env_from_k8s.py` standalone to inspect what gets exported.
+- **Auth issues?** - Ensure `SECRET_KEY`, tenant IDs, and client IDs are set in `k8s/secret.yaml`.
+- **Port in use?** - Change `--port 8000` to another port.
 
 ---
 
@@ -45,7 +45,7 @@ docker run -p 8000:8000 --env-file <(python k8s/env_from_k8s.py | sed 's/^export
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | RddmsAdmin | Manage OSDU Dataspaces — create, lock, unlock, delete, build manifests |
+| `/` | RddmsAdmin | Manage OSDU Dataspaces - create, lock, unlock, delete, build manifests |
 | `/keys` | RddmsResources | Browse dataspaces, record types, individual objects; inspect table & graph data |
 | `/search` | OsduSearch | Query the OSDU Search API with kind-specific cards (BD, REV, Risk, GeoLabelSet) |
 | `/analyse` | Analyse | Compare Business Decisions across decision gates (DG1→DG4) with volume/risk/economics deltas |
@@ -55,11 +55,11 @@ docker run -p 8000:8000 --env-file <(python k8s/env_from_k8s.py | sed 's/^export
 
 ### Key rendering features
 
-- **BD cards** — gradient header, headline volume KPIs (three-tier fallback: stat WPC → GeoLabelSet → ext.equinor), development concept, reservoir properties, economics, schedule, production forecast chart, alternatives, risk chips, uncertainties, authors & governance.
-- **REV cards** — teal-themed with P10/P50/P90 headlines, metadata highlights, full volume table.
-- **Analyse comparison** — gate timeline, side-by-side metric deltas (STOIIP, NPV, CAPEX, etc.), risk diff chips, property diffs, synthesis insights, Chart.js overlay charts.
-- **Mermaid relationship graphs** — interactive record-relationship diagrams with ancestry, data references, type-based styling.
-- **Local BD enrichment overlay** — OSDU silently drops custom `ext.equinor` keys during ingestion; the app loads manifests at startup and merges them back at render time.
+- **BD cards** - gradient header, headline volume KPIs (three-tier fallback: stat WPC → GeoLabelSet → ext.equinor), development concept, reservoir properties, economics, schedule, production forecast chart, alternatives, risk chips, uncertainties, authors & governance.
+- **REV cards** - teal-themed with P10/P50/P90 headlines, metadata highlights, full volume table.
+- **Analyse comparison** - gate timeline, side-by-side metric deltas (STOIIP, NPV, CAPEX, etc.), risk diff chips, property diffs, synthesis insights, Chart.js overlay charts.
+- **Mermaid relationship graphs** - interactive record-relationship diagrams with ancestry, data references, type-based styling.
+- **Local BD enrichment overlay** - OSDU silently drops custom `ext.equinor` keys during ingestion; the app loads manifests at startup and merges them back at render time.
 
 ## Requirements
 
@@ -80,7 +80,7 @@ Config lives in two files under `k8s/`:
 |------|---------|---------|
 | `k8s/configmap.yaml` | Yes | Hostnames, partitions, legal tags, app settings |
 | `k8s/secret.yaml` | **No** (gitignored) | Tenant IDs, client IDs, tokens, API keys |
-| `k8s/secret.yaml.template` | Yes | Empty template — copy to `secret.yaml` and fill in |
+| `k8s/secret.yaml.template` | Yes | Empty template - copy to `secret.yaml` and fill in |
 
 Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars split across both files.
 
@@ -92,8 +92,8 @@ The app supports two authentication modes that are tried in order on every reque
 
 | Priority | Mode | When used |
 |----------|------|-----------|
-| 1 | **Instance token** | `INSTANCE_<NAME>_REFRESH_TOKEN` or `INSTANCE_<NAME>_CLIENT_SECRET` set in `k8s/secret.yaml` — zero-click, shared across all users |
-| 2 | **Per-user PKCE** | No shared token available — each browser user is redirected to Azure AD login once |
+| 1 | **Instance token** | `INSTANCE_<NAME>_REFRESH_TOKEN` or `INSTANCE_<NAME>_CLIENT_SECRET` set in `k8s/secret.yaml` - zero-click, shared across all users |
+| 2 | **Per-user PKCE** | No shared token available - each browser user is redirected to Azure AD login once |
 
 ### Per-user PKCE login (remote/multi-user deployments)
 
@@ -111,7 +111,7 @@ When no shared instance token is configured (or for users who want their own ide
 
 - If the session cookie is still valid and the in-memory AT cache has a fresh token → served immediately.
 - If the access token cache has expired → silently refreshed from the encrypted RT in SQLite.
-- If the server restarted (memory cache empty) but the session cookie is still valid (within 30 days) → the `oid` in the cookie is used to look up the persisted refresh token from SQLite and mint a new access token automatically — **no re-login required**.
+- If the server restarted (memory cache empty) but the session cookie is still valid (within 30 days) → the `oid` in the cookie is used to look up the persisted refresh token from SQLite and mint a new access token automatically - **no re-login required**.
 - If the session cookie itself has expired (browser deleted it) → user must log in again.
 
 Users are only prompted to log in again if their Azure AD refresh token itself expires (typically 90 days of inactivity) or they explicitly click **Logout** (which also deletes the stored token from the DB).
@@ -131,7 +131,7 @@ sessions(oid TEXT, instance_name TEXT, refresh_token_enc TEXT, upn TEXT, updated
 PRIMARY KEY (oid, instance_name)
 ```
 
-Refresh tokens are **encrypted at rest** using Fernet symmetric encryption derived from `SECRET_KEY`. Access tokens are cached **in-memory only** and never written to disk. The session cookie carries only the user's `oid` and `instance_name` — no tokens or personal data.
+Refresh tokens are **encrypted at rest** using Fernet symmetric encryption derived from `SECRET_KEY`. Access tokens are cached **in-memory only** and never written to disk. The session cookie carries only the user's `oid` and `instance_name` - no tokens or personal data.
 
 ---
 
@@ -197,10 +197,10 @@ Copy `k8s/secret.yaml.template` → `k8s/secret.yaml` and fill in at minimum:
 
 | Key | Purpose |
 |-----|---------|
-| `SECRET_KEY` | Signs session cookies **and** encrypts stored refresh tokens — must be identical across all replicas |
+| `SECRET_KEY` | Signs session cookies **and** encrypts stored refresh tokens - must be identical across all replicas |
 | `INSTANCE_<NAME>_TENANT_ID` | AD tenant for the OSDU instance |
 | `INSTANCE_<NAME>_CLIENT_ID` | App registration client ID |
-| `INSTANCE_<NAME>_REFRESH_TOKEN` | Shared refresh token (optional — enables zero-click mode) |
+| `INSTANCE_<NAME>_REFRESH_TOKEN` | Shared refresh token (optional - enables zero-click mode) |
 | `INSTANCE_<NAME>_CLIENT_SECRET` | Service principal secret (alternative to refresh token) |
 
 > **Multi-replica deployments:** `SECRET_KEY` must be the same on every pod, otherwise session cookies from one pod are rejected by another and stored tokens cannot be decrypted.  Set it explicitly in `k8s/secret.yaml` rather than leaving it to auto-generate.
@@ -232,7 +232,7 @@ app/
   static/              # JS/CSS assets
 
 demo/
-  _auth.py             # Central auth module — k8s/env/.env resolution & token minting
+  _auth.py             # Central auth module - k8s/env/.env resolution & token minting
   gettoken.py          # CLI: mint token, list instances, --from-k8s, --export
   dataspacecopy.py     # Copy records between OSDU dataspaces
   run_pipeline.py      # Generic cross-platform pipeline runner
@@ -248,7 +248,7 @@ k8s/                   # Kubernetes manifests (configmap, secret, deployment)
 
 ---
 
-## Pipeline guide — adding a new field / decision gate dataset
+## Pipeline guide - adding a new field / decision gate dataset
 
 See [md/BdDemo.md](md/BdDemo.md) for the full DG data model guide, including:
 
@@ -320,15 +320,15 @@ OSDU's `BusinessDecision` schema only preserves **7 registered** `ext.equinor` k
 
 ## Demo token tools
 
-Token minting is centralised in `demo/_auth.py` — the single source of truth for
+Token minting is centralised in `demo/_auth.py` - the single source of truth for
 k8s YAML loading, instance resolution (k8s → env → `.env`), and OAuth2 token exchange
 (both `refresh_token` and `client_credentials` grants).
 
 | File | Purpose |
 |------|---------|
-| `demo/_auth.py` | Shared module: `get_token()`, `load_instance()`, `api_headers()`, `base_url()` — imported by all demo scripts |
-| `demo/gettoken.py` | Rich CLI: `--from-k8s`, `--list`, `--export`, `--json` — thin wrapper around `_auth` |
-| `app/get_token.py` | Minimal CLI: `--shell bash\|pwsh`, `--instance` — also delegates to `_auth` |
+| `demo/_auth.py` | Shared module: `get_token()`, `load_instance()`, `api_headers()`, `base_url()` - imported by all demo scripts |
+| `demo/gettoken.py` | Rich CLI: `--from-k8s`, `--list`, `--export`, `--json` - thin wrapper around `_auth` |
+| `app/get_token.py` | Minimal CLI: `--shell bash\|pwsh`, `--instance` - also delegates to `_auth` |
 
 ```bash
 # Mint a token
@@ -372,7 +372,7 @@ The test suite uses **pytest** + **pytest-asyncio** and currently contains **135
 | `tests/test_routes.py` | 21 | Route rendering, strat column, admin page |
 | `tests/test_gettoken.py` | 32 | k8s YAML loading, instance discovery, token minting |
 | `tests/test_demo_auth.py` | 24 | Central auth module (`.env`, caching, backward compat) |
-| `tests/test_tokenstore.py` | — | SQLite token store CRUD, encryption, multi-user |
+| `tests/test_tokenstore.py` | - | SQLite token store CRUD, encryption, multi-user |
 | `tests/test_instances.py` | 2 | OsduInstance dataclass |
 | `tests/test_cache.py` | 8 | TTL cache, thundering-herd lock, invalidation |
 

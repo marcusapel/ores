@@ -1,5 +1,5 @@
 """
-tests/test_multiuser.py — Multi-user simulation tests.
+tests/test_multiuser.py - Multi-user simulation tests.
 
 Simulates multiple users (Alice, Bob, Carol) operating concurrently
 against the SAME server, each with their own session and tokenstore entries.

@@ -18,8 +18,8 @@
     ]
   },
   "data": {
-    "Name": "TopVolantis TWT — Grid2dRepresentation",
-    "Description": "RDDMS catalog entry for TopVolantis (TWT) — Grid2dRepresentation 9deb9074-c4eb-44ff-990a-229bb545d442 in dataspace maap/drogon",
+    "Name": "TopVolantis TWT - Grid2dRepresentation",
+    "Description": "RDDMS catalog entry for TopVolantis (TWT) - Grid2dRepresentation 9deb9074-c4eb-44ff-990a-229bb545d442 in dataspace maap/drogon",
     "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
     "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
     "InterpretationName": "TopVolantis Interpretation",

@@ -1,5 +1,5 @@
 """
-tests/test_auth.py — Integration tests for the two auth paths.
+tests/test_auth.py - Integration tests for the two auth paths.
 
 Tests the auth middleware, env-token path, and per-user PKCE session path
 using mocked Azure AD responses (no real Azure needed).
@@ -39,7 +39,7 @@ class TestAuthDiagnostics:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Mode 1 — env-token path (shared refresh token)
+# Mode 1 - env-token path (shared refresh token)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestEnvTokenPath:
@@ -106,7 +106,7 @@ class TestEnvTokenPath:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Mode 2 — per-user PKCE path
+# Mode 2 - per-user PKCE path
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestPerUserPKCE:

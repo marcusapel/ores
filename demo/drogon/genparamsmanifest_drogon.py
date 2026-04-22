@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genparamsmanifest_drogon.py — Generate OSDU ColumnBasedTable manifest
+genparamsmanifest_drogon.py - Generate OSDU ColumnBasedTable manifest
 from valysar_parameters.csv for the Drogon / Valysar dataset.
 
 This stores the per-realisation input parameters (OWC depths and porosities)
@@ -14,8 +14,8 @@ Value columns:
   - Porosity_Floodplain, Porosity_Channel, Porosity_Crevasse   (fraction)
 
 Reads:
-  valysar_parameters.csv            — parameter data
-  manifest_masterwp_drogon.json     — Reservoir/WP/Segment IDs
+  valysar_parameters.csv            - parameter data
+  manifest_masterwp_drogon.json     - Reservoir/WP/Segment IDs
 
 Output:
   manifest_wpcparams_drogon.json
@@ -105,7 +105,7 @@ def main():
     segments:     List[str]  = []
     facies_list:  List[str]  = []
 
-    # Value columns — one list per column
+    # Value columns - one list per column
     value_data: Dict[str, List[float]] = {col: [] for col, _, _, _ in PARAM_COLUMNS}
 
     for row in rows:
@@ -169,7 +169,7 @@ def main():
         "acl":   acl,
         "legal": legal,
         "data": {
-            "Name": "Drogon Valysar — Input Parameters (per realisation)",
+            "Name": "Drogon Valysar - Input Parameters (per realisation)",
             "Description": (
                 "Per-realisation input parameters for the Valysar zone of the Drogon field. "
                 "OWC depths (7 segments) and porosity (3 facies), "

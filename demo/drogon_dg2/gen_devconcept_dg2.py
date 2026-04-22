@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_devconcept_dg2.py — Generate a DevelopmentConcept v2 WPC manifest for
+gen_devconcept_dg2.py - Generate a DevelopmentConcept v2 WPC manifest for
 Drogon DG2 (Concept Select), aligned with the real Drogon FMU model
 (equinor/fmu-drogon, tutorial 24.3.1).
 
 Schema v2 is a pure leaf WPC describing the *physical development concept*
-only — what is built, how we drill, how we drain, where we target, how we
+only - what is built, how we drill, how we drain, where we target, how we
 manage production.  It is referenced by the BusinessDecision (the hub) via
 Parameters[], so economics, production forecast, schedule, risks, documents
 and activity links all live on the BD, NOT here.
 
 Structured sub-objects:
-  FacilityConcept      — subsea layout, flowlines, host, capacities
-  WellPlan             — counts, types, completion, pilot strategy
-  DrainageStrategy     — injection, IOR, phased development
-  ReservoirTarget      — zones, segments, faults (what we target)
-  ProductionTechnology — sand, scale, metering, automation
+  FacilityConcept      - subsea layout, flowlines, host, capacities
+  WellPlan             - counts, types, completion, pilot strategy
+  DrainageStrategy     - injection, IOR, phased development
+  ReservoirTarget      - zones, segments, faults (what we target)
+  ProductionTechnology - sand, scale, metering, automation
 
 ConceptID provides version lineage to a prior gate's concept.
 
@@ -79,7 +79,7 @@ def main():
         if "master-data--ReservoirSegment:" in md.get("kind", ""):
             segment_ids.append(md["id"])
 
-    # No DG1 concept — DG1 typically has no DevelopmentConcept record
+    # No DG1 concept - DG1 typically has no DevelopmentConcept record
 
     wpc_id = f"{pfx}:work-product-component--DevelopmentConcept:Drogon-DG2:1"
 
@@ -109,7 +109,7 @@ def main():
             ),
             "DecisionGate": "DG2",
 
-            # ── FacilityConcept — what is being built ──
+            # ── FacilityConcept - what is being built ──
             "FacilityConcept": {
                 "FacilityType": "SubseaTieback",
                 "HostFacility": "Drogon FPSO (converted)",
@@ -142,7 +142,7 @@ def main():
                 ),
             },
 
-            # ── WellPlan — how we drill ──
+            # ── WellPlan - how we drill ──
             "WellPlan": {
                 "Producers":  4,
                 "Injectors":  2,
@@ -183,7 +183,7 @@ def main():
                 ),
             },
 
-            # ── DrainageStrategy — how we produce ──
+            # ── DrainageStrategy - how we produce ──
             "DrainageStrategy": {
                 "PrimaryRecoveryMechanism": "WaterInjection",
                 "InjectionType": "Water",
@@ -220,7 +220,7 @@ def main():
                 ),
             },
 
-            # ── ReservoirTarget — what we target (not reservoir state) ──
+            # ── ReservoirTarget - what we target (not reservoir state) ──
             "ReservoirTarget": {
                 "FormationName": "Heimdal Formation (Drogon analogue: Valysar)",
                 "GroupName": "Volantis Group (Valysar, Therys, Volon)",
@@ -241,7 +241,7 @@ def main():
                     "BaSO4 scale risk identified from formation water analysis. "
                     "Scale squeeze programme planned from year 3."
                 ),
-                "EmulsionRisk": "Low — clean oil, low asphaltene content.",
+                "EmulsionRisk": "Low - clean oil, low asphaltene content.",
                 "CorrosionStrategy": "Corrosion-resistant alloy (CRA) in well tubulars, chemical inhibition in flowlines.",
                 "MeteringStrategy": (
                     "Subsea multiphase flow meters (MPFM) per well. "

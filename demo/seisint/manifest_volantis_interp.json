@@ -597,7 +597,7 @@
         },
         "data": {
           "Name": "TopVolantis Depth Map (shared grid ref)",
-          "Description": "Depth structure map for Top Volantis reservoir — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
+          "Description": "Depth structure map for Top Volantis reservoir - references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabe28f7-a859-5651-a736-02815f8b9385:1",
@@ -649,7 +649,7 @@
         },
         "data": {
           "Name": "BaseVolantis Depth Map (shared grid ref)",
-          "Description": "Depth structure map for Base Volantis reservoir — references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
+          "Description": "Depth structure map for Base Volantis reservoir - references the shared 25 m GenericBinGrid via BinGridID (Pattern B)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
@@ -701,7 +701,7 @@
         },
         "data": {
           "Name": "TopTherys Depth Map (own 20 m grid)",
-          "Description": "Depth structure map for Top Therys source rock — references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
+          "Description": "Depth structure map for Top Therys source rock - references own 20 m GenericBinGrid (Pattern B), real RDDMS depth data",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
           "InterpretationName": "TopTherys Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:7f4ba05a-1e04-5fa7-8883-307c8b7b490b:1",
@@ -753,7 +753,7 @@
         },
         "data": {
           "Name": "TopVolantis Depth Map (inline 25 m grid)",
-          "Description": "Depth structure map for Top Volantis reservoir — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
+          "Description": "Depth structure map for Top Volantis reservoir - same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabe28f7-a859-5651-a736-02815f8b9385:1",
@@ -847,7 +847,7 @@
         },
         "data": {
           "Name": "BaseVolantis Depth Map (inline 25 m grid)",
-          "Description": "Depth structure map for Base Volantis reservoir — same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
+          "Description": "Depth structure map for Base Volantis reservoir - same 25 m grid as the shared GenericBinGrid but embedded inline (Pattern A)",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",
           "SeismicHorizonID": "dev:work-product-component--SeismicHorizon:aabba17d-92da-51d9-a571-15a723deeb44:1",
@@ -940,8 +940,8 @@
           ]
         },
         "data": {
-          "Name": "TopVolantis Depth — Grid2dRepresentation",
-          "Description": "RDDMS catalog entry for TopVolantis (Depth) — Grid2dRepresentation f857c36c-3939-4ff3-9125-a11cf2af105c in dataspace maap/drogon",
+          "Name": "TopVolantis Depth - Grid2dRepresentation",
+          "Description": "RDDMS catalog entry for TopVolantis (Depth) - Grid2dRepresentation f857c36c-3939-4ff3-9125-a11cf2af105c in dataspace maap/drogon",
           "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
@@ -978,8 +978,8 @@
           ]
         },
         "data": {
-          "Name": "BaseVolantis Depth — Grid2dRepresentation",
-          "Description": "RDDMS catalog entry for BaseVolantis (Depth) — Grid2dRepresentation 0c6ab8e7-c793-4ab5-a88c-ccf457d9266d in dataspace maap/drogon",
+          "Name": "BaseVolantis Depth - Grid2dRepresentation",
+          "Description": "RDDMS catalog entry for BaseVolantis (Depth) - Grid2dRepresentation 0c6ab8e7-c793-4ab5-a88c-ccf457d9266d in dataspace maap/drogon",
           "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",
@@ -1016,8 +1016,8 @@
           ]
         },
         "data": {
-          "Name": "TopTherys Depth — Grid2dRepresentation",
-          "Description": "RDDMS catalog entry for TopTherys (Depth) — Grid2dRepresentation 0ce9278d-979c-450a-a3db-08ea96517463 in dataspace maap/drogon",
+          "Name": "TopTherys Depth - Grid2dRepresentation",
+          "Description": "RDDMS catalog entry for TopTherys (Depth) - Grid2dRepresentation 0ce9278d-979c-450a-a3db-08ea96517463 in dataspace maap/drogon",
           "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:03117bea-4fe0-5b84-968a-0d54a6542cd9:1",
           "InterpretationName": "TopTherys Interpretation",
@@ -1054,8 +1054,8 @@
           ]
         },
         "data": {
-          "Name": "TopVolantis TWT — Grid2dRepresentation",
-          "Description": "RDDMS catalog entry for TopVolantis (TWT) — Grid2dRepresentation 9deb9074-c4eb-44ff-990a-229bb545d442 in dataspace maap/drogon",
+          "Name": "TopVolantis TWT - Grid2dRepresentation",
+          "Description": "RDDMS catalog entry for TopVolantis (TWT) - Grid2dRepresentation 9deb9074-c4eb-44ff-990a-229bb545d442 in dataspace maap/drogon",
           "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1c979d9c-7177-57f0-b085-df09c17a30b9:1",
           "InterpretationName": "TopVolantis Interpretation",
@@ -1092,8 +1092,8 @@
           ]
         },
         "data": {
-          "Name": "BaseVolantis TWT — Grid2dRepresentation",
-          "Description": "RDDMS catalog entry for BaseVolantis (TWT) — Grid2dRepresentation efcf91f9-6e56-4bed-9e23-f0e9350a0b91 in dataspace maap/drogon",
+          "Name": "BaseVolantis TWT - Grid2dRepresentation",
+          "Description": "RDDMS catalog entry for BaseVolantis (TWT) - Grid2dRepresentation efcf91f9-6e56-4bed-9e23-f0e9350a0b91 in dataspace maap/drogon",
           "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:1b00a821-8048-5a51-a1b1-4069f6f8f8ba:1",
           "InterpretationName": "BaseVolantis Interpretation",

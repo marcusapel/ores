@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_risk_drogon.py — Generate a Risk manifest for Drogon / Valysar.
+gen_risk_drogon.py - Generate a Risk manifest for Drogon / Valysar.
 
 Creates:
-  master-data--Risk  "Drogon — Porosity and cementation uncertainty"
+  master-data--Risk  "Drogon - Porosity and cementation uncertainty"
 
 Output:
   manifest_risk_drogon.json
@@ -44,7 +44,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon — Porosity and cementation uncertainty",
+            "Name": "Drogon - Porosity and cementation uncertainty",
             "Summary": (
                 "Porosity and cementation quality in the Valysar fluvial deposits "
                 "drive uncertainty in pore volume and hydrocarbon recovery."

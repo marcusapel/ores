@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-genrefpropertytypes_drogon.py — Generate ReservoirEstimatedVolumePropertyType
+genrefpropertytypes_drogon.py - Generate ReservoirEstimatedVolumePropertyType
 reference-data manifest for the Drogon pipeline.
 
 Duplicated from demo/grand/py/5genrefpropertytypes.py so the Drogon tree is
