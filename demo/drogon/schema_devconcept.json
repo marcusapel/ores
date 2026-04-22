@@ -4,7 +4,7 @@
       "authority": "dev",
       "source": "wks",
       "entityType": "work-product-component--DevelopmentConcept",
-      "schemaVersionMajor": 3,
+      "schemaVersionMajor": 4,
       "schemaVersionMinor": 0,
       "schemaVersionPatch": 0
     },
@@ -26,7 +26,12 @@
       "DecisionGate": {
         "type": "string",
         "enum": ["DG0", "DG1", "DG2", "DG3", "DG4"],
-        "description": "Decision gate level. Aligns with OSDU reference-data--DecisionLevel."
+        "description": "Decision gate level (display label)."
+      },
+      "DecisionLevelID": {
+        "type": "string",
+        "description": "OSDU ID of reference-data--DecisionLevel record.",
+        "x-osdu-relationship": [{ "GroupType": "reference-data", "EntityType": "DecisionLevel" }]
       },
 
       "FacilityConcept": {
@@ -175,9 +180,24 @@
         "type": "object",
         "description": "Which reservoir interval and structure this concept targets. Segment and fault details live in master-data--ReservoirSegment records.",
         "properties": {
-          "FormationName":      { "type": "string" },
-          "GroupName":          { "type": "string" },
-          "Age":                { "type": "string", "description": "Geological age, e.g. 'Palaeocene'." },
+          "FormationName":      { "type": "string", "description": "Lithostratigraphic formation name (display label)." },
+          "FormationID": {
+            "type": "string",
+            "description": "OSDU ID of StratigraphicUnitInterpretation for the formation.",
+            "x-osdu-relationship": [{ "GroupType": "work-product-component", "EntityType": "StratigraphicUnitInterpretation" }]
+          },
+          "GroupName":          { "type": "string", "description": "Lithostratigraphic group name (display label)." },
+          "GroupID": {
+            "type": "string",
+            "description": "OSDU ID of StratigraphicUnitInterpretation for the group.",
+            "x-osdu-relationship": [{ "GroupType": "work-product-component", "EntityType": "StratigraphicUnitInterpretation" }]
+          },
+          "Age":                { "type": "string", "description": "Geological age display label, e.g. 'Palaeocene'." },
+          "AgeID": {
+            "type": "string",
+            "description": "OSDU ID of reference-data--ChronoStratigraphy record for the geological age.",
+            "x-osdu-relationship": [{ "GroupType": "reference-data", "EntityType": "ChronoStratigraphy" }]
+          },
           "FieldArea":          { "type": "string" },
           "FieldID": {
             "type": "string",
@@ -188,7 +208,13 @@
             "type": "object",
             "properties": { "Min": {"type":"number"}, "Max": {"type":"number"} }
           },
-          "Zones":    { "type": "array", "items": { "type": "string" }, "description": "Reservoir zone names targeted." },
+          "Zones":    { "type": "array", "items": { "type": "string" }, "description": "Reservoir zone names targeted (display labels)." },
+          "ZoneIDs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "OSDU IDs of StratigraphicUnitInterpretation records for each zone.",
+            "x-osdu-relationship": [{ "GroupType": "work-product-component", "EntityType": "StratigraphicUnitInterpretation" }]
+          },
           "ReservoirSegmentIDs": {
             "type": "array",
             "items": { "type": "string" },
@@ -215,7 +241,11 @@
 
       "ConceptID": { "type": "string", "description": "OSDU ID of a related DevelopmentConcept (e.g. from a prior decision gate for concept lineage)." },
 
-      "ParentObjectID":     { "type": "string", "description": "Reservoir or field master-data ID." },
+      "ParentObjectID": {
+        "type": "string",
+        "description": "Reservoir or field master-data ID.",
+        "x-osdu-relationship": [{ "GroupType": "master-data", "EntityType": "Reservoir" }]
+      },
       "ParentWorkProductID":{ "type": "string" },
       "ancestry": {
         "type": "object",

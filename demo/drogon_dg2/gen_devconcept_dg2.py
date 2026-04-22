@@ -85,7 +85,7 @@ def main():
 
     wpc_record = {
         "id":    wpc_id,
-        "kind":  f"{pfx}:wks:work-product-component--DevelopmentConcept:3.0.0",
+        "kind":  f"{pfx}:wks:work-product-component--DevelopmentConcept:4.0.0",
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
@@ -108,10 +108,12 @@ def main():
                 "assignment. FMU workflow: ERT \u2192 RMS (geomodel + Eclipse grid) \u2192 OPM Flow."
             ),
             "DecisionGate": "DG2",
+            "DecisionLevelID": f"{pfx}:reference-data--DecisionLevel:DG2",
 
             # ── FacilityConcept - what is being built ──
             "FacilityConcept": {
                 "FacilityType": "SubseaTieback",
+                "FacilityTypeID": f"{pfx}:reference-data--FacilityType:SubseaTieback:",
                 "HostFacility": "Drogon FPSO (converted)",
                 "HostModifications": (
                     "Brownfield scope: inlet arrangement, start-up heater, "
@@ -128,6 +130,7 @@ def main():
                 ],
                 "SubseaBoostingPump": True,
                 "ArtificialLift": "GasLift",
+                "ArtificialLiftTypeID": f"{pfx}:reference-data--ArtificialLiftType:GasLift:",
                 "ProcessingCapacity": {
                     "OilRate_Sm3d": 5500,
                     "WaterTreatment_m3d": 5000,
@@ -186,6 +189,7 @@ def main():
             # ── DrainageStrategy - how we produce ──
             "DrainageStrategy": {
                 "PrimaryRecoveryMechanism": "WaterInjection",
+                "ReservoirDriveMechanismTypeID": f"{pfx}:reference-data--ReservoirDriveMechanismType:WaterDrive:",
                 "InjectionType": "Water",
                 "InjectionStrategy": (
                     "Water injection for pressure support via A5 and A6. "
@@ -225,6 +229,7 @@ def main():
                 "FormationName": "Heimdal Formation (Drogon analogue: Valysar)",
                 "GroupName": "Volantis Group (Valysar, Therys, Volon)",
                 "Age": "Palaeocene",
+                "AgeID": f"{pfx}:reference-data--ChronoStratigraphy:Phanerozoic.Cenozoic.Paleogene.Paleocene:",
                 "FieldArea": "Drogon",
                 "DepthRange_mTVDMSL": {"Min": 1650, "Max": 1690},
                 "Zones": ["Valysar", "Therys", "Volon"],
