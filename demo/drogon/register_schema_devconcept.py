@@ -7,7 +7,7 @@ schema with the OSDU Schema Service.
 The schema definition lives in ``schema_devconcept.json`` (same directory).
 It creates the kind:
 
-    dev:wks:work-product-component--DevelopmentConcept:1.0.0
+    dev:wks:work-product-component--DevelopmentConcept:3.0.0
 
 This must be run ONCE before ingesting DevelopmentConcept WPC records.
 Re-running is safe — the Schema Service will return 409 if the version

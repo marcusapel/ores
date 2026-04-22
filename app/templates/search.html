@@ -538,18 +538,27 @@
                 </div>
                 {% if ext_eq.get('DevelopmentConcept') %}
                 {% set dcon = ext_eq.get('DevelopmentConcept') %}
+                {% set rtgt = dcon.get('ReservoirTarget') or {} %}
+                {% set fac  = dcon.get('FacilityConcept') or {} %}
+                {% set wp   = dcon.get('WellPlan') or {} %}
+                {% if rtgt.get('FormationName') %}
                 <div class="bd-meta-item">
                   <div class="bd-label">Formation</div>
-                  <div class="bd-value">{{ dcon.get('ReservoirFormation') or '—' }}</div>
+                  <div class="bd-value">{{ rtgt.get('FormationName') }}</div>
                 </div>
+                {% endif %}
+                {% if wp.get('Producers') is not none %}
                 <div class="bd-meta-item">
                   <div class="bd-label">Wells</div>
-                  <div class="bd-value">{{ dcon.get('WellCount') or '—' }}{% if dcon.get('MultilateralWells') %} ({{ dcon.get('MultilateralWells') }} MLT){% endif %}</div>
+                  <div class="bd-value">{{ (wp.get('Producers') or 0) + (wp.get('Injectors') or 0) }}{% if wp.get('MultilateralWells') %} ({{ wp.get('MultilateralWells') }} MLT){% endif %}</div>
                 </div>
+                {% endif %}
+                {% if fac.get('FacilityType') %}
                 <div class="bd-meta-item">
-                  <div class="bd-label">Target Start-up</div>
-                  <div class="bd-value">{{ dcon.get('TargetStartUp') or '—' }}</div>
+                  <div class="bd-label">Facility</div>
+                  <div class="bd-value">{{ fac.get('FacilityType') }}</div>
                 </div>
+                {% endif %}
                 {% endif %}
               </div>
 
@@ -636,62 +645,167 @@
                 {% endif %}
               </div>
 
-              {# ── Development Concept ── #}
+              {# ── Development Concept (v3 structured sub-objects) ── #}
               {% if ext_eq.get('DevelopmentConcept') %}
               {% set dcon = ext_eq.get('DevelopmentConcept') %}
-              <div class="bd-section-title">Development Concept</div>
-              {% if dcon.get('Summary') %}<div style="font-size:.88rem;color:#4a5568;line-height:1.45;margin-bottom:.5rem;">{{ dcon.get('Summary') }}</div>{% endif %}
+              {% set fac  = dcon.get('FacilityConcept') or {} %}
+              {% set wp   = dcon.get('WellPlan') or {} %}
+              {% set ds   = dcon.get('DrainageStrategy') or {} %}
+              {% set rtgt = dcon.get('ReservoirTarget') or {} %}
+              {% set pt   = dcon.get('ProductionTechnology') or {} %}
+              <div class="bd-section-title">Development Concept{% if dcon.get('DecisionGate') %} <span style="font-weight:400;color:#718096;">({{ dcon.get('DecisionGate') }})</span>{% endif %}</div>
+
+              {# ─── Key headline items (always visible) ─── #}
               <div class="bd-devcon-grid">
-                {% if dcon.get('WellCount') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Wells</div><div class="bd-value">{{ dcon.get('WellCount') }}{% if dcon.get('MultilateralWells') %} (+ {{ dcon.get('MultilateralWells') }} MLT){% endif %}</div></div>
+                {% if fac.get('FacilityType') %}
+                <div class="bd-devcon-item"><div class="bd-label">Facility</div><div class="bd-value">{{ fac.get('FacilityType') }}{% if fac.get('HostFacility') %} → {{ fac.get('HostFacility') }}{% endif %}</div></div>
                 {% endif %}
-                {% if dcon.get('TemplateSlots') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Template Slots</div><div class="bd-value">{{ dcon.get('TemplateSlots') }}{% if dcon.get('DrillingCentres') %} ({{ dcon.get('DrillingCentres') }} centres){% endif %}</div></div>
+                {% if wp.get('Producers') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Wells</div><div class="bd-value">{{ wp.get('Producers') }}P + {{ wp.get('Injectors') or 0 }}I{% if wp.get('ContingentWells') %} (+{{ wp.get('ContingentWells') }} contingent){% endif %}</div></div>
                 {% endif %}
-                {% if dcon.get('HostFacility') %}
-                <div class="bd-devcon-item"><div class="bd-label">Host Facility</div><div class="bd-value">{{ dcon.get('HostFacility') }}</div></div>
+                {% if ds.get('PrimaryRecoveryMechanism') %}
+                <div class="bd-devcon-item"><div class="bd-label">Recovery</div><div class="bd-value">{{ ds.get('PrimaryRecoveryMechanism') }}{% if ds.get('InjectionType') and ds.get('InjectionType') != 'None' %} ({{ ds.get('InjectionType') }}){% endif %}</div></div>
                 {% endif %}
-                {% if dcon.get('DistanceToHost_km') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Distance to Host</div><div class="bd-value">{{ dcon.get('DistanceToHost_km') }} km</div></div>
+                {% if rtgt.get('FormationName') %}
+                <div class="bd-devcon-item"><div class="bd-label">Target</div><div class="bd-value">{{ rtgt.get('FormationName') }}{% if rtgt.get('Age') %}, {{ rtgt.get('Age') }}{% endif %}</div></div>
                 {% endif %}
-                {% if dcon.get('WaterDepth_m') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Water Depth</div><div class="bd-value">{{ dcon.get('WaterDepth_m') }} m</div></div>
+                {% set dr = rtgt.get('DepthRange_mTVDMSL') or {} %}
+                {% if dr.get('Min') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Depth</div><div class="bd-value">{{ dr.get('Min') }}–{{ dr.get('Max') }} m TVD</div></div>
                 {% endif %}
-                {% if dcon.get('ReservoirFormation') %}
-                <div class="bd-devcon-item"><div class="bd-label">Formation</div><div class="bd-value">{{ dcon.get('ReservoirFormation') }}</div></div>
-                {% endif %}
-                {% if dcon.get('FieldArea') %}
-                <div class="bd-devcon-item"><div class="bd-label">Field Area</div><div class="bd-value">{{ dcon.get('FieldArea') }}</div></div>
-                {% endif %}
-                {% if dcon.get('TargetStartUp') %}
-                <div class="bd-devcon-item"><div class="bd-label">Target Start-up</div><div class="bd-value">{{ dcon.get('TargetStartUp') }}</div></div>
-                {% endif %}
-                {% if dcon.get('ContingentWells') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Contingent Wells</div><div class="bd-value">{{ dcon.get('ContingentWells') }}</div></div>
-                {% endif %}
-                {% if dcon.get('FlowlineSpec') %}
-                <div class="bd-devcon-item"><div class="bd-label">Flowline</div><div class="bd-value">{{ dcon.get('FlowlineSpec') }}</div></div>
-                {% endif %}
-                {% if dcon.get('SubseaBoostingPump') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Subsea Boost</div><div class="bd-value">{{ 'Yes' if dcon.get('SubseaBoostingPump') else 'No' }}</div></div>
-                {% endif %}
-                {% if dcon.get('WaterTreatmentCapacity_m3d') is not none %}
-                <div class="bd-devcon-item"><div class="bd-label">Water Treatment</div><div class="bd-value">{{ dcon.get('WaterTreatmentCapacity_m3d') }} m³/d</div></div>
-                {% endif %}
-                {% if dcon.get('InjectionStrategy') %}
-                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Injection Strategy</div><div class="bd-value">{{ dcon.get('InjectionStrategy') }}</div></div>
-                {% endif %}
-                {% if dcon.get('WellPlan') is mapping %}
-                {% set wp = dcon.get('WellPlan') %}
-                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Well Plan</div><div class="bd-value" style="display:flex;gap:.6rem;flex-wrap:wrap;">
-                  {% if wp.get('Producers') is not none %}<span>{{ wp.get('Producers') }} prod.</span>{% endif %}
-                  {% if wp.get('Injectors_Phase2') is not none %}<span>{{ wp.get('Injectors_Phase2') }} inj. (Ph2)</span>{% endif %}
-                  {% if wp.get('AvgWellDepth_mMD') is not none %}<span>~{{ wp.get('AvgWellDepth_mMD') }} m MD</span>{% endif %}
-                  {% if wp.get('DrillingDuration_days_avg') is not none %}<span>{{ wp.get('DrillingDuration_days_avg') }} d/well</span>{% endif %}
-                  {% if wp.get('CompletionType') %}<span>{{ wp.get('CompletionType') }}</span>{% endif %}
-                </div></div>
+                {% if fac.get('WaterDepth_m') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Water Depth</div><div class="bd-value">{{ fac.get('WaterDepth_m') }} m</div></div>
                 {% endif %}
               </div>
+
+              {# ─── Full details (collapsible) ─── #}
+              <details class="bd-collapse" style="margin-top:.3rem;">
+              <summary style="font-size:.82rem;font-weight:600;color:#4a5568;cursor:pointer;">Full Concept Details ▸</summary>
+              <div style="margin-top:.4rem;">
+
+              {% if dcon.get('Summary') %}<div style="font-size:.85rem;color:#4a5568;line-height:1.45;margin-bottom:.5rem;">{{ dcon.get('Summary') }}</div>{% endif %}
+
+              {# — Facility Concept — #}
+              {% if fac %}
+              <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.5rem 0 .2rem;">Facility Concept</div>
+              <div class="bd-devcon-grid">
+                {% if fac.get('DistanceToHost_km') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Distance to Host</div><div class="bd-value">{{ fac.get('DistanceToHost_km') }} km</div></div>
+                {% endif %}
+                {% if fac.get('TemplateCount') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Templates</div><div class="bd-value">{{ fac.get('TemplateCount') }}{% if fac.get('SlotsPerTemplate') %} × {{ fac.get('SlotsPerTemplate') }} slots{% endif %}{% if fac.get('TotalSlots') %} ({{ fac.get('TotalSlots') }} total){% endif %}</div></div>
+                {% endif %}
+                {% if fac.get('ArtificialLift') %}
+                <div class="bd-devcon-item"><div class="bd-label">Artificial Lift</div><div class="bd-value">{{ fac.get('ArtificialLift') }}</div></div>
+                {% endif %}
+                {% if fac.get('SubseaBoostingPump') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Subsea Boost</div><div class="bd-value">{{ 'Yes' if fac.get('SubseaBoostingPump') else 'No' }}</div></div>
+                {% endif %}
+                {% set pcap = fac.get('ProcessingCapacity') or {} %}
+                {% if pcap.get('OilRate_Sm3d') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Oil Capacity</div><div class="bd-value">{{ pcap.get('OilRate_Sm3d') }} Sm³/d</div></div>
+                {% endif %}
+                {% if pcap.get('WaterTreatment_m3d') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Water Treatment</div><div class="bd-value">{{ pcap.get('WaterTreatment_m3d') }} m³/d</div></div>
+                {% endif %}
+                {% if fac.get('Flowlines') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Flowlines</div><div class="bd-value" style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                  {% for fl in fac.get('Flowlines') %}
+                  <span>{{ fl.get('Count', 1) }}× {{ fl.get('Diameter_in', '') }}″ {{ fl.get('Type', '') }}{% if fl.get('Length_km') %} ({{ fl.get('Length_km') }} km){% endif %}</span>
+                  {% endfor %}
+                </div></div>
+                {% endif %}
+                {% if fac.get('HostModifications') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Host Modifications</div><div class="bd-value">{{ fac.get('HostModifications') }}</div></div>
+                {% endif %}
+                {% if fac.get('Provisions') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Provisions</div><div class="bd-value">{{ fac.get('Provisions') }}</div></div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {# — Well Plan — #}
+              {% if wp %}
+              <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Well Plan</div>
+              <div class="bd-devcon-grid">
+                {% if wp.get('AvgWellDepth_mMD') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Avg Depth</div><div class="bd-value">~{{ wp.get('AvgWellDepth_mMD') }} m MD</div></div>
+                {% endif %}
+                {% if wp.get('DrillingDuration_days') is not none %}
+                <div class="bd-devcon-item"><div class="bd-label">Drill Duration</div><div class="bd-value">{{ wp.get('DrillingDuration_days') }} d/well</div></div>
+                {% endif %}
+                {% if wp.get('CompletionType') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Completion</div><div class="bd-value">{{ wp.get('CompletionType') }}{% if wp.get('SandControl') %} · {{ wp.get('SandControl') }}{% endif %}{% if wp.get('InflowControl') %} · {{ wp.get('InflowControl') }}{% endif %}</div></div>
+                {% endif %}
+                {% if wp.get('WellTypes') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Well Types</div><div class="bd-value" style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                  {% for wt in wp.get('WellTypes') %}
+                  <span>{{ wt.get('Count', '') }}× {{ wt.get('Type', '') }}{% if wt.get('TargetZone') %} → {{ wt.get('TargetZone') }}{% endif %}</span>
+                  {% endfor %}
+                </div></div>
+                {% endif %}
+                {% if wp.get('PilotStrategy') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Pilot Strategy</div><div class="bd-value">{{ wp.get('PilotStrategy') }}</div></div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {# — Drainage Strategy — #}
+              {% if ds %}
+              <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Drainage Strategy</div>
+              <div class="bd-devcon-grid">
+                {% if ds.get('InjectionStrategy') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Injection Strategy</div><div class="bd-value">{{ ds.get('InjectionStrategy') }}</div></div>
+                {% endif %}
+                {% if ds.get('IORStrategy') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">IOR Strategy</div><div class="bd-value">{{ ds.get('IORStrategy') }}</div></div>
+                {% endif %}
+                {% if ds.get('DevelopmentPhases') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Phases</div><div class="bd-value" style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                  {% for ph in ds.get('DevelopmentPhases') %}
+                  <span><strong>{{ ph.get('Phase', '') }}</strong>: {{ ph.get('Description', '') }}{% if ph.get('Wells') %} ({{ ph.get('Wells') }} wells){% endif %}{% if ph.get('StartDate') %} — {{ ph.get('StartDate') }}{% endif %}</span>
+                  {% endfor %}
+                </div></div>
+                {% endif %}
+                {% if ds.get('AquiferSupport') %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">Aquifer Support</div><div class="bd-value">{{ ds.get('AquiferSupport') }}</div></div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {# — Reservoir Target — #}
+              {% if rtgt %}
+              <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Reservoir Target</div>
+              <div class="bd-devcon-grid">
+                {% if rtgt.get('GroupName') %}
+                <div class="bd-devcon-item"><div class="bd-label">Group</div><div class="bd-value">{{ rtgt.get('GroupName') }}</div></div>
+                {% endif %}
+                {% if rtgt.get('FieldArea') %}
+                <div class="bd-devcon-item"><div class="bd-label">Field Area</div><div class="bd-value">{{ rtgt.get('FieldArea') }}</div></div>
+                {% endif %}
+                {% if rtgt.get('Zones') %}
+                <div class="bd-devcon-item"><div class="bd-label">Zones</div><div class="bd-value">{{ rtgt.get('Zones') | join(', ') }}</div></div>
+                {% endif %}
+                {% if rtgt.get('ReservoirSegmentIDs') %}
+                <div class="bd-devcon-item"><div class="bd-label">Segments</div><div class="bd-value">{{ rtgt.get('ReservoirSegmentIDs') | length }} referenced</div></div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {# — Production Technology — #}
+              {% if pt %}
+              <div style="font-size:.82rem;font-weight:600;color:#4a5568;margin:.6rem 0 .2rem;">Production Technology</div>
+              <div class="bd-devcon-grid">
+                {% for lbl, key in [('Sand Management', 'SandManagement'), ('Scale Risk', 'ScaleRisk'), ('Emulsion Risk', 'EmulsionRisk'), ('Wax Risk', 'WaxRisk'), ('Corrosion', 'CorrosionStrategy'), ('Metering', 'MeteringStrategy'), ('Automation', 'WellAutomation'), ('Water Mgmt', 'WaterManagement')] %}
+                {% if pt.get(key) %}
+                <div class="bd-devcon-item" style="grid-column:1/-1;"><div class="bd-label">{{ lbl }}</div><div class="bd-value">{{ pt.get(key) }}</div></div>
+                {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              </div>{# /details content #}
+              </details>
               {% endif %}
 
               {# ── Reservoir Properties (from GeoLabelSet canonical record) ── #}
@@ -1252,38 +1366,77 @@
 
           <section class="section-card">
             <h5>Relationships</h5>
+            {# ── Build grouped Mermaid graph ── #}
+            {# Group links by entity type extracted from the OSDU ID #}
+            {% set ns_grp = namespace(
+                fwd_groups={}, rev_groups={},
+                ancestry_p=[], ancestry_c=[]
+            ) %}
+            {% for p in rec.ancestry_parents or [] %}
+              {% set ns_grp.ancestry_p = ns_grp.ancestry_p + [p] %}
+            {% endfor %}
+            {% for ch in rec.ancestry_children or [] %}
+              {% set ns_grp.ancestry_c = ns_grp.ancestry_c + [ch] %}
+            {% endfor %}
+            {% for l in rec.links or [] %}
+              {% set lid = l.id %}
+              {% if lid not in (rec.ancestry_parents or []) and lid not in (rec.ancestry_children or []) %}
+                {# Extract entity type from OSDU ID e.g. "Risk" from "dev:master-data--Risk:..." #}
+                {% set etype = lid.split('--')[1].split(':')[0] if '--' in lid else 'Other' %}
+                {% if l.role == 'referenced-by' %}
+                  {% set _ = ns_grp.rev_groups.update({etype: ns_grp.rev_groups.get(etype, []) + [l]}) %}
+                {% else %}
+                  {% set _ = ns_grp.fwd_groups.update({etype: ns_grp.fwd_groups.get(etype, []) + [l]}) %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
             <pre class="mermaid">
 graph LR
-REC{{ rec_index }}["{{ esc_label(label) }} ({{ esc_label(rec.id) }})"]
+REC{{ rec_index }}["{{ esc_label(label) }}"]:::rec_self
 click REC{{ rec_index }} href "/search/view/{{ rec.id }}" "Open record"
-{% for p in rec.ancestry_parents or [] %}
+{% for p in ns_grp.ancestry_p %}
 {% set pinfo = (rec.linked_labels or {}).get(p, {}) %}
-{% set pname = pinfo.name or p %}
-P{{ rec_index }}a{{ loop.index0 }}["{{ esc_label(pname) }} ({{ esc_label(p) }})"]
+{% set pname = pinfo.name or p.split('--')[1].split(':')[0] if '--' in p else p %}
+P{{ rec_index }}a{{ loop.index0 }}["{{ esc_label(pname) }}"]
 P{{ rec_index }}a{{ loop.index0 }} --> REC{{ rec_index }}:::ancestry_parent
 click P{{ rec_index }}a{{ loop.index0 }} href "/search/view/{{ p }}" "Open parent"
 {% endfor %}
-{% for ch in rec.ancestry_children or [] %}
+{% for ch in ns_grp.ancestry_c %}
 {% set cinfo = (rec.linked_labels or {}).get(ch, {}) %}
-{% set cname = cinfo.name or ch %}
-C{{ rec_index }}c{{ loop.index0 }}["{{ esc_label(cname) }} ({{ esc_label(ch) }})"]
+{% set cname = cinfo.name or ch.split('--')[1].split(':')[0] if '--' in ch else ch %}
+C{{ rec_index }}c{{ loop.index0 }}["{{ esc_label(cname) }}"]
 REC{{ rec_index }} --> C{{ rec_index }}c{{ loop.index0 }}:::ancestry_child
 click C{{ rec_index }}c{{ loop.index0 }} href "/search/view/{{ ch }}" "Open child"
 {% endfor %}
-{% for l in rec.links or [] %}
-{% set lid = l.id %}
-{% if lid not in (rec.ancestry_parents or []) and lid not in (rec.ancestry_children or []) %}
-{% set info = (rec.linked_labels or {}).get(lid, {}) %}
-{% set lname = info.name or lid %}
-L{{ rec_index }}x{{ loop.index0 }}["{{ esc_label(lname) }} ({{ esc_label(lid) }})"]
-{% if l.role == 'referenced-by' %}
-L{{ rec_index }}x{{ loop.index0 }} --> REC{{ rec_index }}:::referenced_by
+{% for etype, items in ns_grp.fwd_groups.items() %}
+{% if items|length <= 3 %}
+{% for l in items %}
+{% set info = (rec.linked_labels or {}).get(l.id, {}) %}
+{% set lname = info.name or l.id.split(':')[-2] if ':' in l.id else l.id %}
+F{{ rec_index }}_{{ etype }}_{{ loop.index0 }}["{{ esc_label(lname) }}"]
+REC{{ rec_index }} --> F{{ rec_index }}_{{ etype }}_{{ loop.index0 }}:::{{ (l.role or 'ref') | replace('-','_') }}
+click F{{ rec_index }}_{{ etype }}_{{ loop.index0 }} href "/search/view/{{ l.id }}" "Open"
+{% endfor %}
 {% else %}
-REC{{ rec_index }} --> L{{ rec_index }}x{{ loop.index0 }}:::{{ (l.role or 'ref') | replace('-','_') }}
-{% endif %}
-click L{{ rec_index }}x{{ loop.index0 }} href "/search/view/{{ lid }}" "Open linked object"
+G{{ rec_index }}_{{ etype }}["{{ etype }} ({{ items|length }})"]:::group_node
+REC{{ rec_index }} --> G{{ rec_index }}_{{ etype }}
 {% endif %}
 {% endfor %}
+{% for etype, items in ns_grp.rev_groups.items() %}
+{% if items|length <= 3 %}
+{% for l in items %}
+{% set info = (rec.linked_labels or {}).get(l.id, {}) %}
+{% set lname = info.name or l.id.split(':')[-2] if ':' in l.id else l.id %}
+R{{ rec_index }}_{{ etype }}_{{ loop.index0 }}["{{ esc_label(lname) }}"]
+R{{ rec_index }}_{{ etype }}_{{ loop.index0 }} --> REC{{ rec_index }}:::referenced_by
+click R{{ rec_index }}_{{ etype }}_{{ loop.index0 }} href "/search/view/{{ l.id }}" "Open"
+{% endfor %}
+{% else %}
+RG{{ rec_index }}_{{ etype }}["{{ etype }} ({{ items|length }})"]:::group_node
+RG{{ rec_index }}_{{ etype }} --> REC{{ rec_index }}:::referenced_by
+{% endif %}
+{% endfor %}
+classDef rec_self fill:#4299e1,stroke:#2b6cb0,color:#fff,font-weight:bold;
 classDef prior_activity fill:#fff3cd,stroke:#d39e00,color:#222;
 classDef parameter_object fill:#d1ecf1,stroke:#0c5460,color:#222;
 classDef parent_object fill:#f8d7da,stroke:#721c24,color:#222;
@@ -1293,6 +1446,7 @@ classDef referenced_by fill:#d4edda,stroke:#155724,color:#222;
 classDef ancestry_parent fill:#cfe2ff,stroke:#084298,color:#222;
 classDef ancestry_child fill:#e2e3e5,stroke:#6c757d,color:#222;
 classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
+classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
             </pre>
 
             <div class="rel-links">
@@ -1348,7 +1502,8 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
           </section>
 
           <section class="section-card">
-            <h5>Metadata</h5>
+            <details>
+            <summary style="cursor:pointer;font-weight:600;">Metadata</summary>
             <div class="meta-container">
               <div class="meta-toolbar" style="display:flex;gap:.5rem;align-items:center;margin:.25rem 0;">
                 <input type="text" class="meta-filter" placeholder="Filter metadata names…" style="flex:1;max-width:20rem;">
@@ -1387,6 +1542,7 @@ classDef ref fill:#e9ecef,stroke:#6c757d,color:#222;
               <div class="muted" style="font-size:.85rem;margin-top:.25rem;">Tabular volume arrays are intentionally hidden here and shown only in the reconstructed table below.</div>
               {% endif %}
             </div>
+            </details>
           </section>
 
           {# ── Full record JSON viewer ── #}

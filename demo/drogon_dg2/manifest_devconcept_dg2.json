@@ -7,7 +7,7 @@
     "WorkProductComponents": [
       {
         "id": "dev:work-product-component--DevelopmentConcept:Drogon-DG2:1",
-        "kind": "dev:wks:work-product-component--DevelopmentConcept:1.0.0",
+        "kind": "dev:wks:work-product-component--DevelopmentConcept:3.0.0",
         "acl": {
           "owners": [
             "data.default.owners@dev.dataservices.energy"
@@ -27,181 +27,150 @@
         "data": {
           "Name": "Drogon DG2 \u2014 Development Concept (FMU-aligned)",
           "Description": "Development concept for Drogon DG2 Concept Select, aligned with the official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). Subsea tie-back to FPSO with 4 producers (A1\u2013A4), 2 water injectors (A5\u2013A6), targeting the Volantis Group (Valysar, Therys, Volon formations) across 7 fault-bounded reservoir regions. 250 FMU realisations with one-by-one sensitivity design and OPM Flow dynamic simulation.",
+          "Summary": "Subsea development targeting the Volantis Group (Valysar, Therys, Volon) across 7 fault-bounded regions at ~1650\u20131690 m TVD MSL. 4 producers (A1\u2013A4) and 2 water injectors (A5\u2013A6) tied back to FPSO via dual 10\" production flowlines and 6\" gas-lift line. Distance to FPSO ~8 km. Water depth 108 m. Gas cap in NorthHorst region (GOC ~1640 m). APS facies model with seismic conditioning drives reservoir property assignment. FMU workflow: ERT \u2192 RMS (geomodel + Eclipse grid) \u2192 OPM Flow.",
+          "DecisionGate": "DG2",
+          "FacilityConcept": {
+            "FacilityType": "SubseaTieback",
+            "HostFacility": "Drogon FPSO (converted)",
+            "HostModifications": "Brownfield scope: inlet arrangement, start-up heater, debottlenecking of LP gas capacity, upgrade of produced water system (capacity and efficiency).",
+            "TemplateCount": 2,
+            "SlotsPerTemplate": 4,
+            "TotalSlots": 10,
+            "Flowlines": [
+              {
+                "Type": "Production",
+                "Diameter_in": 10,
+                "Length_km": 8,
+                "Count": 2
+              },
+              {
+                "Type": "GasLift",
+                "Diameter_in": 6,
+                "Length_km": 8,
+                "Count": 1
+              },
+              {
+                "Type": "Umbilical",
+                "Length_km": 8,
+                "Count": 1
+              }
+            ],
+            "SubseaBoostingPump": true,
+            "ArtificialLift": "GasLift",
+            "ProcessingCapacity": {
+              "OilRate_Sm3d": 5500,
+              "WaterTreatment_m3d": 5000,
+              "GasLiftCapacity_MSm3d": 1.5
+            },
+            "WaterDepth_m": 108,
+            "DistanceToHost_km": 8,
+            "Provisions": "2 contingent well slots in templates for infill. Flexibility for future tie-in of additional templates. Provision for multiphase pump if HP tie-back needed."
+          },
+          "WellPlan": {
+            "Producers": 4,
+            "Injectors": 2,
+            "ContingentWells": 2,
+            "TotalTargets": 8,
+            "MultilateralWells": 0,
+            "WellTypes": [
+              {
+                "Type": "HorizontalProducer",
+                "Count": 4,
+                "Names": [
+                  "A1",
+                  "A2",
+                  "A3",
+                  "A4"
+                ],
+                "TargetZone": "Valysar",
+                "AvgLength_mMD": 3200
+              },
+              {
+                "Type": "WaterInjector",
+                "Count": 2,
+                "Names": [
+                  "A5",
+                  "A6"
+                ],
+                "TargetZone": "Valysar",
+                "AvgLength_mMD": 3000
+              },
+              {
+                "Type": "Appraisal",
+                "Count": 1,
+                "Names": [
+                  "55_33-1"
+                ],
+                "TargetZone": "NorthHorst"
+              }
+            ],
+            "AvgWellDepth_mMD": 3200,
+            "DrillingDuration_days": 45,
+            "CompletionType": "Frac-pack + ICD lower completion",
+            "SandControl": "Frac-pack with gravel pack screens",
+            "InflowControl": "ICD (passive)",
+            "PilotStrategy": "Pre-drilling of landing pilots (12\u00bc\" hole) for all producers to map top reservoir. Reservoir pilot (8\u00bd\" hole) for NorthHorst appraisal well."
+          },
+          "DrainageStrategy": {
+            "PrimaryRecoveryMechanism": "WaterInjection",
+            "InjectionType": "Water",
+            "InjectionStrategy": "Water injection for pressure support via A5 and A6. Rate scaling controlled by fmuconfig rate_scaling.yml. Phase 2: 2\u20134 additional infill wells depending on fault compartmentalisation (contingent slots in template).",
+            "IORStrategy": "Base case: water injection. Options under evaluation: low-salinity water injection, polymer flooding (pending lab screening results). Real options provisioned in template design.",
+            "DevelopmentPhases": [
+              {
+                "Phase": "Phase 1",
+                "Description": "4 producers (A1\u2013A4) + 2 injectors (A5\u2013A6), primary depletion + water injection",
+                "Wells": 6,
+                "StartDate": "2028-H1"
+              },
+              {
+                "Phase": "Phase 2",
+                "Description": "Contingent infill wells targeting isolated fault compartments",
+                "Wells": 2,
+                "StartDate": "2030 (conditional)"
+              }
+            ],
+            "AquiferSupport": "Active bottom-water aquifer confirmed by DST in CentralSouth. Aquifer influx modelled with Fetkovich analytical model. Expected to provide partial pressure support in southern regions."
+          },
+          "ReservoirTarget": {
+            "FormationName": "Heimdal Formation (Drogon analogue: Valysar)",
+            "GroupName": "Volantis Group (Valysar, Therys, Volon)",
+            "Age": "Palaeocene",
+            "FieldArea": "Drogon",
+            "DepthRange_mTVDMSL": {
+              "Min": 1650,
+              "Max": 1690
+            },
+            "Zones": [
+              "Valysar",
+              "Therys",
+              "Volon"
+            ],
+            "ReservoirSegmentIDs": [
+              "dev:master-data--ReservoirSegment:21cd47f4-15c9-4ab1-a347-6d28a18655b1:1",
+              "dev:master-data--ReservoirSegment:1a055370-f84f-430c-954b-d712d13781f0:1",
+              "dev:master-data--ReservoirSegment:01505396-8e72-42a7-9d80-059cf9e17c95:1",
+              "dev:master-data--ReservoirSegment:92dace46-399d-445c-bcc9-36448872ecfc:1",
+              "dev:master-data--ReservoirSegment:4dd0036d-eaea-4e54-8692-9d9aca547585:1",
+              "dev:master-data--ReservoirSegment:98b0c0d4-2c5d-4c94-b8c3-d7e41bf933f9:1",
+              "dev:master-data--ReservoirSegment:b47e81f4-c545-4f8d-ab45-4b9585cfeebb:1"
+            ]
+          },
+          "ProductionTechnology": {
+            "SandManagement": "Frac-pack with gravel pack screens. Standalone screens as fallback for clean Valysar sand intervals.",
+            "ScaleRisk": "BaSO4 scale risk identified from formation water analysis. Scale squeeze programme planned from year 3.",
+            "EmulsionRisk": "Low \u2014 clean oil, low asphaltene content.",
+            "CorrosionStrategy": "Corrosion-resistant alloy (CRA) in well tubulars, chemical inhibition in flowlines.",
+            "MeteringStrategy": "Subsea multiphase flow meters (MPFM) per well. Topside allocation via test separator.",
+            "WellAutomation": "Subsea choke control with remote optimisation from onshore.",
+            "WaterManagement": "Produced water treatment to <30 mg/L oil-in-water. Enhanced treatment module on FPSO for environmental compliance. Re-injection considered for Phase 2."
+          },
           "ParentObjectID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
           "ancestry": {
             "parents": [
               "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1"
             ],
             "children": []
-          },
-          "Summary": "Subsea development targeting the Volantis Group (Valysar, Therys, Volon) across 7 fault-bounded regions at ~1650\u20131690 m TVD MSL. 4 producers (A1\u2013A4) and 2 water injectors (A5\u2013A6) tied back to FPSO via dual 10\" production flowlines and 6\" gas-lift line. Distance to FPSO ~8 km. Water depth 108 m. Gas cap in NorthHorst region (GOC ~1640 m). APS facies model with seismic conditioning drives reservoir property assignment. FMU workflow: ERT \u2192 RMS (geomodel + Eclipse grid) \u2192 OPM Flow.",
-          "WellCount": 6,
-          "ContingentWells": 2,
-          "TemplateSlots": 10,
-          "DrillingCentres": 2,
-          "ReservoirFormation": "Volantis Group (Valysar, Therys, Volon)",
-          "FieldArea": "Drogon",
-          "WaterDepth_m": 108,
-          "DistanceToHost_km": 8,
-          "HostFacility": "Drogon FPSO (converted)",
-          "TargetStartUp": "2028-H1",
-          "FlowlineSpec": "2\u00d710\" production + 6\" gas lift",
-          "SubseaBoostingPump": true,
-          "WaterTreatmentCapacity_m3d": 5000,
-          "InjectionStrategy": "Water injection for pressure support via A5 and A6. Rate scaling controlled by fmuconfig rate_scaling.yml. Phase 2: 2\u20134 additional infill wells depending on fault compartmentalisation (contingent slots in template).",
-          "WellPlan": {
-            "Producers": 4,
-            "Injectors": 2,
-            "ContingentInfill": 2,
-            "AppraisalWells": [
-              "55_33-1"
-            ],
-            "RFT_Wells": [
-              "R_A2",
-              "R_A3",
-              "R_A4",
-              "R_A5",
-              "R_A6"
-            ],
-            "AvgWellDepth_mMD": 3200,
-            "DrillingDuration_days_avg": 45,
-            "CompletionType": "Frac-pack + ICD lower completion",
-            "ProducerNames": [
-              "A1",
-              "A2",
-              "A3",
-              "A4"
-            ],
-            "InjectorNames": [
-              "A5",
-              "A6"
-            ]
-          },
-          "ext": {
-            "equinor": {
-              "Stratigraphy": {
-                "MSL": {
-                  "stratigraphic": false
-                },
-                "TopVolantis": {
-                  "stratigraphic": true,
-                  "name": "VOLANTIS GP. Top"
-                },
-                "TopTherys": {
-                  "stratigraphic": true,
-                  "name": "Therys Fm. Top"
-                },
-                "TopVolon": {
-                  "stratigraphic": true,
-                  "name": "Volon Fm. Top"
-                },
-                "BaseVolantis": {
-                  "stratigraphic": true,
-                  "name": "VOLANTIS GP. Base"
-                }
-              },
-              "Zones": [
-                "Valysar",
-                "Therys",
-                "Volon"
-              ],
-              "Regions": {
-                "WestLowland": {
-                  "FIPNUM": 1,
-                  "OWC": 1660.0
-                },
-                "CentralSouth": {
-                  "FIPNUM": 2,
-                  "OWC": 1677.0
-                },
-                "CentralNorth": {
-                  "FIPNUM": 3,
-                  "OWC": 1677.0
-                },
-                "NorthHorst": {
-                  "FIPNUM": 4,
-                  "OWC": 1660.0,
-                  "GOC": 1640.0
-                },
-                "CentralRamp": {
-                  "FIPNUM": 5,
-                  "OWC": 1677.0
-                },
-                "CentralHorst": {
-                  "FIPNUM": 6,
-                  "OWC": 1677.0
-                },
-                "EastLowland": {
-                  "FIPNUM": 7,
-                  "OWC": 1660.0
-                }
-              },
-              "FmuModel": {
-                "Name": "Drogon (equinor/fmu-drogon)",
-                "Version": "24.3.1",
-                "ErtConfig": "drogon_design.ert",
-                "RmsProject": "drogon.rms14.2.1",
-                "RmsWorkflow": "MAIN",
-                "Simulator": "OPM_FLOW",
-                "NumRealizations": 250,
-                "DesignType": "one-by-one sensitivity",
-                "DesignMatrix": "design_matrix_one_by_one.xlsx"
-              },
-              "ModelSwitches": {
-                "DCONV_ALTERNATIVE": 2,
-                "PETROMODEL_ALTERNATIVE": 1,
-                "FACIESMODEL_ALTERNATIVE": 1,
-                "FACIES_VALYSAR_SEISCOND": 1
-              },
-              "Facies": {
-                "Valysar": [
-                  "Channel",
-                  "Crevasse",
-                  "Floodplain"
-                ],
-                "Therys": [
-                  "Upper shoreface",
-                  "Lower shoreface",
-                  "Offshore"
-                ],
-                "Volon": [
-                  "Channel",
-                  "Floodplain"
-                ]
-              },
-              "SeismicInput": {
-                "Cubes": [
-                  "seismic--amplitude_near_time--20180101.segy",
-                  "seismic--amplitude_far_time--20180101.segy",
-                  "seismic--relai_near_time--20180101.segy",
-                  "seismic--relai_far_time--20180101.segy"
-                ],
-                "Conditioning": "APS facies model with near+far angle stacks"
-              },
-              "HorizonInput": {
-                "Depth": [
-                  "TopVolantis.poi",
-                  "TopTherys.poi",
-                  "TopVolon.poi",
-                  "BaseVolantis.poi"
-                ],
-                "Time": [
-                  "TopVolantis.poi",
-                  "BaseVolantis.poi"
-                ]
-              },
-              "FaultInput": {
-                "DepthPolygons": [
-                  "F1.pol",
-                  "F2.pol",
-                  "F3.pol",
-                  "F4.pol",
-                  "F5.pol",
-                  "F6.pol"
-                ],
-                "F2_PointSet": "F2.poi"
-              }
-            }
           }
         }
       }
