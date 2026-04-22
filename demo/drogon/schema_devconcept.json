@@ -180,16 +180,16 @@
         "type": "object",
         "description": "Which reservoir interval and structure this concept targets. Segment and fault details live in master-data--ReservoirSegment records.",
         "properties": {
-          "FormationName":      { "type": "string", "description": "Lithostratigraphic formation name (display label)." },
+          "FormationName":      { "type": "string", "description": "Lithostratigraphic formation name (display label), e.g. 'Heimdal Fm.'." },
           "FormationID": {
             "type": "string",
-            "description": "OSDU ID of StratigraphicUnitInterpretation for the formation.",
+            "description": "OSDU ID of a StratigraphicUnitInterpretation record with UnitType=formation. These are lithostratigraphic units from SMDA / NPD strat columns.",
             "x-osdu-relationship": [{ "GroupType": "work-product-component", "EntityType": "StratigraphicUnitInterpretation" }]
           },
-          "GroupName":          { "type": "string", "description": "Lithostratigraphic group name (display label)." },
+          "GroupName":          { "type": "string", "description": "Lithostratigraphic group name (display label), e.g. 'ROGALAND GP.'." },
           "GroupID": {
             "type": "string",
-            "description": "OSDU ID of StratigraphicUnitInterpretation for the group.",
+            "description": "OSDU ID of a StratigraphicUnitInterpretation record with UnitType=group.",
             "x-osdu-relationship": [{ "GroupType": "work-product-component", "EntityType": "StratigraphicUnitInterpretation" }]
           },
           "Age":                { "type": "string", "description": "Geological age display label, e.g. 'Palaeocene'." },
@@ -208,11 +208,11 @@
             "type": "object",
             "properties": { "Min": {"type":"number"}, "Max": {"type":"number"} }
           },
-          "Zones":    { "type": "array", "items": { "type": "string" }, "description": "Reservoir zone names targeted (display labels)." },
+          "Zones":    { "type": "array", "items": { "type": "string" }, "description": "Lithostratigraphic zone/formation/member names targeted (display labels)." },
           "ZoneIDs": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "OSDU IDs of StratigraphicUnitInterpretation records for each zone.",
+            "description": "OSDU IDs of StratigraphicUnitInterpretation records for each zone (lithostratigraphic units with UnitType=formation or member).",
             "x-osdu-relationship": [{ "GroupType": "work-product-component", "EntityType": "StratigraphicUnitInterpretation" }]
           },
           "ReservoirSegmentIDs": {
