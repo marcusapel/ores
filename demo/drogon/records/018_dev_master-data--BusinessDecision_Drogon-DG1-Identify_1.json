@@ -105,19 +105,6 @@
             "StringParameterKey": "DevelopmentConcept"
           }
         ]
-      },
-      {
-        "Title": "GeoLabelSet (segment volumes + properties)",
-        "Selection": "Per-segment P10/P50/P90 volumes and petro-physical summaries",
-        "ParameterKindID": "dev:reference-data--ParameterKind:DataObject:1",
-        "ParameterRoleID": "dev:reference-data--ParameterRole:Input:1",
-        "DataObjectParameter": "dev:work-product-component--GeoLabelSet:f5c8b2d4-6a39-4eaf-9b72-8d4eaf1a3c96:1",
-        "Keys": [
-          {
-            "ParameterKey": "artifact",
-            "StringParameterKey": "GeoLabelSet"
-          }
-        ]
       }
     ],
     "Personnel": [

@@ -50,7 +50,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Schedule Risk Assessment (SRA) DG2",
+            "Name": "Drogon - Schedule Risk Assessment (SRA) DG2",
             "Description": (
                 "Schedule Risk Assessment for the Drogon field development DG2 "
                 "Concept Select gate. Monte Carlo schedule analysis (1000 iterations) "
@@ -70,7 +70,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Cost Risk Assessment (CRA) DG2",
+            "Name": "Drogon - Cost Risk Assessment (CRA) DG2",
             "Description": (
                 "Cost Risk Assessment for the Drogon field development DG2 Concept "
                 "Select gate. Probabilistic cost estimate (1000 iterations) covering "
@@ -91,7 +91,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Plan for Development and Operation (PDO) DG2 Draft",
+            "Name": "Drogon - Plan for Development and Operation (PDO) DG2 Draft",
             "Description": (
                 "Draft PDO for the Drogon DG2 Concept Select gate. Covers field "
                 "description, selected development concept (subsea tie-back to FPSO, "
@@ -111,7 +111,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Petroleum Technology Report (PTR) DG2",
+            "Name": "Drogon - Petroleum Technology Report (PTR) DG2",
             "Description": (
                 "Petroleum Technology Report for DG2 Concept Select. Covers seismic "
                 "interpretation, petrophysical evaluation, geomodelling (50 FMU "

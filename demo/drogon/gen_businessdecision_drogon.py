@@ -125,7 +125,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Decision Gate 1 DG1 Identify & Assess",
+            "Name": "Drogon - Decision Gate 1 DG1 Identify & Assess",
             "Description": (
                 "DG1 evaluation of the Valysar fluvial formation in the Drogon field, "
                 "covering static in-place volume estimation across 7 reservoir segments "
@@ -282,7 +282,7 @@ def main():
                             "RecommendedAction": "Approve",
                         },
                         {
-                            "Name": "Reduced scope \u2014 focus on CentralHorst and CentralSouth",
+                            "Name": "Reduced scope - focus on CentralHorst and CentralSouth",
                             "Rank": 2,
                             "Rationale": (
                                 "CentralHorst and CentralSouth carry the highest Oil density "
@@ -293,7 +293,7 @@ def main():
                             "RecommendedAction": "Consider",
                         },
                         {
-                            "Name": "Defer \u2014 acquire additional appraisal data",
+                            "Name": "Defer - acquire additional appraisal data",
                             "Rank": 3,
                             "Rationale": (
                                 "Floodplain facies porosity (avg 0.10) and cementation "

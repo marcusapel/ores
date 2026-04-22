@@ -22,7 +22,7 @@
         ]
       },
       "data": {
-        "Name": "Drogon \u2014 Porosity and cementation uncertainty",
+        "Name": "Drogon - Porosity and cementation uncertainty",
         "Summary": "Porosity and cementation quality in the Valysar fluvial deposits drive uncertainty in pore volume and hydrocarbon recovery.",
         "Description": "The Valysar fluvial system shows significant facies-dependent porosity variation (Floodplain ~0.10, Channel ~0.28, Crevasse ~0.21). Cementation and diagenetic effects further reduce effective porosity, particularly in the deeper segments. This risk affects volumetric estimates (BulkOil, PoreOil, HydrocarbonPoreOil) and recovery factor across all 7 reservoir segments.",
         "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",
@@ -64,7 +64,7 @@
         ]
       },
       "data": {
-        "Name": "Drogon \u2014 Fault transmissibility and reservoir compartmentalization",
+        "Name": "Drogon - Fault transmissibility and reservoir compartmentalization",
         "Summary": "Sealing or partially-sealing faults may compartmentalise the Valysar reservoir, restricting pressure communication and drainage across segments, leading to production shortfalls and cost increases.",
         "Description": "Fault transmissibility analysis indicates uncertainty in whether bounding and intra-reservoir faults act as baffles or barriers in the Valysar formation. Compartmentalization could isolate hydrocarbons in poorly-drained fault blocks, reducing sweep efficiency and plateau rates. This risk drives uncertainty in recovery factor and may require additional infill wells beyond the current 12-well plan, with material cost increase implications for the DG2 concept. Mitigation relies on production testing to establish inter-compartment pressure communication and targeted additional wells to drain isolated blocks.",
         "TypeID": "osdu:wks:reference-data--RiskType:risk:1.0.0",

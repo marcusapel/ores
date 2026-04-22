@@ -23,7 +23,7 @@
       },
       "data": {
         "Name": "Drogon",
-        "Description": "Drogon field \u2014 Valysar formation",
+        "Description": "Drogon field - Valysar formation",
         "ancestry": {
           "parents": [],
           "children": [
@@ -149,7 +149,7 @@
       },
       "data": {
         "Name": "North Horst",
-        "Description": "Northern horst block of the Valysar formation, Drogon field \u2014 contains gas cap",
+        "Description": "Northern horst block of the Valysar formation, Drogon field - contains gas cap",
         "ancestry": {
           "parents": [
             "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1"
@@ -209,7 +209,7 @@
       },
       "data": {
         "Name": "Central Horst",
-        "Description": "Central horst block of the Valysar formation, Drogon field \u2014 largest oil accumulation",
+        "Description": "Central horst block of the Valysar formation, Drogon field - largest oil accumulation",
         "ancestry": {
           "parents": [
             "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1"

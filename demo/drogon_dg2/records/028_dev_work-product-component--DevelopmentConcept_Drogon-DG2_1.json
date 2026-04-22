@@ -18,7 +18,7 @@
     ]
   },
   "data": {
-    "Name": "Drogon DG2 - Development Concept (FMU-aligned)",
+    "Name": "Drogon DG2 - Development Concept",
     "Description": "Development concept for Drogon DG2 Concept Select, aligned with the official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). Subsea tie-back to FPSO with 4 producers (A1–A4), 2 water injectors (A5–A6), targeting the Volantis Group (Valysar, Therys, Volon formations) across 7 fault-bounded reservoir regions. 250 FMU realisations with one-by-one sensitivity design and OPM Flow dynamic simulation.",
     "Summary": "Subsea development targeting the Volantis Group (Valysar, Therys, Volon) across 7 fault-bounded regions at ~1650–1690 m TVD MSL. 4 producers (A1–A4) and 2 water injectors (A5–A6) tied back to FPSO via dual 10\" production flowlines and 6\" gas-lift line. Distance to FPSO ~8 km. Water depth 108 m. Gas cap in NorthHorst region (GOC ~1640 m). APS facies model with seismic conditioning drives reservoir property assignment. FMU workflow: ERT → RMS (geomodel + Eclipse grid) → OPM Flow.",
     "DecisionGate": "DG2",

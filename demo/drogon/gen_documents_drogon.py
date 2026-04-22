@@ -54,7 +54,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Subsurface Risk Assessment (SRA) DG1",
+            "Name": "Drogon - Subsurface Risk Assessment (SRA) DG1",
             "Description": (
                 "Schedule Risk Assessment for the Drogon field development DG1 gate. "
                 "Covers subsea installation, FPSO modification, drilling campaign, "
@@ -73,7 +73,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Cost Risk Assessment (CRA) DG1",
+            "Name": "Drogon - Cost Risk Assessment (CRA) DG1",
             "Description": (
                 "Cost Risk Assessment for the Drogon field development DG1 gate. "
                 "Probabilistic cost estimate covering subsea CAPEX, FPSO modifications, "
@@ -93,7 +93,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Plan for Development and Operation (PDO) Draft",
+            "Name": "Drogon - Plan for Development and Operation (PDO) Draft",
             "Description": (
                 "Draft PDO document for the Drogon field development, prepared for "
                 "DG1 preliminary assessment. Covers field description, development "

@@ -168,7 +168,7 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon \u2014 Decision Gate 2 DG2 Concept Select (FMU-aligned)",
+            "Name": "Drogon - Decision Gate 2 DG2 Concept Select",
             "Description": (
                 "DG2 Concept Select for the Drogon field development, aligned with the "
                 "official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). "
@@ -458,7 +458,7 @@ def _build_ext_equinor(pfx: str, risk_ids: List[str]) -> Dict[str, Any]:
                 "IRR_pct": 17,
             },
             {
-                "Name": "Alt-B: Reduced scope \u2014 CentralHorst + CentralSouth only (3 prod + 1 inj)",
+                "Name": "Alt-B: Reduced scope - CentralHorst + CentralSouth only (3 prod + 1 inj)",
                 "Rank": 2,
                 "Rationale": (
                     "Focus on the two highest-confidence regions (CentralHorst + CentralSouth, "
@@ -474,7 +474,7 @@ def _build_ext_equinor(pfx: str, risk_ids: List[str]) -> Dict[str, Any]:
                 "IRR_pct": 20,
             },
             {
-                "Name": "Alt-C: Defer \u2014 acquire DG3-quality appraisal data",
+                "Name": "Alt-C: Defer - acquire DG3-quality appraisal data",
                 "Rank": 3,
                 "Rationale": (
                     "NorthHorst and EastLobe fault compartmentalisation remains "

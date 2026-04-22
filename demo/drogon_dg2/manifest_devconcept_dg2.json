@@ -25,7 +25,7 @@
           ]
         },
         "data": {
-          "Name": "Drogon DG2 \u2014 Development Concept (FMU-aligned)",
+          "Name": "Drogon DG2 - Development Concept",
           "Description": "Development concept for Drogon DG2 Concept Select, aligned with the official Drogon FMU model (equinor/fmu-drogon tutorial 24.3.1). Subsea tie-back to FPSO with 4 producers (A1\u2013A4), 2 water injectors (A5\u2013A6), targeting the Volantis Group (Valysar, Therys, Volon formations) across 7 fault-bounded reservoir regions. 250 FMU realisations with one-by-one sensitivity design and OPM Flow dynamic simulation.",
           "Summary": "Subsea development targeting the Volantis Group (Valysar, Therys, Volon) across 7 fault-bounded regions at ~1650\u20131690 m TVD MSL. 4 producers (A1\u2013A4) and 2 water injectors (A5\u2013A6) tied back to FPSO via dual 10\" production flowlines and 6\" gas-lift line. Distance to FPSO ~8 km. Water depth 108 m. Gas cap in NorthHorst region (GOC ~1640 m). APS facies model with seismic conditioning drives reservoir property assignment. FMU workflow: ERT \u2192 RMS (geomodel + Eclipse grid) \u2192 OPM Flow.",
           "DecisionGate": "DG2",
@@ -159,7 +159,7 @@
           "ProductionTechnology": {
             "SandManagement": "Frac-pack with gravel pack screens. Standalone screens as fallback for clean Valysar sand intervals.",
             "ScaleRisk": "BaSO4 scale risk identified from formation water analysis. Scale squeeze programme planned from year 3.",
-            "EmulsionRisk": "Low \u2014 clean oil, low asphaltene content.",
+            "EmulsionRisk": "Low - clean oil, low asphaltene content.",
             "CorrosionStrategy": "Corrosion-resistant alloy (CRA) in well tubulars, chemical inhibition in flowlines.",
             "MeteringStrategy": "Subsea multiphase flow meters (MPFM) per well. Topside allocation via test separator.",
             "WellAutomation": "Subsea choke control with remote optimisation from onshore.",

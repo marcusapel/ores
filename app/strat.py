@@ -2078,7 +2078,7 @@ async def _push_resqml_to_rddms(
 
         # 3) Commit the transaction
         await osdu.commit_transaction(at, dataspace, tx_id)
-        log.info("[RDDMS] Transaction %s committed \u2014 %d objects pushed to %s",
+        log.info("[RDDMS] Transaction %s committed - %d objects pushed to %s",
                  tx_id, len(all_objects), dataspace)
 
     except httpx.HTTPStatusError as e:
