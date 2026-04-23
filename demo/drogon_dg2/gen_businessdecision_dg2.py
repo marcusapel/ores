@@ -92,6 +92,10 @@ def main():
     ap.add_argument("--documents", default=str(SCRIPT_DIR / "manifest_documents_dg2.json"))
     ap.add_argument("--production", default=str(SCRIPT_DIR / "manifest_wpc_production_dg2.json"))
     ap.add_argument("--devconcept", default=str(SCRIPT_DIR / "manifest_devconcept_dg2.json"))
+    ap.add_argument("--grid",       default=str(SCRIPT_DIR / "manifest_grid_dg2.json"))
+    ap.add_argument("--maps",       default=str(SCRIPT_DIR / "manifest_maps_dg2.json"))
+    ap.add_argument("--simtables",  default=str(SCRIPT_DIR / "manifest_simtables_dg2.json"))
+    ap.add_argument("--polygons",   default=str(SCRIPT_DIR / "manifest_polygons_dg2.json"))
     ap.add_argument("--geolabelset-id", default="dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1")
     ap.add_argument("--collection", default=str(SCRIPT_DIR / "manifest_collection_dg2.json"))
     ap.add_argument("--manifest",  default=str(SCRIPT_DIR / "manifest_bd_dg2.json"))
@@ -144,6 +148,28 @@ def main():
     if Path(args.devconcept).exists():
         devconcept_wpc_id = _find_id(load_json(args.devconcept), "DevelopmentConcept")
 
+    # Grid WPC (IjkGridRepresentation)
+    grid_wpc_id = ""
+    if Path(args.grid).exists():
+        grid_wpc_id = _find_id(load_json(args.grid), "IjkGridRepresentation")
+
+    # Maps WPC (first StructureMap for reference)
+    maps_wpc_ids = []
+    if Path(args.maps).exists():
+        maps_man = load_json(args.maps)
+        maps_wpc_ids = _find_all_ids(maps_man, "StructureMap")
+        maps_wpc_ids += _find_all_ids(maps_man, "GenericRepresentation")
+
+    # Simulator tables
+    simtable_wpc_ids = []
+    if Path(args.simtables).exists():
+        simtable_wpc_ids = _find_all_ids(load_json(args.simtables), "ColumnBasedTable")
+
+    # Polygons
+    polygon_wpc_ids = []
+    if Path(args.polygons).exists():
+        polygon_wpc_ids = _find_all_ids(load_json(args.polygons), "GenericRepresentation")
+
     # Reference to DG1 BD (prior decision gate)
     dg1_bd_id = f"{pfx}:master-data--BusinessDecision:Drogon-DG1-Identify:1"
 
@@ -183,8 +209,8 @@ def main():
                 "NPV@10% 520 MUSD, CAPEX 8,500 MNOK, first oil 2028-H1."
             ),
             "ProjectName": "Drogon Field Development",
-            "DecisionLevelID": f"{pfx}:reference-data--DecisionLevel:DG2:1",
-            "ApprovalStatusID": f"{pfx}:reference-data--DecisionApprovalStatus:Pending:1",
+            "DecisionLevelID": f"{pfx}:reference-data--DecisionLevel:DG2:",
+            "ApprovalStatusID": f"{pfx}:reference-data--DecisionApprovalStatus:Pending:",
             "DecisionDueDate": "2026-06-30",
             "DecisionSummary": (
                 "Approve subsea tie-back development concept. Two 4-slot templates (8 slots + "
@@ -206,6 +232,10 @@ def main():
                 pp_wpc_id, devconcept_wpc_id,
                 gls_id=args.geolabelset_id,
                 collection_id=collection_id,
+                grid_wpc_id=grid_wpc_id,
+                maps_wpc_ids=maps_wpc_ids,
+                simtable_wpc_ids=simtable_wpc_ids,
+                polygon_wpc_ids=polygon_wpc_ids,
             ),
             # ── Canonical fields (survive OSDU ingestion) ──
             **_build_canonical_fields(pfx),
@@ -256,52 +286,56 @@ def _build_parameters(
     devconcept_wpc_id: str = "",
     gls_id: str = "",
     collection_id: str = "",
+    grid_wpc_id: str = "",
+    maps_wpc_ids: List[str] | None = None,
+    simtable_wpc_ids: List[str] | None = None,
+    polygon_wpc_ids: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
     params: List[Dict[str, Any]] = [
         {
             "Title": "Raw volumes (per realisation)",
             "Selection": "Raw per-realisation volumes feeding the statistical summary",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
             "DataObjectParameter": raw_wpc_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "REV-raw"}],
         },
         {
             "Title": "Statistical volumes (P10/P50/P90)",
             "Selection": "Aggregated statistics used for the DG2 concept selection",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
             "DataObjectParameter": stat_wpc_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "REV-stats"}],
         },
         {
-            "Title": "Valysar parameters (OWC, porosity)",
-            "Selection": "Per-segment, per-facies input parameters",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "Title": "Design matrix – one-by-one sensitivities (250 realisations)",
+            "Selection": "Real design matrix from drogon_design.ert: 15 sensitivities × 21 parameters",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
             "DataObjectParameter": params_wpc_id,
-            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ColumnBasedTable-params"}],
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ColumnBasedTable-designmatrix"}],
         },
         {
             "Title": "Reservoir scope",
             "Selection": "Master-data context for the decision",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:",
             "DataObjectParameter": reservoir_id,
         },
         {
             "Title": "GeoModelDataspace",
             "Selection": "RDDMS ETP dataspace with the Drogon DG2 geomodel EPC files",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:",
             "DataObjectParameter": dataspace_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ETPDataspace"}],
         },
         {
             "Title": "Prior gate (DG1 Identify & Assess)",
             "Selection": "DG1 decision record for the Drogon field",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:",
             "DataObjectParameter": dg1_bd_id,
             "Keys": [{"ParameterKey": "gate", "StringParameterKey": "DG1"}],
         },
@@ -318,8 +352,8 @@ def _build_parameters(
         if did:
             params.append({
                 "Title": title,
-                "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-                "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:1",
+                "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+                "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:",
                 "DataObjectParameter": did,
             })
     # Production Forecast WPC reference
@@ -327,8 +361,8 @@ def _build_parameters(
         params.append({
             "Title": "Production Forecast (20-year)",
             "Selection": "Reference case forecast from dynamic simulation (revised porosity ×0.8)",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
             "DataObjectParameter": pp_wpc_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ProductionForecast"}],
         })
@@ -337,8 +371,8 @@ def _build_parameters(
         params.append({
             "Title": "Development Concept",
             "Selection": "DG2 development concept definition",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
             "DataObjectParameter": devconcept_wpc_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "DevelopmentConcept"}],
         })
@@ -347,8 +381,8 @@ def _build_parameters(
         params.append({
             "Title": "Headline volumes & reservoir properties (GeoLabelSet)",
             "Selection": "P10/P50/P90 headline volumes per segment, derived from stat REV",
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
             "DataObjectParameter": gls_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "GeoLabelSet"}],
         })
@@ -358,13 +392,64 @@ def _build_parameters(
             "Title": "DG2 Evidence Package (persisted collection)",
             "Selection": (
                 "WorkProduct bundling all DG2 input/output artifacts - "
-                "volumes, parameters, forecast, risks, documents, "
+                "volumes, parameters, forecast, grid model, maps, "
+                "simulator tables, polygons, risks, documents, "
                 "GeoLabelSet, activity, and ETP dataspace reference"
             ),
-            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:1",
-            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:1",
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:",
             "DataObjectParameter": collection_id,
             "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "PersistedCollection"}],
+        })
+    # ── Geomodel artifacts (grid, maps, tables, polygons) ────────
+    if grid_wpc_id:
+        params.append({
+            "Title": "Static geomodel grid (IjkGridRepresentation + 10 properties)",
+            "Selection": (
+                "Drogon geogrid 92×146×69 (Valysar/Therys/Volon) with PHIT, KLOGH, "
+                "KV, SW, SWL, SG, VSH, FACIES, REGION, ZONE. RDDMS-backed."
+            ),
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
+            "DataObjectParameter": grid_wpc_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "GridModel"}],
+        })
+    if maps_wpc_ids:
+        # Reference the first StructureMap as representative; collection has all
+        params.append({
+            "Title": f"Depth surfaces and derived maps ({len(maps_wpc_ids)} WPCs)",
+            "Selection": (
+                "Structure depth surfaces (6 horizons), amplitude maps, facies fractions, "
+                "property averages, APS probability cubes. P50 aggregated. RDDMS-backed."
+            ),
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
+            "DataObjectParameter": maps_wpc_ids[0],
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "DepthSurfaces"}],
+        })
+    if simtable_wpc_ids:
+        params.append({
+            "Title": f"Simulator tables ({len(simtable_wpc_ids)} WPCs: relperm, PVT, summary, completions, gruptree)",
+            "Selection": (
+                "Eclipse/OPM output tables exported by RES2CSV. "
+                "Includes saturation functions, fluid properties, summary vectors, "
+                "well completion data, and group tree hierarchy."
+            ),
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:Input:",
+            "DataObjectParameter": simtable_wpc_ids[0],
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "SimulatorTables"}],
+        })
+    if polygon_wpc_ids:
+        params.append({
+            "Title": f"Polygons ({len(polygon_wpc_ids)} WPCs: fault lines, outlines)",
+            "Selection": (
+                "Fault lines (4 horizons), field outline, fluid contact outlines (GOC, FWL)."
+            ),
+            "ParameterKindID": f"{pfx}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{pfx}:reference-data--ParameterRole:InputReference:",
+            "DataObjectParameter": polygon_wpc_ids[0],
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "Polygons"}],
         })
     return params
 
@@ -378,12 +463,12 @@ def _build_canonical_fields(pfx: str) -> Dict[str, Any]:
     return {
         # ── Personnel[] ← Authors ──
         "Personnel": [
-            {"Name": "Kristin Haugen",   "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:GeoscienceLead:1",   "Organisation": "Drogon Subsurface"},
-            {"Name": "Henrik Bjørnstad", "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:ReservoirEngineer:1", "Organisation": "Drogon Reservoir Management"},
-            {"Name": "Anna-Lise Tveit",  "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:Petrophysicist:1",   "Organisation": "Drogon Petec"},
-            {"Name": "Erik Stensrud",    "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:FMULead:1",           "Organisation": "Drogon Geomodelling"},
-            {"Name": "Silje Vik",        "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:FacilitiesEngineer:1","Organisation": "Drogon Concept"},
-            {"Name": "Olav Mæland",      "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:DrillingWellsLead:1", "Organisation": "Drogon D&W"},
+            {"Name": "Kristin Haugen",   "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:GeoscienceLead:",   "Organisation": "Drogon Subsurface"},
+            {"Name": "Henrik Bjørnstad", "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:ReservoirEngineer:", "Organisation": "Drogon Reservoir Management"},
+            {"Name": "Anna-Lise Tveit",  "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:Petrophysicist:",   "Organisation": "Drogon Petec"},
+            {"Name": "Erik Stensrud",    "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:FMULead:",           "Organisation": "Drogon Geomodelling"},
+            {"Name": "Silje Vik",        "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:FacilitiesEngineer:","Organisation": "Drogon Concept"},
+            {"Name": "Olav Mæland",      "ProjectRoleID": f"{pfx}:reference-data--ProjectRole:DrillingWellsLead:", "Organisation": "Drogon D&W"},
         ],
         # ── DecisionOwners/Makers/Contributors[] ← ReviewTeam ──
         "DecisionOwners": [
@@ -412,22 +497,22 @@ def _build_canonical_fields(pfx: str) -> Dict[str, Any]:
         ],
         # ── ProjectSpecifications[] ← KeyEconomics ──
         "ProjectSpecifications": [
-            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:NPV_10pct:1",      "DataQuantityParameter": 520,  "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:MUSD:1"},
-            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:IRR:1",             "DataQuantityParameter": 17,   "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:percent:1"},
-            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:CAPEX:1",           "DataQuantityParameter": 8500, "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:MNOK:1"},
-            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:OPEX_pa:1",         "DataQuantityParameter": 420,  "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:MNOK:1"},
-            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:BreakevenOil:1",    "DataQuantityParameter": 42,   "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:USDperbbl:1"},
-            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:Payback:1",         "DataQuantityParameter": 7.0,  "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:years:1"},
+            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:NPV_10pct:",      "DataQuantityParameter": 520,  "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:MUSD:"},
+            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:IRR:",             "DataQuantityParameter": 17,   "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:%:"},
+            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:CAPEX:",           "DataQuantityParameter": 8500, "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:MNOK:"},
+            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:OPEX_pa:",         "DataQuantityParameter": 420,  "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:MNOK:"},
+            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:BreakevenOil:",    "DataQuantityParameter": 42,   "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:USD/bbl:"},
+            {"ParameterTypeID": f"{pfx}:reference-data--ParameterType:Payback:",         "DataQuantityParameter": 7.0,  "UnitOfMeasureID": f"{pfx}:reference-data--UnitOfMeasure:a:"},
         ],
         # ── ActivityStates[] ← ScheduleMilestones ──
         "ActivityStates": [
-            {"EffectiveDateTime": "2026-02-28", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Completed:1", "Remark": "DG2 Concept Select"},
-            {"EffectiveDateTime": "2027-01-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:1",   "Remark": "DG3 FEED"},
-            {"EffectiveDateTime": "2027-07-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:1",   "Remark": "FID / DG4"},
-            {"EffectiveDateTime": "2027-10-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:1",   "Remark": "FPSO Drydock Start"},
-            {"EffectiveDateTime": "2028-01-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:1",   "Remark": "Subsea Installation"},
-            {"EffectiveDateTime": "2028-06-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:1",   "Remark": "First Oil"},
-            {"EffectiveDateTime": "2029-01-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:1",   "Remark": "Plateau Production"},
+            {"EffectiveDateTime": "2026-02-28", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Completed:", "Remark": "DG2 Concept Select"},
+            {"EffectiveDateTime": "2027-01-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:",   "Remark": "DG3 FEED"},
+            {"EffectiveDateTime": "2027-07-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:",   "Remark": "FID / DG4"},
+            {"EffectiveDateTime": "2027-10-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:",   "Remark": "FPSO Drydock Start"},
+            {"EffectiveDateTime": "2028-01-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:",   "Remark": "Subsea Installation"},
+            {"EffectiveDateTime": "2028-06-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:",   "Remark": "First Oil"},
+            {"EffectiveDateTime": "2029-01-01", "ActivityStatusID": f"{pfx}:reference-data--ActivityStatus:Planned:",   "Remark": "Plateau Production"},
         ],
     }
 

@@ -30,6 +30,10 @@ Expected directory layout for auto-discovery:
         genparamsmanifest_*.py              # step 1: parameters
         genrawmanifest_*.py                 # step 2: raw volumes
         genstatmanifest_*.py                # step 3: statistics
+        gen_grid_*.py                       # step 3.6: grid + properties (IjkGrid)
+        gen_maps_*.py                       # step 3.7: maps / surfaces
+        gen_simtables_*.py                  # step 3.8: simulator tables
+        gen_polygons_*.py                   # step 3.9: polygons / outlines
         gen_activity_*.py                   # step 4: activity
         gen_risk_*.py                       # step 5: risks
         gen_documents_*.py                  # step 6: documents
@@ -101,6 +105,11 @@ STEP_CONVENTIONS: List[Tuple[float, str, str]] = [
     (2,   "genrawmanifest_*.py",         "Raw volumes"),
     (3,   "genstatmanifest_*.py",        "Statistics"),
     (3.5, "gengeolabelset_*.py",         "GeoLabelSet"),
+    # Geomodel artifacts (grid, maps, simulator tables, polygons)
+    (3.6, "gen_grid_*.py",              "Grid + properties (IjkGrid)"),
+    (3.7, "gen_maps_*.py",              "Maps / surfaces"),
+    (3.8, "gen_simtables_*.py",         "Simulator tables"),
+    (3.9, "gen_polygons_*.py",          "Polygons / outlines"),
     (4,   "gen_activity_*.py",           "Activity"),
     (5,   "gen_risk_*.py",               "Risks"),
     (6,   "gen_documents_*.py",          "Documents"),

@@ -58,8 +58,8 @@ def ref_id(prefix: str, entity: str, name: str) -> str:
     return f"{prefix}:reference-data--{entity}:{name}:"
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    """Reference-data ID WITHOUT trailing colon (UoM, TableType, VolumeType - matches GRAND)."""
-    return f"{prefix}:reference-data--{entity}:{name}"
+    """Reference-data ID with trailing colon (latest version convention)."""
+    return f"{prefix}:reference-data--{entity}:{name}:"
 
 def wpc_id(prefix: str, entity: str, uid: str) -> str:
     return f"{prefix}:work-product-component--{entity}:{uid}:1"

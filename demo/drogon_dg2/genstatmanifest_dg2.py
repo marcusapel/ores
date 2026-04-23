@@ -34,7 +34,7 @@ def ref_id(prefix: str, entity: str, name: str) -> str:
     return f"{prefix}:reference-data--{entity}:{name}:"
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    return f"{prefix}:reference-data--{entity}:{name}"
+    return f"{prefix}:reference-data--{entity}:{name}:"
 
 def wpc_id(prefix: str, entity: str, uid: str) -> str:
     return f"{prefix}:work-product-component--{entity}:{uid}:1"
@@ -205,6 +205,9 @@ def build_statistics(raw_manifest: Dict, facet_roles: Dict, id_prefix: str) -> D
                     "ParentObjectID":      raw_data.get("ParentObjectID"),
                     "ParentWorkProductID": raw_data.get("ParentWorkProductID"),
                     "ancestry": ancestry,
+                    "DDMSDatasets": [
+                        f"eml:///dataspace('maap/drogon_dg')/resqml22.TableRepresentation('{wpc_record_id}')"
+                    ],
                     "Volumes": {
                         "ColumnBasedTableTypeID": std_ref_id(
                             id_prefix, "ColumnBasedTableType", "AdHoc"

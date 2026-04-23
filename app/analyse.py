@@ -114,13 +114,12 @@ def _extract_bd_metrics(
 ) -> Dict[str, Any]:
     """Pull a flat metrics dict from a BD data block + its GeoLabelSet.
 
-    Preference cascade for volumes:
-      1. GeoLabelSet volumes_by_segment (canonical FMU labels)
-      2. ext.equinor.UncertaintySummary (inline P10/P50/P90 in the BD itself)
+    Sources (all OSDU-native):
+      - Volumes:   GeoLabelSet volumes_by_segment (canonical FMU labels)
+      - Economics:  data.ProjectSpecifications[] (ParameterTypeID → value)
+      - Volumes fallback: ext.equinor.UncertaintySummary (inline P10/P50/P90)
     """
     ext_eq = ((data or {}).get("ext") or {}).get("equinor") or {}
-    econ = ext_eq.get("KeyEconomics") or {}
-    dcon = ext_eq.get("DevelopmentConcept") or {}
 
     gls_vols = gls.get("volumes_by_segment") or {}
     gls_unc = gls.get("uncertainty") or {}
@@ -128,7 +127,7 @@ def _extract_bd_metrics(
 
     m: Dict[str, Any] = {}
 
-    # ── Volumes: prefer GeoLabelSet, fall back to UncertaintySummary ──
+    # ── Volumes from GeoLabelSet ──
     for stat in ("P90", "P50", "P10"):
         v = total.get(f"Oil.{stat}")
         if v is not None:
@@ -142,8 +141,8 @@ def _extract_bd_metrics(
         if v is not None:
             m[f"rf_{stat.lower()}"] = v
 
-    # Fallback: UncertaintySummary (ext.equinor) when GeoLabelSet is absent
-    if not m:
+    # Volumes from UncertaintySummary when GeoLabelSet is absent
+    if not any(k.startswith("stoiip_") for k in m):
         usumm = ext_eq.get("UncertaintySummary") or {}
         stoiip = usumm.get("StaticInPlace_Oil_MSm3") or {}
         recov = usumm.get("Recoverable_Oil_MSm3") or {}
@@ -151,7 +150,6 @@ def _extract_bd_metrics(
         for stat in ("P90", "P50", "P10"):
             v = stoiip.get(stat)
             if v is not None:
-                # UncertaintySummary stores in MSm³; convert to Sm³ to match GLS
                 m[f"stoiip_{stat.lower()}"] = float(v) * 1_000_000
         for stat in ("P90", "P50", "P10"):
             v = recov.get(stat)
@@ -162,19 +160,27 @@ def _extract_bd_metrics(
             if v is not None:
                 m[f"rf_{stat.lower()}"] = float(v)
 
-    # Economics
-    if econ.get("NPV_10pct_MUSD") is not None:
-        m["npv"] = econ["NPV_10pct_MUSD"]
-    if econ.get("CAPEX_MNOK") is not None:
-        m["capex"] = econ["CAPEX_MNOK"]
-    if econ.get("OPEX_MNOK_pa") is not None:
-        m["opex"] = econ["OPEX_MNOK_pa"]
-    if econ.get("IRR_pct") is not None:
-        m["irr"] = econ["IRR_pct"]
-    if econ.get("BreakevenOilPrice_USDperbbl") is not None:
-        m["breakeven"] = econ["BreakevenOilPrice_USDperbbl"]
+    # ── Economics from ProjectSpecifications[] (OSDU-native) ──
+    _SPEC_MAP = {
+        "NPV_10pct":    "npv",
+        "IRR":          "irr",
+        "CAPEX":        "capex",
+        "OPEX_pa":      "opex",
+        "BreakevenOil": "breakeven",
+        "Payback":      "payback",
+    }
+    for spec in (data or {}).get("ProjectSpecifications") or []:
+        type_id = spec.get("ParameterTypeID") or ""
+        # Extract the code from …ParameterType:<code>:
+        parts = type_id.split(":")
+        code = parts[-2] if len(parts) >= 2 and parts[-1] == "" else parts[-1]
+        metric_key = _SPEC_MAP.get(code)
+        if metric_key and spec.get("DataQuantityParameter") is not None:
+            m[metric_key] = spec["DataQuantityParameter"]
 
-    # Dev concept
+    # ── Wells from ActivityTemplate or DevelopmentConcept ──
+    # Try canonical Parameters first (look for WellCount-like data)
+    dcon = ext_eq.get("DevelopmentConcept") or {}
     if dcon.get("WellCount") is not None:
         m["wells"] = dcon["WellCount"]
 
@@ -203,6 +209,7 @@ def _compute_deltas(gates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         ("opex", "OPEX"),
         ("irr", "IRR"),
         ("breakeven", "Breakeven"),
+        ("payback", "Payback"),
         ("wells", "Wells"),
     ]
     for i in range(1, len(gates)):

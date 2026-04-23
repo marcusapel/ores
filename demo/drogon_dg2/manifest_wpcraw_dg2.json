@@ -6,7 +6,7 @@
     "Datasets": [],
     "WorkProductComponents": [
       {
-        "id": "dev:work-product-component--ReservoirEstimatedVolumes:5a021693-c20a-4b96-be28-68f2240791b4:1",
+        "id": "dev:work-product-component--ReservoirEstimatedVolumes:26867eca-5fd5-4a5d-a260-67a40a91e76a:1",
         "kind": "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
         "acl": {
           "owners": [
@@ -27,7 +27,7 @@
         "data": {
           "Name": "Drogon Valysar - DG2 Reservoir Estimated Volumes (RAW, per realisation, \u00d70.8)",
           "Description": "DG2 uncertainty realisation table for the Valysar zone. Pore-dependent volume columns (PoreOil, Oil, Gas, etc.) scaled by 0.8 relative to DG1 to reflect revised porosity interpretation. Bulk rock volumes unchanged. 12 columns, 3 realisations \u00d7 7 segments \u00d7 4 facies.",
-          "EstimatedVolumeTypeID": "dev:reference-data--ReservoirEstimatedVolumeType:EstimatedInPlaceVolumes",
+          "EstimatedVolumeTypeID": "dev:reference-data--ReservoirEstimatedVolumeType:EstimatedInPlaceVolumes:",
           "ParentObjectID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
           "ParentWorkProductID": "dev:work-product:862b5d29-3d8b-4e9f-9d38-7b78185079f7:1",
           "ancestry": {
@@ -44,8 +44,11 @@
               "dev:master-data--ReservoirSegment:b47e81f4-c545-4f8d-ab45-4b9585cfeebb:1"
             ]
           },
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.TableRepresentation('dev:work-product-component--ReservoirEstimatedVolumes:26867eca-5fd5-4a5d-a260-67a40a91e76a:1')"
+          ],
           "Volumes": {
-            "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",
+            "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc:",
             "KeyColumns": [
               {
                 "ColumnName": "Realisation",
@@ -75,84 +78,84 @@
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "PoreOil",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "HydrocarbonPoreOil",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Oil",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "AssociatedGas",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "BulkGas",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "PoreGas",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "HydrocarbonPoreGas",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Gas",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "AssociatedLiquid",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Bulk",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Pore",
                 "ColumnRole": "Value",
                 "ValueType": "number",
                 "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               }
             ],
             "ColumnValues": {

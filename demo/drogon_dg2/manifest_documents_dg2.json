@@ -26,7 +26,7 @@
         },
         "data": {
           "Name": "Drogon - Schedule Risk Assessment (SRA) DG2",
-          "Description": "Schedule Risk Assessment for the Drogon field development DG2 Concept Select gate. Monte Carlo schedule analysis (1000 iterations) covering subsea installation, FPSO conversion, drilling campaign, and commissioning timeline. P50 first oil June 2028, P90 first oil March 2029. Key risk drivers: FPSO drydock slot availability, subsea template fabrication (18-month lead), and drilling rig market.",
+          "Description": "Schedule Risk Assessment for the Drogon field development DG2 Concept Select gate. Monte Carlo schedule analysis covering FPSO preparation, drilling campaign (6 development wells: A1\u2013A4 producers + A5\u2013A6 injectors), and commissioning. Phased well startup sequence from real Eclipse schedule: A1 (Jan 2018), A2 (Mar 2018), A5 injection (May 2018), A3+A4 (Sep 2018), A6 injection (Dec 2018). Key risk drivers: A4 horizontal multi-segment completion complexity, VFP table uncertainty, and water injection pump commissioning timeline.",
           "DocumentType": "SRA",
           "DocumentDate": "2026-02-15"
         }
@@ -52,7 +52,7 @@
         },
         "data": {
           "Name": "Drogon - Cost Risk Assessment (CRA) DG2",
-          "Description": "Cost Risk Assessment for the Drogon field development DG2 Concept Select gate. Probabilistic cost estimate (1000 iterations) covering subsea CAPEX, FPSO conversion, drilling (12+2 contingent wells), and project management. P50 total CAPEX 8,500 MNOK; P90 10,400 MNOK. Main cost drivers: drilling duration uncertainty (12\u201316 wells depending on compartmentalisation), FPSO water treatment module scope, and steel/fabrication market prices.",
+          "Description": "Cost Risk Assessment for the Drogon field development DG2 Concept Select gate. Probabilistic cost estimate covering FPSO facility (eCalc model: ~9 MW baseload, WI pumps at 200 bar, gas compressor), drilling (6+2 contingent wells), and project management. Drilling cost range driven by: A4 horizontal well complexity (multi-segment, X-direction completions), sand control requirements (frac-pack + ICD), and potential Phase 2 infill wells depending on fault compartmentalisation.",
           "DocumentType": "CRA",
           "DocumentDate": "2026-02-15"
         }
@@ -78,7 +78,7 @@
         },
         "data": {
           "Name": "Drogon - Plan for Development and Operation (PDO) DG2 Draft",
-          "Description": "Draft PDO for the Drogon DG2 Concept Select gate. Covers field description, selected development concept (subsea tie-back to FPSO, 2\u00d74-slot templates, 12 wells), preliminary environmental impact assessment, well planning, production forecasts, and regulatory framework alignment with PSA and MPE requirements. Basis for DG3 FEED scope definition.",
+          "Description": "Draft PDO for the Drogon DG2 Concept Select gate. Covers field description (Volantis Group, 3 zones, 7 fault-bounded regions), selected development concept (FPSO, 4 producers + 2 WI wells), STOIIP \u2248 34.5 MSm\u00b3, GIIP \u2248 1.0 GSm\u00b3 (NorthHorst gas cap, GOC 1640 m). Black-oil model (DISGAS+VAPOIL), ref. pressure 310 bar. Production forecast: peak 14,259 Sm\u00b3/d oil (Oct 2018), declining to ~2,900 Sm\u00b3/d at RF ~40%. LRAT-controlled prediction with WI at 6,500 Sm\u00b3/d per well to Jan 2025. Basis for DG3 FEED scope.",
           "DocumentType": "PDO",
           "DocumentDate": "2026-03-01"
         }
@@ -104,7 +104,7 @@
         },
         "data": {
           "Name": "Drogon - Petroleum Technology Report (PTR) DG2",
-          "Description": "Petroleum Technology Report for DG2 Concept Select. Covers seismic interpretation, petrophysical evaluation, geomodelling (50 FMU realisations), dynamic simulation (base + 4 sensitivities), volumetric uncertainty (P10/P50/P90 STOIIP and recoverable), production forecasting (20-year profile), and recovery factor analysis across 7 Valysar segments. 285 pages.",
+          "Description": "Petroleum Technology Report for DG2 Concept Select. Covers geomodelling (250 FMU realisations, one-by-one sensitivity design), APS facies model with seismic conditioning, 92\u00d7146\u00d769 simulation grid (10 properties: PHIT, KLOGH, KV, SW, SWL, SG, VSH, FACIES, REGION, ZONE), OPM Flow dynamic simulation with history matching. Observation data used for calibration: BHP (6 wells \u00d7 3 dates), WWCT and WGOR time-series (4 producers, 10 points each), PLT zone-level rates (A3\u2013A6 at Aug 2019), RFT pressure profiles (R_A2\u2013R_A6), 4D seismic amplitude maps (2018\u21922020), and 2 water tracers (WT1, WT2). Volumetric uncertainty (P10/P50/P90 STOIIP and recoverable) across 7 regions.",
           "DocumentType": "PTR",
           "DocumentDate": "2026-02-20"
         }
