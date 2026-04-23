@@ -9,22 +9,9 @@
 
 ## 1. Purpose
 
-A **DevelopmentConcept** WPC captures exactly what a subsurface team proposes to build for a given decision gate: the facility layout, well plan, drainage strategy, reservoir target, and production technology choices.
+A **DevelopmentConcept** WPC captures what a subsurface team proposes to build for a given decision gate: the facility layout, well plan, drainage strategy, reservoir target, and production technology choices.
 
 It is deliberately a **pure leaf** - it does not carry economics, schedule, production forecast, risks, documents or activity history. Those items belong on the **BusinessDecision** (the hub record). The DevConcept is linked from the BD via `Parameters[]` with key `DevelopmentConcept`, making it fetchable at render time.
-
-### What it is
-
-- The **physical concept**: what gets built underwater and topside
-- Structured enough for automated comparison across gates (DG1 sparse vs DG2 detailed vs DG3 final)
-- A single self-describing record that different teams (facilities, wells, reservoir, production tech) can contribute to
-
-### What it is not
-
-- Not a cost estimate (that's on the BD or a separate economics WPC)
-- Not a schedule (that's on the BD `ext.equinor.Schedule`)
-- Not a risk register (those are `master-data--Risk` records linked from the BD)
-- Not a duplication of reservoir properties (those live on `ReservoirSegment` records)
 
 
 ## 2. Architecture - BD Hub + DevConcept Leaf
