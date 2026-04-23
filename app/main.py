@@ -811,6 +811,7 @@ async def _enrich_bd_maps(
         return {"maps": [], "all": []}
 
     all_objs: List[Dict[str, Any]] = []
+    at = hdr.get("Authorization", "").replace("Bearer ", "")
     log.info("[BD-MAPS] Found %d ETPDataspace refs: %s", len(ds_ids), ds_ids)
 
     for ds_id in ds_ids[:3]:  # limit to 3 dataspaces
@@ -841,7 +842,6 @@ async def _enrich_bd_maps(
             # 2. List Grid2d objects in this dataspace
             enc = urllib.parse.quote(ds_path, safe="")
             grid2d_type = "resqml20.obj_Grid2dRepresentation"
-            at = hdr.get("Authorization", "").replace("Bearer ", "")
             try:
                 objs = await osdu.list_resources(at, enc, grid2d_type)
             except Exception:
@@ -871,25 +871,40 @@ async def _enrich_bd_maps(
     # Split: proper maps vs everything (tables stay only in activity refs)
     proper_maps = [o for o in all_objs if _is_proper_grid2d_map(o["title"])]
 
-    # Pick ONE representative map for the dashboard image.
-    # Preference order: DS_extract_simgrid > DS_extract_geogrid > first proper map.
-    hero_map: List[Dict[str, Any]] = []
+    # Sort proper maps: preferred hero first, then alphabetical by title.
+    # Preference order: DS_extract_simgrid > DS_extract_geogrid > DS_extract.
+    def _map_sort_key(mp: Dict[str, Any]) -> tuple:
+        t = mp["title"].lower()
+        for i, pref in enumerate(("ds_extract_simgrid", "ds_extract_geogrid", "ds_extract")):
+            if t.startswith(pref):
+                return (i, t)
+        return (99, t)
+
+    proper_maps.sort(key=_map_sort_key)
+
+    # ── Enrich each proper map with horizon name (RepresentedInterpretation) ──
+    # Parallel individual Grid2d fetches - lightweight (no array data).
+    grid2d_type = "resqml20.obj_Grid2dRepresentation"
+
+    async def _fetch_interpretation(mp: Dict[str, Any]) -> None:
+        try:
+            enc = urllib.parse.quote(mp["ds"], safe="")
+            obj = await osdu.get_resource(at, enc, grid2d_type, mp["uuid"])
+            norm = osdu._normalize_obj(obj, mp["uuid"])
+            interp_ref = norm.get("RepresentedInterpretation") or {}
+            interp_title = interp_ref.get("Title") or ""
+            if interp_title:
+                mp["interpretation"] = interp_title
+        except Exception as e:
+            log.debug("[BD-MAPS] interpretation fetch failed for %s: %s", mp["uuid"], e)
+
     if proper_maps:
-        _PREF = ("ds_extract_simgrid", "ds_extract_geogrid", "ds_extract")
-        for pref in _PREF:
-            for mp in proper_maps:
-                if mp["title"].lower().startswith(pref):
-                    hero_map = [mp]
-                    break
-            if hero_map:
-                break
-        if not hero_map:
-            hero_map = [proper_maps[0]]
+        await asyncio.gather(*[_fetch_interpretation(mp) for mp in proper_maps])
 
     log.info("[BD-MAPS] Discovered %d Grid2d objects (%d proper maps, hero=%s) across %d dataspaces",
              len(all_objs), len(proper_maps),
-             hero_map[0]["title"] if hero_map else "none", len(ds_ids))
-    return {"maps": hero_map, "all": all_objs, "maps_total": len(proper_maps)}
+             proper_maps[0]["title"] if proper_maps else "none", len(ds_ids))
+    return {"maps": proper_maps, "all": all_objs, "maps_total": len(proper_maps)}
 
 
 async def _enrich_bd_production(

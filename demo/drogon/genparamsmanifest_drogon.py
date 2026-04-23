@@ -53,8 +53,8 @@ from _shared import load_json, SEGMENT_NAMES  # noqa: E402
 
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    """Reference-data ID WITHOUT trailing colon."""
-    return f"{prefix}:reference-data--{entity}:{name}"
+    """Reference-data ID with trailing colon (latest version convention)."""
+    return f"{prefix}:reference-data--{entity}:{name}:"
 
 
 def wpc_id(prefix: str, entity: str, uid: str) -> str:

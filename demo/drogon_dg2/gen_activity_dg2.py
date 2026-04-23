@@ -598,8 +598,8 @@ def build_activity(
 ):
     activity_id = f"{prefix}:work-product-component--Activity:{ACTIVITY_UUID_DG2}:1"
 
-    _kind = lambda k: f"{prefix}:reference-data--ParameterKind:{k}:1"
-    _role = lambda r: f"{prefix}:reference-data--ParameterRole:{r}:1"
+    _kind = lambda k: f"{prefix}:reference-data--ParameterKind:{k}:"
+    _role = lambda r: f"{prefix}:reference-data--ParameterRole:{r}:"
 
     parameters = [
         # ── INPUT: Seismic data ──────────────────────────────────

@@ -35,7 +35,7 @@ from _shared import load_json  # noqa: E402
 
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    return f"{prefix}:reference-data--{entity}:{name}"
+    return f"{prefix}:reference-data--{entity}:{name}:"
 
 
 # ── Petro-physical constants (synthetic but realistic for Drogon) ──────

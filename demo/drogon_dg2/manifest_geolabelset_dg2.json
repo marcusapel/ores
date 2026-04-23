@@ -36,7 +36,7 @@
             ]
           },
           "GeoLabels": {
-            "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",
+            "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc:",
             "KeyColumns": [
               {
                 "ColumnName": "SegmentID",
@@ -55,109 +55,109 @@
                 "ColumnName": "Oil.P90",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Oil.P50",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Oil.P10",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Recoverable.P90",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Recoverable.P50",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "Recoverable.P10",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:"
               },
               {
                 "ColumnName": "RecoveryFactor.P90",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:%"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:%:"
               },
               {
                 "ColumnName": "RecoveryFactor.P50",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:%"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:%:"
               },
               {
                 "ColumnName": "RecoveryFactor.P10",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:%"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:%:"
               },
               {
                 "ColumnName": "Porosity",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:fraction"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:fraction:"
               },
               {
                 "ColumnName": "NetToGross",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:fraction"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:fraction:"
               },
               {
                 "ColumnName": "Permeability",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:mD"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:mD:"
               },
               {
                 "ColumnName": "OilWaterContact",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "Temperature",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:degC"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:degC:"
               },
               {
                 "ColumnName": "Pressure",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:bar"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:bar:"
               },
               {
                 "ColumnName": "Viscosity",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:cP"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:cP:"
               },
               {
                 "ColumnName": "FormationVolumeFactor",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Rm3/Sm3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Rm3/Sm3:"
               },
               {
                 "ColumnName": "GasOilRatio",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Sm3/Sm3"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Sm3/Sm3:"
               }
             ],
             "ColumnValues": {

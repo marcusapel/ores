@@ -124,7 +124,7 @@ def _first(env: Dict[str, str], keys: List[str]) -> str:
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Canonical alias map - used everywhere
-ALIASES: Dict[str, str] = {"eqndev": "swedev", "swedev": "swedev", "preship": "preship"}
+ALIASES: Dict[str, str] = {"eqndev": "eqndev", "swedev": "eqndev", "preship": "preship"}
 
 
 def _resolve_from_k8s(name: str, k8s_dir: Optional[Path] = None) -> Optional[Dict[str, str]]:

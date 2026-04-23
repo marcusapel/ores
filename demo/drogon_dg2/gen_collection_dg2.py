@@ -100,6 +100,10 @@ def main():
     ap.add_argument("--risks",       default=str(SCRIPT_DIR / "manifest_risk_dg2.json"))
     ap.add_argument("--documents",   default=str(SCRIPT_DIR / "manifest_documents_dg2.json"))
     ap.add_argument("--devconcept",  default=str(SCRIPT_DIR / "manifest_devconcept_dg2.json"))
+    ap.add_argument("--grid",        default=str(SCRIPT_DIR / "manifest_grid_dg2.json"))
+    ap.add_argument("--maps",        default=str(SCRIPT_DIR / "manifest_maps_dg2.json"))
+    ap.add_argument("--simtables",   default=str(SCRIPT_DIR / "manifest_simtables_dg2.json"))
+    ap.add_argument("--polygons",    default=str(SCRIPT_DIR / "manifest_polygons_dg2.json"))
     ap.add_argument("--geolabelset-id",
                     default="dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1")
     ap.add_argument("--manifest",    default=str(SCRIPT_DIR / "manifest_collection_dg2.json"))
@@ -125,6 +129,18 @@ def main():
 
     # DevelopmentConcept
     _add_all(args.devconcept)
+
+    # Grid + grid properties (IjkGridRepresentation)
+    _add_all(args.grid)
+
+    # Maps / surfaces (StructureMap + GenericRepresentation)
+    _add_all(args.maps)
+
+    # Simulator tables (ColumnBasedTable: relperm, pvt, summary, etc.)
+    _add_all(args.simtables)
+
+    # Polygons (GenericRepresentation: fault lines, outlines)
+    _add_all(args.polygons)
 
     # Activity + ActivityTemplate
     _add_all(args.activity)
@@ -172,8 +188,10 @@ def main():
                 "PersistedCollection bundling all artifacts used to create "
                 "the Drogon DG2 Concept Select BusinessDecision. "
                 "Includes input volumes (raw + statistics), parameters, "
-                "production forecast, development concept, activity chain, "
-                "risks, documents, GeoLabelSet, and RDDMS dataspace reference. "
+                "production forecast, development concept, grid model (IjkGrid + 10 properties), "
+                "structure maps (49 surfaces), simulator tables (relperm, PVT, summary, "
+                "well completions, group tree), polygons (fault lines, outlines), "
+                "activity chain, risks, documents, GeoLabelSet, and RDDMS dataspace reference. "
                 f"{len(components)} data references."
             ),
             "DataReferences": components,

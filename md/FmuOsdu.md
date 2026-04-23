@@ -168,7 +168,7 @@ FMU is used from DG1 onwards in Equinor's capital value process. Each decision g
 | Gate | FMU scope | Key OSDU artifacts |
 |---|---|---|
 | **DG1** — Identify & Assess | Screening: few realizations (3–10), simple design matrix, limited uncertainty variables, regional data | Reservoir, Segments, REV (raw + stats), input params CBT, 1–2 Risks, Activity, BD |
-| **DG2** — Concept Select | Full ensemble: 50–200 realizations (Latin Hypercube), revised parameters, production forecast, development concept evaluation | All DG1 + more Risks, Documents (SRA, CRA, PDO), DevelopmentConcept WPC, GeoLabelSet, production forecast CBT, PersistedCollection, economics |
+| **DG2** — Concept Select | Full ensemble: 50–250 realizations (one-by-one / Latin Hypercube), 30+ uncertainty variables, production forecast, development concept evaluation. Drogon ref: 250 realizations, 92×146×69 geogrid, 10 cell properties, 49 maps, 30+ design params | All DG1 + IjkGridRepresentation + 10 property WPCs, StructureMap (6 horizons), GenericRepresentation (maps: amplitude, facies frac, averages), Risks ×6, Documents (SRA, CRA, PDO, PTR), DevelopmentConcept, GeoLabelSet, production forecast CBT, design matrix CBT (30+ cols), simulator tables (relperm, PVT), polygon WPCs (faults, outlines), PersistedCollection |
 | **DG3** — FEED / Plan for Execution | Dynamic simulation: history matching (if brownfield), flow simulation grid (IJK), SCHEDULE, PVT, relperm, well trajectories, drainage strategy | All DG2 + IjkGridRepresentation, grid properties, WellboreTrajectory, simulator tables (relperm, PVT), ProductionValues, StructureMaps |
 | **DG4** — FID / Execute | Full-field simulation & optimization: 100–1000+ realizations, history match quality, production optimization, detailed well plans | All DG3 + history match metrics, updated forecasts, field development plan, updated risks |
 
@@ -186,11 +186,15 @@ BusinessDecision (DG2 example)
   ├─ Parameters[]:
   │    ├─ [input]  REV-raw → ReservoirEstimatedVolumes (per-realisation)
   │    ├─ [input]  REV-stats → ReservoirEstimatedVolumes (P10/P50/P90)
-  │    ├─ [input]  InputParams → ColumnBasedTable (OWC + porosity design)
+  │    ├─ [input]  InputParams → ColumnBasedTable (design matrix: 30+ params — OWC, KVKH, relperm, facies prob, …)
   │    ├─ [input]  GeoModelDataspace → ETPDataspace (RDDMS pointer)
-  │    ├─ [output] ProductionForecast → ColumnBasedTable (20yr profile)
+  │    ├─ [input]  GridModel → IjkGridRepresentation (92×146×69 geogrid + 10 properties)
+  │    ├─ [input]  DepthSurfaces → StructureMap WPCs (6 horizons)
+  │    ├─ [output] ProductionForecast → ColumnBasedTable (per-well + field-level)
   │    ├─ [output] DevelopmentConcept → custom WPC
   │    ├─ [output] GeoLabelSet → headline P10/P50/P90 per segment
+  │    ├─ [output] DerivedMaps → GenericRepresentation (amplitude, facies fractions, averages)
+  │    ├─ [output] SimulatorTables → ColumnBasedTable WPCs (relperm, PVT, VFP, completions)
   │    ├─ [context] Reservoir → master-data--Reservoir
   │    ├─ [context] Prior gate → BD DG1 (cross-gate linkage)
   │    └─ [context] Documents → SRA, CRA, PDO, PTR
@@ -318,6 +322,184 @@ erDiagram
 4. **BusinessDecision as gate record** — one BD per gate, linking Activities, Risks, Documents, and evidence WPCs via `Parameters[]`
 5. **Cross-gate evolution** — BD at DG(n+1) references BD at DG(n) as context parameter, enabling delta tracking
 
+#### 5.4 Drogon DG2 — Concrete Artifact Inventory and OSDU Mapping
+
+The public [fmu-drogon](https://github.com/equinor/fmu-drogon) reference case (250 realizations, one-by-one design matrix) produces the following artifacts from a full DG2 ensemble run. This section maps every real output category to OSDU record types and identifies the gap between the current ORES demo (which covers decision-support records only) and a production-scale DG2 in OSDU.
+
+> **Source**: `fmu-drogon` v26.0.0, FORWARD_MODEL chain: `RMS → FLOW → export_tables → export_maps → export_ecl_roff → RFT → sim2seis`
+
+##### 5.4.1 Grid and grid properties
+
+The static geomodel is a single corner-point grid with 10 cell properties:
+
+| Artifact | File | Dimensions | OSDU record type | Notes |
+|---|---|---|---|---|
+| **Geogrid geometry** | `geogrid.roff` | 92 × 146 × 69 (3 zones) | `IjkGridRepresentation` WPC + RDDMS | Zones: Valysar (k 0–19), Therys (k 20–53), Volon (k 54–68) |
+| Porosity (PHIT) | `geogrid--phit.roff` | cell property, continuous | Grid property WPC | `data.content: property`, `data.property.attribute: porosity` |
+| Log permeability (KLOGH) | `geogrid--klogh.roff` | cell property, continuous | Grid property WPC | `data.property.attribute: permeability` (log10 scale) |
+| Vertical permeability (KV) | `geogrid--kv.roff` | cell property, continuous | Grid property WPC | Derived: Kv = f(Kh, Kv/Kh ratio) |
+| Water saturation (SW) | `geogrid--sw.roff` | cell property, continuous | Grid property WPC | Initial Sw from saturation function |
+| Water saturation lower (SWL) | `geogrid--swl.roff` | cell property, continuous | Grid property WPC | Connate water saturation |
+| Gas saturation (SG) | `geogrid--sg.roff` | cell property, continuous | Grid property WPC | Initial Sg |
+| Volume of shale (VSH) | `geogrid--vsh.roff` | cell property, continuous | Grid property WPC | Shale volume indicator |
+| Facies | `geogrid--facies.roff` | cell property, **discrete** | Grid property WPC | 8+ codes (Floodplain, Channel, Crevasse, …) |
+| Region | `geogrid--region.roff` | cell property, **discrete** | Grid property WPC | 7 regions: WestLowland, CentralSouth, CentralNorth, NorthHorst, CentralRamp, CentralHorst, EastLowland |
+| Zone | `geogrid--zone.roff` | cell property, **discrete** | Grid property WPC | 3 zones: Valysar, Therys, Volon |
+
+**OSDU pattern**: One `IjkGridRepresentation` WPC for the geometry (RDDMS for array storage). One property WPC per property, each with `supported_by_uuid` → grid WPC. Discrete properties carry code-to-label mapping. All properties in a single `WorkProduct` per realization (or per ensemble for post-processed / reference realization). The `standard_result: grid_model_static` tag identifies the canonical property bundle.
+
+**Demo gap**: The DG2 demo currently references grid and property files only as string paths in the Activity `OutputGridProperties` parameter. No `IjkGridRepresentation` or property WPCs are generated.
+
+##### 5.4.2 Maps and surfaces
+
+49 map files produced per realization, covering 5 categories:
+
+| Category | Count | Example file | Content | OSDU record type |
+|---|---|---|---|---|
+| **Depth surface extracts** | 12 | `topvolon--ds_extract_geogrid.gri` | Grid-extracted horizon depths (6 horizons × 2 sources: `ds_extract_geogrid`, `ds_extract_postprocess`) | `StructureMap` WPC |
+| **Amplitude maps** | 10 | `topvolantis--amplitude_near_2018.gri` | Seismic amplitude extraction near/far per horizon (5 horizons × 2 attributes) | `GenericRepresentation` WPC |
+| **Facies fraction maps** | 12 | `therys--facies_fraction_channel.gri` | Per-zone percentage of each facies type (3 zones × 3–4 facies) | `GenericRepresentation` WPC |
+| **Average property maps** | 6 | `valysar--klogh_average.gri` | Zone-averaged porosity and log-permeability (3 zones × 2 properties) | `GenericRepresentation` WPC |
+| **Probability cube maps** | 9 | `therys--aps_probability_channel.gri` | APS facies probability per zone (3 zones × 3 facies) | `GenericRepresentation` WPC |
+
+Surface metadata from fmu-dataio sidecars (example: `valysar--klogh_average.gri.yml`):
+- Grid: 280 × 440 nodes, 25 m increment, irap_binary format
+- CRS: ST_WGS84_UTM37N_P32637 (from `_masterdata.yml`)
+- Content: `property`, attribute: `permeability` (or `porosity`, `amplitude`, `facies_fraction`, etc.)
+- Stratigraphic reference: horizon/zone name from `_stratigraphy.yml`
+
+**OSDU pattern**: `StructureMap` WPC for depth surfaces (RDDMS `Grid2dRepresentation` for Z-values). `GenericRepresentation` for derived attribute maps (amplitude, facies fraction, averages, probability). Each surface carries CRS, stratigraphic reference, and content type. Aggregated surfaces (mean, P10, P90 across realizations) are separate WPCs with `FacetType:statistics` annotation.
+
+**Ensemble scale**: 250 realizations × 49 maps = 12,250 surface files per ensemble. Recommended strategy: store only **aggregated** (P10/P50/P90/mean) surfaces in OSDU; raw realizations stay in Sumo/blob storage with OSDU catalog pointers. Alternatively, bulk RDDMS upload with thin catalog WPCs.
+
+**Demo gap**: No surface or map WPCs generated. Activity parameter `OutputMaps` lists file paths only.
+
+##### 5.4.3 Volumes
+
+The canonical FMU volume output:
+
+| Artifact | File | Format | OSDU record type | Standard result |
+|---|---|---|---|---|
+| **Inplace volumes (static)** | `geogrid--vol.parquet` | Parquet | `ReservoirEstimatedVolumes` | `inplace_volumes` ✓ |
+| **Simulator volumes** | `simgrid--vol.csv` | CSV | `ReservoirEstimatedVolumes` | — |
+
+The `inplace_volumes` standard result has 12 columns: `FLUID`, `ZONE`, `REGION`, `FACIES`, `BULK`, `NET`, `PORV`, `HCPV`, `STOIIP`, `GIIP`, `ASSOCIATEDGAS`, `ASSOCIATEDOIL` (504 rows per realization: 2 fluids × 7 regions × 3 zones × ~4 facies × rollups).
+
+**Demo status**: ✅ Covered — the DG2 demo generates both raw and statistical REV WPCs. Current demo uses 3 realizations × 7 segments × 4 facies = 84 rows; a real DG2 would have 250 × 504 rows consolidated.
+
+##### 5.4.4 Simulator tables and export data
+
+The FORWARD_MODEL chain `export_tables → export_ecl_roff` produces:
+
+| FMU content | File(s) | Format | OSDU record type | Notes |
+|---|---|---|---|---|
+| **Eclipse summary** | `summary.arrow` | Apache Arrow | `ColumnBasedTable` WPC | Rate/cumulative vectors (FOPR, FGPR, FWPR, FOPT, FPR, FWCT …); per-well and field-level |
+| **Relative permeability** | `relperm.csv` | CSV | `ColumnBasedTable` WPC | Saturation functions per SATNUM region |
+| **PVT data** | `pvt.csv` | CSV | `ColumnBasedTable` WPC | BO, RS, BG, RV per PVT region (7 regions with distinct fluid properties) |
+| **VFP tables** | `vfp*.arrow` | Arrow | `ColumnBasedTable` WPC | Vertical flow performance per well |
+| **Well completions** | `wellcompletiondata.arrow` | Arrow | `ColumnBasedTable` WPC | Completion intervals, skin, connection factors |
+| **Group tree** | `gruptree.csv` | CSV | `ColumnBasedTable` WPC | Eclipse group/well hierarchy per timestep |
+| **Well picks** | `well_picks.csv` | CSV | `ColumnBasedTable` WPC | Picks per well per horizon |
+| **Formation data** | `formations.csv` | CSV | `ColumnBasedTable` WPC | Zone depths per well |
+| **Grid property statistics** | `grid_property_statistics/*.parquet` | Parquet | `ColumnBasedTable` WPC | Summary stats per property |
+| **FIP regions mapping** | `simulator_fipregions_mapping/*.parquet` | Parquet | `ColumnBasedTable` WPC | `standard_result: simulator_fipregions_mapping` |
+
+**Demo status**: Only the field-level production forecast is covered (31 monthly timesteps from realization-0). All other simulator tables exist only as file-path references in the Activity.
+
+##### 5.4.5 Polygons
+
+| Artifact | File pattern | OSDU record type |
+|---|---|---|
+| **Fault lines** | `topvolantis--faultlines.csv` (4 horizons) | `GenericRepresentation` WPC |
+| **Field outline** | `field_outline.csv` | `GenericRepresentation` WPC |
+| **Fluid contact outlines** | `fluid_contact_outline_goc.csv`, `fluid_contact_outline_fwl.csv` | `GenericRepresentation` WPC |
+
+**Demo gap**: Not generated. Polygons are input/context data critical for visualization and QC.
+
+##### 5.4.6 Design matrix and uncertainty parameters
+
+The Drogon one-by-one design matrix (`design_matrix_one_by_one.xlsx`) defines 30+ uncertainty variables:
+
+| Variable group | Parameters | Distribution | OSDU representation |
+|---|---|---|---|
+| **Fluid contacts** | FWL per segment, GOC per segment | UNIFORM (1650–1690 m / 1230–1260 m) | Key columns in design matrix CBT |
+| **Kv/Kh ratios** | KVKH_CHANNEL, KVKH_CREVASSE, KVKH_US, KVKH_CALC | LOGUNIF (0.06–0.6 / 0.001–0.5) | Value columns |
+| **Fault properties** | FAULT_SEAL_SCALING | UNIFORM (0.1–0.5) | Value column |
+| **Relative permeability** | RELPERM_INT_OIL, RELPERM_INT_GAS | UNIFORM (−0.5…0.5 / 0.5…1.5) | Value columns |
+| **Reference petrophysics** | PERMREF_*, POROREF_* per facies | CONST (fixed values: PHIT 0.14–0.33, KLOGH 1.5–9.0) | Value columns (constants) |
+| **Trend weights** | ISOTREND_WEIGHT_Valysar/Therys/Volon | UNIFORM (0.6–0.9) | Value columns |
+| **Facies probabilities** | APS_*_PROB_CHANNEL, APS_*_PROB_CREVASSE | UNIFORM (0.3–0.7 / 0.05–0.55) | Value columns |
+| **Model switches** | FACIES_MODEL, PETRO_MODEL | Constants (2, 1) | Value columns |
+
+**OSDU target**: `ColumnBasedTable` WPC with `KeyColumns: [CaseID, Realisation, Seed]` and one value column per parameter. This enables:
+- Direct join REV on `Realisation` key → correlate volume outcomes with input uncertainty parameters
+- Statistical analysis of parameter sensitivity (tornado plots, scatter pairs)
+- Provenance: Activity links design matrix row → static bundle → workflow output
+
+**Demo status**: ✅ Covered — the DG2 demo generates a params CBT with OWC and porosity columns. A real DG2 would have 30+ columns.
+
+##### 5.4.7 Master data and stratigraphy
+
+The Drogon model carries master data (`_masterdata.yml`) and stratigraphy (`_stratigraphy.yml`):
+
+**Stratigraphy** (6 horizons, 3 zones):
+
+| Horizon | SMDA equivalent | Type |
+|---|---|---|
+| MSL | Mean sea level | Reference |
+| TopVolantis (VOLANTIS GP. Top) | Top reservoir | Horizon |
+| TopTherys | Intra-reservoir | Horizon |
+| TopVolon | Intra-reservoir | Horizon |
+| BaseVolon | Base Volon Fm. | Horizon |
+| BaseVolantis | Base reservoir | Horizon |
+
+| Zone | Formation | Depth range (k-layers) |
+|---|---|---|
+| Valysar | Valysar Fm. | k 0–19 |
+| Therys | Therys Fm. | k 20–53 |
+| Volon | Volon Fm. | k 54–68 |
+
+**7 reservoir segments** with per-segment fluid contacts:
+
+| Segment | OWC (m) | GOC (m) | FWL (m) |
+|---|---|---|---|
+| WestLowland | 1660.0 | — | 1660.0 |
+| CentralSouth | 1677.0 | 1234.0 | 1677.0 |
+| CentralNorth | 1660.0 | 1236.0 | 1660.0 |
+| NorthHorst | 1650.0 | 1230.0 | 1650.0 |
+| CentralRamp | 1690.0 | 1256.0 | 1690.0 |
+| CentralHorst | 1660.0 | 1250.0 | 1660.0 |
+| EastLowland | 1670.0 | — | 1670.0 |
+
+**OSDU mapping**:
+- Horizons/zones → `StratigraphicUnitInterpretation` / `StratigraphicColumnRankInterpretation` (see [StratColumn guide](StratColumn.md))
+- Segments → `ReservoirSegment` (one per segment with `SegmentTypeID`, scoping for volumes)
+- Fluid contacts → `FluidBoundary` or `GenericRepresentation` WPC per segment
+- CRS → `CoordinateReferenceSystem` record (ST_WGS84_UTM37N_P32637)
+
+##### 5.4.8 DG2 demo coverage summary
+
+| Artifact category | Real Drogon output | ORES demo DG2 status | Priority |
+|---|---|---|---|
+| Business Decision | ✓ BD with gate evidence | ✅ Generated | — |
+| Activity / provenance | ✓ 22-step FORWARD_MODEL chain | ✅ Generated (rich) | — |
+| Volumes (REV raw + stats) | ✓ 504 rows × 250 realisations | ✅ Generated (3 realisations) | — |
+| Design matrix / input params | ✓ 30+ uncertainty variables | ✅ Generated (10 columns) | Extend |
+| Production forecast | ✓ Per-well + field-level | ✅ Generated (field P50 only) | Extend |
+| Risks | ✓ Multiple risk categories | ✅ Generated (6 risks) | — |
+| Documents | ✓ SRA, CRA, PDO, PTR | ✅ Generated (4 stubs) | — |
+| Development concept | ✓ Facility + well plan | ✅ Generated | — |
+| GeoLabelSet | ✓ Headline KPIs | ✅ Generated | — |
+| **Grid (IjkGridRepresentation)** | ✓ 92×146×69 ROFF | ❌ **Not generated** | **High** |
+| **Grid properties (10)** | ✓ PHIT, KLOGH, KV, SW, … | ❌ **Not generated** | **High** |
+| **Maps / surfaces (49)** | ✓ Depth, amplitude, facies frac | ❌ **Not generated** | **High** |
+| **Simulator tables** | ✓ Relperm, PVT, VFP, compl. | ❌ **Not generated** | Medium |
+| **Polygons** | ✓ Fault lines, outlines | ❌ **Not generated** | Medium |
+| **Well data** | ✓ Picks, formations, RFT | ❌ **Not generated** | Medium |
+| Stratigraphy / master data | ✓ 6 horizons, 7 segments | ⚠️ Partial (Reservoir exists) | Low |
+
+> **Key takeaway**: The DG2 demo fully covers the **decision-support layer** (BD, Activity, Risks, Documents, Volumes, Economics). The gap is in **spatial/reservoir-engineering artifacts** — grids, properties, maps, simulator tables, and polygons — which represent the bulk of a real FMU ensemble's output volume.
+
 ***
 
 ### **6. Deck Manifest (Eclipse ⇄ OSDU Round-Trip)**
@@ -381,32 +563,41 @@ A small sidecar (JSON/YAML) accompanying every deck export and OSDU write-back:
 
 ### **10. TODO — Open Items and Next Steps**
 
-#### 10.1 High priority
+> Informed by the Drogon DG2 artifact inventory (§5.4) and demo coverage gap analysis (§5.4.8).
 
-- [ ] **Automated fmu-dataio → OSDU converter**: Build a converter that reads fmu-dataio metadata sidecars (YAML/JSON) and produces OSDU manifests or Storage API payloads. This is the key enabler for production-scale FMU→OSDU sync. Evaluate as fmu-dataio plugin or standalone tool.
-- [ ] **Design matrix as proper CBT WPC**: Implement the design matrix as a `ColumnBasedTable` WPC (keys: `CaseID/Realisation/Seed`, columns: parameter vector) instead of JSON strings in Activity parameters. Update demo generators.
-- [ ] **Standardize BD parameter keys**: Define and document a controlled vocabulary for `Parameters[].Title` keys used in BusinessDecision records across gates. Publish as reference data or convention guide.
-- [ ] **DG3/DG4 demo pipeline**: Extend the Drogon demo to DG3 (FEED) and DG4 (FID) with dynamic simulation artifacts: `IjkGridRepresentation`, grid properties, simulator tables (relperm, PVT), well trajectories, history match data.
-- [ ] **Structure map / surface pipeline**: Implement surface ingestion in the demo — generate `StructureMap` WPCs from fmu-dataio surface exports, push Grid2dRepresentations to RDDMS. The [SeisInt](SeisInt.md) design is ready; implementation is pending.
+#### 10.1 High priority — DG2 geomodel artifacts
 
-#### 10.2 Medium priority
+- [ ] **Grid + property WPC generator** (`gen_grid_dg2.py`): Generate `IjkGridRepresentation` WPC (92×146×69, 3 zones) and 10 grid property WPCs (PHIT, KLOGH, KV, SW, SWL, SG, VSH, FACIES, REGION, ZONE) with `supported_by_uuid` linkage and correct `data.property.attribute`/`is_discrete` flags. Map from Drogon `geogrid.roff` + `geogrid--*.roff` sidecars. RDDMS integration for array storage is optional initially (catalog WPC with file reference is sufficient for demo).
+- [ ] **Surface / map WPC generator** (`gen_maps_dg2.py`): Generate `StructureMap` WPCs for depth surface extracts (6 horizons) and `GenericRepresentation` WPCs for derived maps (amplitude, facies fractions, property averages). Use fmu-dataio sidecar metadata (grid dims, CRS, content type, stratigraphic ref) to populate WPC fields. Start with aggregated (P50) surfaces; per-realization at scale is deferred (§10.2).
+- [ ] **Automated fmu-dataio → OSDU converter**: Build a converter that reads fmu-dataio metadata sidecars (YAML/JSON) and produces OSDU manifests or Storage API payloads. This is the key enabler for production-scale FMU→OSDU sync. The Drogon sidecar format (§5.4) provides the reference schema. Evaluate as fmu-dataio plugin or standalone tool.
+- [ ] **Extend design matrix CBT to 30+ columns**: Current demo has 10 columns (OWC + porosity). Extend to match real Drogon: KVKH (4), FWL/GOC contacts (7), FAULT_SEAL_SCALING, RELPERM_INT (2), ISOTREND_WEIGHT (3), APS facies probabilities (4+), model switches. Enables realistic sensitivity/tornado analysis.
+- [ ] **Standardize BD parameter keys**: Define a controlled vocabulary for `Parameters[].Title` keys used in BusinessDecision records across gates. Publish as reference data or convention guide. Add new keys for spatial artifacts: `fmu-grid-model`, `fmu-depth-surfaces`, `fmu-amplitude-maps`, `fmu-fault-lines`.
 
-- [ ] **Economics WPC**: Design and implement a dedicated economics WPC (or custom schema like DevelopmentConcept) for NPV, CAPEX, OPEX, IRR, breakeven. Currently in `ext.equinor` which is fragile under manifest ingestion.
-- [ ] **Per-realization surface handling at scale**: Define the packaging strategy for 200+ realization × N horizon surface sets. Options: (a) one WorkProduct per realization, (b) aggregated surfaces only in OSDU with raw in Sumo, (c) bulk RDDMS upload with catalog references.
-- [ ] **Production profile ensemble WPC**: Formalize production forecast as a per-realization `ColumnBasedTable` (keys: `Realisation/Year`, columns: rates/cumulatives) enabling P10/P50/P90 forecast bands. Link `ProductionValues` WPC for observed data at DG3/DG4.
-- [ ] **Sumo ↔ OSDU sync pipeline**: Implement automated or semi-automated sync from Sumo to OSDU. Options: (a) event-driven on Sumo upload, (b) batch after ensemble completion, (c) selective (standard results only).
-- [ ] **Grid property WPC ingestion**: Implement ingestion of `grid_model_static` results (ROFF) into OSDU as `IjkGridRepresentation` + property WPCs. Requires RDDMS integration for geometry arrays.
-- [ ] **Well data integration**: At DG3+, link `WellboreTrajectory` and `WellCompletionData` WPCs to the BD and Activity for planned wells.
+#### 10.2 Medium priority — ensemble completeness
 
-#### 10.3 Lower priority / exploratory
+- [ ] **Simulator table WPCs** (`gen_simtables_dg2.py`): Generate `ColumnBasedTable` WPCs for relperm (per SATNUM), PVT (per PVT region — Drogon has 7 regions with distinct BO/RS/BG/RV), well completions, and group tree data. These are critical at DG3 but should be prototyped at DG2 for the demo.
+- [ ] **Polygon WPCs** (`gen_polygons_dg2.py`): Generate `GenericRepresentation` WPCs for fault lines (4 horizons), field outline, and fluid contact outlines (GOC, FWL). These support visualization and QC of the geomodel.
+- [ ] **Per-realization surface handling at scale**: Define the packaging strategy for 250 realizations × 49 maps = 12,250 surfaces. Options: (a) aggregated surfaces only in OSDU with raw in Sumo, (b) thin catalog WPCs in OSDU pointing to Sumo/blob storage, (c) bulk RDDMS upload. Recommend option (a) for demo/near-term.
+- [ ] **Production profile ensemble WPC**: Extend production forecast from field-level P50 to per-realization `ColumnBasedTable` (keys: `Realisation/Date`, columns: rates/cumulatives) enabling P10/P50/P90 forecast bands. Drogon's `summary.arrow` has per-well vectors for all 250 realizations.
+- [ ] **Sumo ↔ OSDU sync pipeline**: Implement automated or semi-automated sync from Sumo to OSDU. Options: (a) event-driven on Sumo upload, (b) batch after ensemble completion, (c) selective (standard results only). The fmu-dataio sidecar provides all metadata needed for OSDU record construction.
+- [ ] **Economics WPC**: Design a dedicated economics WPC (or custom schema) for NPV, CAPEX, OPEX, IRR, breakeven. Currently in `ext.equinor` which is fragile under manifest ingestion.
 
+#### 10.3 Medium priority — master data alignment
+
+- [ ] **Stratigraphy records**: Generate `StratigraphicUnitInterpretation` and `StratigraphicColumnRankInterpretation` for the Drogon column (MSL, TopVolantis, TopTherys, TopVolon, BaseVolon, BaseVolantis; zones: Valysar, Therys, Volon). Currently only `Reservoir` master-data exists; horizon/zone records would enable structured stratigraphic queries.
+- [ ] **Segment-level fluid contacts**: Generate `FluidBoundary` or `GenericRepresentation` WPCs per segment (7 segments × OWC/GOC/FWL values). Currently contacts are only embedded in design matrix parameters.
+- [ ] **Well data integration**: Link `WellboreTrajectory`, well picks, and formations from the Drogon well data to the BD and Activity. Drogon has `well_picks.csv` and `formations.csv` ready for mapping.
+
+#### 10.4 Lower priority / exploratory
+
+- [ ] **DG3/DG4 demo pipeline**: Extend the Drogon demo to DG3 (FEED) and DG4 (FID) with dynamic simulation artifacts: history match data, updated well trajectories, production history (`ProductionValues` WPC for observed data), and updated forecasts.
 - [ ] **OSDU as SoE (System of Engagement)**: Evaluate OSDU workflow services for orchestrating parts of the FMU pipeline — e.g., triggering post-processing, aggregation, or gate assembly after ensemble completion. Keep ERT as orchestrator; OSDU handles data lifecycle.
 - [ ] **Cross-gate analytics API**: Build query patterns for cross-gate delta analysis: volumes DG2 vs DG1, risk evolution, parameter refinement history. Requires consistent parameter keys and segment mappings.
 - [ ] **Ensemble lineage visualization**: Render the full provenance chain (design matrix row → static inputs → workflow → per-realization outputs → aggregation → gate evidence) as a navigable graph in the ORES analysis UI.
 - [ ] **fmu-dataio schema v0.21.0+ alignment**: Track fmu-dataio schema changes (new content types: `observations`, `mapping`; new standard results for PVT, relperm, timeseries, lift curves, production network) and update OSDU mappings accordingly.
 - [ ] **Custom schema registry**: Evaluate registering additional custom schemas (like `DevelopmentConcept`) for FMU-specific concepts that OSDU canonical schemas do not cover — e.g., `EnsembleSummary`, `HistoryMatchQuality`, `UncertaintyReport`.
-- [ ] **Seismic data pipeline**: Integrate seismic interpretation chain (Feature → Interpretation → ControlPoints → SeismicHorizon → StructureMap) per the [SeisInt](SeisInt.md) design. Lower priority as seismic is typically pre-FMU input.
-- [ ] **RESQML Activity round-trip**: Currently the demo creates dual representations (OSDU REST + RESQML EPC with Activity chains). Evaluate whether RESQML Activity can be the single source of truth for workflow provenance, with OSDU Activity as a derived view.
+- [ ] **Seismic data pipeline**: Integrate seismic interpretation chain (Feature → Interpretation → ControlPoints → SeismicHorizon → StructureMap) per the [SeisInt](SeisInt.md) design.
+- [ ] **RESQML Activity round-trip**: Evaluate whether RESQML Activity can be the single source of truth for workflow provenance, with OSDU Activity as a derived view.
 
 ***
 

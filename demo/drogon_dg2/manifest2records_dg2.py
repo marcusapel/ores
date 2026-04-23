@@ -34,6 +34,11 @@ MANIFEST_ORDER = [
     (SCRIPT_DIR, "manifest_wpcstat_dg2.json"),
     # DG2-specific Production Forecast
     (SCRIPT_DIR, "manifest_wpc_production_dg2.json"),
+    # DG2 geomodel artifacts (grid, maps, sim tables, polygons)
+    (SCRIPT_DIR, "manifest_grid_dg2.json"),
+    (SCRIPT_DIR, "manifest_maps_dg2.json"),
+    (SCRIPT_DIR, "manifest_simtables_dg2.json"),
+    (SCRIPT_DIR, "manifest_polygons_dg2.json"),
     # DG2-specific activity (links to DG2 WPCs)
     (SCRIPT_DIR, "manifest_activity_dg2.json"),
     # DG2-specific risks, documents, GeoLabelSet, devconcept, collection, BD

@@ -44,7 +44,7 @@
             ]
           },
           "Table": {
-            "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",
+            "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc:",
             "KeyColumns": [
               {
                 "ColumnName": "Realisation",
@@ -73,61 +73,61 @@
                 "ColumnName": "OilWaterContact_WestLowland",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "OilWaterContact_CentralSouth",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "OilWaterContact_CentralNorth",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "OilWaterContact_NorthHorst",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "OilWaterContact_CentralRamp",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "OilWaterContact_CentralHorst",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "OilWaterContact_EastLowland",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m:"
               },
               {
                 "ColumnName": "Porosity_Floodplain",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Euc"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Euc:"
               },
               {
                 "ColumnName": "Porosity_Channel",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Euc"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Euc:"
               },
               {
                 "ColumnName": "Porosity_Crevasse",
                 "ColumnRole": "Value",
                 "ValueType": "number",
-                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Euc"
+                "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:Euc:"
               }
             ],
             "ColumnValues": {

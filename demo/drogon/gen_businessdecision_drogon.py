@@ -136,8 +136,8 @@ def main():
                 "DG2 Concept Select recommendation."
             ),
             "ProjectName": "Drogon Field Development",
-            "DecisionLevelID": f"{args.id_prefix}:reference-data--DecisionLevel:DG1:1",
-            "ApprovalStatusID": f"{args.id_prefix}:reference-data--DecisionApprovalStatus:Approved:1",
+            "DecisionLevelID": f"{args.id_prefix}:reference-data--DecisionLevel:DG1:",
+            "ApprovalStatusID": f"{args.id_prefix}:reference-data--DecisionApprovalStatus:Approved:",
             "DecisionDueDate": "2026-03-15",
             "DecisionDate": "2026-02-28",
             "DecisionSummary": (
@@ -152,8 +152,8 @@ def main():
                 {
                     "Title": "Raw volumes (per realisation)",
                     "Selection": "Raw per-realisation volumes feeding the statistical summary",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": raw_wpc_id,
                     "Keys": [
                         {"ParameterKey": "artifact", "StringParameterKey": "REV-raw"},
@@ -162,8 +162,8 @@ def main():
                 {
                     "Title": "Statistical volumes (P10/P50/P90)",
                     "Selection": "Aggregated statistics used for the DG1 assessment",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": stat_wpc_id,
                     "Keys": [
                         {"ParameterKey": "artifact", "StringParameterKey": "REV-stats"},
@@ -172,8 +172,8 @@ def main():
                 {
                     "Title": "Valysar parameters (OWC, porosity)",
                     "Selection": "Per-segment, per-facies input parameters",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": params_wpc_id,
                     "Keys": [
                         {"ParameterKey": "artifact", "StringParameterKey": "ColumnBasedTable-params"},
@@ -182,15 +182,15 @@ def main():
                 {
                     "Title": "Reservoir scope",
                     "Selection": "Master-data context for the decision",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:InputReference:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:InputReference:",
                     "DataObjectParameter": reservoir_id,
                 },
                 {
                     "Title": "GeoModelDataspace",
                     "Selection": "RDDMS ETP dataspace with the Drogon DG2 geomodel EPC files (RMS export)",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:InputReference:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:InputReference:",
                     "DataObjectParameter": dataspace_id,
                     "Keys": [
                         {"ParameterKey": "artifact", "StringParameterKey": "ETPDataspace"},
@@ -199,8 +199,8 @@ def main():
                 *([{
                     "Title": "Development Concept",
                     "Selection": "DG1 development concept definition",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": devconcept_wpc_id,
                     "Keys": [
                         {"ParameterKey": "artifact", "StringParameterKey": "DevelopmentConcept"},
@@ -209,8 +209,8 @@ def main():
                 *([{
                     "Title": "GeoLabelSet (segment volumes + properties)",
                     "Selection": "Per-segment P10/P50/P90 volumes and petro-physical summaries",
-                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:1",
-                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:1",
+                    "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": geolabelset_id,
                     "Keys": [
                         {"ParameterKey": "artifact", "StringParameterKey": "GeoLabelSet"},
@@ -221,22 +221,22 @@ def main():
             "Personnel": [
                 {
                     "Name": "Kristin Haugen",
-                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:GeoscienceLead:1",
+                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:GeoscienceLead:",
                     "Organisation": "Drogon Subsurface",
                 },
                 {
                     "Name": "Henrik Bjørnstad",
-                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:ReservoirEngineer:1",
+                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:ReservoirEngineer:",
                     "Organisation": "Drogon Reservoir Management",
                 },
                 {
                     "Name": "Anna-Lise Tveit",
-                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:Petrophysicist:1",
+                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:Petrophysicist:",
                     "Organisation": "Drogon Petec",
                 },
                 {
                     "Name": "Erik Stensrud",
-                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:FMULead:1",
+                    "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:FMULead:",
                     "Organisation": "Drogon Geomodelling",
                 },
             ],
@@ -262,6 +262,22 @@ def main():
                     "Execute production testing programme across suspected fault blocks to establish pressure connectivity and constrain dynamic simulation models (target DG2 input, 2027-Q2)",
                     "Plan up to 4 additional infill wells targeting isolated fault compartments; include CAPEX range 50–150 MUSD in DG2 cost estimate and sensitivity analysis",
                 ]
+            ],
+            # ── ProjectSpecifications[] ← KeyEconomics (DG1 preliminary) ──
+            "ProjectSpecifications": [
+                {"ParameterTypeID": f"{args.id_prefix}:reference-data--ParameterType:NPV_10pct:",      "DataQuantityParameter": 280,  "UnitOfMeasureID": f"{args.id_prefix}:reference-data--UnitOfMeasure:MUSD:"},
+                {"ParameterTypeID": f"{args.id_prefix}:reference-data--ParameterType:IRR:",             "DataQuantityParameter": 12,   "UnitOfMeasureID": f"{args.id_prefix}:reference-data--UnitOfMeasure:%:"},
+                {"ParameterTypeID": f"{args.id_prefix}:reference-data--ParameterType:CAPEX:",           "DataQuantityParameter": 6500, "UnitOfMeasureID": f"{args.id_prefix}:reference-data--UnitOfMeasure:MNOK:"},
+                {"ParameterTypeID": f"{args.id_prefix}:reference-data--ParameterType:OPEX_pa:",         "DataQuantityParameter": 350,  "UnitOfMeasureID": f"{args.id_prefix}:reference-data--UnitOfMeasure:MNOK:"},
+                {"ParameterTypeID": f"{args.id_prefix}:reference-data--ParameterType:BreakevenOil:",    "DataQuantityParameter": 55,   "UnitOfMeasureID": f"{args.id_prefix}:reference-data--UnitOfMeasure:USD/bbl:"},
+                {"ParameterTypeID": f"{args.id_prefix}:reference-data--ParameterType:Payback:",         "DataQuantityParameter": 9.0,  "UnitOfMeasureID": f"{args.id_prefix}:reference-data--UnitOfMeasure:a:"},
+            ],
+            # ── ActivityStates[] ← ScheduleMilestones ──
+            "ActivityStates": [
+                {"EffectiveDateTime": "2025-12-15", "ActivityStatusID": f"{args.id_prefix}:reference-data--ActivityStatus:Completed:", "Remark": "DG1 Identify & Assess"},
+                {"EffectiveDateTime": "2026-03-01", "ActivityStatusID": f"{args.id_prefix}:reference-data--ActivityStatus:Planned:",   "Remark": "DG2 Concept Select"},
+                {"EffectiveDateTime": "2027-01-01", "ActivityStatusID": f"{args.id_prefix}:reference-data--ActivityStatus:Planned:",   "Remark": "DG3 FEED"},
+                {"EffectiveDateTime": "2027-07-01", "ActivityStatusID": f"{args.id_prefix}:reference-data--ActivityStatus:Planned:",   "Remark": "FID / DG4"},
             ],
             "ancestry": {
                 "parents": [activity_id] if activity_id else [],
@@ -315,6 +331,21 @@ def main():
                         ),
                         "TotalRealisations": 3,
                         "MethodologyReference": "FMU Level 2 static uncertainty workflow (Valysar geomodel v1)",
+                        "StaticInPlace_Oil_MSm3": {
+                            "P90": 28.5,
+                            "P50": 34.5,
+                            "P10": 42.0,
+                        },
+                        "Recoverable_Oil_MSm3": {
+                            "P90": 5.8,
+                            "P50": 8.2,
+                            "P10": 11.5,
+                        },
+                        "RecoveryFactor_pct": {
+                            "P90": 22.0,
+                            "P50": 27.5,
+                            "P10": 32.0,
+                        },
                     },
                 },
             },

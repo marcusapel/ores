@@ -60,7 +60,7 @@ def ref_id(prefix: str, entity: str, name: str) -> str:
     return f"{prefix}:reference-data--{entity}:{name}:"
 
 def std_ref_id(prefix: str, entity: str, name: str) -> str:
-    return f"{prefix}:reference-data--{entity}:{name}"
+    return f"{prefix}:reference-data--{entity}:{name}:"
 
 def wpc_id(prefix: str, entity: str, uid: str) -> str:
     return f"{prefix}:work-product-component--{entity}:{uid}:1"
@@ -189,6 +189,9 @@ def main():
             "ParentObjectID":      reservoir_id,
             "ParentWorkProductID": workproduct_id,
             "ancestry": ancestry,
+            "DDMSDatasets": [
+                f"eml:///dataspace('maap/drogon_dg')/resqml22.TableRepresentation('{wpc_record_id}')"
+            ],
             "Volumes": {
                 "ColumnBasedTableTypeID": std_ref_id(
                     args.id_prefix, "ColumnBasedTableType", "AdHoc"

@@ -56,7 +56,7 @@ def main():
     for name, code in FACET_ROLES:
         reference_entries.append({
             "kind": "osdu:wks:reference-data--FacetRole:1.1.0",
-            "id": f"{partition}:reference-data--FacetRole:{code}",
+            "id": f"{partition}:reference-data--FacetRole:{code}:",
             "acl": ACL,
             "legal": LEGAL,
             "data": {

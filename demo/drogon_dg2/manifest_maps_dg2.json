@@ -1,0 +1,2375 @@
+{
+  "kind": "osdu:wks:Manifest:1.0.0",
+  "ReferenceData": [],
+  "MasterData": [],
+  "Data": {
+    "Datasets": [],
+    "WorkProductComponents": [
+      {
+        "id": "dev:work-product-component--StructureMap:0e45603c-5c49-5dc2-a43c-f48218701761:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolantis--ds_extract_geogrid",
+          "Description": "Grid-extracted depth surface for TopVolantis (ds_extract_geogrid)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('0e45603c-5c49-5dc2-a43c-f48218701761')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "TopVolantis",
+            "StandardResult": "grid_extracted_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:2de22e3c-e08e-5528-a4cf-88b33e4ee263:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolantis--ds_extract_postprocess",
+          "Description": "Grid-extracted depth surface for TopVolantis (ds_extract_postprocess)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('2de22e3c-e08e-5528-a4cf-88b33e4ee263')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "TopVolantis",
+            "StandardResult": "structure_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:0939e107-61a7-53c3-bcc9-c5bccdcdfde7:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - toptherys--ds_extract_geogrid",
+          "Description": "Grid-extracted depth surface for TopTherys (ds_extract_geogrid)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('0939e107-61a7-53c3-bcc9-c5bccdcdfde7')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "TopTherys",
+            "StandardResult": "grid_extracted_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopTherys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:21039ea3-e548-5c3c-afbd-9fbe8a8bfb98:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - toptherys--ds_extract_postprocess",
+          "Description": "Grid-extracted depth surface for TopTherys (ds_extract_postprocess)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('21039ea3-e548-5c3c-afbd-9fbe8a8bfb98')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "TopTherys",
+            "StandardResult": "structure_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopTherys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:1ab82e18-6b21-5406-923f-fd431c2d0b35:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolon--ds_extract_geogrid",
+          "Description": "Grid-extracted depth surface for TopVolon (ds_extract_geogrid)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('1ab82e18-6b21-5406-923f-fd431c2d0b35')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "TopVolon",
+            "StandardResult": "grid_extracted_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:b28f0a44-b40a-5504-abe6-c6c8d5ab61e2:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolon--ds_extract_postprocess",
+          "Description": "Grid-extracted depth surface for TopVolon (ds_extract_postprocess)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('b28f0a44-b40a-5504-abe6-c6c8d5ab61e2')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "TopVolon",
+            "StandardResult": "structure_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:84f6b78f-c921-552b-a34b-bb967fed7ab9:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolon--ds_extract_geogrid",
+          "Description": "Grid-extracted depth surface for BaseVolon (ds_extract_geogrid)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('84f6b78f-c921-552b-a34b-bb967fed7ab9')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "BaseVolon",
+            "StandardResult": "grid_extracted_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:1a461033-5224-5702-8300-519f8c251bb5:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolon--ds_extract_postprocess",
+          "Description": "Grid-extracted depth surface for BaseVolon (ds_extract_postprocess)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('1a461033-5224-5702-8300-519f8c251bb5')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "BaseVolon",
+            "StandardResult": "structure_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:46d05577-73c8-5685-affd-3b94dcd2a25b:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolantis--ds_extract_geogrid",
+          "Description": "Grid-extracted depth surface for BaseVolantis (ds_extract_geogrid)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('46d05577-73c8-5685-affd-3b94dcd2a25b')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "BaseVolantis",
+            "StandardResult": "grid_extracted_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:0a9d8bff-cd6b-55fc-9899-6418b4d46081:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolantis--ds_extract_postprocess",
+          "Description": "Grid-extracted depth surface for BaseVolantis (ds_extract_postprocess)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('0a9d8bff-cd6b-55fc-9899-6418b4d46081')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "BaseVolantis",
+            "StandardResult": "structure_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:84101b9a-c354-5911-a219-149a357c75fb:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - msl--ds_extract_geogrid",
+          "Description": "Grid-extracted depth surface for MSL (ds_extract_geogrid)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('84101b9a-c354-5911-a219-149a357c75fb')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "MSL",
+            "StandardResult": "grid_extracted_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "MSL",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--StructureMap:d561fffc-3d90-5ab2-aae5-1ffe02e13663:1",
+        "kind": "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - msl--ds_extract_postprocess",
+          "Description": "Grid-extracted depth surface for MSL (ds_extract_postprocess)",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('d561fffc-3d90-5ab2-aae5-1ffe02e13663')"
+          ],
+          "FMU": {
+            "Content": "depth",
+            "PropertyAttribute": "depth",
+            "StratigraphicReference": "MSL",
+            "StandardResult": "structure_depth_surface"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "MSL",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:678d8fa9-00c4-5ba0-9cb7-611409fcb6d9:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolantis--amplitude_near_2018",
+          "Description": "Seismic amplitude extraction (near offset, 2018 vintage) at TopVolantis",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('678d8fa9-00c4-5ba0-9cb7-611409fcb6d9')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_near",
+            "StratigraphicReference": "TopVolantis"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:2c5613f9-d5ae-59f9-b666-2c38f1231b1c:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolantis--amplitude_far_2018",
+          "Description": "Seismic amplitude extraction (far offset, 2018 vintage) at TopVolantis",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('2c5613f9-d5ae-59f9-b666-2c38f1231b1c')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_far",
+            "StratigraphicReference": "TopVolantis"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:f7158e2b-187f-549c-adc4-dcf79be4d09a:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - toptherys--amplitude_near_2018",
+          "Description": "Seismic amplitude extraction (near offset, 2018 vintage) at TopTherys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('f7158e2b-187f-549c-adc4-dcf79be4d09a')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_near",
+            "StratigraphicReference": "TopTherys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopTherys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:91bffd73-dda4-5f60-bb44-1c5c084caf7a:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - toptherys--amplitude_far_2018",
+          "Description": "Seismic amplitude extraction (far offset, 2018 vintage) at TopTherys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('91bffd73-dda4-5f60-bb44-1c5c084caf7a')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_far",
+            "StratigraphicReference": "TopTherys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopTherys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:c14205b9-0be2-534d-846f-ffb58eea02de:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolon--amplitude_near_2018",
+          "Description": "Seismic amplitude extraction (near offset, 2018 vintage) at TopVolon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('c14205b9-0be2-534d-846f-ffb58eea02de')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_near",
+            "StratigraphicReference": "TopVolon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:ac2621b8-1fc1-5cf4-a6f0-468c67651ffb:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - topvolon--amplitude_far_2018",
+          "Description": "Seismic amplitude extraction (far offset, 2018 vintage) at TopVolon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('ac2621b8-1fc1-5cf4-a6f0-468c67651ffb')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_far",
+            "StratigraphicReference": "TopVolon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "TopVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:75b84560-c668-55ff-9cee-0190ce003f41:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolon--amplitude_near_2018",
+          "Description": "Seismic amplitude extraction (near offset, 2018 vintage) at BaseVolon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('75b84560-c668-55ff-9cee-0190ce003f41')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_near",
+            "StratigraphicReference": "BaseVolon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:5f9287e7-2819-5646-91eb-00fe9e1c069d:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolon--amplitude_far_2018",
+          "Description": "Seismic amplitude extraction (far offset, 2018 vintage) at BaseVolon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('5f9287e7-2819-5646-91eb-00fe9e1c069d')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_far",
+            "StratigraphicReference": "BaseVolon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:d17dbd9f-42d2-5a0f-8bf7-e4b373d02926:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolantis--amplitude_near_2018",
+          "Description": "Seismic amplitude extraction (near offset, 2018 vintage) at BaseVolantis",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('d17dbd9f-42d2-5a0f-8bf7-e4b373d02926')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_near",
+            "StratigraphicReference": "BaseVolantis"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:56ed587f-d13e-539e-8c7a-0bdb8d528bd8:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - basevolantis--amplitude_far_2018",
+          "Description": "Seismic amplitude extraction (far offset, 2018 vintage) at BaseVolantis",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('56ed587f-d13e-539e-8c7a-0bdb8d528bd8')"
+          ],
+          "FMU": {
+            "Content": "seismic",
+            "PropertyAttribute": "amplitude_far",
+            "StratigraphicReference": "BaseVolantis"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "HorizonName": "BaseVolantis",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:779a2142-909b-5080-a189-d289a0f3ba63:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--facies_fraction_channel",
+          "Description": "Facies fraction map: channel in Valysar zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('779a2142-909b-5080-a189-d289a0f3ba63')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_channel",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:b37eed56-4662-5d76-93e3-888ef7f3f3bf:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--facies_fraction_crevasse",
+          "Description": "Facies fraction map: crevasse in Valysar zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('b37eed56-4662-5d76-93e3-888ef7f3f3bf')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_crevasse",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:750b200c-a07a-5baf-8993-bee1994fde01:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--facies_fraction_floodplain",
+          "Description": "Facies fraction map: floodplain in Valysar zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('750b200c-a07a-5baf-8993-bee1994fde01')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_floodplain",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:d1ef210d-46a5-55bd-8591-50ee7ce66a11:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--facies_fraction_coal",
+          "Description": "Facies fraction map: coal in Valysar zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('d1ef210d-46a5-55bd-8591-50ee7ce66a11')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_coal",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:fb7329d4-f297-54e8-a7ed-a1295fee3441:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--facies_fraction_uppershoreface",
+          "Description": "Facies fraction map: uppershoreface in Therys zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('fb7329d4-f297-54e8-a7ed-a1295fee3441')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_uppershoreface",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:92067d3c-3702-5ba8-a349-118e26a42017:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--facies_fraction_lowershoreface",
+          "Description": "Facies fraction map: lowershoreface in Therys zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('92067d3c-3702-5ba8-a349-118e26a42017')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_lowershoreface",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:a61f2a8d-8e52-5a35-9114-93853ed91fdc:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--facies_fraction_offshore",
+          "Description": "Facies fraction map: offshore in Therys zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('a61f2a8d-8e52-5a35-9114-93853ed91fdc')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_offshore",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:041e334f-3394-5263-8682-b5a45ae336ce:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--facies_fraction_calcite",
+          "Description": "Facies fraction map: calcite in Therys zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('041e334f-3394-5263-8682-b5a45ae336ce')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_calcite",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:4a72120a-e5af-55e9-ae9c-38a3720e01f0:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--facies_fraction_channel",
+          "Description": "Facies fraction map: channel in Volon zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('4a72120a-e5af-55e9-ae9c-38a3720e01f0')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_channel",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:886c2bef-1f73-59e8-882e-e5b6b3114294:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--facies_fraction_floodplain",
+          "Description": "Facies fraction map: floodplain in Volon zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('886c2bef-1f73-59e8-882e-e5b6b3114294')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_floodplain",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:f6c2f70e-f7de-58ab-9233-15cc44724ea5:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--facies_fraction_calcite",
+          "Description": "Facies fraction map: calcite in Volon zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('f6c2f70e-f7de-58ab-9233-15cc44724ea5')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_calcite",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:c276437a-ba03-5a62-9c58-1b5ce98c5497:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--facies_fraction_coal",
+          "Description": "Facies fraction map: coal in Volon zone",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('c276437a-ba03-5a62-9c58-1b5ce98c5497')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "facies_fraction_coal",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:442e4cf1-7a50-5c2f-8174-13c5d4717312:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--phit_average",
+          "Description": "Zone-averaged porosity map for Valysar",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('442e4cf1-7a50-5c2f-8174-13c5d4717312')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "porosity",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:6a8f8fd1-ce57-5cde-9d6d-73b4d64fc238:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--klogh_average",
+          "Description": "Zone-averaged permeability map for Valysar",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('6a8f8fd1-ce57-5cde-9d6d-73b4d64fc238')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "permeability",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:d8afdf57-fa76-5cf1-b7a4-83492ed3ccbe:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--phit_average",
+          "Description": "Zone-averaged porosity map for Therys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('d8afdf57-fa76-5cf1-b7a4-83492ed3ccbe')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "porosity",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:a166af88-3986-5eb6-85d1-e50990eec2ca:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--klogh_average",
+          "Description": "Zone-averaged permeability map for Therys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('a166af88-3986-5eb6-85d1-e50990eec2ca')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "permeability",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:8d5194b1-ef9a-5f09-8d34-23544c682dfd:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--phit_average",
+          "Description": "Zone-averaged porosity map for Volon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('8d5194b1-ef9a-5f09-8d34-23544c682dfd')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "porosity",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:be92eecc-13d4-516c-93aa-eee5299f2679:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--klogh_average",
+          "Description": "Zone-averaged permeability map for Volon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('be92eecc-13d4-516c-93aa-eee5299f2679')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "permeability",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:589b46a8-8f9b-5d03-b2de-5d78ab9f7eb1:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--aps_probability_channel",
+          "Description": "APS facies probability map: channel in Valysar",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('589b46a8-8f9b-5d03-b2de-5d78ab9f7eb1')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_channel",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:beabddad-5dc4-58d1-8297-e4fa5f1c2e83:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--aps_probability_crevasse",
+          "Description": "APS facies probability map: crevasse in Valysar",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('beabddad-5dc4-58d1-8297-e4fa5f1c2e83')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_crevasse",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:ee06f8f5-86b7-5094-af71-5a5a47e9e845:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - valysar--aps_probability_floodplain",
+          "Description": "APS facies probability map: floodplain in Valysar",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('ee06f8f5-86b7-5094-af71-5a5a47e9e845')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_floodplain",
+            "StratigraphicReference": "Valysar"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Valysar",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:02759303-c2ba-5f7c-a408-aeadfb92debc:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--aps_probability_uppershoreface",
+          "Description": "APS facies probability map: uppershoreface in Therys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('02759303-c2ba-5f7c-a408-aeadfb92debc')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_uppershoreface",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:59faba76-450d-5c75-9a59-ead3557000da:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--aps_probability_lowershoreface",
+          "Description": "APS facies probability map: lowershoreface in Therys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('59faba76-450d-5c75-9a59-ead3557000da')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_lowershoreface",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:d0cffe34-8d46-5ee9-824d-3b5d0c8ba3d3:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - therys--aps_probability_offshore",
+          "Description": "APS facies probability map: offshore in Therys",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('d0cffe34-8d46-5ee9-824d-3b5d0c8ba3d3')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_offshore",
+            "StratigraphicReference": "Therys"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Therys",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:45546478-26f3-5326-a6d2-77d7fba58bb6:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--aps_probability_channel",
+          "Description": "APS facies probability map: channel in Volon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('45546478-26f3-5326-a6d2-77d7fba58bb6')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_channel",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:9f8af31d-7b5b-582a-a169-4315b56296e2:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--aps_probability_floodplain",
+          "Description": "APS facies probability map: floodplain in Volon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('9f8af31d-7b5b-582a-a169-4315b56296e2')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_floodplain",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:55fc2fad-dd9a-525c-b8c5-f99b73af492b:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "Drogon DG2 - volon--aps_probability_calcite",
+          "Description": "APS facies probability map: calcite in Volon",
+          "CoordinateReferenceSystemID": "dev:reference-data--CoordinateReferenceSystem:ST_WGS84_UTM37N_P32637:",
+          "ReservoirID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
+          "NodeCountOnIAxis": 280,
+          "NodeCountOnJAxis": 440,
+          "BinWidthOnIaxis": 25.0,
+          "BinWidthOnJaxis": 25.0,
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('55fc2fad-dd9a-525c-b8c5-f99b73af492b')"
+          ],
+          "FMU": {
+            "Content": "property",
+            "PropertyAttribute": "aps_probability_calcite",
+            "StratigraphicReference": "Volon"
+          },
+          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
+          "ZoneName": "Volon",
+          "FacetIDs": [
+            "dev:reference-data--FacetType:statistics:",
+            "dev:reference-data--FacetRole:P50:"
+          ],
+          "data.ancestry.inputs": [
+            "dev:work-product-component--IjkGridRepresentation:45e80eba-2376-5d64-8989-66d7c8e94426:1",
+            "dev:dataset--ETPDataspace:maap-drogon_dg:1"
+          ]
+        }
+      }
+    ],
+    "WorkProducts": []
+  }
+}

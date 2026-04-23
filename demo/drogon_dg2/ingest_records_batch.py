@@ -7,8 +7,8 @@ Identical logic to demo/drogon/ingest_records_batch.py but reads from
 the drogon_dg2/records/ directory by default.
 
 Usage:
-  py demo/drogon_dg2/ingest_records_batch.py --env-file .env
-  py demo/drogon_dg2/ingest_records_batch.py --env-file .env --dry-run
+  py demo/drogon_dg2/ingest_records_batch.py
+  py demo/drogon_dg2/ingest_records_batch.py --instance eqndev --dry-run
 """
 
 import argparse
@@ -26,7 +26,7 @@ REPO_ROOT   = SCRIPT_DIR.parent.parent
 
 # Reuse central auth helpers
 sys.path.insert(0, str(SCRIPT_DIR.parent))
-from _auth import load_env, mint_from_env as get_access_token  # noqa: E402
+from _auth import load_env, load_instance, mint_from_env as get_access_token  # noqa: E402
 
 
 def load_records(records_dir: Path) -> List[Dict[str, Any]]:
@@ -69,8 +69,8 @@ def put_records_batch(env: Dict[str, str], records: List[Dict[str, Any]],
 
 def main():
     ap = argparse.ArgumentParser(description="Ingest DG2 records via Storage API")
-    ap.add_argument("--env-file", action="append", default=[],
-                    help=".env file(s) with auth credentials (repeatable)")
+    ap.add_argument("--instance", default="eqndev",
+                    help="Instance name from k8s config (default: eqndev)")
     ap.add_argument("--records-dir", default=str(RECORDS_DIR))
     ap.add_argument("--delay", type=float, default=3,
                     help="Seconds to wait between records (default 3)")
@@ -79,10 +79,9 @@ def main():
                     help="Skip records before this index (0-based)")
     args = ap.parse_args()
 
-    env_files = args.env_file or [str(REPO_ROOT / ".env")]
-    print("Loading env …")
-    env = load_env(env_files)
-    print(f"  host={env['host']}  partition={env['partition']}")
+    print(f"Loading instance '{args.instance}' from k8s …")
+    env = load_instance(args.instance)
+    print(f"  source={env['source']}  host={env['host']}  partition={env['partition']}")
 
     records = load_records(Path(args.records_dir))
 

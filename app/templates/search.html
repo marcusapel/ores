@@ -4,6 +4,7 @@
 
 {% block head %}
 <style>
+  @keyframes spin { to { transform: rotate(360deg); } }
   .search-form { width: 100%; max-width: 100%; }
   .kind-row { display: grid; grid-template-columns: 220px 1fr auto; gap: .5rem; align-items: center; }
   .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
@@ -406,7 +407,7 @@
       {# ── Production forecast from ColumnBasedTable ── #}
       {% set bd_prod = rec.bd_production or {} %}
 
-      {# ── Depth maps from linked RDDMS dataspaces ── #}
+      {# ── Maps from linked RDDMS dataspaces ── #}
       {% set bd_maps_raw = rec.bd_maps or {} %}
       {% set bd_maps = (bd_maps_raw.get('maps') if bd_maps_raw is mapping else []) or [] %}
 
@@ -1175,14 +1176,9 @@
                   <span class="bd-alt-rank" style="background:{% if bd_act.get('WorkflowStatus') == 'Completed' %}#c6f6d5{% else %}#fefcbf{% endif %};color:{% if bd_act.get('WorkflowStatus') == 'Completed' %}#276749{% else %}#975a16{% endif %};">{{ bd_act.get('WorkflowStatus') }}</span>
                   {% endif %}
                 </div>
+                <div style="font-size:.78rem;color:#718096;margin-bottom:.4rem;">By: {{ bd_act.get('Originator', '') }} · {{ bd_act.get('CreationDateTime', '')[:10] }}</div>
                 {% if bd_act.get('Description') %}
                 <div style="font-size:.84rem;color:#4a5568;line-height:1.45;margin-bottom:.5rem;">{{ bd_act.get('Description')[:500] }}{% if bd_act.get('Description')|length > 500 %}…{% endif %}</div>
-                {% endif %}
-                {% if bd_act.get('Originator') or bd_act.get('CreationDateTime') %}
-                <div style="font-size:.78rem;color:#a0aec0;margin-bottom:.5rem;">
-                  {% if bd_act.get('Originator') %}By: {{ bd_act.get('Originator') }}{% endif %}
-                  {% if bd_act.get('CreationDateTime') %} · {{ bd_act.get('CreationDateTime')[:10] }}{% endif %}
-                </div>
                 {% endif %}
 
                 {# Activity Parameters - grouped by role #}
@@ -1215,6 +1211,11 @@
                       {% if p.get('DataObjectParameter') %}
                       {% set dop = p.get('DataObjectParameter', '') %}
                       <div style="font-size:.72rem;word-break:break-all;"><a href="/search/view/{{ dop }}" style="color:#2b6cb0;" title="{{ dop }}">{{ act_labels.get(dop, '') or dop.split('--')[-1].split(':')[0] }} →</a></div>
+                      {% elif p.get('StringParameter') %}
+                      {% set sp_in = p.get('StringParameter', '').strip() %}
+                      {% if sp_in.startswith('[') and sp_in.endswith(']') %}{% set sp_in = sp_in[1:-1].strip() %}{% endif %}
+                      {% if sp_in.startswith('{') and sp_in.endswith('}') %}{% set sp_in = sp_in[1:-1].strip() %}{% endif %}
+                      <div style="font-size:.72rem;color:#718096;">{{ sp_in[:120] }}{% if sp_in|length > 120 %}…{% endif %}</div>
                       {% elif p.get('Description') %}
                       <div style="font-size:.72rem;color:#718096;">{{ p.get('Description', '')[:100] }}{% if p.get('Description', '')|length > 100 %}…{% endif %}</div>
                       {% endif %}
@@ -1234,7 +1235,15 @@
                       {% set dop = p.get('DataObjectParameter', '') %}
                       <div style="font-size:.72rem;word-break:break-all;"><a href="/search/view/{{ dop }}" style="color:#975a16;" title="{{ dop }}">{{ act_labels.get(dop, '') or dop.split('--')[-1].split(':')[0] }} →</a></div>
                       {% elif p.get('StringParameter') %}
-                      <div style="font-size:.72rem;color:#718096;">{{ p.get('StringParameter', '')[:120] }}{% if p.get('StringParameter', '')|length > 120 %}…{% endif %}</div>
+                      {% set sp_raw = p.get('StringParameter', '') %}
+                      {% set sp_display = sp_raw.strip() %}
+                      {% if sp_display.startswith('[') and sp_display.endswith(']') %}
+                        {% set sp_display = sp_display[1:-1].strip() %}
+                      {% endif %}
+                      {% if sp_display.startswith('{') and sp_display.endswith('}') %}
+                        {% set sp_display = sp_display[1:-1].strip() %}
+                      {% endif %}
+                      <div style="font-size:.72rem;color:#718096;">{{ sp_display[:140] }}{% if sp_display|length > 140 %}…{% endif %}</div>
                       {% elif p.get('IntegerParameter') is not none %}
                       <div style="font-size:.72rem;color:#718096;">{{ p.get('IntegerParameter') }}</div>
                       {% endif %}
@@ -1246,26 +1255,31 @@
 
                   {% if act_outputs %}
                   <div style="background:#f0fff4;border-radius:6px;padding:.5rem;">
-                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Outputs ({{ act_outputs|length }}{% if bd_maps %} + 1 Depth Surface{% endif %})</div>
+                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Outputs ({{ act_outputs|length }}{% if bd_maps %} + Maps{% endif %})</div>
                     {% for p in act_outputs[:12] %}
                     <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
                       <span style="font-weight:500;">{{ p.get('Title', '') }}</span>
                       {% if p.get('DataObjectParameter') %}
                       {% set dop = p.get('DataObjectParameter', '') %}
                       <div style="font-size:.72rem;word-break:break-all;"><a href="/search/view/{{ dop }}" style="color:#276749;" title="{{ dop }}">{{ act_labels.get(dop, '') or dop.split('--')[-1].split(':')[0] }} →</a></div>
+                      {% elif p.get('StringParameter') %}
+                      {% set sp_out = p.get('StringParameter', '').strip() %}
+                      {% if sp_out.startswith('[') and sp_out.endswith(']') %}{% set sp_out = sp_out[1:-1].strip() %}{% endif %}
+                      {% if sp_out.startswith('{') and sp_out.endswith('}') %}{% set sp_out = sp_out[1:-1].strip() %}{% endif %}
+                      <div style="font-size:.72rem;color:#718096;">{{ sp_out[:120] }}{% if sp_out|length > 120 %}…{% endif %}</div>
                       {% elif p.get('Description') %}
                       <div style="font-size:.72rem;color:#718096;">{{ p.get('Description', '')[:100] }}{% if p.get('Description', '')|length > 100 %}…{% endif %}</div>
                       {% endif %}
                     </div>
                     {% endfor %}
                     {% if act_outputs|length > 12 %}<div style="font-size:.75rem;color:#a0aec0;margin-top:.2rem;">… +{{ act_outputs|length - 12 }} more</div>{% endif %}
-                    {# ── Single hero depth-surface from linked RDDMS ── #}
+                    {# ── Hero map from linked RDDMS ── #}
                     {% if bd_maps %}
                     {% set hero_act = bd_maps[0] %}
                     <div style="margin-top:.4rem;border-top:1px dashed #9ae6b4;padding-top:.4rem;">
-                      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.2rem;">Depth Surface (RDDMS)</div>
+                      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.2rem;">Maps (RDDMS)</div>
                       <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
-                        <span style="font-weight:500;">{{ hero_act.title }}</span>
+                        <span style="font-weight:500;">{{ hero_act.title }}{% if hero_act.interpretation %} - {{ hero_act.interpretation }}{% endif %}</span>
                         <div style="font-size:.72rem;word-break:break-all;">
                           <a href="/keys/object/map.json?ds={{ hero_act.ds }}&amp;uuid={{ hero_act.uuid }}" target="_blank" style="color:#276749;" title="Object metadata">json ↗</a>
                           <span style="color:#a0aec0;margin:0 .2rem;">·</span>
@@ -1279,9 +1293,9 @@
                   {# No existing outputs but hero depth-surface discovered - show standalone #}
                   <div style="background:#f0fff4;border-radius:6px;padding:.5rem;">
                     {% set hero_act2 = bd_maps[0] %}
-                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Output - Depth Surface</div>
+                    <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:#276749;margin-bottom:.3rem;">Output - Maps</div>
                     <div style="font-size:.82rem;color:#2d3748;padding:.15rem 0;border-bottom:1px solid #9ae6b4;">
-                      <span style="font-weight:500;">{{ hero_act2.title }}</span>
+                      <span style="font-weight:500;">{{ hero_act2.title }}{% if hero_act2.interpretation %} - {{ hero_act2.interpretation }}{% endif %}</span>
                       <div style="font-size:.72rem;word-break:break-all;">
                         <a href="/keys/object/map.json?ds={{ hero_act2.ds }}&amp;uuid={{ hero_act2.uuid }}" target="_blank" style="color:#276749;">json ↗</a>
                         <span style="color:#a0aec0;margin:0 .2rem;">·</span>
@@ -1727,26 +1741,38 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
           </section>
           {% endif %}
 
-          {# ── Depth Map (one representative Grid2dRepresentation) ── #}
+          {# ── Maps (Grid2dRepresentation from linked RDDMS dataspaces) ── #}
           {% if bd_maps %}
           {% set hero = bd_maps[0] %}
           {% set maps_total = (bd_maps_raw.get('maps_total') if bd_maps_raw is mapping else 0) or bd_maps|length %}
-          <section class="section-card">
-            <h5>Depth Map</h5>
-            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem;">
-              <span style="font-weight:600;font-size:.88rem;color:#2d3748;">{{ hero.title }}</span>
-              <span style="font-size:.72rem;background:#e2e8f0;border-radius:999px;padding:.1rem .4rem;color:#4a5568;">{{ hero.ds_name or hero.ds }}</span>
+          <section class="section-card" id="bd-maps-section-{{ rec_index }}">
+            <h5>Maps</h5>
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;">
+              {% if bd_maps|length > 1 %}
+              <select id="bd-map-select-{{ rec_index }}" onchange="switchBdMap(this, {{ rec_index }})"
+                      style="font-size:.84rem;padding:.25rem .5rem;border:1px solid #cbd5e0;border-radius:4px;max-width:420px;">
+                {% for mp in bd_maps %}
+                <option value="{{ loop.index0 }}"
+                        data-ds="{{ mp.ds }}" data-uuid="{{ mp.uuid }}"
+                        data-title="{{ mp.title }}" data-dsname="{{ mp.ds_name or mp.ds }}"
+                        {% if loop.first %}selected{% endif %}>{{ mp.title }}{% if mp.interpretation %} - {{ mp.interpretation }}{% endif %}</option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <span style="font-weight:600;font-size:.88rem;color:#2d3748;">{{ hero.title }}{% if hero.interpretation %} - {{ hero.interpretation }}{% endif %}</span>
+              {% endif %}
+              <span style="font-size:.72rem;background:#e2e8f0;border-radius:999px;padding:.1rem .4rem;color:#4a5568;" id="bd-map-dsname-{{ rec_index }}">{{ hero.ds_name or hero.ds }}</span>
               {% if maps_total > 1 %}
               <span style="font-size:.72rem;background:#bee3f8;border-radius:999px;padding:.1rem .4rem;color:#2b6cb0;">{{ maps_total }} maps in dataspace</span>
               {% endif %}
             </div>
-            <div style="margin-bottom:.3rem;">
+            <div id="bd-map-img-{{ rec_index }}" style="margin-bottom:.3rem;position:relative;min-height:120px;">
               <img src="/keys/object/map.png?ds={{ hero.ds }}&amp;uuid={{ hero.uuid }}&amp;w=12&amp;h=8&amp;dpi=100"
-                   alt="Depth map: {{ hero.title }}"
+                   alt="Map: {{ hero.title }}"
                    loading="lazy"
                    style="max-width:100%;border-radius:6px;border:1px solid #e2e8f0;" />
             </div>
-            <div style="font-size:.72rem;color:#a0aec0;word-break:break-all;">
+            <div id="bd-map-links-{{ rec_index }}" style="font-size:.72rem;color:#a0aec0;word-break:break-all;">
               <code>/keys/object/map.png?ds={{ hero.ds }}&amp;uuid={{ hero.uuid }}</code>
               <a href="/keys/object/map.json?ds={{ hero.ds }}&amp;uuid={{ hero.uuid }}" target="_blank" style="margin-left:.5rem;font-size:.72rem;">JSON ↗</a>
               <a href="/keys?ds={{ hero.ds }}" style="margin-left:.5rem;font-size:.72rem;">Browse dataspace →</a>
@@ -1754,7 +1780,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
           </section>
           {% endif %}
 
-          {# ── DDMS-linked depth map (non-BD records with Grid2d DDMSDatasets) ── #}
+          {# ── DDMS-linked map (non-BD records with Grid2d DDMSDatasets) ── #}
           {% if not is_business_decision %}
           {% set ddms_maps = [] %}
           {% for ref in (rec.ddms_refs or []) %}
@@ -1762,13 +1788,13 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
           {% endfor %}
           {% for ref in ddms_maps %}
             <section class="section-card ddms-map-section" data-ds="{{ ref.ds }}" data-uuid="{{ ref.uuid }}">
-              <h5>RDDMS Depth Map</h5>
+              <h5>RDDMS Map</h5>
               <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem;">
                 <span style="font-weight:600;font-size:.88rem;color:#2d3748;">{{ label }}</span>
                 <span style="font-size:.72rem;background:#e2e8f0;border-radius:999px;padding:.1rem .4rem;color:#4a5568;">{{ ref.ds }}</span>
               </div>
               <div class="ddms-map-placeholder" style="margin-bottom:.3rem;text-align:center;">
-                <button type="button" class="btn-load-ddms-map" style="padding:.35rem .8rem;font-size:.85rem;cursor:pointer;" onclick="loadDdmsMap(this)">Load depth map</button>
+                <button type="button" class="btn-load-ddms-map" style="padding:.35rem .8rem;font-size:.85rem;cursor:pointer;" onclick="loadDdmsMap(this)">Load map</button>
                 <span class="ddms-map-status muted" style="margin-left:.5rem;"></span>
               </div>
               <div style="font-size:.72rem;color:#a0aec0;word-break:break-all;">
@@ -1785,7 +1811,63 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script>
-    /* ── DDMS depth map lazy loader ── */
+    /* ── BD map selector (switch between maps in the dataspace) ── */
+    window.switchBdMap = function(sel, recIdx) {
+      var opt = sel.options[sel.selectedIndex];
+      var ds = opt.dataset.ds;
+      var uuid = opt.dataset.uuid;
+      var title = opt.dataset.title;
+      var dsname = opt.dataset.dsname;
+
+      /* Update dataspace badge */
+      var badge = document.getElementById('bd-map-dsname-' + recIdx);
+      if (badge) badge.textContent = dsname;
+
+      /* Show loading spinner */
+      var imgDiv = document.getElementById('bd-map-img-' + recIdx);
+      if (!imgDiv) return;
+      imgDiv.innerHTML = '<div style="text-align:center;padding:2rem;color:#718096;"><span class="spinner" style="display:inline-block;width:18px;height:18px;border:2px solid #cbd5e0;border-top-color:#4299e1;border-radius:50%;animation:spin .7s linear infinite;"></span> Loading map&hellip;</div>';
+
+      var src = '/keys/object/map.png?ds=' + encodeURIComponent(ds) + '&uuid=' + encodeURIComponent(uuid) + '&w=12&h=8&dpi=100';
+      var ctrl = new AbortController();
+      var timer = setTimeout(function() { ctrl.abort(); }, 90000);
+
+      fetch(src, { signal: ctrl.signal })
+        .then(function(resp) {
+          clearTimeout(timer);
+          if (!resp.ok) {
+            return resp.text().then(function(body) {
+              try { body = JSON.parse(body).detail || body; } catch(_){}
+              throw new Error('Server ' + resp.status + ': ' + body);
+            });
+          }
+          return resp.blob();
+        })
+        .then(function(blob) {
+          var url = URL.createObjectURL(blob);
+          imgDiv.innerHTML = '';
+          var img = new Image();
+          img.src = url;
+          img.alt = 'Map: ' + title;
+          img.style.cssText = 'max-width:100%;border-radius:6px;border:1px solid #e2e8f0;';
+          imgDiv.appendChild(img);
+        })
+        .catch(function(err) {
+          clearTimeout(timer);
+          var msg = err.name === 'AbortError' ? 'Timed out after 90s' : err.message;
+          imgDiv.innerHTML = '<div style="color:#e53e3e;font-size:.85rem;padding:.5rem;">Failed to load map: ' + msg + '</div>';
+        });
+
+      /* Update links */
+      var linksDiv = document.getElementById('bd-map-links-' + recIdx);
+      if (linksDiv) {
+        linksDiv.innerHTML = '<code>/keys/object/map.png?ds=' + ds + '&amp;uuid=' + uuid + '</code>' +
+          ' <a href="/keys/object/map.json?ds=' + encodeURIComponent(ds) + '&uuid=' + encodeURIComponent(uuid) + '" target="_blank" style="margin-left:.5rem;font-size:.72rem;">JSON ↗</a>' +
+          ' <a href="/keys?ds=' + encodeURIComponent(ds) + '" style="margin-left:.5rem;font-size:.72rem;">Browse dataspace →</a>';
+      }
+    };
+
+    /* ── DDMS map lazy loader ── */
     window.loadDdmsMap = function(btn) {
       const section = btn.closest('.ddms-map-section');
       if (!section) return;
@@ -1816,7 +1898,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
           const url = URL.createObjectURL(blob);
           const img = new Image();
           img.src = url;
-          img.alt = 'Depth map';
+          img.alt = 'Map';
           img.style.cssText = 'max-width:100%;border-radius:6px;border:1px solid #e2e8f0;';
           placeholder.innerHTML = '';
           placeholder.appendChild(img);

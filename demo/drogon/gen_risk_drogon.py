@@ -61,10 +61,10 @@ def main():
             "EffectiveDateTime": "2026-02-13T00:00:00Z",
             "ext": {
                 "equinor": {
-                    "CategoryID": f"{args.id_prefix}:reference-data--RiskCategory:Subsurface-Static:1",
-                    "SeverityScaleID": f"{args.id_prefix}:reference-data--RiskSeverityScale:Equinor-5x5:1",
-                    "ProbabilityScaleID": f"{args.id_prefix}:reference-data--RiskProbabilityScale:Equinor-5x5:1",
-                    "RiskAcceptanceCriteriaID": f"{args.id_prefix}:reference-data--RiskAcceptanceCriteria:RAC-2025-01:1",
+                    "CategoryID": f"{args.id_prefix}:reference-data--RiskCategory:Subsurface-Static:",
+                    "SeverityScaleID": f"{args.id_prefix}:reference-data--RiskSeverityScale:Equinor-5x5:",
+                    "ProbabilityScaleID": f"{args.id_prefix}:reference-data--RiskProbabilityScale:Equinor-5x5:",
+                    "RiskAcceptanceCriteriaID": f"{args.id_prefix}:reference-data--RiskAcceptanceCriteria:RAC-2025-01:",
                     "InherentSeverity":    "S3",
                     "InherentProbability":  "P4",
                     "ResidualSeverity":    "S2",
@@ -104,10 +104,10 @@ def main():
             "EffectiveDateTime": "2026-02-28T00:00:00Z",
             "ext": {
                 "equinor": {
-                    "CategoryID": f"{args.id_prefix}:reference-data--RiskCategory:Subsurface-Dynamic:1",
-                    "SeverityScaleID": f"{args.id_prefix}:reference-data--RiskSeverityScale:Equinor-5x5:1",
-                    "ProbabilityScaleID": f"{args.id_prefix}:reference-data--RiskProbabilityScale:Equinor-5x5:1",
-                    "RiskAcceptanceCriteriaID": f"{args.id_prefix}:reference-data--RiskAcceptanceCriteria:RAC-2025-01:1",
+                    "CategoryID": f"{args.id_prefix}:reference-data--RiskCategory:Subsurface-Dynamic:",
+                    "SeverityScaleID": f"{args.id_prefix}:reference-data--RiskSeverityScale:Equinor-5x5:",
+                    "ProbabilityScaleID": f"{args.id_prefix}:reference-data--RiskProbabilityScale:Equinor-5x5:",
+                    "RiskAcceptanceCriteriaID": f"{args.id_prefix}:reference-data--RiskAcceptanceCriteria:RAC-2025-01:",
                     "InherentSeverity":    "S4",
                     "InherentProbability":  "P3",
                     "ResidualSeverity":    "S3",
