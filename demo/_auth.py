@@ -306,6 +306,66 @@ def _mint(inst: Dict[str, Any], *, verbose: bool = True) -> str:
     return token
 
 
+def _mint_full(inst: Dict[str, Any], *, verbose: bool = True) -> Dict[str, Any]:
+    """Like _mint() but returns the full token response dict (access_token, refresh_token, etc.)."""
+    tenant = inst.get("tenant", "")
+    if not tenant:
+        raise RuntimeError(f"No tenant_id for instance '{inst.get('name', '?')}'")
+    url = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+
+    grant = inst.get("grant", "none")
+    if grant != "refresh_token":
+        raise RuntimeError("Token rotation only works with refresh_token grant")
+
+    form = {
+        "grant_type":    "refresh_token",
+        "client_id":     inst["client_id"],
+        "refresh_token": inst["refresh_token"],
+        "scope":         inst.get("scope") or f"{inst['client_id']}/.default openid offline_access",
+    }
+
+    r = httpx.post(url, data=form, timeout=30)
+    if not r.is_success:
+        raise RuntimeError(f"Auth failed ({r.status_code}): {r.text[:500]}")
+
+    data = r.json()
+    if not data.get("access_token"):
+        raise RuntimeError(f"No access_token in response: {list(data.keys())}")
+
+    if verbose:
+        exp = data.get("expires_in", "?")
+        has_new_rt = "refresh_token" in data
+        print(f"  ✓ token ({inst.get('source', '?')}/{inst['name']}, "
+              f"{grant}) expires_in={exp}s  new_rt={'yes' if has_new_rt else 'no'}",
+              file=sys.stderr)
+
+    return data
+
+
+def rotate_token(name: str = "eqndev", *,
+                 env_file: Optional[str] = None,
+                 k8s_dir: Optional[Path] = None,
+                 verbose: bool = True) -> Dict[str, str]:
+    """
+    Exchange the current refresh_token for a new access_token + refresh_token pair.
+
+    Returns dict with keys: access_token, refresh_token (the NEW one), expires_in.
+    The caller is responsible for persisting the new refresh_token to storage.
+    """
+    canonical = ALIASES.get(name.lower(), name.lower())
+    inst = load_instance(canonical, env_file=env_file, k8s_dir=k8s_dir)
+    data = _mint_full(inst, verbose=verbose)
+
+    new_rt = data.get("refresh_token", inst["refresh_token"])
+    return {
+        "access_token":  data["access_token"],
+        "refresh_token": new_rt,
+        "expires_in":    str(data.get("expires_in", "3600")),
+        "old_refresh_token": inst["refresh_token"],
+        "rotated":       str(new_rt != inst["refresh_token"]).lower(),
+    }
+
+
 def get_token(name: str = "eqndev", *,
               env_file: Optional[str] = None,
               k8s_dir: Optional[Path] = None,
