@@ -5244,7 +5244,6 @@
         },
         "data": {
           "Name": "Chronostratigraphic Eonothem",
-          "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:",
           "RankName": "Eonothem",
           "StratigraphicUnitInterpretationSet": [
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Archean:",
@@ -5252,7 +5251,8 @@
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Phanerozoic:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Precambrian:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Proterozoic:"
-          ]
+          ],
+          "StratigraphicRoleType": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:"
         }
       },
       {
@@ -5276,7 +5276,6 @@
         },
         "data": {
           "Name": "Chronostratigraphic Erathem",
-          "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:",
           "RankName": "Erathem",
           "StratigraphicUnitInterpretationSet": [
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Cenozoic:",
@@ -5289,7 +5288,8 @@
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Paleoarchean:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Paleoproterozoic:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Paleozoic:"
-          ]
+          ],
+          "StratigraphicRoleType": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:"
         }
       },
       {
@@ -5313,7 +5313,6 @@
         },
         "data": {
           "Name": "Chronostratigraphic System",
-          "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:",
           "RankName": "System",
           "StratigraphicUnitInterpretationSet": [
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Calymmian:",
@@ -5338,7 +5337,8 @@
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Stenian:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Tonian:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Triassic:"
-          ]
+          ],
+          "StratigraphicRoleType": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:"
         }
       },
       {
@@ -5362,7 +5362,6 @@
         },
         "data": {
           "Name": "Chronostratigraphic Series",
-          "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:",
           "RankName": "Series",
           "StratigraphicUnitInterpretationSet": [
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Cambrian-Series2:",
@@ -5405,7 +5404,8 @@
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Upper-Pennsylvanian:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Upper-Triassic:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Wenlock:"
-          ]
+          ],
+          "StratigraphicRoleType": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:"
         }
       },
       {
@@ -5429,7 +5429,6 @@
         },
         "data": {
           "Name": "Chronostratigraphic Stage",
-          "StratigraphicRoleTypeID": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:",
           "RankName": "Stage",
           "StratigraphicUnitInterpretationSet": [
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Aalenian:",
@@ -5534,7 +5533,8 @@
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Wuliuan:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Ypresian:",
             "dev:work-product-component--StratigraphicUnitInterpretation:ChronoStratigraphicScheme:ICS2017-Zanclean:"
-          ]
+          ],
+          "StratigraphicRoleType": "dev:reference-data--StratigraphicRoleType:Chronostratigraphic:"
         }
       },
       {
