@@ -161,6 +161,23 @@
   .bd-collapse[open] > summary { margin-bottom: .45rem; }
   .bd-collapse[open] > summary::after { content: ' ▾'; }
   .bd-collapse > summary::after { content: ''; }
+
+  /* ── Examples popup ── */
+  .examples-wrap { position:relative; display:inline-block; }
+  .examples-popup { display:none; position:absolute; top:100%; right:0; z-index:100;
+    min-width:30rem; max-width:42rem; background:#fff; border:1px solid #d0d0e8;
+    border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,.14); padding:.5rem 0;
+    margin-top:4px; font-size:13px; }
+  .examples-popup.open { display:block; }
+  .examples-popup .ex-item { padding:.35rem .75rem; cursor:pointer; display:flex; flex-direction:column; }
+  .examples-popup .ex-item:hover { background:#f3f2f1; }
+  .examples-popup .ex-item code { font-size:12.5px; color:#007079; word-break:break-all; }
+  .examples-popup .ex-item .ex-desc { font-size:11.5px; color:#605e5c; margin-top:1px; }
+  .examples-popup .ex-hdr { padding:.25rem .75rem; font-weight:600; font-size:12px; color:#605e5c;
+    border-bottom:1px solid #eee; margin-bottom:.2rem; }
+  .btn-ex { display:inline-block; padding:.3rem .55rem; border:1px solid #605e5c; border-radius:3px;
+    background:#fff; cursor:pointer; font-size:12px; white-space:nowrap; }
+  .btn-ex:hover { background:#f3f2f1; }
 </style>
 {% endblock %}
 
@@ -187,7 +204,51 @@
   </datalist>
 
   <label>query</label>
-  <input type="text" name="query" value="{{ q or '*' }}" style="width: 100%;">
+  <div style="display:flex;gap:.4rem;align-items:center;width:100%;">
+    <input type="text" name="query" id="searchQuery" value="{{ q or '*' }}" style="flex:1;">
+    <span class="examples-wrap">
+      <button type="button" class="btn-ex" id="btn-examples">Examples ▾</button>
+      <div class="examples-popup" id="examples-popup">
+        <div class="ex-hdr">Click an example to use it</div>
+        <div class="ex-item" data-q="*">
+          <code>*</code>
+          <span class="ex-desc">All records of the selected kind</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:Gudrun">
+          <code>data.Name:Gudrun</code>
+          <span class="ex-desc">Exact field match on Name</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:*Drogon*">
+          <code>data.Name:*Drogon*</code>
+          <span class="ex-desc">Wildcard name search</span>
+        </div>
+        <div class="ex-item" data-q="data.Description:*exploration*">
+          <code>data.Description:*exploration*</code>
+          <span class="ex-desc">Free-text search in description</span>
+        </div>
+        <div class="ex-item" data-q='"dev:work-product-component--StratigraphicColumn:"'>
+          <code>"dev:work-product-component--StratigraphicColumn:…"</code>
+          <span class="ex-desc">Exact quoted ID (finds records referencing this ID)</span>
+        </div>
+        <div class="ex-item" data-q="data.StratigraphicColumnRankInterpretationIDs:*">
+          <code>data.StratigraphicColumnRankInterpretationIDs:*</code>
+          <span class="ex-desc">Records that have rank references (e.g. full columns)</span>
+        </div>
+        <div class="ex-item" data-q="data.RiskCategory:*">
+          <code>data.RiskCategory:*</code>
+          <span class="ex-desc">Records with a RiskCategory field (Risk records)</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:Gudrun AND data.RiskCategory:*">
+          <code>data.Name:Gudrun AND data.RiskCategory:*</code>
+          <span class="ex-desc">Combine conditions with AND / OR</span>
+        </div>
+        <div class="ex-item" data-q="NOT data.Name:Test*">
+          <code>NOT data.Name:Test*</code>
+          <span class="ex-desc">Exclude records matching a pattern</span>
+        </div>
+      </div>
+    </span>
+  </div>
 
   <label>limit</label>
   <input type="number" name="limit" value="{{ limit or 50 }}" min="1" max="500">
@@ -206,6 +267,25 @@
     var btn = document.getElementById('searchBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
   });
+
+  // Examples popup
+  var btnEx = document.getElementById('btn-examples');
+  var exPopup = document.getElementById('examples-popup');
+  if (btnEx && exPopup) {
+    btnEx.addEventListener('click', function(e) {
+      e.stopPropagation();
+      exPopup.classList.toggle('open');
+    });
+    exPopup.querySelectorAll('.ex-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        var q = item.getAttribute('data-q');
+        var inp = document.getElementById('searchQuery');
+        if (inp && q != null) inp.value = q;
+        exPopup.classList.remove('open');
+      });
+    });
+    document.addEventListener('click', function() { exPopup.classList.remove('open'); });
+  }
 })();
 </script>
 
