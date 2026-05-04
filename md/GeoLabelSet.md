@@ -1,4 +1,4 @@
-# GeoLabelSet for Reservoir Volumes & Statistics - README (Aligned & Expanded)
+# GeoLabelSet for Reservoir Volumes & Statistics 
 
 > **Scope:** This guide explains **how to use the `work-product-component--GeoLabelSet` manifest** to publish consolidated **volumetrics** and **volume statistics** (e.g., Net, Oil, Associated Gas, Pore, Hydrocarbon Pore, Bulk with **P10/P50/P90**, **ArithmeticMean**, **Minimum**, **Maximum**, **StandardDeviation**) for a **Reservoir** and its **ReservoirSegments** in OSDU. It preserves the **background**, **use cases**, and **options** from the original README and updates all sections to match your **actual example** with **reference-data values**.
 
@@ -53,7 +53,7 @@ Use **GeoLabelSet** when you want to:
 
 ---
 
-## 4. Data model - aligned to your example
+## 4. Data model
 
 ### 4.1 Core identity & governance
 - **Kind**: `osdu:wks:work-product-component--GeoLabelSet:1.0.0`
