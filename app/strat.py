@@ -627,6 +627,11 @@ async def get_strat_column(
         younger = u.get("youngerMa")
         if older is not None and younger is not None:
             return (-older, younger)
+        # Fallback: normalize raw topMa/baseMa
+        top = u.get("topMa")
+        base = u.get("baseMa")
+        if top is not None and base is not None:
+            return (-max(top, base), min(top, base))
         return (float("inf"), float("inf"))
 
     for rid in rank_ids:
@@ -2161,10 +2166,16 @@ async def _fetch_column_model(request: Request, column_id: str) -> dict:
     horizons_by_id = await _storage_fetch_many(request, horizon_ids_all) if horizon_ids_all else {}
 
     def _age_key(u):
+        # Use normalized ages (convention-agnostic) - handles both ICS (topMa=older)
+        # and SMDA (topMa=younger) correctly.
+        older = u.get("olderMa")
+        younger = u.get("youngerMa")
+        if older is not None and younger is not None:
+            return (-older, younger)
         top = u.get("topMa")
         base = u.get("baseMa")
         if top is not None and base is not None:
-            return (-top, base)
+            return (-max(top, base), min(top, base))
         return (float("inf"), float("inf"))
 
     ranks_model: List[dict] = []

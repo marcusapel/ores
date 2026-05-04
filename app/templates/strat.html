@@ -50,6 +50,20 @@
 .imp-preview { max-height:280px; overflow:auto; margin-top:.5rem; font-size:12.5px; }
 .btn-ingest { background:#007079; color:#fff; border-color:#007079; }
 .btn-ingest:hover { background:#004F55; border-color:#004F55; }
+
+/* ---- Examples popup ---- */
+.examples-wrap { position:relative; display:inline-block; }
+.examples-popup { display:none; position:absolute; top:100%; right:0; z-index:100;
+  min-width:26rem; max-width:36rem; background:#fff; border:1px solid #d0d0e8;
+  border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,.14); padding:.5rem 0;
+  margin-top:4px; font-size:13px; }
+.examples-popup.open { display:block; }
+.examples-popup .ex-item { padding:.35rem .75rem; cursor:pointer; display:flex; flex-direction:column; }
+.examples-popup .ex-item:hover { background:#f3f2f1; }
+.examples-popup .ex-item code { font-size:12.5px; color:#007079; word-break:break-all; }
+.examples-popup .ex-item .ex-desc { font-size:11.5px; color:#605e5c; margin-top:1px; }
+.examples-popup .ex-hdr { padding:.25rem .75rem; font-weight:600; font-size:12px; color:#605e5c;
+  border-bottom:1px solid #eee; margin-bottom:.2rem; }
 </style>
 
 <!-- Search -->
@@ -57,7 +71,43 @@
   <h3 style="margin:0 0 .5rem 0;">Find Stratigraphic Columns &amp; Ranks</h3>
   <div class="row" style="grid-template-columns:160px 1fr;">
     <label for="strat-q">Query</label>
-    <input id="strat-q" type="text" value="*" placeholder="e.g., data.Name:Gudrun OR *" />
+    <div style="display:flex;gap:.4rem;align-items:center;">
+      <input id="strat-q" type="text" value="*" placeholder="e.g., data.Name:Gudrun OR *" style="flex:1;" />
+      <span class="examples-wrap">
+        <button class="btn" id="btn-examples" type="button" style="font-size:12px;">Examples ▾</button>
+        <div class="examples-popup" id="examples-popup">
+          <div class="ex-hdr">Click an example to use it</div>
+          <div class="ex-item" data-q="*">
+            <code>*</code>
+            <span class="ex-desc">All records (wildcard)</span>
+          </div>
+          <div class="ex-item" data-q="data.Name:Gudrun">
+            <code>data.Name:Gudrun</code>
+            <span class="ex-desc">Search by name (exact field match)</span>
+          </div>
+          <div class="ex-item" data-q="data.Name:*Juras*">
+            <code>data.Name:*Juras*</code>
+            <span class="ex-desc">Wildcard name search</span>
+          </div>
+          <div class="ex-item" data-q="data.StratigraphicColumnRankInterpretationIDs:*">
+            <code>data.StratigraphicColumnRankInterpretationIDs:*</code>
+            <span class="ex-desc">Columns that contain ranks (i.e. full columns)</span>
+          </div>
+          <div class="ex-item" data-q="data.ParentStratigraphicColumnID:*">
+            <code>data.ParentStratigraphicColumnID:*</code>
+            <span class="ex-desc">Units referencing a parent column</span>
+          </div>
+          <div class="ex-item" data-q="data.OlderChronostratigraphicAge:&quot;Paleocene&quot;">
+            <code>data.OlderChronostratigraphicAge:"Paleocene"</code>
+            <span class="ex-desc">Units with older age = Paleocene</span>
+          </div>
+          <div class="ex-item" data-q="data.StratigraphicUnitInterpretationIDs:*">
+            <code>data.StratigraphicUnitInterpretationIDs:*</code>
+            <span class="ex-desc">Ranks that contain unit members</span>
+          </div>
+        </div>
+      </span>
+    </div>
     <label for="strat-type">Search for</label>
     <select id="strat-type" style="width:auto;">
       <option value="all" selected>All (Columns + Ranks)</option>
@@ -498,13 +548,25 @@
         target.children.push(child);
         child.parent = target;
       } else {
-        // Parent is 2+ ranks above - fill intermediate ranks
+        // Parent is 2+ ranks above - fill intermediate ranks.
+        // At each intermediate rank, prefer an existing REAL node that
+        // age-contains the child over creating a synthetic stub.  This
+        // prevents orphan entries from different schemes (e.g. Hardenbol)
+        // from spawning redundant stubs that sort incorrectly.
         let cur = target;
         for (let mid = target.rankIdx + 1; mid < ri; mid++) {
           let label = child.parentName || child.name;
+          // 1. Reuse existing synthetic stub with same name
           let stub = cur.children.find(
             c => c.rankIdx === mid && c._synthetic &&
                  _normName(c.name) === _normName(label));
+          // 2. Prefer a real node that age-contains the child
+          if (!stub) {
+            stub = cur.children.find(
+              c => c.rankIdx === mid && !c._synthetic &&
+                   ageContained(child, c));
+          }
+          // 3. Fallback: create a synthetic stub
           if (!stub) {
             stub = _makeSynth(label, mid, []);
             cur.children.push(stub); stub.parent = cur;
@@ -513,6 +575,19 @@
         }
         cur.children.push(child);
         child.parent = cur;
+        // Update synthetic ancestor ages to reflect new child
+        let anc = cur;
+        while (anc && anc._synthetic) {
+          let needsUpdate = false;
+          if (child.olderMa != null && (anc.olderMa == null || child.olderMa > anc.olderMa)) {
+            anc.olderMa = child.olderMa; anc.topMa = child.olderMa; needsUpdate = true;
+          }
+          if (child.youngerMa != null && (anc.youngerMa == null || child.youngerMa < anc.youngerMa)) {
+            anc.youngerMa = child.youngerMa; anc.baseMa = child.youngerMa; needsUpdate = true;
+          }
+          if (!needsUpdate) break;
+          anc = anc.parent;
+        }
       }
     }
 
@@ -936,6 +1011,23 @@
     const id = resSelect.value || '';
     if (id) loadColumnById(id);
   });
+
+  // Examples popup
+  const btnEx = $('#btn-examples');
+  const exPopup = $('#examples-popup');
+  btnEx?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exPopup.classList.toggle('open');
+  });
+  exPopup?.querySelectorAll('.ex-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const q = item.getAttribute('data-q');
+      const inp = $('#strat-q');
+      if (inp && q != null) inp.value = q;
+      exPopup.classList.remove('open');
+    });
+  });
+  document.addEventListener('click', () => exPopup?.classList.remove('open'));
 
   // Direct load by pasted ID
   const directIdInput = $('#direct-id');

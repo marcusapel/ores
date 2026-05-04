@@ -198,7 +198,8 @@ def main():
     # Extract all ChronoStratigraphy records
     records_in = _gather_records(src_obj, verbose=args.verbose)
 
-    # Optional: filter to a single scheme
+    # Optional: filter RECORDS to a single scheme (removes other schemes from output entirely).
+    # When --filter-scheme is provided, only matching records appear in ReferenceData AND the WPC.
     filter_scheme = (args.filter_scheme or '').strip()
     if filter_scheme:
         before = len(records_in)
@@ -251,6 +252,43 @@ def main():
     if all_ids[:5] and args.verbose:
         print("\nSample IDs:", *all_ids[:5], sep="\n  ")
 
+    # WPC ChronoStratigraphySet: only include records matching the target scheme.
+    # The ReferenceData array can contain all schemes (they're a catalog), but
+    # the WPC must only reference one scheme's records to avoid mixing entries
+    # with different age conventions and ranks (e.g. Hardenbol SubSeries inside
+    # an ICS2017 Series rank).
+    wpc_scheme_code = args.scheme_code
+    # Derive scheme identifier from --scheme-name or scheme-code for matching
+    # against ChronoStratigraphicSchemeID values in the records.
+    _wpc_scheme_filter = ''
+    if filter_scheme:
+        _wpc_scheme_filter = filter_scheme
+    else:
+        # Auto-derive from scheme-code: e.g. "ICS-2024-12" won't match, but
+        # the records use scheme IDs like "...ChronoStratigraphicScheme:ICS2017:".
+        # So if there's exactly one dominant scheme, use that.
+        if len(scheme_counts) == 1:
+            _wpc_scheme_filter = list(scheme_counts.keys())[0]
+        elif len(scheme_counts) > 1:
+            # Multiple schemes present — warn and pick the largest
+            dominant = scheme_counts.most_common(1)[0][0]
+            print(f"WARNING: {len(scheme_counts)} schemes found in output. "
+                  f"WPC will reference only '{dominant}' records. "
+                  f"Use --filter-scheme to be explicit.")
+            _wpc_scheme_filter = dominant
+
+    if _wpc_scheme_filter and _wpc_scheme_filter != '(none)':
+        wpc_ids = [
+            r["id"] for r in out_ref
+            if _wpc_scheme_filter in (r.get('data', {}).get('ChronoStratigraphicSchemeID', ''))
+        ]
+        if args.verbose:
+            print(f"\nWPC ChronoStratigraphySet: {len(wpc_ids)} ids (scheme={_wpc_scheme_filter})")
+    else:
+        wpc_ids = all_ids
+        if args.verbose:
+            print(f"\nWPC ChronoStratigraphySet: {len(wpc_ids)} ids (all schemes)")
+
     manifest = {
         "kind": KIND_MANIFEST,
         "acl": _acl(owners, viewers),
@@ -264,7 +302,7 @@ def main():
         scheme_rec = build_scheme(partition, owners, viewers, legaltag, countries, args.scheme_name, args.scheme_code)
         manifest["ReferenceData"].append(scheme_rec)
 
-    wpc = build_wpc(partition, owners, viewers, legaltag, countries, args.scheme_name, args.scheme_code, all_ids)
+    wpc = build_wpc(partition, owners, viewers, legaltag, countries, args.scheme_name, args.scheme_code, wpc_ids)
     manifest["Data"]["WorkProductComponents"].append(wpc)
 
     out_path = Path(args.out) if args.out else Path(__file__).resolve().parent.parent / 'strat' / 'manifest_chronostratics.json'
