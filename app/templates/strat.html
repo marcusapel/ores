@@ -989,6 +989,13 @@
           : 'Column';
         const extra = it.source === 'storage' ? ' \u23f3 (indexing)' : '';
         opt.textContent = `[${badge}] ${it.name||it.id} - ${it.id}${extra}`;
+        // Highlight chrono vs litho
+        const hint = ((it.name || '') + ' ' + (it.id || '')).toLowerCase();
+        if (hint.includes('chrono')) {
+          opt.style.background = '#a6e6a6';  // green
+        } else if (hint.includes('litho')) {
+          opt.style.background = '#d6e4f0';  // blue-grey
+        }
         resSelect.appendChild(opt);
       }
       resSelect.selectedIndex = 0;

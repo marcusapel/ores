@@ -169,7 +169,7 @@ def build_rank_interp(partition: str, owners: List[str], viewers: List[str], leg
     rec_id = f"{partition}:work-product-component--StratigraphicColumnRankInterpretation:{column_token}-Chrono-{rank_token}:"
     data = {
         "Name": f"Chronostratigraphic {rank_name or 'Unspecified'}",
-        "StratigraphicRoleTypeID": role_type_id,
+        "StratigraphicRoleType": role_type_id,
         "RankName": rank_name or "Unspecified",
         "StratigraphicUnitInterpretationSet": unit_interp_ids,  # ordered top -> base
     }
