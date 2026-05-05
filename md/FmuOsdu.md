@@ -1,11 +1,11 @@
 ## OSDU Support for FMU Data Handling
 
 > **Reference links**:
-> - [fmu-dataio](https://github.com/equinor/fmu-dataio) — FMU data standard & metadata export library
-> - [fmu-dataio data model](https://fmu-dataio.readthedocs.io/en/latest/datamodel/index.html) — FMU results metadata schema
-> - [fmu-dataio simple exports](https://fmu-dataio.readthedocs.io/en/latest/simple_exports/index.html) — Standard result export functions
-> - [fmu-sumo](https://github.com/equinor/fmu-sumo) — Interaction with Sumo (current SoR for FMU results)
-> - [ERT](https://github.com/equinor/ert) — Ensemble-based Reservoir Tool (workflow orchestrator)
+> - [fmu-dataio](https://github.com/equinor/fmu-dataio) - FMU data standard & metadata export library
+> - [fmu-dataio data model](https://fmu-dataio.readthedocs.io/en/latest/datamodel/index.html) - FMU results metadata schema
+> - [fmu-dataio simple exports](https://fmu-dataio.readthedocs.io/en/latest/simple_exports/index.html) - Standard result export functions
+> - [fmu-sumo](https://github.com/equinor/fmu-sumo) - Interaction with Sumo (current SoR for FMU results)
+> - [ERT](https://github.com/equinor/ert) - Ensemble-based Reservoir Tool (workflow orchestrator)
 >
 > **Related guides**: [BusinessDecision](BusinessDecision.md) · [Volumes](Volumes.md) · [Uncertainty](Uncertainty.md) · [Risk](Risk.md) · [DevConcept](DevConcept.md) · [SeisInt](SeisInt.md) · [StratColumn](StratColumn.md)
 
@@ -13,13 +13,13 @@
 
 ### 1. Purpose
 
-This document describes how **OSDU** can serve as a **structured data management layer** for **FMU** (Fast Model Update) workflows — as a persistent System of Record and enabler for input provisioning, output management, and decision support across decision gates (DG1→DG4).
+This document describes how **OSDU** can serve as a **structured data management layer** for **FMU** (Fast Model Update) workflows - as a persistent System of Record and enabler for input provisioning, output management, and decision support across decision gates (DG1→DG4).
 
 Three complementary objectives:
 
-1. **System of Record** — OSDU as persistent SoR for FMU results. Structured, governed, version-controlled storage with OSDU data model semantics.
-2. **Input provisioning** — OSDU as an organized source of input data: master data (reservoir, segments, stratigraphy), reference data (fluid contacts, uncertainties), surfaces, grids, well data.
-3. **Decision support** — OSDU `BusinessDecision` records linking ensemble results to gates with full provenance.
+1. **System of Record** - OSDU as persistent SoR for FMU results. Structured, governed, version-controlled storage with OSDU data model semantics.
+2. **Input provisioning** - OSDU as an organized source of input data: master data (reservoir, segments, stratigraphy), reference data (fluid contacts, uncertainties), surfaces, grids, well data.
+3. **Decision support** - OSDU `BusinessDecision` records linking ensemble results to gates with full provenance.
 
 ---
 
@@ -129,11 +129,11 @@ erDiagram
 ```
 
 Key patterns:
-1. **WorkProduct per ensemble** — groups all WPCs for one iteration
-2. **Realisation as key column** — avoids record explosion for many realizations
-3. **Activity as workflow record** — links design matrix → static inputs → output WPCs
-4. **BusinessDecision as gate record** — links Activities, Risks, Documents, and evidence
-5. **Cross-gate evolution** — BD at DG(n+1) references BD at DG(n) as context parameter
+1. **WorkProduct per ensemble** - groups all WPCs for one iteration
+2. **Realisation as key column** - avoids record explosion for many realizations
+3. **Activity as workflow record** - links design matrix → static inputs → output WPCs
+4. **BusinessDecision as gate record** - links Activities, Risks, Documents, and evidence
+5. **Cross-gate evolution** - BD at DG(n+1) references BD at DG(n) as context parameter
 
 ---
 
@@ -170,10 +170,10 @@ A sidecar manifest accompanies every deck export:
 * **Ancestry Inputs**: `[<wpc-id-grid>, <wpc-id-poro>, …]`
 
 Round-trip rules:
-1. **Grid Lock** — `grid_uuid` persists unless topology changes
-2. **Property Lock** — each property retains `property_uuid` and Eclipse keyword
-3. **CRS/UOM Lock** — manifest includes CRS type, origin, axis order, UOM
-4. **Ancestry Chain** — outputs set `data.ancestry.inputs` to exact input WPC IDs
+1. **Grid Lock** - `grid_uuid` persists unless topology changes
+2. **Property Lock** - each property retains `property_uuid` and Eclipse keyword
+3. **CRS/UOM Lock** - manifest includes CRS type, origin, axis order, UOM
+4. **Ancestry Chain** - outputs set `data.ancestry.inputs` to exact input WPC IDs
 
 ---
 
@@ -181,9 +181,9 @@ Round-trip rules:
 
 | Component | Responsibility |
 |---|---|
-| **ERT** | Orchestrate FMU workflows — cases, ensembles, realizations, design matrix |
+| **ERT** | Orchestrate FMU workflows - cases, ensembles, realizations, design matrix |
 | **fmu-dataio** | Export data with rich metadata. Enforces data standard. |
-| **Sumo** | Current cloud SoR — receives exports, indexes, serves queries |
+| **Sumo** | Current cloud SoR - receives exports, indexes, serves queries |
 | **pyetp / resqpy** | Stream arrays from OSDU RDDMS, build decks, convert formats |
 | **OSDU** | Persist WPCs with governance, provenance, Collections, BusinessDecision |
 | **FMU workflow** | Consume decks; echo `deck_id` in run metadata |

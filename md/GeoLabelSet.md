@@ -19,7 +19,7 @@ The pattern uses **ColumnBasedTable** to store a dense matrix of **statistics by
 - one or more **FacetIDs** (e.g., `P10`, `P50`, `P90`, `ArithmeticMean`, `Minimum`, `Maximum`, `StandardDeviation`),
 - a **UnitOfMeasureID** (e.g., `m3`).
 
-> Avoid GeoLabelSet for **raw arrays/grids** — use RESQML representation datasets or Document WPC instead.
+> Avoid GeoLabelSet for **raw arrays/grids** - use RESQML representation datasets or Document WPC instead.
 
 ---
 
@@ -29,18 +29,18 @@ The pattern uses **ColumnBasedTable** to store a dense matrix of **statistics by
 - **Label** a Reservoir or ReservoirSegment(s) with results from modelling or evaluation.
 - **Attach scenario/context facets** (`statistics:P50`, `scenario:BASE/LOW/HIGH`) for filtering and comparison.
 - **Provide spatial/geopolitical context** (GeoJSON, `GeoContexts`) for map-based discovery.
-- **Link provenance** to inputs (`RelatedDatasets` — RESQML grid properties, CSV summaries, simulation outputs).
+- **Link provenance** to inputs (`RelatedDatasets` - RESQML grid properties, CSV summaries, simulation outputs).
 
 ---
 
 ## 3. Inputs You Should Have Ready
 
-1. **Labelled entity IDs** — Reservoir and/or ReservoirSegment SRNs.
-2. **Volumetrics table** — Keys: `Zone`, `SegmentID`. Value columns per property (Net, Oil, AssociatedGas, Pore, HydrocarbonPore, Bulk) with statistics. Units per column.
-3. **Facet references** — `FacetType=statistics` with roles. Optionally `FacetType=scenario`.
-4. **Governance** — ACL owners/viewers and `legaltags`.
-5. **Provenance (recommended)** — `RelatedDatasets[]` linking to inputs.
-6. **Spatial & context (optional)** — `data.SpatialArea.Wgs84Coordinates` and `data.GeoContexts[]`.
+1. **Labelled entity IDs** - Reservoir and/or ReservoirSegment SRNs.
+2. **Volumetrics table** - Keys: `Zone`, `SegmentID`. Value columns per property (Net, Oil, AssociatedGas, Pore, HydrocarbonPore, Bulk) with statistics. Units per column.
+3. **Facet references** - `FacetType=statistics` with roles. Optionally `FacetType=scenario`.
+4. **Governance** - ACL owners/viewers and `legaltags`.
+5. **Provenance (recommended)** - `RelatedDatasets[]` linking to inputs.
+6. **Spatial & context (optional)** - `data.SpatialArea.Wgs84Coordinates` and `data.GeoContexts[]`.
 
 ---
 
@@ -223,7 +223,7 @@ flowchart TB
 
 - **Scenario support**: add `FacetType=scenario` for CASE/vintage separation.
 - **Segmentation strategy**: keys can be Zone + SegmentID, or alternative keys (Layer, WellGroup, Compartment).
-- **Metrics extension**: beyond core 6 (Net, Oil, AssociatedGas, Pore, HydrocarbonPore, Bulk), add Water, GasCap, RecoveryFactor — each with GeoLabelType, FacetIDs, and UnitOfMeasure.
+- **Metrics extension**: beyond core 6 (Net, Oil, AssociatedGas, Pore, HydrocarbonPore, Bulk), add Water, GasCap, RecoveryFactor - each with GeoLabelType, FacetIDs, and UnitOfMeasure.
 - **Units per column**: mix units (e.g., bbl for Oil, Sm3 for gas) if each column declares its unit.
 - **Totals/aggregates**: include `Zone="TOTAL"` for portfolio roll-ups.
 - **Lineage**: always link `RelatedDatasets` for reproducibility and audit trails.
