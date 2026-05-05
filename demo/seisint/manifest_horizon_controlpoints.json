@@ -119,44 +119,6 @@
         }
       },
       {
-        "id": "dev:work-product-component--HorizonControlPoints:40aceef2-aee4-5929-87e2-93b10881042b:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_hum_postiterate_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation 1e44a2fd-c25a-43f3-819d-43bbbbe6a409 in dataspace maap/drogon. 125177 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('1e44a2fd-c25a-43f3-819d-43bbbbe6a409')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:e83b3a7d-57c0-56e5-9a80-7426ee014d17:1",
-          "InterpretationName": "TopTherys",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:e83b3a7d-57c0-56e5-9a80-7426ee014d17:1",
-              "dev:master-data--LocalBoundaryFeature:563b5ee5-b67c-51de-8a47-7a2d89025cf3:1"
-            ]
-          }
-        }
-      },
-      {
         "id": "dev:work-product-component--HorizonControlPoints:61978c7a-5d91-504e-b7d5-9a92c0788b32:1",
         "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
         "acl": {
@@ -228,44 +190,6 @@
             "parents": [
               "dev:work-product-component--HorizonInterpretation:59f9b835-d23b-5e7c-8e6e-b6663ab2751e:1",
               "dev:master-data--LocalBoundaryFeature:f2712622-b847-5bc8-9637-9a03b614dc0d:1"
-            ]
-          }
-        }
-      },
-      {
-        "id": "dev:work-product-component--HorizonControlPoints:86ab2ffb-23ca-5e81-b306-f43e3d124125:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_gf_hum_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation 36707503-8fc6-4b8a-80bc-f4420d2efc13 in dataspace maap/drogon. 124924 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('36707503-8fc6-4b8a-80bc-f4420d2efc13')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:ee087b91-69aa-5e43-b0d6-944c42f2632c:1",
-          "InterpretationName": "TopVolantis",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:ee087b91-69aa-5e43-b0d6-944c42f2632c:1",
-              "dev:master-data--LocalBoundaryFeature:b3d5bf10-c53a-5d4f-a157-85a5d4a5199c:1"
             ]
           }
         }
@@ -537,44 +461,6 @@
         }
       },
       {
-        "id": "dev:work-product-component--HorizonControlPoints:3a5d5384-77c6-5080-82e6-6bd38a40e1ee:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_gf_hum_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation 915ec03e-a28e-40e4-88d3-e914f35181ae in dataspace maap/drogon. 125031 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('915ec03e-a28e-40e4-88d3-e914f35181ae')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:e83b3a7d-57c0-56e5-9a80-7426ee014d17:1",
-          "InterpretationName": "TopTherys",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:e83b3a7d-57c0-56e5-9a80-7426ee014d17:1",
-              "dev:master-data--LocalBoundaryFeature:563b5ee5-b67c-51de-8a47-7a2d89025cf3:1"
-            ]
-          }
-        }
-      },
-      {
         "id": "dev:work-product-component--HorizonControlPoints:49b15d78-6ebb-5323-89ae-cc341bec8982:1",
         "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
         "acl": {
@@ -689,44 +575,6 @@
         }
       },
       {
-        "id": "dev:work-product-component--HorizonControlPoints:2530228a-f7a9-578b-9ca2-29db6c61ce0d:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_gf_hum_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation b24a0759-ed53-4d24-9a06-60c84b6563d0 in dataspace maap/drogon. 124960 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('b24a0759-ed53-4d24-9a06-60c84b6563d0')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:59f9b835-d23b-5e7c-8e6e-b6663ab2751e:1",
-          "InterpretationName": "BaseVolantis",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:59f9b835-d23b-5e7c-8e6e-b6663ab2751e:1",
-              "dev:master-data--LocalBoundaryFeature:f2712622-b847-5bc8-9637-9a03b614dc0d:1"
-            ]
-          }
-        }
-      },
-      {
         "id": "dev:work-product-component--HorizonControlPoints:04764fbd-6db6-5cef-906b-82b98c04bb77:1",
         "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
         "acl": {
@@ -798,44 +646,6 @@
             "parents": [
               "dev:work-product-component--HorizonInterpretation:ee087b91-69aa-5e43-b0d6-944c42f2632c:1",
               "dev:master-data--LocalBoundaryFeature:b3d5bf10-c53a-5d4f-a157-85a5d4a5199c:1"
-            ]
-          }
-        }
-      },
-      {
-        "id": "dev:work-product-component--HorizonControlPoints:1b4d9ae0-396b-5a9d-94fd-136372219378:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_hum_postiterate_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation bf3c8f63-53bb-4b40-ad91-ecc9ee5016c8 in dataspace maap/drogon. 125000 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('bf3c8f63-53bb-4b40-ad91-ecc9ee5016c8')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:59f9b835-d23b-5e7c-8e6e-b6663ab2751e:1",
-          "InterpretationName": "BaseVolantis",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:59f9b835-d23b-5e7c-8e6e-b6663ab2751e:1",
-              "dev:master-data--LocalBoundaryFeature:f2712622-b847-5bc8-9637-9a03b614dc0d:1"
             ]
           }
         }
@@ -943,120 +753,6 @@
           "DomainTypeID": "dev:reference-data--DomainType:Depth:",
           "DDMSDatasets": [
             "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('d730c307-223a-44d9-b051-4aba4c8c6e39')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:c642e769-a14c-5c0c-b0e0-329b3fc7b308:1",
-          "InterpretationName": "TopVolon",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:c642e769-a14c-5c0c-b0e0-329b3fc7b308:1",
-              "dev:master-data--LocalBoundaryFeature:7a5d2052-8470-5c4c-b63f-39a419fc78d9:1"
-            ]
-          }
-        }
-      },
-      {
-        "id": "dev:work-product-component--HorizonControlPoints:03e5ea09-5946-54c4-ba39-27d6f6234159:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_gf_hum_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation da021c29-2921-4f63-bc27-59be4802b4fb in dataspace maap/drogon. 125084 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('da021c29-2921-4f63-bc27-59be4802b4fb')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:c642e769-a14c-5c0c-b0e0-329b3fc7b308:1",
-          "InterpretationName": "TopVolon",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:c642e769-a14c-5c0c-b0e0-329b3fc7b308:1",
-              "dev:master-data--LocalBoundaryFeature:7a5d2052-8470-5c4c-b63f-39a419fc78d9:1"
-            ]
-          }
-        }
-      },
-      {
-        "id": "dev:work-product-component--HorizonControlPoints:51a85157-43d6-5046-a4fe-f1f2d42a062e:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_hum_postiterate_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation ead62c73-1818-421f-8e00-3d2717a511f2 in dataspace maap/drogon. 124941 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('ead62c73-1818-421f-8e00-3d2717a511f2')"
-          ],
-          "InterpretationID": "dev:work-product-component--HorizonInterpretation:ee087b91-69aa-5e43-b0d6-944c42f2632c:1",
-          "InterpretationName": "TopVolantis",
-          "ancestry": {
-            "parents": [
-              "dev:work-product-component--HorizonInterpretation:ee087b91-69aa-5e43-b0d6-944c42f2632c:1",
-              "dev:master-data--LocalBoundaryFeature:b3d5bf10-c53a-5d4f-a157-85a5d4a5199c:1"
-            ]
-          }
-        }
-      },
-      {
-        "id": "dev:work-product-component--HorizonControlPoints:4617f0b4-f369-5eb4-8d40-c46f43420a5e:1",
-        "kind": "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "acl": {
-          "owners": [
-            "data.default.owners@dev.dataservices.energy"
-          ],
-          "viewers": [
-            "data.office.global.viewers@dev.dataservices.energy"
-          ]
-        },
-        "legal": {
-          "legaltags": [
-            "dev-equinor-private-default"
-          ],
-          "otherRelevantDataCountries": [
-            "NO"
-          ]
-        },
-        "data": {
-          "Name": "DP_hum_postiterate_extracted - Control Points",
-          "Description": "Horizon seed picks from PointSetRepresentation f61d4d3c-2635-4d3d-b7f5-d1a9e215def0 in dataspace maap/drogon. 125170 control point(s).",
-          "RepresentationRole": "dev:reference-data--RepresentationRole:Pick:",
-          "RepresentationType": "dev:reference-data--RepresentationType:PointSet:",
-          "DomainTypeID": "dev:reference-data--DomainType:Depth:",
-          "DDMSDatasets": [
-            "eml:///dataspace('maap/drogon')/resqml20.obj_PointSetRepresentation('f61d4d3c-2635-4d3d-b7f5-d1a9e215def0')"
           ],
           "InterpretationID": "dev:work-product-component--HorizonInterpretation:c642e769-a14c-5c0c-b0e0-329b3fc7b308:1",
           "InterpretationName": "TopVolon",

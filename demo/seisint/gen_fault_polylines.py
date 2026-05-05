@@ -58,6 +58,13 @@ POLYLINE_TYPE = "resqml20.obj_PolylineSetRepresentation"
 #   "application/x-resqml+xml;version=2.0;type=obj_FaultInterpretation"
 FAULT_CONTENT_MARKERS = ("FaultInterpretation",)
 
+# Name prefixes to EXCLUDE — these are FMU modelling line extractions or
+# utility geometry, not seismic interpretation objects.
+# GL_ = Grid Lines extracted algorithmically from reservoir models.
+# AOI = Area of Interest (study boundary).
+# XYCoords = Coordinate reference grids.
+EXCLUDE_NAME_PREFIXES = ("GL_", "AOI", "XYCoords")
+
 
 def _rddms_url(host: str, path: str) -> str:
     return f"{host}/api/reservoir-ddms/v2{path}"
@@ -257,6 +264,7 @@ def discover_and_generate(
 
     # Fetch full objects and classify
     classified = []
+    skipped_names = []
     for entry in raw_list:
         uid = entry.get("Uuid") or entry.get("UUID") or entry.get("uuid") or ""
         if not uid:
@@ -266,14 +274,28 @@ def discover_and_generate(
         if not uid:
             continue
 
+        # Pre-filter by name: skip FMU model outputs and utility geometry
+        entry_name = entry.get("name") or entry.get("Name") or ""
+        if any(entry_name.startswith(pfx) for pfx in EXCLUDE_NAME_PREFIXES):
+            skipped_names.append(entry_name)
+            continue
+
         try:
             obj = get_polyline_object(host, token, partition, ds_path, uid)
             info = classify_polyline(obj)
+            # Double-check: skip if title matches exclusion prefixes (name may
+            # come from Citation.Title when entry name was empty)
+            if any(info["title"].startswith(pfx) for pfx in EXCLUDE_NAME_PREFIXES):
+                skipped_names.append(info["title"])
+                continue
             classified.append(info)
         except Exception as e:
             name = entry.get("name", uid[:12])
             print(f"  WARN: Failed to fetch/classify {name} ({uid[:8]}...): {e}")
             classified.append({"uuid": uid, "title": entry.get("name", uid), "is_fault": False, "error": str(e)})
+
+    if skipped_names:
+        print(f"  Skipped {len(skipped_names)} non-interpretation objects (GL_*, AOI, XYCoords)")
 
     faults = [c for c in classified if c.get("is_fault")]
     nonfault = [c for c in classified if not c.get("is_fault") and "error" not in c]

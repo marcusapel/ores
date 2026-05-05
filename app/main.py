@@ -1159,19 +1159,32 @@ def _parse_kind_inputs(kind: str, kinds_extra: str) -> List[str]:
 
 
 def _collect_manifest_kinds() -> List[Dict[str, Any]]:
-    """Return a static ordered list of OSDU kinds for the search dropdown.
+    """Return an alphabetically sorted list of OSDU kinds for the search dropdown.
 
-    Ordered: BusinessDecision first, then master-data alphabetically,
-    then work-product-component / dataset / dev alphabetically.
+    All kinds present in demo/ manifests and generators.
     """
-    # ── Static kind list (all kinds present in demo/ manifests) ──
     _KINDS: list[str] = [
+        "dev:wks:work-product-component--DevelopmentConcept:3.0.0",
+        "osdu:wks:dataset--ETPDataspace:1.0.0",
         "osdu:wks:master-data--BusinessDecision:1.0.0",
+        "osdu:wks:master-data--LocalBoundaryFeature:1.1.0",
         "osdu:wks:master-data--Reservoir:2.0.0",
         "osdu:wks:master-data--ReservoirSegment:2.0.0",
         "osdu:wks:master-data--Risk:1.2.0",
-        "osdu:wks:master-data--LocalBoundaryFeature:1.1.0",
-        "osdu:wks:dataset--ETPDataspace:1.0.0",
+        "osdu:wks:reference-data--ChronoStratigraphicScheme:1.0.0",
+        "osdu:wks:reference-data--ChronoStratigraphy:1.0.0",
+        "osdu:wks:reference-data--DecisionApprovalStatus:1.0.0",
+        "osdu:wks:reference-data--DecisionLevel:1.0.0",
+        "osdu:wks:reference-data--FacetRole:1.1.0",
+        "osdu:wks:reference-data--GeoLabelType:1.0.0",
+        "osdu:wks:reference-data--IndexableElement:1.0.0",
+        "osdu:wks:reference-data--RepresentationType:1.0.0",
+        "osdu:wks:reference-data--ReservoirEstimatedVolumePropertyType:1.0.0",
+        "osdu:wks:reference-data--RiskAcceptanceCriteria:1.0.0",
+        "osdu:wks:reference-data--RiskCategory:1.0.0",
+        "osdu:wks:reference-data--RiskProbabilityScale:1.0.0",
+        "osdu:wks:reference-data--RiskSeverityScale:1.0.0",
+        "osdu:wks:reference-data--StratigraphicRoleType:1.0.0",
         "osdu:wks:work-product-component--Activity:1.0.0",
         "osdu:wks:work-product-component--ActivityTemplate:1.0.0",
         "osdu:wks:work-product-component--ColumnBasedTable:1.4.0",
@@ -1179,20 +1192,19 @@ def _collect_manifest_kinds() -> List[Dict[str, Any]]:
         "osdu:wks:work-product-component--GenericBinGrid:1.0.0",
         "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
         "osdu:wks:work-product-component--GeoLabelSet:1.0.0",
+        "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
         "osdu:wks:work-product-component--HorizonInterpretation:1.2.0",
+        "osdu:wks:work-product-component--IjkGridRepresentation:1.0.0",
         "osdu:wks:work-product-component--LocalBoundaryFeature:1.2.0",
         "osdu:wks:work-product-component--LocalModelCompoundCrs:1.2.0",
+        "osdu:wks:work-product-component--PersistedCollection:1.2.0",
         "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
         "osdu:wks:work-product-component--SeismicBinGrid:1.3.0",
         "osdu:wks:work-product-component--SeismicHorizon:2.1.0",
         "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
         "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:1.3.0",
         "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0",
-        "osdu:wks:work-product-component--PersistedCollection:1.2.0",
         "osdu:wks:work-product-component--StructureMap:1.0.0",
-        "dev:wks:work-product-component--DevelopmentConcept:3.0.0",
-        "osdu:wks:reference-data--ChronoStratigraphicScheme:1.0.0",
-        "osdu:wks:reference-data--ChronoStratigraphy:1.0.0",
     ]
     return [{"kind": k} for k in _KINDS]
 
