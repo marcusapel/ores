@@ -62,6 +62,11 @@ POINTSET_TYPE = "resqml20.obj_PointSetRepresentation"
 #   "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation"
 HORIZON_CONTENT_MARKERS = ("HorizonInterpretation",)
 
+# Name suffixes/patterns to EXCLUDE — these are FMU model extraction outputs,
+# not interpreter seed picks.
+# *_extracted = surfaces extracted from a reservoir model run (HUM, global-field).
+EXCLUDE_NAME_SUFFIXES = ("_extracted",)
+
 
 def _rddms_url(host: str, path: str) -> str:
     return f"{host}/api/reservoir-ddms/v2{path}"
@@ -325,6 +330,7 @@ def discover_and_generate(
 
     # Fetch full objects and classify
     classified = []
+    skipped_names = []
     for entry in raw_list:
         uid = entry.get("Uuid") or entry.get("UUID") or entry.get("uuid") or ""
         if not uid:
@@ -334,14 +340,27 @@ def discover_and_generate(
         if not uid:
             continue
 
+        # Pre-filter by name: skip FMU model extraction outputs
+        entry_name = entry.get("name") or entry.get("Name") or ""
+        if any(entry_name.endswith(sfx) for sfx in EXCLUDE_NAME_SUFFIXES):
+            skipped_names.append(entry_name)
+            continue
+
         try:
             obj = get_pointset_object(host, token, partition, ds_path, uid)
             info = classify_pointset(obj)
+            # Double-check: skip if title matches exclusion suffixes
+            if any(info["title"].endswith(sfx) for sfx in EXCLUDE_NAME_SUFFIXES):
+                skipped_names.append(info["title"])
+                continue
             classified.append(info)
         except Exception as e:
             name = entry.get("name", uid[:12])
             print(f"  WARN: Failed to fetch/classify {name} ({uid[:8]}...): {e}")
             classified.append({"uuid": uid, "title": entry.get("name", uid), "is_horizon_picks": False, "error": str(e)})
+
+    if skipped_names:
+        print(f"  Skipped {len(skipped_names)} FMU model outputs (*_extracted)")
 
     horizon_picks = [c for c in classified if c.get("is_horizon_picks")]
     other = [c for c in classified if not c.get("is_horizon_picks") and "error" not in c]
