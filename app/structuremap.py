@@ -372,6 +372,90 @@ async def discover_surfaces(
     return surfaces
 
 
+# ── Discovery: all RESQML representation types ────────────────────────
+
+# Types discoverable via the RDDMS list_resources endpoint.
+RESQML_TYPES = {
+    "Grid2d":          "resqml20.obj_Grid2dRepresentation",
+    "PolylineSet":     "resqml20.obj_PolylineSetRepresentation",
+    "PointSet":        "resqml20.obj_PointSetRepresentation",
+    "TriangulatedSet": "resqml20.obj_TriangulatedSetRepresentation",
+}
+
+
+async def discover_all_representations(
+    access_token: str,
+    ds_path: str,
+    *,
+    types: Optional[List[str]] = None,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Discover multiple RESQML representation types in a dataspace.
+
+    Args:
+        access_token: Bearer token.
+        ds_path: Dataspace path.
+        types: Short type names to discover (default: all known types).
+               Valid values: Grid2d, PolylineSet, PointSet, TriangulatedSet.
+
+    Returns dict mapping type name → list of lightweight info dicts:
+        {
+            "Grid2d": [ {uuid, title, type, interpretation, ...}, ... ],
+            "PolylineSet": [ ... ],
+            "PointSet": [ ... ],
+        }
+    """
+    if types is None:
+        types = list(RESQML_TYPES.keys())
+
+    enc = urllib.parse.quote(ds_path, safe="")
+    results: Dict[str, List[Dict[str, Any]]] = {}
+
+    for short_name in types:
+        resqml_type = RESQML_TYPES.get(short_name)
+        if not resqml_type:
+            log.warning("discover_all: unknown type '%s'", short_name)
+            continue
+
+        try:
+            resources = await osdu.list_resources(access_token, enc, resqml_type) or []
+        except Exception as e:
+            log.warning("discover_all: list %s failed: %s", short_name, e)
+            results[short_name] = []
+            continue
+
+        items: List[Dict[str, Any]] = []
+        for r in resources:
+            uid = r.get("Uuid") or r.get("UUID") or r.get("uuid") or ""
+            if not uid:
+                uri = r.get("uri", "")
+                if "(" in uri:
+                    uid = uri.split("(")[-1].rstrip(")")
+            if not uid:
+                continue
+
+            title = (r.get("Citation") or {}).get("Title", uid)
+
+            # Quick classification from list metadata (no extra fetch)
+            interp_ref = r.get("RepresentedInterpretation") or {}
+            interp_title = interp_ref.get("Title") or ""
+            interp_ct = interp_ref.get("ContentType") or ""
+            is_fault = "Fault" in interp_ct
+
+            items.append({
+                "uuid": uid,
+                "title": title,
+                "type": short_name,
+                "resqml_type": resqml_type,
+                "interpretation": interp_title,
+                "is_fault": is_fault,
+                "uri": r.get("uri") or f"eml:///dataspace('{ds_path}')/{resqml_type}('{uid}')",
+            })
+
+        results[short_name] = items
+
+    return results
+
+
 # ── Full pipeline: discover + convert depth surfaces to StructureMaps ─
 
 async def generate_structuremaps(

@@ -1,0 +1,1521 @@
+{
+  "kind": "osdu:wks:Manifest:1.0.0",
+  "ReferenceData": [],
+  "MasterData": [],
+  "Data": {
+    "WorkProductComponents": [
+      {
+        "id": "dev:work-product-component--GenericRepresentation:02fc6a66-96df-4ebf-a80b-9a37bc9180cd:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 02fc6a66-96df-4ebf-a80b-9a37bc9180cd) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('02fc6a66-96df-4ebf-a80b-9a37bc9180cd')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:2aef802a-be10-5eef-9c00-34e0d0edd6db:1",
+          "InterpretationName": "F3",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:2aef802a-be10-5eef-9c00-34e0d0edd6db:1",
+              "dev:master-data--LocalBoundaryFeature:de1ffe95-02bb-5647-810e-c167f166c2b3:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:1e791066-0424-42b2-b577-2b873df3533c:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 1e791066-0424-42b2-b577-2b873df3533c) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('1e791066-0424-42b2-b577-2b873df3533c')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:fb9f89ab-31fe-56c4-b3db-1cb6b74bd784:1",
+          "InterpretationName": "F4",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:fb9f89ab-31fe-56c4-b3db-1cb6b74bd784:1",
+              "dev:master-data--LocalBoundaryFeature:4a7df1d3-acc8-56e5-8800-12e010986312:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:3860c688-ae03-4033-9fb5-e21866899bd4:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 3860c688-ae03-4033-9fb5-e21866899bd4) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('3860c688-ae03-4033-9fb5-e21866899bd4')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:641f6645-dc8c-502b-a05d-69eebf686824:1",
+          "InterpretationName": "F2",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:641f6645-dc8c-502b-a05d-69eebf686824:1",
+              "dev:master-data--LocalBoundaryFeature:c46f73f3-b6f8-5b7c-947c-210bf3487278:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:77a22d1c-4391-4474-82e5-94f7f46a9995:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 77a22d1c-4391-4474-82e5-94f7f46a9995) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('77a22d1c-4391-4474-82e5-94f7f46a9995')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:857b8e1f-7a97-5f3a-bcf8-dfffbf7d63da:1",
+          "InterpretationName": "F5",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:857b8e1f-7a97-5f3a-bcf8-dfffbf7d63da:1",
+              "dev:master-data--LocalBoundaryFeature:747c06ad-557e-5a8c-be9d-8fd13934996d:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:8d0f39de-1a5f-4d15-90e8-fc46d8cd3c8c:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 8d0f39de-1a5f-4d15-90e8-fc46d8cd3c8c) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('8d0f39de-1a5f-4d15-90e8-fc46d8cd3c8c')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:fb376417-6105-548e-898c-2028e5e87fb5:1",
+          "InterpretationName": "F1",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:fb376417-6105-548e-898c-2028e5e87fb5:1",
+              "dev:master-data--LocalBoundaryFeature:8022fb5a-609e-5fa5-9452-fc8aa9ee5937:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:f8e07b3b-22cd-429c-8462-5d731813feea:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation f8e07b3b-22cd-429c-8462-5d731813feea) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('f8e07b3b-22cd-429c-8462-5d731813feea')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:190c3938-b94b-5f43-b610-fe653b3dc116:1",
+          "InterpretationName": "F6",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:190c3938-b94b-5f43-b610-fe653b3dc116:1",
+              "dev:master-data--LocalBoundaryFeature:a1b6632a-934d-5c30-8062-24e0a7db14e6:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:050113cc-e36c-4ca2-a546-e4041749b018:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks_from_truth - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks_from_truth (PolylineSetRepresentation 050113cc-e36c-4ca2-a546-e4041749b018) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('050113cc-e36c-4ca2-a546-e4041749b018')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:84bc82a7-2f6f-5ffd-b330-d5cf41f547af:1",
+          "InterpretationName": "F3",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:84bc82a7-2f6f-5ffd-b330-d5cf41f547af:1",
+              "dev:master-data--LocalBoundaryFeature:3f42653a-c6ce-54ef-8d42-226ee64e4c5e:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:1ef03fa1-fdd4-4dc8-b598-5f791d630fc3:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 1ef03fa1-fdd4-4dc8-b598-5f791d630fc3) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('1ef03fa1-fdd4-4dc8-b598-5f791d630fc3')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:dff7f847-9294-5242-90d2-9e99d2ab998f:1",
+          "InterpretationName": "F6",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:dff7f847-9294-5242-90d2-9e99d2ab998f:1",
+              "dev:master-data--LocalBoundaryFeature:1db1d6ad-4311-5f1d-a58d-ad17a894a6a1:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:22ec2672-c45a-4e5f-8ad4-c5691c6bd031:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: TL_faultsticks (PolylineSetRepresentation 22ec2672-c45a-4e5f-8ad4-c5691c6bd031) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('22ec2672-c45a-4e5f-8ad4-c5691c6bd031')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:84bc82a7-2f6f-5ffd-b330-d5cf41f547af:1",
+          "InterpretationName": "F3",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:84bc82a7-2f6f-5ffd-b330-d5cf41f547af:1",
+              "dev:master-data--LocalBoundaryFeature:3f42653a-c6ce-54ef-8d42-226ee64e4c5e:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:2347b686-6ec4-4d96-a2fc-4b5614fa4842:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: TL_faultsticks (PolylineSetRepresentation 2347b686-6ec4-4d96-a2fc-4b5614fa4842) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('2347b686-6ec4-4d96-a2fc-4b5614fa4842')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:9bb38f9b-ee4f-5bef-9308-9ed291d2f0a3:1",
+          "InterpretationName": "F2",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:9bb38f9b-ee4f-5bef-9308-9ed291d2f0a3:1",
+              "dev:master-data--LocalBoundaryFeature:34121c79-d17d-517c-be39-b55d3f0d8d97:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:25e295c9-6dee-4b26-b46b-21f19c98a46b:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: TL_faultsticks (PolylineSetRepresentation 25e295c9-6dee-4b26-b46b-21f19c98a46b) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('25e295c9-6dee-4b26-b46b-21f19c98a46b')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:3277d0e7-e8f3-5895-b941-abbbc166a9a3:1",
+          "InterpretationName": "F1",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:3277d0e7-e8f3-5895-b941-abbbc166a9a3:1",
+              "dev:master-data--LocalBoundaryFeature:6454ba2b-7925-563b-81cf-e8e87bdab247:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:45751ff2-b1b8-4529-a139-ed8dabf1c54b:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: TL_faultsticks (PolylineSetRepresentation 45751ff2-b1b8-4529-a139-ed8dabf1c54b) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('45751ff2-b1b8-4529-a139-ed8dabf1c54b')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:dff7f847-9294-5242-90d2-9e99d2ab998f:1",
+          "InterpretationName": "F6",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:dff7f847-9294-5242-90d2-9e99d2ab998f:1",
+              "dev:master-data--LocalBoundaryFeature:1db1d6ad-4311-5f1d-a58d-ad17a894a6a1:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:56040e41-2782-4090-975b-5493f8150e66:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks_from_truth - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks_from_truth (PolylineSetRepresentation 56040e41-2782-4090-975b-5493f8150e66) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('56040e41-2782-4090-975b-5493f8150e66')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:9bb38f9b-ee4f-5bef-9308-9ed291d2f0a3:1",
+          "InterpretationName": "F2",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:9bb38f9b-ee4f-5bef-9308-9ed291d2f0a3:1",
+              "dev:master-data--LocalBoundaryFeature:34121c79-d17d-517c-be39-b55d3f0d8d97:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:63ef9e19-b7b6-4134-87bd-f9ec61c8c39f:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation 63ef9e19-b7b6-4134-87bd-f9ec61c8c39f) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('63ef9e19-b7b6-4134-87bd-f9ec61c8c39f')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:9bb38f9b-ee4f-5bef-9308-9ed291d2f0a3:1",
+          "InterpretationName": "F2",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:9bb38f9b-ee4f-5bef-9308-9ed291d2f0a3:1",
+              "dev:master-data--LocalBoundaryFeature:34121c79-d17d-517c-be39-b55d3f0d8d97:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:7ea1d906-2239-4fed-84c6-32414a1b5bcf:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks_from_truth - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks_from_truth (PolylineSetRepresentation 7ea1d906-2239-4fed-84c6-32414a1b5bcf) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('7ea1d906-2239-4fed-84c6-32414a1b5bcf')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:3277d0e7-e8f3-5895-b941-abbbc166a9a3:1",
+          "InterpretationName": "F1",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:3277d0e7-e8f3-5895-b941-abbbc166a9a3:1",
+              "dev:master-data--LocalBoundaryFeature:6454ba2b-7925-563b-81cf-e8e87bdab247:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:996dacdb-72ff-4911-a8f6-f639ec7b09dc:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks_from_truth - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks_from_truth (PolylineSetRepresentation 996dacdb-72ff-4911-a8f6-f639ec7b09dc) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('996dacdb-72ff-4911-a8f6-f639ec7b09dc')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:b5b5f4c7-9d6c-53dd-b625-38f73a11386f:1",
+          "InterpretationName": "F5",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:b5b5f4c7-9d6c-53dd-b625-38f73a11386f:1",
+              "dev:master-data--LocalBoundaryFeature:0fac48d2-1f5d-51a6-8045-c0b45db6eadc:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:af2fb4a0-1e1b-4129-95f0-ae3c1c6a8ae5:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation af2fb4a0-1e1b-4129-95f0-ae3c1c6a8ae5) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('af2fb4a0-1e1b-4129-95f0-ae3c1c6a8ae5')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:84bc82a7-2f6f-5ffd-b330-d5cf41f547af:1",
+          "InterpretationName": "F3",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:84bc82a7-2f6f-5ffd-b330-d5cf41f547af:1",
+              "dev:master-data--LocalBoundaryFeature:3f42653a-c6ce-54ef-8d42-226ee64e4c5e:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:b1ca22a2-2354-4500-8e89-d1c27a221878:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: TL_faultsticks (PolylineSetRepresentation b1ca22a2-2354-4500-8e89-d1c27a221878) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('b1ca22a2-2354-4500-8e89-d1c27a221878')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:ee93ef57-4c8b-55b1-b3f1-3ddc6c0a0fab:1",
+          "InterpretationName": "F4",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:ee93ef57-4c8b-55b1-b3f1-3ddc6c0a0fab:1",
+              "dev:master-data--LocalBoundaryFeature:f616e832-9a8d-592d-8745-0033e78fbc95:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:cee22e4d-ec85-486b-ace5-199ef324d408:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation cee22e4d-ec85-486b-ace5-199ef324d408) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('cee22e4d-ec85-486b-ace5-199ef324d408')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:ee93ef57-4c8b-55b1-b3f1-3ddc6c0a0fab:1",
+          "InterpretationName": "F4",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:ee93ef57-4c8b-55b1-b3f1-3ddc6c0a0fab:1",
+              "dev:master-data--LocalBoundaryFeature:f616e832-9a8d-592d-8745-0033e78fbc95:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:d5945d92-548b-4494-9c46-9798975922c4:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks_from_truth - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks_from_truth (PolylineSetRepresentation d5945d92-548b-4494-9c46-9798975922c4) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('d5945d92-548b-4494-9c46-9798975922c4')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:dff7f847-9294-5242-90d2-9e99d2ab998f:1",
+          "InterpretationName": "F6",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:dff7f847-9294-5242-90d2-9e99d2ab998f:1",
+              "dev:master-data--LocalBoundaryFeature:1db1d6ad-4311-5f1d-a58d-ad17a894a6a1:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:d6a91fa8-eff0-490a-b525-bbb4e444f87b:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks_from_truth - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks_from_truth (PolylineSetRepresentation d6a91fa8-eff0-490a-b525-bbb4e444f87b) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('d6a91fa8-eff0-490a-b525-bbb4e444f87b')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:ee93ef57-4c8b-55b1-b3f1-3ddc6c0a0fab:1",
+          "InterpretationName": "F4",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:ee93ef57-4c8b-55b1-b3f1-3ddc6c0a0fab:1",
+              "dev:master-data--LocalBoundaryFeature:f616e832-9a8d-592d-8745-0033e78fbc95:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:dba5cefe-43c7-4e76-a6fe-f22c4c4eaf3e:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation dba5cefe-43c7-4e76-a6fe-f22c4c4eaf3e) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('dba5cefe-43c7-4e76-a6fe-f22c4c4eaf3e')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:3277d0e7-e8f3-5895-b941-abbbc166a9a3:1",
+          "InterpretationName": "F1",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:3277d0e7-e8f3-5895-b941-abbbc166a9a3:1",
+              "dev:master-data--LocalBoundaryFeature:6454ba2b-7925-563b-81cf-e8e87bdab247:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:efdb432e-72a2-4115-ba54-76d7c91e605b:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "DL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: DL_faultsticks (PolylineSetRepresentation efdb432e-72a2-4115-ba54-76d7c91e605b) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('efdb432e-72a2-4115-ba54-76d7c91e605b')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:b5b5f4c7-9d6c-53dd-b625-38f73a11386f:1",
+          "InterpretationName": "F5",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:b5b5f4c7-9d6c-53dd-b625-38f73a11386f:1",
+              "dev:master-data--LocalBoundaryFeature:0fac48d2-1f5d-51a6-8045-c0b45db6eadc:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:f3796901-dc70-44e1-b4de-534f5d46ccea:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TL_faultsticks - PolylineSetRepresentation (Fault)",
+          "Description": "RDDMS catalog entry for fault polylines: TL_faultsticks (PolylineSetRepresentation f3796901-dc70-44e1-b4de-534f5d46ccea) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:FaultStick:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('f3796901-dc70-44e1-b4de-534f5d46ccea')"
+          ],
+          "InterpretationID": "dev:work-product-component--FaultInterpretation:b5b5f4c7-9d6c-53dd-b625-38f73a11386f:1",
+          "InterpretationName": "F5",
+          "ancestry": {
+            "parents": [
+              "dev:work-product-component--FaultInterpretation:b5b5f4c7-9d6c-53dd-b625-38f73a11386f:1",
+              "dev:master-data--LocalBoundaryFeature:0fac48d2-1f5d-51a6-8045-c0b45db6eadc:1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:6b8d2ebb-7283-4680-8258-b62918a1e29d:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "AOI - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: AOI (PolylineSetRepresentation 6b8d2ebb-7283-4680-8258-b62918a1e29d) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('6b8d2ebb-7283-4680-8258-b62918a1e29d')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:1294d453-81be-4065-b4c7-151724cfc25d:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_gf_initial_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_gf_initial_faultlines_extracted (PolylineSetRepresentation 1294d453-81be-4065-b4c7-151724cfc25d) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('1294d453-81be-4065-b4c7-151724cfc25d')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:1cd4364a-a7a3-4fbf-9be6-6d4df7585851:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_hum_faultlines_postiterate_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_hum_faultlines_postiterate_extracted (PolylineSetRepresentation 1cd4364a-a7a3-4fbf-9be6-6d4df7585851) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('1cd4364a-a7a3-4fbf-9be6-6d4df7585851')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:1ee5ca98-ca54-43ca-9885-b34d09f0d2ab:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_gf_initial_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_gf_initial_faultlines_extracted (PolylineSetRepresentation 1ee5ca98-ca54-43ca-9885-b34d09f0d2ab) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('1ee5ca98-ca54-43ca-9885-b34d09f0d2ab')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:1f8f65f0-73a7-4e8a-9ed8-0672cef3ef03:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_faultlines_extract_postprocess - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_faultlines_extract_postprocess (PolylineSetRepresentation 1f8f65f0-73a7-4e8a-9ed8-0672cef3ef03) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('1f8f65f0-73a7-4e8a-9ed8-0672cef3ef03')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:30796a12-9ee2-4af7-81da-64235468d832:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_sf_depth_initial_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_sf_depth_initial_faultlines_extracted (PolylineSetRepresentation 30796a12-9ee2-4af7-81da-64235468d832) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('30796a12-9ee2-4af7-81da-64235468d832')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:40477c06-a1f5-4e6e-93b4-322ed1c49bb8:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_sf_depth_initial_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_sf_depth_initial_faultlines_extracted (PolylineSetRepresentation 40477c06-a1f5-4e6e-93b4-322ed1c49bb8) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('40477c06-a1f5-4e6e-93b4-322ed1c49bb8')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:66974436-be91-47f3-b99b-25d566b57434:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_sf_time_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_sf_time_faultlines_extracted (PolylineSetRepresentation 66974436-be91-47f3-b99b-25d566b57434) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('66974436-be91-47f3-b99b-25d566b57434')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:67224dfb-de94-4785-b3cb-542d53c2e001:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_faultlines_extract_postprocess - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_faultlines_extract_postprocess (PolylineSetRepresentation 67224dfb-de94-4785-b3cb-542d53c2e001) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('67224dfb-de94-4785-b3cb-542d53c2e001')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:771b2b1d-b09f-4f19-a481-fb37bcb7b7d4:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_gf_initial_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_gf_initial_faultlines_extracted (PolylineSetRepresentation 771b2b1d-b09f-4f19-a481-fb37bcb7b7d4) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('771b2b1d-b09f-4f19-a481-fb37bcb7b7d4')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:81dfb2c1-ce8a-4e0d-8951-29b36185e5f6:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_hum_faultlines_postiterate_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_hum_faultlines_postiterate_extracted (PolylineSetRepresentation 81dfb2c1-ce8a-4e0d-8951-29b36185e5f6) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('81dfb2c1-ce8a-4e0d-8951-29b36185e5f6')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:96c794cc-0e5e-43c4-acc7-c2e92278d3a7:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_faultlines_extract_postprocess - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_faultlines_extract_postprocess (PolylineSetRepresentation 96c794cc-0e5e-43c4-acc7-c2e92278d3a7) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('96c794cc-0e5e-43c4-acc7-c2e92278d3a7')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:b0443ac7-aa62-411d-ad06-35e66b698694:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_faultlines_extract_postprocess - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_faultlines_extract_postprocess (PolylineSetRepresentation b0443ac7-aa62-411d-ad06-35e66b698694) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('b0443ac7-aa62-411d-ad06-35e66b698694')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:b06605e2-e6b7-4ceb-bd1b-d6b3546d3bbf:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_filter_faults - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_filter_faults (PolylineSetRepresentation b06605e2-e6b7-4ceb-bd1b-d6b3546d3bbf) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('b06605e2-e6b7-4ceb-bd1b-d6b3546d3bbf')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:b525df83-5c88-452c-8bd6-97d57555d0fd:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_sf_time_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_sf_time_faultlines_extracted (PolylineSetRepresentation b525df83-5c88-452c-8bd6-97d57555d0fd) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('b525df83-5c88-452c-8bd6-97d57555d0fd')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:ba459283-ba34-4997-8081-9cfb7c4e3c26:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_filter_faults - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_filter_faults (PolylineSetRepresentation ba459283-ba34-4997-8081-9cfb7c4e3c26) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('ba459283-ba34-4997-8081-9cfb7c4e3c26')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:cc70ac01-1285-45e2-9ab2-de93663f16e7:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_gf_initial_faultlines_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_gf_initial_faultlines_extracted (PolylineSetRepresentation cc70ac01-1285-45e2-9ab2-de93663f16e7) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('cc70ac01-1285-45e2-9ab2-de93663f16e7')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:dcec3623-2d36-4eff-ac47-ae007bece319:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_hum_faultlines_postiterate_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_hum_faultlines_postiterate_extracted (PolylineSetRepresentation dcec3623-2d36-4eff-ac47-ae007bece319) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('dcec3623-2d36-4eff-ac47-ae007bece319')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:dd6d655d-3e94-44ad-ba3a-eddb6a20a77d:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "GL_hum_faultlines_postiterate_extracted - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: GL_hum_faultlines_postiterate_extracted (PolylineSetRepresentation dd6d655d-3e94-44ad-ba3a-eddb6a20a77d) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('dd6d655d-3e94-44ad-ba3a-eddb6a20a77d')"
+          ]
+        }
+      },
+      {
+        "id": "dev:work-product-component--GenericRepresentation:c9dde1b1-26f1-446c-9275-b3c1f808c53f:1",
+        "kind": "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "XYCoords@10km - PolylineSetRepresentation",
+          "Description": "RDDMS catalog entry for polyline set: XYCoords@10km (PolylineSetRepresentation c9dde1b1-26f1-446c-9275-b3c1f808c53f) in dataspace maap/drogon",
+          "ExistenceKind": "dev:reference-data--ExistenceKind:Prototype:",
+          "Role": "dev:reference-data--RepresentationRole:Outline:",
+          "Type": "dev:reference-data--RepresentationType:PolylineSetRepresentation:",
+          "DDMSDatasets": [
+            "eml:///dataspace('maap/drogon')/resqml20.obj_PolylineSetRepresentation('c9dde1b1-26f1-446c-9275-b3c1f808c53f')"
+          ]
+        }
+      }
+    ]
+  }
+}
