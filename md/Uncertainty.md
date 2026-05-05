@@ -245,7 +245,7 @@ erDiagram
 - **Keys**: always include `Realisation` in raw outputs; keep `SegmentID` aligned to `ReservoirSegment` ids.  
 - **Units**: prefer `m3` unless business rules require `Mm3`; carry units in `UnitOfMeasureID`.  
 - **Facet roles**: use `ArithmeticMean` and `StandardDeviation` (not Average/StDev) for consistency.  
-- **Legal/ACL**: apply Equinor DEV tags on all records; group artefacts under a WorkProduct per DG when promoting.
+- **Legal/ACL**: apply appropriate partition tags on all records; group artefacts under a WorkProduct per DG when promoting.
 
 ---
 
