@@ -1,0 +1,120 @@
+# ── radixconfig.yaml ─────────────────────────────────────────────────
+# Omnia Radix deployment configuration for ORES
+# Docs: https://www.radix.equinor.com/references/reference-radix-config/
+# ─────────────────────────────────────────────────────────────────────
+apiVersion: radix.equinor.com/v1
+kind: RadixApplication
+metadata:
+  name: ores
+spec:
+  # ── Build ──────────────────────────────────────────────────────────
+  build:
+    useBuildKit: true
+
+  environments:
+    - name: dev
+      build:
+        from: main
+    - name: prod
+      build:
+        from: release
+
+  # ── Components ─────────────────────────────────────────────────────
+  components:
+    - name: web
+      src: "."
+      dockerfileName: Dockerfile
+      ports:
+        - name: http
+          port: 8000
+      publicPort: http
+      monitoringConfig:
+        portName: http
+
+      # Resource limits matching k8s/deployment.yaml
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+
+      # Replicas per environment
+      environmentConfig:
+        - environment: dev
+          replicas: 1
+          variables:
+            LOG_LEVEL: "INFO"
+            DEBUG: "False"
+            DEFAULT_DATASPACE: "maap/drogon"
+            APP_KEY: "test-app"
+            DEFAULT_INSTANCE: "eqndev"
+            INSTANCE_EQNDEV_HOSTNAME: "equinorswedev.energy.azure.com"
+            INSTANCE_EQNDEV_DATA_PARTITION_ID: "dev"
+            INSTANCE_EQNDEV_AUTHORITY: "osdu"
+            INSTANCE_EQNDEV_SCHEMA_SOURCE: "wks"
+            INSTANCE_EQNDEV_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+            INSTANCE_EQNDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+            INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+            INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
+          monitoring: true
+
+        - environment: prod
+          replicas: 2
+          variables:
+            LOG_LEVEL: "WARNING"
+            DEBUG: "False"
+            DEFAULT_DATASPACE: "maap/drogon"
+            APP_KEY: "ores-prod"
+            DEFAULT_INSTANCE: "eqndev"
+            INSTANCE_EQNDEV_HOSTNAME: "equinorswedev.energy.azure.com"
+            INSTANCE_EQNDEV_DATA_PARTITION_ID: "dev"
+            INSTANCE_EQNDEV_AUTHORITY: "osdu"
+            INSTANCE_EQNDEV_SCHEMA_SOURCE: "wks"
+            INSTANCE_EQNDEV_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+            INSTANCE_EQNDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+            INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+            INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
+          monitoring: true
+          horizontalScaling:
+            minReplicas: 2
+            maxReplicas: 4
+            triggers:
+              - name: cpu
+                cpu:
+                  value: 70
+
+      # Secrets - set in Radix Console (never in git)
+      secrets:
+        - SECRET_KEY
+        - INSTANCE_EQNDEV_TENANT_ID
+        - INSTANCE_EQNDEV_CLIENT_ID
+        - INSTANCE_EQNDEV_SCOPE
+        - INSTANCE_EQNDEV_REFRESH_TOKEN
+        # Uncomment when SMDA integration is needed
+        # - SMDA_CLIENT_ID
+        # - SMDA_SCOPE
+        # - SMDA_API_KEY
+
+      # Health probes matching k8s/deployment.yaml
+      readinessProbe:
+        httpGet:
+          path: /login-page
+          port: 8000
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      livenessProbe:
+        httpGet:
+          path: /login-page
+          port: 8000
+        initialDelaySeconds: 10
+        periodSeconds: 30
+
+  # ── DNS / Custom alias (optional - configure in Radix Console) ─────
+  # dnsAppAlias:
+  #   environment: prod
+  #   component: web
+
+  # ── Private image hubs (not needed - Radix builds from source) ─────
+  # privateImageHubs: {}
