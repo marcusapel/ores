@@ -7,12 +7,14 @@
 - [3) Interpretation Chain — Seed to Surface](#3-interpretation-chain--seed-to-surface)
 - [4) Implemented Record Types](#4-implemented-record-types)
 - [5) Object Naming Conventions (Drogon / Volve)](#5-object-naming-conventions-drogon--volve)
-- [6) GenericBinGrid vs SeismicBinGrid](#6-genericbingrid-vs-seismicbingrid)
-- [7) Grid Strategy: Pattern A vs Pattern B](#7-grid-strategy-pattern-a-vs-pattern-b)
-- [8) Dual-Catalog Pattern](#8-dual-catalog-pattern)
-- [9) Generation Pipeline](#9-generation-pipeline)
-- [10) ORES Web App — Live StructureMap Generation](#10-ores-web-app--live-structuremap-generation)
-- [11) References](#11-references)
+- [6) RESQML ↔ OSDU Metadata Mapping](#6-resqml--osdu-metadata-mapping)
+- [7) RESQML 2.0.1 vs 2.2 — Implications for OSDU](#7-resqml-201-vs-22--implications-for-osdu)
+- [8) GenericBinGrid vs SeismicBinGrid](#8-genericbingrid-vs-seismicbingrid)
+- [9) Grid Strategy: Pattern A vs Pattern B](#9-grid-strategy-pattern-a-vs-pattern-b)
+- [10) Dual-Catalog Pattern](#10-dual-catalog-pattern)
+- [11) Generation Pipeline](#11-generation-pipeline)
+- [12) ORES Web App — Live StructureMap Generation](#12-ores-web-app--live-structuremap-generation)
+- [13) References](#13-references)
 
 ---
 
@@ -266,7 +268,169 @@ The `maap/volve` dataspace contains classic seismic interpretation from the Volv
 
 ---
 
-## 6) GenericBinGrid vs SeismicBinGrid
+## 6) RESQML ↔ OSDU Metadata Mapping
+
+The RDDMS stores RESQML 2.0.1 objects. Our generators extract metadata and map it to OSDU WKS fields. This section documents what is mapped, what is lost, and what is enriched.
+
+### 6.1 Citation Block → OSDU Fields
+
+Every RESQML object has a `Citation` block (`eml20.Citation`):
+
+```json
+"Citation": {
+  "Title": "DL_faultsticks",
+  "Originator": "knutm",
+  "Creation": "2024-11-11T12:08:00.000Z",
+  "Format": "Aspen SKUA V15 Alpha 1 ...",
+  "Editor": "dalsaab",
+  "LastUpdate": "2024-11-27T10:48:41.000Z"
+}
+```
+
+| RESQML Citation field | OSDU WKS field | Status |
+|---|---|---|
+| `Title` | `data.Name` | ✓ Mapped (used in Name construction) |
+| `Originator` | `data.Source` / `ResourceCreator` | ⚠ Partially mapped — we set `Source=maap@equinor.com` (ingestion author), not RESQML originator |
+| `Creation` | `data.ResourceCreationDateTime` | ✗ Not mapped — could carry original creation timestamp |
+| `Format` | `data.ResourceFormatDescription` | ✗ Not mapped — identifies authoring software |
+| `Editor` | — | ✗ Not mapped — last editor identity |
+| `LastUpdate` | `data.ResourceModificationDateTime` | ✗ Not mapped — could carry last-modified |
+
+### 6.2 ExtraMetadata → OSDU ExtensionProperties
+
+RESQML 2.0.1 `ExtraMetadata` is an array of `NameValuePair` — untyped string key/value. Observed in our Drogon dataset:
+
+| ExtraMetadata key | Meaning | OSDU mapping |
+|---|---|---|
+| `pdgm/dx/resqml/creatorGroup` | User/team who created the object | → `Source` or `ExtensionProperties.CreatorGroup` |
+| `pdgm/dx/resqml/project` | Source project UUID | → `ExtensionProperties.ProjectID` |
+| `pdgm/dx/gocad/ScenarioName` | Scenario/variant name | → Interpretation name (enriches semantics) |
+| `pdgm/dx/gocad/ScenarioUid` | Scenario UUID | → Not mapped |
+| `pdgm/dx/gocad/kindType` | Feature class (e.g. `NormalFaultFeatureClass`, `HorizonFeatureClass`) | → Implicit via OSDU schema choice |
+| `pdgm/dx/pdgm/InterpretationColor` | Display colour (RGB) | → Not mapped (visualisation hint) |
+
+### 6.3 RepresentedInterpretation → InterpretationID
+
+The core relationship linking geometry to geologic meaning:
+
+```json
+"RepresentedInterpretation": {
+  "ContentType": "application/x-resqml+xml;version=2.0;type=obj_FaultInterpretation",
+  "Title": "F3",
+  "UUID": "902dad0b-26bf-4316-9153-1c4ea7bcec05"
+}
+```
+
+| RESQML field | OSDU mapping | Notes |
+|---|---|---|
+| `ContentType` | Used for **classification** (fault vs horizon) | Not stored directly |
+| `UUID` | `InterpretationID` (via stable UUID5 remapping) | RESQML UUID → OSDU record ID |
+| `Title` | `InterpretationName` | ✓ Directly mapped |
+| `_data.Domain` | Contributes to `DomainTypeID` | `depth` / `time` / `mixed` |
+| `_data.InterpretedFeature.UUID` | `ancestry.parents[]` (LocalBoundaryFeature) | Feature → Interpretation → Representation |
+
+### 6.4 CRS Resolution → DomainTypeID
+
+RESQML 2.0.1 does not carry an explicit "domain" flag on representations. Domain is determined by the **CRS type** on the geometry:
+
+- `LocalDepth3dCrs` → `DomainTypeID: Depth`
+- `LocalTime3dCrs` → `DomainTypeID: Time`
+
+This requires fetching the geometry node to inspect `NodePatch[0].Geometry.LocalCrs.ContentType`.
+
+### 6.5 What's Not in RESQML 2.0.1 (OSDU must enrich)
+
+| OSDU field | Not available from RESQML 2.0.1 | Source in our pipeline |
+|---|---|---|
+| `ExistenceKind` | No native equivalent | Hardcoded `Prototype` |
+| `Role` (RepresentationRole) | No constrained vocabulary | Derived from classification logic |
+| `Type` (RepresentationType) | Implicit from `$type` | Extracted from `$type` field |
+| `ancestry.parents[]` | Partial — InterpretedFeature gives one level | Constructed from interpretation chain |
+| Grid geometry (Origin, BinWidth, NodeCount) | Exists in Grid2dRep geometry — not in catalog fields | Extracted from RDDMS arrays/metadata |
+| `SpatialArea` (GeoJSON polygon) | Not in RESQML — CRS is projected, not geographic | Would need coordinate transform |
+
+---
+
+## 7) RESQML 2.0.1 vs 2.2 — Implications for OSDU
+
+RESQML 2.2 was officially released in 2023 and is significantly better aligned with OSDU's metadata needs. However, our current RDDMS dataset uses **RESQML 2.0.1** (`SchemaVersion: "2.0"`). This section documents the improvements in 2.2 and what they would enable.
+
+### 7.1 Key Differences Affecting OSDU Mapping
+
+| Feature | RESQML 2.0.1 | RESQML 2.2 | OSDU benefit |
+|---|---|---|---|
+| **Citation** | `eml20.Citation` (Title, Originator, Creation, Format, Editor) | `eml23.Citation` (adds `Description`, structured `Aliases[]`) | Direct mapping to `data.Description`, `NameAliases[]` |
+| **ExtraMetadata** | `NameValuePair[]` (flat strings only) | `ObjectAlias[]` + typed `CustomData` (XML any) | Richer typed metadata; better `ExtensionProperties` mapping |
+| **Activity model** | `obj_Activity` + `obj_ActivityTemplate` (basic) | Enhanced with `DataObjectParameter`, typed inputs/outputs | Direct mapping to OSDU Activity WPC |
+| **PropertyKind** | Local + Standard lookup by name | Formal `PropertyKindDictionary` with URIs | Maps to OSDU `PropertyType` reference-data cleanly |
+| **Domain** | Inferred from CRS type on geometry | Explicit `Domain` enum on representations (`depth` / `time` / `mixed`) | No need to chase CRS → direct `DomainTypeID` mapping |
+| **Interpretation confidence** | Not native | Optional `confidence` on interpretations | Maps to OSDU quality/uncertainty metadata |
+| **Seismic support** | `SeismicLatticeFeature` + `SeismicCoordinates` | `SeismicLatticeFeature` (unchanged) + better `AbstractSeismicSurveyFeature` | Same limitations for OSDU mapping |
+| **EPC packaging** | Required for multi-object exchange | Still supported but RDDMS uses direct REST | No impact — RDDMS abstracts packaging |
+| **CRS** | `LocalDepth3dCrs` / `LocalTime3dCrs` separate types | `LocalEngineering...Crs` with explicit time/depth axis kind | Cleaner CRS → domain resolution |
+| **Timestamps** | Only in Citation (Creation, LastUpdate) | `VersionDate` on DataObject directly | Better version tracking → `ResourceModificationDateTime` |
+
+### 7.2 What RESQML 2.2 Solves for Our Pipeline
+
+**1. Domain classification without CRS chasing**
+
+Currently, our `gen_horizon_controlpoints.py` must:
+```
+NodePatch[0] → Geometry → LocalCrs → ContentType → "LocalTime" or "LocalDepth"
+```
+
+In RESQML 2.2, each `AbstractRepresentation` carries `Domain` directly:
+```json
+"Domain": "depth"    // ← explicit, no CRS resolution needed
+```
+
+**2. Structured activity provenance**
+
+RESQML 2.2 activities have typed parameters that map 1:1 to OSDU Activity fields:
+```
+RESQML 2.2 Activity → inputs[]/outputs[]  →  OSDU Activity → InputItems[]/OutputItems[]
+```
+
+In 2.0.1, the Activity model exists but is rarely populated in practice (our Drogon dataset has zero Activity objects).
+
+**3. PropertyKind registry for reference-data alignment**
+
+RESQML 2.2 uses formal PropertyKind URIs (`urn:resqml:...`) that could be mapped to OSDU `reference-data--PropertyType` IDs systematically. In 2.0.1, PropertyKinds are string names with local registries.
+
+**4. Better metadata for OSDU record quality**
+
+With 2.2's `Description` in Citation and typed `CustomData`, we could populate:
+- `data.Description` directly (instead of synthesizing it)
+- `data.ExtensionProperties` with typed values (not just strings)
+- `data.ResourceCreationDateTime` / `data.ResourceModificationDateTime` from explicit version dates
+
+### 7.3 Current Pipeline Impact (RESQML 2.0.1 Constraints)
+
+Since our RDDMS serves 2.0.1 objects, the pipeline must work around these limitations:
+
+| Limitation | Workaround in our generators |
+|---|---|
+| No `Domain` enum on representations | Chase CRS ContentType → infer depth/time |
+| No `Description` in Citation | Synthesize from "title + UUID + dataspace" |
+| No typed ExtraMetadata | Parse vendor-specific `pdgm/dx/...` keys by convention |
+| No Activity objects in dataset | Skip provenance generation entirely |
+| Originator = app username, not person | Use `Source: maap@equinor.com` for OSDU attribution |
+| No explicit interpretation confidence | Cannot populate quality metadata |
+
+### 7.4 RDDMS API Versioning
+
+The RDDMS REST API path includes the RESQML version in the type identifier:
+
+```
+resqml20.obj_PolylineSetRepresentation   ← RESQML 2.0.1
+resqml22.obj_PolylineSetRepresentation   ← RESQML 2.2 (when supported)
+```
+
+When the RDDMS adds 2.2 support, the pipeline would need to handle both versions — detection via `SchemaVersion` field (`"2.0"` vs `"2.2"`) and adjusted field extraction.
+
+---
+
+## 8) GenericBinGrid vs SeismicBinGrid
 
 M27 introduces `AbstractGenericBinGrid:1.0.0` as a **separate abstract** from `AbstractBinGrid:1.1.0`:
 
@@ -287,7 +451,7 @@ M27 introduces `AbstractGenericBinGrid:1.0.0` as a **separate abstract** from `A
 
 ---
 
-## 7) Grid Strategy: Pattern A vs Pattern B
+## 9) Grid Strategy: Pattern A vs Pattern B
 
 ### Pattern A: Inline Grid
 
@@ -315,7 +479,7 @@ StructureMap
 
 ---
 
-## 8) Dual-Catalog Pattern
+## 10) Dual-Catalog Pattern
 
 Each RDDMS object should exist as **both** a GenericRepresentation (universal catalog) and a domain-specific type:
 
@@ -346,7 +510,7 @@ flowchart LR
 
 ---
 
-## 9) Generation Pipeline
+## 11) Generation Pipeline
 
 ### 9.1 Fault Polylines (`gen_fault_polylines.py`)
 
@@ -394,7 +558,7 @@ gen_*.py  →  manifest_*.json  →  manifest2records_seisint.py  →  records/ 
 
 ---
 
-## 10) ORES Web App — Live StructureMap Generation
+## 12) ORES Web App — Live StructureMap Generation
 
 | Module | Purpose |
 |---|---|
@@ -426,7 +590,7 @@ sequenceDiagram
 
 ---
 
-## 11) References
+## 13) References
 
 ### M27 Schemas
 
