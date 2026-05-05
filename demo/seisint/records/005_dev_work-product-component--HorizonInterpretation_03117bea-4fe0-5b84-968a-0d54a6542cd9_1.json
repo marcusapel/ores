@@ -29,6 +29,7 @@
       "parents": [
         "dev:master-data--LocalBoundaryFeature:1d4abdc7-ce6e-5f8f-9afc-2bacd2205ed7:1"
       ]
-    }
+    },
+    "Source": "maap@equinor.com"
   }
 }

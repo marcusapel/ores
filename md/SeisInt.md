@@ -1,31 +1,31 @@
-# Seismic Interpretation - Data Model & Guide
+# Seismic Interpretation — Data Model & Implementation Guide
 
 ## Table of Contents
 
-- [1) Catalog Record vs Actual Data](#1-catalog-record-vs-actual-data)
+- [1) Overview — What Lives Where](#1-overview--what-lives-where)
 - [2) Schema Inheritance Architecture](#2-schema-inheritance-architecture)
-- [3) Interpretation Chain - Seed to Surface](#3-interpretation-chain--seed-to-surface)
-- [4) Where Are the Z-Values?](#4-where-are-the-z-values)
-- [5) GenericBinGrid vs SeismicBinGrid](#5-genericbingrid-vs-seismicbingrid)
-- [6) StructureMap in RDDMS - RESQML Storage](#6-structuremap-in-rddms--resqml-storage)
+- [3) Interpretation Chain — Seed to Surface](#3-interpretation-chain--seed-to-surface)
+- [4) Implemented Record Types](#4-implemented-record-types)
+- [5) Object Naming Conventions (Drogon / Volve)](#5-object-naming-conventions-drogon--volve)
+- [6) GenericBinGrid vs SeismicBinGrid](#6-genericbingrid-vs-seismicbingrid)
 - [7) Grid Strategy: Pattern A vs Pattern B](#7-grid-strategy-pattern-a-vs-pattern-b)
 - [8) Dual-Catalog Pattern](#8-dual-catalog-pattern)
-- [9) ORES Web App - Live StructureMap Generation](#9-ores-web-app--live-structuremap-generation)
-- [10) Open Questions & Roadmap](#10-open-questions--roadmap)
+- [9) Generation Pipeline](#9-generation-pipeline)
+- [10) ORES Web App — Live StructureMap Generation](#10-ores-web-app--live-structuremap-generation)
 - [11) References](#11-references)
 
 ---
 
-## 1) Catalog Record vs Actual Data
+## 1) Overview — What Lives Where
 
 A structure map (or any interpretation surface) lives in **two places**:
 
 | Layer | What is stored | Where | Access pattern |
 |---|---|---|---|
-| **OSDU Catalog Record** (e.g. StructureMap:1.0.0) | Searchable metadata — name, interpretation link, grid geometry parameters, CRS, spatial area | OSDU Storage + Search index | REST: Search API → Storage API |
-| **Reservoir DDMS (RDDMS)** | Actual surface data — Z-value arrays, full grid geometry, CRS objects | RESQML objects in the Reservoir DDMS | REST: RDDMS API → `Grid2dRepresentation` |
+| **OSDU Catalog Record** | Searchable metadata — name, interpretation link, grid geometry, CRS | OSDU Storage + Search | REST: Search API → Storage API |
+| **Reservoir DDMS (RDDMS)** | Actual data — Z-value arrays, full grid geometry, CRS objects | RESQML objects in RDDMS | REST: RDDMS API |
 
-The OSDU record **never contains the Z-value arrays**. It duplicates only grid geometry parameters (origin, bearing, spacing, node counts) for spatial discovery. The `DDMSDatasets[]` URI on the record points to the RDDMS object where the actual data lives:
+The OSDU record **never contains Z-value arrays**. The `DDMSDatasets[]` URI links to the RDDMS object where actual data lives:
 
 ```mermaid
 flowchart LR
@@ -34,23 +34,18 @@ flowchart LR
     OSDU -- "DDMSDatasets[] URI" --> RDDMS
 ```
 
-There is **no dedicated "StructureMap" type in RESQML** — a `Grid2dRepresentation` with a depth CRS **is** the structure map. The distinction between depth and TWT is made entirely by the CRS (`VerticalAxis.IsTime = false` for depth, `true` for TWT).
+> **Key insight**: `DDMSDatasets[]` (from `AbstractWPCGroupType`) is the **only** link to actual depth/time data. All other relationship fields (`BinGridID`, `InterpretationID`, `SeismicHorizonID`) point to metadata records, not data.
 
-> **Key insight**: The StructureMap record has **no typed relationship field** pointing to the RDDMS depth surface. `BinGridID` → grid geometry (XY only), `SeismicHorizonID` → TWT source, `InterpretationID` → geologic meaning. The **only** link to the actual depth Z-values is `DDMSDatasets[]` — a generic URI array inherited from `AbstractWPCGroupType`.
+### M27 Schemas Used
 
-### M27 New Schemas
-
-| New M27 Schema | What it catalogs |
+| Schema | Catalogs |
 |---|---|
-| **`StructureMap:1.0.0`** | Depth/time gridded surfaces on a GenericBinGrid |
-| **`GenericBinGrid:1.0.0`** | Standalone reusable lattice grid, independent of seismic acquisition |
-| **`HorizonControlPoints:1.0.0`** | Seed picks for horizon interpretation |
-| **`SeismicHorizon:2.1.0`** | Updated: `BinGridID` (renamed), `HorizonControlPointsID` link, structured `Remark[]` |
-
-Key breaking changes from pre-release drafts:
-- **`CrsID` removed** from `AbstractRepresentation` — CRS now lives inside `ABCDBinGridSpatialLocation.AsIngestedCoordinates.CoordinateReferenceSystemID`
-- **`SeismicBinGridID` → `BinGridID`** — unified naming across StructureMap/SeismicHorizon/SeismicFault
-- **`Remarks[]` → `Remark[]`** — from string array to structured `AbstractRemark` objects
+| `StructureMap:1.0.0` | Depth/time gridded surfaces on a GenericBinGrid |
+| `GenericBinGrid:1.0.0` | Standalone reusable lattice grid (non-seismic) |
+| `HorizonControlPoints:1.0.0` | Interpreter seed picks for horizon tracking |
+| `GenericRepresentation:1.2.0` | Universal RDDMS catalog entry (polylines, surfaces) |
+| `SeismicHorizon:2.1.0` | TWT horizon picks on seismic surveys |
+| `HorizonInterpretation:1.2.0` | Geologic meaning of a horizon |
 
 ---
 
@@ -69,9 +64,7 @@ classDiagram
 
     AbstractWorkProductComponent <|-- AbstractRepresentation
     AbstractRepresentation <|-- SeismicHorizon
-    AbstractRepresentation <|-- SeismicFault
     AbstractRepresentation <|-- GenericRepresentation
-    AbstractRepresentation <|-- VelocityModeling
     AbstractRepresentation <|-- HorizonControlPoints
     AbstractRepresentation <|-- StructureMap
     AbstractGenericBinGrid <|-- StructureMap
@@ -85,7 +78,6 @@ classDiagram
     class AbstractWPCGroupType {
         DDMSDatasets[]
         Datasets[]
-        NameAliases[]
     }
     class AbstractInterpretation {
         DomainTypeID
@@ -95,7 +87,8 @@ classDiagram
     class AbstractRepresentation {
         InterpretationID
         InterpretationName
-        IndexableElementCount[]
+        RepresentationRole
+        RepresentationType
     }
     class AbstractGenericBinGrid {
         Origin, Bearing
@@ -109,17 +102,15 @@ classDiagram
     }
 ```
 
-**Key design principles**:
+**Design principles**:
 - **AbstractInterpretation** → geologic meaning (the "what") — no geometry
-- **AbstractRepresentation** → surface/geometry metadata (the "how") — linked via `InterpretationID`
-- **AbstractBinGrid** → seismic acquisition lattice geometry
-- **AbstractGenericBinGrid** → non-seismic lattice geometry (new M27)
-- **StructureMap** has **dual inheritance**: AbstractRepresentation + AbstractGenericBinGrid — can define grid inline or via `BinGridID`
-- `DDMSDatasets[]` (from AbstractWPCGroupType) links to the RDDMS — **no OSDU schema carries actual depth/time values**
+- **AbstractRepresentation** → geometry metadata (the "how") — linked via `InterpretationID`
+- **StructureMap** has **dual inheritance**: AbstractRepresentation + AbstractGenericBinGrid
+- `DDMSDatasets[]` (from AbstractWPCGroupType) links to RDDMS — **no OSDU schema carries actual values**
 
 ---
 
-## 3) Interpretation Chain - Seed to Surface
+## 3) Interpretation Chain — Seed to Surface
 
 ```mermaid
 graph TD
@@ -128,6 +119,7 @@ graph TD
     end
     subgraph Interpretations
         HI[HorizonInterpretation]
+        FI[FaultInterpretation]
     end
     subgraph SeedPicks
         HCP[HorizonControlPoints]
@@ -138,72 +130,143 @@ graph TD
     subgraph DepthSurface
         SM[StructureMap]
     end
+    subgraph FaultCatalog
+        FR[GenericRepresentation<br/>Role=FaultStick]
+    end
     subgraph Grids
-        SBG[SeismicBinGrid]
         GBG[GenericBinGrid]
     end
     subgraph DataStorage
-        DS[DDMSDatasets]
+        DS[RDDMS]
     end
 
     HI -->|FeatureID| BF
+    FI -->|FeatureID| BF
     SH -->|InterpretationID| HI
-    SH -->|HorizonControlPointsID| HCP
-    SH -->|BinGridID| SBG
     SM -->|InterpretationID| HI
     SM -->|SeismicHorizonID| SH
     SM -->|BinGridID| GBG
-    SM -->|BinGridID| SBG
     HCP -->|InterpretationID| HI
+    FR -->|InterpretationID| FI
     SH -.->|DDMSDatasets| DS
     SM -.->|DDMSDatasets| DS
     HCP -.->|DDMSDatasets| DS
+    FR -.->|DDMSDatasets| DS
 ```
 
 **Complete chain** for a single horizon:
 
 ```
-LocalBoundaryFeature  →  HorizonInterpretation  →  HorizonControlPoints  →  SeismicHorizon (TWT)  →  StructureMap (Depth)
+LocalBoundaryFeature  →  HorizonInterpretation  →  HorizonControlPoints (picks)
+                                                →  SeismicHorizon (TWT grid)
+                                                →  StructureMap (Depth grid)
 ```
 
 ---
 
-## 4) Where Are the Z-Values?
+## 4) Implemented Record Types
 
-| Relationship Field | Points To | Carries Z-Values? |
+### 4.1 Fault Polylines — `GenericRepresentation:1.2.0`
+
+Catalogs RDDMS `PolylineSetRepresentation` objects that represent fault stick interpretations.
+
+| Field | Value | Meaning |
 |---|---|---|
-| `InterpretationID` | HorizonInterpretation | No (geologic meaning) |
-| `SeismicHorizonID` | SeismicHorizon | No (TWT provenance) |
-| `BinGridID` | GenericBinGrid / SeismicBinGrid | No (XY geometry only) |
-| Inline grid props | (embedded on record) | No (same XY geometry) |
-| **`DDMSDatasets[]`** | **RDDMS Grid2dRepresentation** | **Yes — only here** |
+| `Role` | `FaultStick` | Manual fault stick picks on seismic sections |
+| `Type` | `PolylineSetRepresentation` | RESQML geometry class |
+| `InterpretationID` | → FaultInterpretation WPC | Which fault this represents |
+| `DDMSDatasets[]` | EML URI to PolylineSetRep | Link to actual geometry in RDDMS |
+| `ancestry.parents[]` | FaultInterpretation + LocalBoundaryFeature | OSDU lineage |
 
-`DDMSDatasets[]` is inherited from `AbstractWPCGroupType`. It contains an EML URI:
+**Classification filter**: Only objects whose `RepresentedInterpretation.ContentType` contains `FaultInterpretation` AND whose name starts with `DL_` or `TL_` (Depth/Time Lines — manual interpretation). Excludes:
+- `GL_*` — algorithmic grid-line extractions from FMU reservoir models
+- `AOI` — area of interest boundary polygons
+- `XYCoords*` — coordinate reference geometry
 
-```
-eml://rddms-1/dataspace('<dataspace>')/resqml20.obj_Grid2dRepresentation('<uuid>')
-```
+**Current inventory (Drogon)**: 24 fault stick records (12 depth + 6 time + 6 truth-case)
 
-```mermaid
-flowchart TD
-    SM["**StructureMap:1.0.0**<br/>(OSDU catalog record)<br/>Name, DomainType, grid geometry<br/>No Z-values"]
-    HI["HorizonInterpretation<br/>geologic meaning"]
-    SH["SeismicHorizon<br/>TWT provenance"]
-    BG["GenericBinGrid<br/>XY geometry only"]
-    RDDMS["**RDDMS Grid2dRep**<br/>Z-value array<br/>Z-array lives here"]
+### 4.2 Horizon Control Points — `HorizonControlPoints:1.0.0`
 
-    SM -- "InterpretationID" --> HI
-    SM -- "SeismicHorizonID" --> SH
-    SM -. "BinGridID" .-> BG
-    SM == "DDMSDatasets[] URI" ==> RDDMS
+Catalogs RDDMS `PointSetRepresentation` objects that represent interpreter seed picks.
 
-    style RDDMS fill:#2d6a2d,color:#fff
-    style SM fill:#1a5276,color:#fff
-```
+| Field | Value | Meaning |
+|---|---|---|
+| `RepresentationRole` | `Pick` | Sparse interpreter seed points |
+| `RepresentationType` | `PointSet` | RESQML geometry class |
+| `DomainTypeID` | `Depth` or `Time` | Determined from RDDMS CRS (LocalDepth3dCrs vs LocalTime3dCrs) |
+| `InterpretationID` | → HorizonInterpretation WPC | Which horizon these picks belong to |
+| `DDMSDatasets[]` | EML URI to PointSetRep | Link to XYZ data in RDDMS |
+
+**Classification filter**: Only objects linked to `HorizonInterpretation` via ContentType. Excludes:
+- `*_extracted` — points extracted from FMU model runs (model outputs, not picks)
+
+**Current inventory (Drogon)**: 20 records across 4 horizons (TopVolantis, BaseVolantis, TopTherys, TopVolon), 16 depth + 4 time
+
+### 4.3 Structure Maps — `StructureMap:1.0.0`
+
+Catalogs RDDMS `Grid2dRepresentation` objects that are depth surfaces (CRS `IsTime=false`).
+
+| Field | Value | Meaning |
+|---|---|---|
+| `InterpretationID` | → HorizonInterpretation WPC | Geologic meaning |
+| `BinGridID` | → GenericBinGrid WPC (Pattern B) | Shared XY lattice |
+| `SeismicHorizonID` | → SeismicHorizon WPC | TWT provenance |
+| `DomainTypeID` | `Depth` | Always depth for StructureMap |
+| Inline grid props | Origin, Bearing, BinWidth, NodeCount | Grid geometry (Pattern A) |
+| `DDMSDatasets[]` | EML URI to Grid2dRep | Link to Z-values |
+
+**Current inventory**: 18 StructureMap records (Drogon + Volve dataspaces)
 
 ---
 
-## 5) GenericBinGrid vs SeismicBinGrid
+## 5) Object Naming Conventions (Drogon / Volve)
+
+### Drogon Dataspace — FMU Workflow Outputs
+
+The `maap/drogon` dataspace contains objects from an FMU (Fast Model Update) uncertainty workflow. Naming follows a `<Domain><Type>_<workflow_step>` convention:
+
+| Prefix | Meaning | Example |
+|---|---|---|
+| `DL_` | **D**epth **L**ines — manual fault stick interpretation | `DL_faultsticks` |
+| `TL_` | **T**ime **L**ines — fault sticks in TWT | `TL_faultsticks` |
+| `DP_` | **D**epth **P**oints — horizon picks | `DP_interp`, `DP_filter_post` |
+| `TP_` | **T**ime **P**oints — horizon picks in TWT | `TP_interp` |
+| `GL_` | **G**rid **L**ines — algorithmically extracted (NOT interpretation) | `GL_faultlines_extract_postprocess` |
+| `DS_` | **D**epth **S**urface — gridded depth map | `DS_extract_postprocess` |
+| `TS_` | **T**ime **S**urface — gridded TWT map | `TS_interp` |
+
+Workflow step suffixes:
+- `_interp` — initial structural interpretation
+- `_filter` / `_filter_post` — after QC / outlier removal
+- `_filter_from_time` — depth-converted from time domain
+- `_filter_post_hum_input` — prepared as input to History Update Model
+- `_gf_hum_extracted` — extracted from global-field HUM run (model output)
+- `_hum_postiterate_extracted` — post-HUM iteration extraction (model output)
+- `_from_truth` — from synthetic truth/reference case
+
+**What's seismic interpretation vs what's not:**
+
+| Category | Prefixes | Cataloged as |
+|---|---|---|
+| Fault interpretation | `DL_`, `TL_` | GenericRepresentation (Role=FaultStick) |
+| Horizon picks | `DP_interp`, `TP_interp`, `DP_filter*`, `TP_filter*` | HorizonControlPoints |
+| Depth surfaces | `DS_*` | StructureMap |
+| **Excluded** — model outputs | `GL_*`, `*_extracted` | Not cataloged |
+| **Excluded** — utility | `AOI`, `XYCoords*` | Not cataloged |
+
+### Volve Dataspace — Real Field Interpretation
+
+The `maap/volve` dataspace contains classic seismic interpretation from the Volve field:
+
+| Object type | Naming | Meaning |
+|---|---|---|
+| Fault polylines | `F1_N`, `F3_W_S`, `F10_E` | Named faults (F1–F11) with compass segments |
+| Horizon surfaces | `Hugin_Fm_Base`, `Top_Draupne`, `Balder_Fm` | Stratigraphic horizon names |
+| Boundary | `AOI` | Study area polygon |
+
+---
+
+## 6) GenericBinGrid vs SeismicBinGrid
 
 M27 introduces `AbstractGenericBinGrid:1.0.0` as a **separate abstract** from `AbstractBinGrid:1.1.0`:
 
@@ -211,106 +274,16 @@ M27 introduces `AbstractGenericBinGrid:1.0.0` as a **separate abstract** from `A
 |---|---|---|
 | Direction | I & J via P6 vector increments | J bearing only (`MapGridBearingOfBinGridJaxis`) |
 | Node counts | InlineMin/Max, CrosslineMin/Max (seismic) | NodeCountOnIAxis / JAxis (generic) |
-| I-axis orientation | Explicit via `P6BinNodeIncrementOnIaxis` | Implicit: perpendicular to J, handedness via `TransformationMethod` |
+| I-axis orientation | Explicit via `P6BinNodeIncrementOnIaxis` | Implicit: perpendicular to J |
 | Additional | — | `ScaleFactor`, `TransformationMethod`, `BinGridName` |
-
-### ABCD Corner Convention
-
-```
-A = (i=0, j=0)       origin
-B = (i=0, j=jMax)    end of J axis from origin
-C = (i=Imax, j=0)    end of I axis from origin
-D = (i=Imax, j=Jmax) far corner
-```
-
-### TransformationMethod — Handedness
-
-| EPSG Code | Name | I-axis relative to J |
-|---|---|---|
-| 9666 | P6 Seismic Bin Grid (right-handed) | J bearing + 90 deg |
-| 1049 | General polynomial (left-handed) | J bearing - 90 deg |
 
 ### Conversion: GenericBinGrid ↔ SeismicBinGrid
 
 | SeismicBinGrid | GenericBinGrid | Conversion |
 |---|---|---|
 | `P6BinGridOriginEasting` | `OriginEasting` | Direct |
-| `P6BinNodeIncrementOnJaxis {X,Y}` | `BinWidthOnJaxis` + `MapGridBearingOfBinGridJaxis` | width = sqrt(X²+Y²), bearing = atan2(X,Y) |
+| `P6BinNodeIncrementOnJaxis {X,Y}` | `BinWidthOnJaxis` + `MapGridBearingOfBinGridJaxis` | width = √(X²+Y²), bearing = atan2(X,Y) |
 | `InlineMax - InlineMin + 1` | `NodeCountOnIAxis` | Direct |
-
----
-
-## 6) StructureMap in RDDMS — RESQML Storage
-
-### 6.1 RESQML Grid Geometry — Two Patterns
-
-#### Pattern A: Inline Lattice → OSDU Inline Grid
-
-RESQML uses `Point3dLatticeArray` with origin and direction vectors. The OSDU StructureMap embeds the same grid geometry as properties (`OriginEasting/Northing`, `BinWidthOnI/Jaxis`, `MapGridBearingOfBinGridJaxis`, `NodeCountOnI/JAxis`).
-
-#### Pattern B: Supporting Representation → OSDU External BinGridID
-
-RESQML uses `SupportingRepresentation` pointing to a shared `Grid2dRepresentation`. The OSDU StructureMap references a `GenericBinGrid:1.0.0` or `SeismicBinGrid:1.3.0` via `BinGridID`.
-
-### 6.2 No RESQML Extension Required
-
-| Requirement | RESQML 2.2 Support |
-|---|---|
-| Regular depth grid with Z values | `Grid2dRepresentation` + depth CRS |
-| Inline grid geometry | `Point3dLatticeArray` |
-| External bin grid reference | `SupportingRepresentation` |
-| Link to interpretation | `RepresentedObject` → HorizonInterpretation |
-| CRS / domain type | `LocalCrs` with vertical axis |
-| OSDU integration metadata | `ExtraMetadata` with `osdu:` prefix |
-
-#### Recommended ExtraMetadata for Round-Tripping
-
-| OSDU Property | ExtraMetadata Key | Purpose |
-|---|---|---|
-| `SeismicHorizonID` | `osdu:SeismicHorizonID` | Provenance (no RESQML equivalent) |
-| `DomainTypeID` | `osdu:DomainTypeID` | Redundant with CRS but enables catalog sync |
-| `TransformationMethod` | `osdu:TransformationMethod` | Inferable from lattice but explicit is safer |
-
-### 6.3 Generation Pipeline
-
-```mermaid
-flowchart TD
-    A["RDDMS: GET Grid2dRepresentations"] --> B{"CRS check:\nIsTime == false?"}
-    B -->|Yes - depth| C["For each depth surface"]
-    B -->|No - TWT| skip[Skip]
-    C --> D["Citation.Title → Name"]
-    D --> E["RepresentedObject → InterpretationID"]
-    E --> F{"Grid pattern?"}
-    F -->|Inline lattice| G["Populate inline grid props"]
-    F -->|External ref| H["Resolve SupportingRep → BinGridID"]
-    G --> I["Find TWT counterpart → SeismicHorizonID"]
-    H --> I
-    I --> J["Build DDMSDatasets[] URI"]
-    J --> K["Emit StructureMap:1.0.0 record"]
-```
-
-### 6.4 End-to-End Retrieval Flow
-
-```mermaid
-sequenceDiagram
-    participant App as Viewer App
-    participant Search as OSDU Search
-    participant Storage as OSDU Storage
-    participant RDDMS as Reservoir DDMS
-
-    App->>Search: Find depth maps for horizon X
-    Search-->>App: StructureMap record ID
-    App->>Storage: GET record by ID
-    Storage-->>App: StructureMap record (Name, grid params, DDMSDatasets[])
-    Note over App: Record has grid geometry<br/>for spatial discovery,<br/>but no Z-values
-    App->>RDDMS: GET Grid2dRepresentation<br/>from DDMSDatasets[] URI
-    RDDMS-->>App: Grid metadata (lattice, CRS, offsets)
-    App->>RDDMS: GET /arrays/{path}
-    RDDMS-->>App: Depth values (float[])
-    Note over App: Can render depth map
-```
-
-> **Note**: The RDDMS abstracts away internal storage — Z-values are served as a flat JSON float array over HTTP, not as HDF5 files.
 
 ---
 
@@ -321,126 +294,135 @@ sequenceDiagram
 ```
 StructureMap
   ├── InterpretationID  → HorizonInterpretation
-  ├── SeismicHorizonID  → SeismicHorizon (TWT)
-  ├── OriginEasting:     <value>
-  ├── BinWidthOnIaxis:   <value>
-  ├── NodeCountOnIAxis:  <value>
+  ├── OriginEasting, BinWidthOnIaxis, NodeCountOnIAxis  (embedded)
   └── DDMSDatasets[]    → eml://...Grid2dRep('{uuid}')   ← Z-values here
 ```
-
-Grid geometry **embedded** on the StructureMap. No separate BinGrid record. RESQML counterpart: `Point3dLatticeArray`.
 
 ### Pattern B: External BinGrid Reference
 
 ```
 StructureMap
   ├── InterpretationID  → HorizonInterpretation
-  ├── SeismicHorizonID  → SeismicHorizon (TWT)
-  ├── BinGridID         → GenericBinGrid:1.0.0
+  ├── BinGridID         → GenericBinGrid:1.0.0  (shared grid)
   └── DDMSDatasets[]    → eml://...Grid2dRep('{uuid}')   ← Z-values here
-
-GenericBinGrid (shared, referenced by multiple StructureMaps)
-  ├── OriginEasting:     <value>
-  ├── BinWidthOnIaxis:   <value>
-  └── NodeCountOnIAxis:  <value>
 ```
-
-### Comparison
 
 | Criterion | Pattern A (inline) | Pattern B (external BinGridID) |
 |---|---|---|
-| **Self-contained** | Yes — one record has everything | No — requires BinGrid record |
-| **Grid reuse** | No — grid duplicated on each record | Yes — one grid, many surfaces |
-| **Record count** | Fewer | More (+1 GenericBinGrid per shared grid) |
-| **Search by grid** | Must compare field-by-field | `BinGridID` gives exact identity |
-| **Consistency** | Risk of drift if grid copied | Single source of truth |
-| **RESQML mapping** | `Point3dLatticeArray` — direct | `SupportingRepresentation` — UUID resolution |
-| **When to use** | Unique grid or one-off export | Multiple surfaces share a grid |
-
-**Recommendation**: Use Pattern B for multi-horizon projects sharing a grid. Use Pattern A for one-off surfaces with unique grids.
+| Self-contained | Yes | No — requires BinGrid record |
+| Grid reuse | No — duplicated | Yes — one grid, many surfaces |
+| When to use | Unique grid, one-off export | Multiple surfaces share a grid |
 
 ---
 
 ## 8) Dual-Catalog Pattern
 
-Each RDDMS Grid2dRepresentation should also exist as a **GenericRepresentation:1.2.0** WPC — the universal RDDMS catalog layer.
+Each RDDMS object should exist as **both** a GenericRepresentation (universal catalog) and a domain-specific type:
 
 ```mermaid
 flowchart LR
     subgraph RDDMS["RDDMS (actual data)"]
-        G2D["Grid2dRepresentation<br/>Z-values, CRS, geometry"]
+        G2D["Grid2dRepresentation"]
+        PLS["PolylineSetRepresentation"]
+        PTS["PointSetRepresentation"]
     end
     subgraph OSDU["OSDU Catalog"]
-        GR["GenericRepresentation:1.2.0<br/>Role: Map, Type: Grid2dRep<br/>SpatialArea, InterpretationID"]
-        SM["StructureMap:1.0.0<br/>BinGridID, SeismicHorizonID<br/>DomainTypeID, grid geometry"]
+        GR["GenericRepresentation:1.2.0<br/>(universal catalog layer)"]
+        SM["StructureMap:1.0.0"]
+        HCP["HorizonControlPoints:1.0.0"]
     end
     GR -->|DDMSDatasets| G2D
+    GR -->|DDMSDatasets| PLS
     SM -->|DDMSDatasets| G2D
+    HCP -->|DDMSDatasets| PTS
 ```
 
-| Catalog Layer | Schema | Purpose |
+| Layer | Schema | Purpose |
 |---|---|---|
-| **Universal** | `GenericRepresentation:1.2.0` | "This RDDMS object exists" — discoverable by name, spatial area |
-| **Specialised** | `StructureMap:1.0.0` | "This is a depth map on a known grid" — searchable by grid, domain, horizon |
-| **Specialised** | `SeismicHorizon:2.1.0` | "This is a TWT pick" — searchable by seismic survey |
-
-Two records are **complementary, not redundant**: GenericRepresentation is the baseline (automatic); StructureMap/SeismicHorizon adds domain-specific search precision.
+| **Universal** | `GenericRepresentation:1.2.0` | "This RDDMS object exists" — discoverable by name |
+| **Specialised** | `StructureMap:1.0.0` | "This is a depth map" — searchable by grid, domain |
+| **Specialised** | `HorizonControlPoints:1.0.0` | "These are horizon picks" — searchable by horizon, domain |
+| **Specialised** | `SeismicHorizon:2.1.0` | "This is a TWT pick" — searchable by survey |
 
 ---
 
-## 9) ORES Web App — Live StructureMap Generation
+## 9) Generation Pipeline
 
-The ORES web app provides live StructureMap:1.0.0 generation from RDDMS content:
+### 9.1 Fault Polylines (`gen_fault_polylines.py`)
+
+```mermaid
+flowchart TD
+    A["RDDMS: list PolylineSetRepresentations"] --> B["Filter by name prefix<br/>(exclude GL_*, AOI, XYCoords)"]
+    B --> C["Fetch each object"]
+    C --> D{"ContentType contains<br/>FaultInterpretation?"}
+    D -->|Yes| E["GenericRep Role=FaultStick<br/>+ InterpretationID → FaultInterp"]
+    D -->|No| skip["Skip (non-interpretation polylines)"]
+    E --> F["Emit manifest_fault_polylines.json"]
+```
+
+### 9.2 Horizon Control Points (`gen_horizon_controlpoints.py`)
+
+```mermaid
+flowchart TD
+    A["RDDMS: list PointSetRepresentations"] --> B["Filter by name suffix<br/>(exclude *_extracted)"]
+    B --> C["Fetch each object"]
+    C --> D{"ContentType contains<br/>HorizonInterpretation?"}
+    D -->|Yes| E["Resolve CRS → Depth/Time domain"]
+    D -->|No| skip["Skip (non-horizon points)"]
+    E --> F["HorizonControlPoints:1.0.0<br/>+ InterpretationID → HorizonInterp"]
+    F --> G["Emit manifest_horizon_controlpoints.json"]
+```
+
+### 9.3 Structure Maps (`app/structuremap.py`)
+
+```mermaid
+flowchart TD
+    A["RDDMS: list Grid2dRepresentations"] --> B{"CRS: IsTime == false?"}
+    B -->|Yes - depth| C["Extract grid geometry"]
+    B -->|No - TWT| skip["Skip (or → SeismicHorizon)"]
+    C --> D["RepresentedObject → InterpretationID"]
+    D --> E["Build DDMSDatasets[] URI"]
+    E --> F["Emit StructureMap:1.0.0 record"]
+```
+
+### 9.4 Ingestion Flow
+
+```
+gen_*.py  →  manifest_*.json  →  manifest2records_seisint.py  →  records/  →  ingest_records_seisint.py --batch
+                                  (split into individual files)                  (PUT /api/storage/v2/records)
+```
+
+---
+
+## 10) ORES Web App — Live StructureMap Generation
 
 | Module | Purpose |
 |---|---|
-| `app/structuremap.py` | Conversion logic: discover Grid2d surfaces, classify depth vs time, generate records |
-| `app/keys_router.py` | FastAPI endpoints exposing conversion over HTTP |
+| `app/structuremap.py` | Discover Grid2d surfaces, classify depth vs time, generate records |
+| `app/keys_router.py` | FastAPI endpoints for interactive StructureMap generation |
 
 | Endpoint | Description |
 |---|---|
 | `GET /keys/structuremaps/surfaces.json?ds=<dataspace>` | List & classify all Grid2dRepresentations |
-| `GET /keys/structuremaps.json?ds=<dataspace>&prefix=<partition>` | Generate StructureMap records for all depth surfaces |
-| `POST /dataspaces/manifest/structuremaps` | Build full M27 manifest from selected surfaces |
+| `GET /keys/structuremaps.json?ds=<dataspace>&prefix=<partition>` | Generate StructureMap records |
+| `POST /dataspaces/manifest/structuremaps` | Build full M27 manifest from selection |
+
+### End-to-End Retrieval
 
 ```mermaid
-flowchart LR
-    subgraph RDDMS["RDDMS REST API"]
-        L["list Grid2dReps"]
-        F["fetch geometry + CRS"]
-    end
-    subgraph ORES["ORES structuremap module"]
-        D["discover, classify by CRS"]
-        S["surface_to_structuremap"]
-    end
-    subgraph Catalog["OSDU Catalog"]
-        I["Ingest"]
-    end
-    L --> D
-    F --> S
-    D --> S
-    S --> I
+sequenceDiagram
+    participant App as Viewer App
+    participant Search as OSDU Search
+    participant Storage as OSDU Storage
+    participant RDDMS as Reservoir DDMS
+
+    App->>Search: Find depth maps for horizon X
+    Search-->>App: StructureMap record IDs
+    App->>Storage: GET record by ID
+    Storage-->>App: StructureMap (Name, grid params, DDMSDatasets[])
+    App->>RDDMS: GET Grid2dRepresentation (from DDMSDatasets[] URI)
+    RDDMS-->>App: Grid metadata + Z-value array
 ```
-
----
-
-## 10) Open Questions & Roadmap
-
-> See [SeisTodo.md](SeisTodo.md) for detailed follow-up work derived from the Oslo'26 DD Workshop.
-
-| Question | Status | Source |
-|---|---|---|
-| Should StructureMap carry `Interpreter` / `Remark[]`? | Open — uses inherited `AuthorIDs[]` | Pre-workshop |
-| `VelocityModelID` not on any M27 schema | Open — use `ExtensionProperties` | Pre-workshop |
-| SeismicSurfaceGeneration Activity Template (~85% complete) | In progress | Oslo'26 Slide 13 |
-| MVP2: horizons + faults + activities | **Partial** — fault catalog + HCP generator done; Activity records pending | Oslo'26 Charter |
-| **Fault polylines via GenericRepresentation** | **Done** — `gen_fault_polylines.py` emits GenericRep with Role=FaultStick (interim per Oslo'26 Slide 51). Tested: 24 faults (12 unique FaultInterpretations) from 44 polylines in maap/drogon | Oslo'26 Slides 30-31, 51 |
-| **HorizonControlPoints from PointSetRepresentation** | **Done** — `gen_horizon_controlpoints.py` emits HorizonControlPoints:1.0.0. Tested: 28 horizon picks (6 unique HorizonInterpretations, 24 depth + 4 time) from 48 PointSets | M27 schema |
-| **AbstractBinGrid longer-term deprecation** | Planned — GenericBinGrid is interim; AbstractBinGrid to be fully replaced | Oslo'26 Slide 15-16 |
-| **SeismicLatticeFeature → OSDU mapping ambiguity** | No agreed strategy — SeismicBinGrid? Seismic3DInterpretationSet? | Oslo'26 Slides 32-33, 40 |
-| **Master-data cannot hold DDMSDatasets[]** | Structural gap — Seismic3DInterpretationSet has no RDDMS link | Oslo'26 Slide 50 |
-| **Cross-domain provenance (Seismic → Earth Model)** | Proposals exist; needs formal schema link | Oslo'26 Slides 42, 44-45 |
-| **Catalog WPC pattern for polylines outside RDDMS** | No approved pattern yet | Oslo'26 Slide 50 |
 
 ---
 
@@ -450,27 +432,19 @@ flowchart LR
 
 - [StructureMap:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/StructureMap.1.0.0.md)
 - [GenericBinGrid:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/GenericBinGrid.1.0.0.md)
-- [AbstractGenericBinGrid:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/abstract/AbstractGenericBinGrid.1.0.0.md)
 - [HorizonControlPoints:1.0.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/HorizonControlPoints.1.0.0.md)
 - [SeismicHorizon:2.1.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/SeismicHorizon.2.1.0.md)
 
 ### Existing Schemas
 
 - [HorizonInterpretation:1.2.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/HorizonInterpretation.1.2.0.md)
-- [SeismicBinGrid:1.3.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/SeismicBinGrid.1.3.0.md)
 - [GenericRepresentation:1.2.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/GenericRepresentation.1.2.0.md)
-
-### OSDU Community
-
-- [Issue #31 - Support Depth Structure Map](https://gitlab.opengroup.org/osdu/subcommittees/data-def/projects/seismic/docs/-/issues/31)
-- [Issue #863 - SeismicSurfaceGeneration Activity](https://gitlab.opengroup.org/osdu/data/data-definitions/-/issues/863)
+- [SeismicBinGrid:1.3.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/SeismicBinGrid.1.3.0.md)
 
 ### ORES Workspace
 
-- [CrsGuide.md](CrsGuide.md) — CRS mapping guide
-- [StratColumn.md](StratColumn.md) — Stratigraphic column mapping
-- [SeisTodo.md](SeisTodo.md) — Follow-up work from Oslo'26 DD Workshop
-- [`demo/seisint/`](../demo/seisint/) — Generator scripts and schemas
-- [`demo/seisint/gen_fault_polylines.py`](../demo/seisint/gen_fault_polylines.py) — Fault PolylineSet → GenericRepresentation catalog
+- [SeisTodo.md](SeisTodo.md) — Open questions & follow-up work (Oslo'26 DD Workshop)
+- [`demo/seisint/gen_fault_polylines.py`](../demo/seisint/gen_fault_polylines.py) — Fault PolylineSet → GenericRepresentation
 - [`demo/seisint/gen_horizon_controlpoints.py`](../demo/seisint/gen_horizon_controlpoints.py) — PointSet → HorizonControlPoints:1.0.0
-- [`demo/seisint/build_rddms_catalog.py`](../demo/seisint/build_rddms_catalog.py) — Dynamic multi-type RDDMS discovery + manifests/build
+- [`demo/seisint/build_rddms_catalog.py`](../demo/seisint/build_rddms_catalog.py) — Multi-type RDDMS discovery
+- [`app/structuremap.py`](../app/structuremap.py) — Live StructureMap generation
