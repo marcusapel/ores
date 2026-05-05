@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 *.pyd
@@ -18,3 +19,5 @@ k8s/secret-backup/
 # ── Project-specific ignores ──
 demo/eqn/
 tmp/
+*.pptx
+todo.txt
