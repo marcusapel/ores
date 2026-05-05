@@ -279,22 +279,22 @@ Every RESQML object has a `Citation` block (`eml20.Citation`):
 ```json
 "Citation": {
   "Title": "DL_faultsticks",
-  "Originator": "knutm",
-  "Creation": "2024-11-11T12:08:00.000Z",
-  "Format": "Aspen SKUA V15 Alpha 1 ...",
-  "Editor": "dalsaab",
-  "LastUpdate": "2024-11-27T10:48:41.000Z"
+  "Originator": "maap",
+  "Creation": "2025-11-11T12:08:00.000Z",
+  "Format": "RMS V15",
+  "Editor": "maap",
+  "LastUpdate": "2025-11-27T10:48:41.000Z"
 }
 ```
 
 | RESQML Citation field | OSDU WKS field | Status |
 |---|---|---|
 | `Title` | `data.Name` | ✓ Mapped (used in Name construction) |
-| `Originator` | `data.Source` / `ResourceCreator` | ⚠ Partially mapped - we set `Source=maap@equinor.com` (ingestion author), not RESQML originator |
-| `Creation` | `data.ResourceCreationDateTime` | ✗ Not mapped - could carry original creation timestamp |
-| `Format` | `data.ResourceFormatDescription` | ✗ Not mapped - identifies authoring software |
+| `Originator` | `data.Source` / `ResourceCreator` | Partially mapped  - `Source=maap@equinor.com` |
+| `Creation` | `data.ResourceCreationDateTime` | Not mapped - could carry original creation timestamp |
+| `Format` | `data.ResourceFormatDescription` | Not mapped - identifies authoring software |
 | `Editor` | - | ✗ Not mapped - last editor identity |
-| `LastUpdate` | `data.ResourceModificationDateTime` | ✗ Not mapped - could carry last-modified |
+| `LastUpdate` | `data.ResourceModificationDateTime` | Not mapped - could carry last-modified |
 
 ### 6.2 ExtraMetadata → OSDU ExtensionProperties
 
@@ -302,12 +302,12 @@ RESQML 2.0.1 `ExtraMetadata` is an array of `NameValuePair` - untyped string key
 
 | ExtraMetadata key | Meaning | OSDU mapping |
 |---|---|---|
-| `pdgm/dx/resqml/creatorGroup` | User/team who created the object | → `Source` or `ExtensionProperties.CreatorGroup` |
-| `pdgm/dx/resqml/project` | Source project UUID | → `ExtensionProperties.ProjectID` |
-| `pdgm/dx/gocad/ScenarioName` | Scenario/variant name | → Interpretation name (enriches semantics) |
-| `pdgm/dx/gocad/ScenarioUid` | Scenario UUID | → Not mapped |
-| `pdgm/dx/gocad/kindType` | Feature class (e.g. `NormalFaultFeatureClass`, `HorizonFeatureClass`) | → Implicit via OSDU schema choice |
-| `pdgm/dx/pdgm/InterpretationColor` | Display colour (RGB) | → Not mapped (visualisation hint) |
+| `creatorGroup` | User/team who created the object | → `Source` or `ExtensionProperties.CreatorGroup` |
+| `project` | Source project UUID | → `ExtensionProperties.ProjectID` |
+| `ScenarioName` | Scenario/variant name | → Interpretation name (enriches semantics) |
+| `ScenarioUid` | Scenario UUID | → Not mapped |
+| `kindType` | Feature class (e.g. `NormalFaultFeatureClass`, `HorizonFeatureClass`) | → Implicit via OSDU schema choice |
+| `InterpretationColor` | Display colour (RGB) | → Not mapped (visualisation hint) |
 
 ### 6.3 RepresentedInterpretation → InterpretationID
 
