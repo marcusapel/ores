@@ -4,8 +4,8 @@
 >
 > | Tool | Location | Purpose |
 > |------|----------|---------|
-> | **Strat Column Viewer** | `app/templates/strat.html` | Interactive browser UI — search, render, inspect & push columns to RDDMS |
-> | **Strat Column Converter** | `demo/strat/stratcolumnhandler.py` | CLI — round-trip SMDA ↔ RESQML ↔ OSDU bundles |
+> | **Strat Column Viewer** | `app/templates/strat.html` | Interactive browser UI - search, render, inspect & push columns to RDDMS |
+> | **Strat Column Converter** | `demo/strat/stratcolumnhandler.py` | CLI - round-trip SMDA ↔ RESQML ↔ OSDU bundles |
 > | **Build Pipeline** | `demo/strat/genrec/` | Generate & deploy ICS chrono manifests end-to-end |
 
 ---
@@ -17,8 +17,8 @@
 3. [Chronostratigraphy vs Lithostratigraphy](#3-chronostratigraphy-vs-lithostratigraphy)
 4. [Hierarchical Composition & Age](#4-hierarchical-composition--age)
 5. [Source-System Mapping (SMDA / OW → OSDU)](#5-source-system-mapping)
-6. [Tool A — Strat Column Viewer](#6-tool-a--strat-column-viewer)
-7. [Tool B — Strat Column Converter (CLI)](#7-tool-b--strat-column-converter-cli)
+6. [Tool A - Strat Column Viewer](#6-tool-a--strat-column-viewer)
+7. [Tool B - Strat Column Converter (CLI)](#7-tool-b--strat-column-converter-cli)
 8. [Reproducible Build Workflow](#8-reproducible-build-workflow)
 9. [Gap-Fill Algorithm](#9-gap-fill-algorithm)
 10. [RDDMS RESQML Ingest](#10-rddms-resqml-ingest)
@@ -32,8 +32,8 @@
 
 | Entity (OSDU kind) | Version | Semantic role |
 |---------------------|---------|---------------|
-| `work-product-component--StratigraphicColumn` | 1.2.0 | The column itself — ordered list of Rank references |
-| `work-product-component--StratigraphicColumnRankInterpretation` | 1.3.0 | One rank level (e.g. "System", "Group") — owns **either** units **or** chrono refs |
+| `work-product-component--StratigraphicColumn` | 1.2.0 | The column itself - ordered list of Rank references |
+| `work-product-component--StratigraphicColumnRankInterpretation` | 1.3.0 | One rank level (e.g. "System", "Group") - owns **either** units **or** chrono refs |
 | `work-product-component--StratigraphicUnitInterpretation` | 1.3.0 | A rock-body **interval** with age range, lithology, colour, optional horizon boundaries |
 | `work-product-component--HorizonInterpretation` | 1.2.0 | A **boundary surface** between units (conformability, sequence-strat surface type) |
 | `reference-data--ChronoStratigraphy` | 1.0.0 / 1.1.0 | ICS time-scale entry: Code, AgeBegin (Ma), AgeEnd (Ma), Colour, hierarchy via Code path |
@@ -87,7 +87,7 @@ erDiagram
 
 ### 1.3 Rank XOR Constraint
 
-> **CRITICAL**: The Rank schema enforces a mutual exclusion —
+> **CRITICAL**: The Rank schema enforces a mutual exclusion -
 > *"Only one of `ChronoStratigraphySet` or `StratigraphicUnitInterpretationSet` must be populated, never both."*
 
 A single Rank is either **chrono** (pointing to `reference-data--ChronoStratigraphy` SRNs) or **litho/bio** (pointing to `StratigraphicUnitInterpretation` WPC records). A column can contain both kinds of Ranks.
@@ -96,7 +96,7 @@ A single Rank is either **chrono** (pointing to `reference-data--ChronoStratigra
 
 ## 2) Units vs Horizons
 
-Units and Horizons are **complementary** — they represent the same stratigraphy from two viewpoints:
+Units and Horizons are **complementary** - they represent the same stratigraphy from two viewpoints:
 
 | Aspect | StratigraphicUnitInterpretation | HorizonInterpretation |
 |--------|--------------------------------|----------------------|
@@ -104,7 +104,7 @@ Units and Horizons are **complementary** — they represent the same stratigraph
 | **Time** | Age range: `OlderPossibleAge` → `YoungerPossibleAge` | Single age point |
 | **Feature reference** | `FeatureID` → `RockVolumeFeature` | `FeatureID` → `BoundaryFeature` |
 | **Properties** | Thickness, lithology, depositional env | Conformability (above/below), seq-strat surface type |
-| **Rank relationship** | Listed in `StratigraphicUnitInterpretationSet[]` on the Rank | **Not listed on the Rank** — linked FROM Units via `HorizonTopID` / `BaseID` |
+| **Rank relationship** | Listed in `StratigraphicUnitInterpretationSet[]` on the Rank | **Not listed on the Rank** - linked FROM Units via `HorizonTopID` / `BaseID` |
 | **RESQML type** | `resqml20.obj_StratigraphicUnitInterpretation` | `resqml20.obj_HorizonInterpretation` |
 
 > **Key insight**: the Rank schema has **no** `HorizonInterpretationSet`. Horizons are optional denormalized boundary references attached to individual Units.
@@ -119,7 +119,7 @@ Units and Horizons are **complementary** — they represent the same stratigraph
 | **Rank hierarchy** | Eonothem → Erathem → System → Series → Stage → Sub-Stage | Supergroup → Group → Formation → Member → Bed |
 | **OSDU rank content** | `ChronoStratigraphySet[]` → `reference-data` SRNs | `StratigraphicUnitInterpretationSet[]` → WPC records |
 | **Age source** | `data.AgeBegin` / `data.AgeEnd` (Ma) on chrono ref-data | `data.OlderPossibleAge` / `data.YoungerPossibleAge` (Ma) on Unit WPC |
-| **Hierarchy encoded in** | `Code` path (e.g. `Ph.Mz.K.UK.Ma`) — depth = rank level | Parent/child naming or `strat_unit_level` |
+| **Hierarchy encoded in** | `Code` path (e.g. `Ph.Mz.K.UK.Ma`) - depth = rank level | Parent/child naming or `strat_unit_level` |
 | **Colour** | Official ICS `Colour` hex on chrono record | Custom `color_html` on unit |
 | **Scope** | Global reference scheme (ICS) | Local to a field / basin |
 
@@ -141,8 +141,8 @@ The **viewer** tries multiple field paths in priority order:
 | 1 | `data.AgeBegin` / `data.AgeEnd` | `data.OlderPossibleAge` / `data.YoungerPossibleAge` |
 | 2 | `data.TopMa` / `data.BaseMa` | `data.TimeRange.TopAgeMa` / `data.TimeRange.BaseAgeMa` |
 | 3 | `data.AgeBeginMa` / `data.AgeEndMa` | `data.TopMa` / `data.BaseMa` |
-| 4 | — | `data.VendorMetadata.Raw.TopAgeMa` / `.BaseAgeMa` |
-| 5 | — | `data.VendorMetadata.Raw.top_age` / `.base_age` |
+| 4 | - | `data.VendorMetadata.Raw.TopAgeMa` / `.BaseAgeMa` |
+| 5 | - | `data.VendorMetadata.Raw.top_age` / `.base_age` |
 
 ### 3.2 Colour Resolution
 
@@ -216,7 +216,7 @@ All source fields from SMDA / OW are preserved in `data.VendorMetadata.Raw`, ens
 
 ---
 
-## 6) Tool A — Strat Column Viewer
+## 6) Tool A - Strat Column Viewer
 
 **Location**: `app/templates/strat.html` (backend: `app/strat.py`)
 
@@ -261,18 +261,18 @@ The viewer renders a **hierarchy-based table** where each stratigraphic rank bec
 
 ### 6.3 Features
 
-- **Hierarchy-based rendering**: rows defined by leaf units — works for both chrono and litho columns
+- **Hierarchy-based rendering**: rows defined by leaf units - works for both chrono and litho columns
 - **Boundary annotations**: age (Ma) and/or horizon names shown at cell edges
 - **Synthetic horizon labels**: generates "Top X" / "Base X" when real HorizonInterpretation records are absent
 - **Gap-fill**: backend inserts synthetic placeholder units for missing intervals (see §9)
 - **RDDMS push**: push loaded column to Reservoir DDMS as RESQML 2.0.1
-- **Rank toggle**: legend items are clickable — hide/show any rank
+- **Rank toggle**: legend items are clickable - hide/show any rank
 - **Trailing-colon resilience**: handles OSDU references with/without trailing `:`
 - **Missing-rank diagnostics**: 404 rank records reported in `missingRanks` array
 
 ---
 
-## 7) Tool B — Strat Column Converter (CLI)
+## 7) Tool B - Strat Column Converter (CLI)
 
 **Location**: `demo/strat/stratcolumnhandler.py`
 
@@ -348,7 +348,7 @@ Source chrono data
 | 8 | `8deploy_stratcolumn.py` | Deploy strat column to OSDU |
 | 9 | `9deploy_chronostratics.py` | Deploy chrono records to OSDU |
 | 10 | `10genhorizons.py` | Generate horizons from chrono ages |
-| — | `_consistency_check.py` | Cross-manifest validation |
+| - | `_consistency_check.py` | Cross-manifest validation |
 
 ### 8.3 Adapting for a Different Column
 
@@ -375,7 +375,7 @@ When rendering hierarchical columns, **white/undefined cells** appear where a pa
 | **Age gaps between siblings** | child1.baseMa != child2.topMa (gap > 0.5 Ma) | White row segment |
 | **Orphan nodes** | Deep-rank nodes with no parent at coarser ranks | Isolated cells |
 
-### 9.3 Solution — Backend Synthetic Gap-Fill
+### 9.3 Solution - Backend Synthetic Gap-Fill
 
 Implemented in `app/strat.py`. For each consecutive pair of ranks:
 
@@ -441,9 +441,9 @@ StratigraphicColumn          →  resqml20.obj_StratigraphicColumn
 
 | File | Purpose |
 |------|---------|
-| `app/strat.py` | FastAPI backend — search, batch-fetch, gap-fill, RESQML conversion, RDDMS ingest |
-| `app/templates/strat.html` | Frontend viewer — hierarchy rendering, RDDMS push UI |
-| `demo/strat/stratcolumnhandler.py` | CLI converter — SMDA ↔ RESQML ↔ OSDU round-trip |
+| `app/strat.py` | FastAPI backend - search, batch-fetch, gap-fill, RESQML conversion, RDDMS ingest |
+| `app/templates/strat.html` | Frontend viewer - hierarchy rendering, RDDMS push UI |
+| `demo/strat/stratcolumnhandler.py` | CLI converter - SMDA ↔ RESQML ↔ OSDU round-trip |
 | `demo/strat/genrec/` | Build pipeline scripts (generate, split, deploy) |
 
 ### 11.3 Energistics RESQML

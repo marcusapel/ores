@@ -1,10 +1,10 @@
-# Seismic Interpretation — Follow-Up Work & Schema Challenges
+# Seismic Interpretation - Follow-Up Work & Schema Challenges
 
 This document captures **gaps, divergence points, and improvement opportunities** for seismic interpretation schemas, RESQML ↔ OSDU mapping, and the ORES demo pipeline.
 
 ---
 
-## 1. Context — What the Workshop Confirmed
+## 1. Context - What the Workshop Confirmed
 
 ORES demo (StructureMap + GenericBinGrid + SeismicHorizon + dual-catalog pattern) aligns well with the **MVP1 scope**: end-to-end depth structure map exchange. The interoperability group validated:
 
@@ -30,16 +30,16 @@ ORES demo (StructureMap + GenericBinGrid + SeismicHorizon + dual-catalog pattern
 
 **Longer-term target**: Deprecate `AbstractBinGrid` entirely. Migrate `SeismicBinGrid` to inherit from `AbstractGenericBinGrid` (adding only seismic-specific attributes like `BinGridTypeID` and trace-data references). Delete `AbstractBinGrid`.
 
-**Impact on ORES demo**: Our demo already uses GenericBinGrid (`make_generic_bin_grid()` + `make_generic_bin_grid_therys()` in gen_volantis_interp.py, producing records 007 and 008). No immediate action needed, but we should track when SeismicBinGrid is migrated — our conversion table (§5 in SeisInt.md) will need updating.
+**Impact on ORES demo**: Our demo already uses GenericBinGrid (`make_generic_bin_grid()` + `make_generic_bin_grid_therys()` in gen_volantis_interp.py, producing records 007 and 008). No immediate action needed, but we should track when SeismicBinGrid is migrated - our conversion table (§5 in SeisInt.md) will need updating.
 
 ---
 
-### 2.2 Fault Representation — Conflicting Mapping Guidance
+### 2.2 Fault Representation - Conflicting Mapping Guidance
 
 | RESQML entity | OSDU WKS option A | OSDU WKS option B | When to use which |
 |---|---|---|---|
 | `PolylineSetRepresentation` (fault sticks) | `SeismicFault` | `GenericRepresentation` | **Use SeismicFault** when tied to `FaultInterpretation` on a seismic support |
-| `PolylineSetRepresentation` (non-fault lines: contours, depositional) | — | `GenericRepresentation` with constrained `RepresentationRole` / `RepresentationType` | Default for non-fault polylines |
+| `PolylineSetRepresentation` (non-fault lines: contours, depositional) | - | `GenericRepresentation` with constrained `RepresentationRole` / `RepresentationType` | Default for non-fault polylines |
 | `TriangulatedSetRepresentation` (fault planes) | `SeismicFault`? | `GenericRepresentation`? | **No approved pattern yet** |
 
 **Interim decision (Oslo'26 Slide 51)**:
@@ -47,22 +47,22 @@ ORES demo (StructureMap + GenericBinGrid + SeismicHorizon + dual-catalog pattern
 - Non-fault polylines → `GenericRepresentation` with constrained role/type
 - Label as time-boxed & non-normative pending formal workshop decision
 
-**What's missing for ORES demo** (verified — zero fault code in repo):
-- [ ] `SeismicFault` WPC generator (analogous to our StructureMap generator) — *no schema, no generator, no records*
-- [ ] Fault polyline storage: catalog WPC only vs dual-catalog (WPC + RDDMS) — *`build_rddms_catalog.py` only handles Grid2d*
-- [ ] `FaultInterpretation` → `LocalBoundaryFeature (TectonicBoundaryFeature)` chain — *AbstractRepresentation schema already allows FaultInterpretation in InterpretationID pattern, so schema support exists*
-- [ ] Role/type constrained `GenericRepresentation` for non-fault polylines — *our GenericRepresentation records use Role=Map, Type=Grid2dRepresentation only*
+**What's missing for ORES demo** (verified - zero fault code in repo):
+- [ ] `SeismicFault` WPC generator (analogous to our StructureMap generator) - *no schema, no generator, no records*
+- [ ] Fault polyline storage: catalog WPC only vs dual-catalog (WPC + RDDMS) - *`build_rddms_catalog.py` only handles Grid2d*
+- [ ] `FaultInterpretation` → `LocalBoundaryFeature (TectonicBoundaryFeature)` chain - *AbstractRepresentation schema already allows FaultInterpretation in InterpretationID pattern, so schema support exists*
+- [ ] Role/type constrained `GenericRepresentation` for non-fault polylines - *our GenericRepresentation records use Role=Map, Type=Grid2dRepresentation only*
 
 ---
 
-### 2.3 SeismicLatticeFeature — No Agreed OSDU Mapping
+### 2.3 SeismicLatticeFeature - No Agreed OSDU Mapping
 
 RESQML's `SeismicLatticeFeature` represents the seismic acquisition lattice as a technical feature. Multiple OSDU entities could map to it:
 
 | Candidate | Pros | Cons |
 |---|---|---|
-| `SeismicBinGrid` (WPC) | Has geometry attributes; used by SeismicHorizon/SeismicFault via BinGridID | Doesn't carry `DDMSDatasets[]` in the "feature" sense — it IS the grid, not a reference to it |
-| `Seismic3DInterpretationSet` (master-data) | Logically represents a survey; horizons/faults are "within" it | **No `DDMSDatasets[]`** — master-data cannot reference RDDMS objects |
+| `SeismicBinGrid` (WPC) | Has geometry attributes; used by SeismicHorizon/SeismicFault via BinGridID | Doesn't carry `DDMSDatasets[]` in the "feature" sense - it IS the grid, not a reference to it |
+| `Seismic3DInterpretationSet` (master-data) | Logically represents a survey; horizons/faults are "within" it | **No `DDMSDatasets[]`** - master-data cannot reference RDDMS objects |
 | `SeismicAcquisitionSurvey` (master-data) | Represents the physical survey | Wrong semantic level (acquisition ≠ interpretation lattice) |
 
 **Workshop position**: Keep `SeismicLatticeFeature` + `GenericFeatureInterpretation` as RESQML-only entities for now. Don't force an OSDU mapping until the target model is agreed.
@@ -79,14 +79,14 @@ RESQML's `SeismicLatticeFeature` represents the seismic acquisition lattice as a
 | `SeismicBinGrid` | WPC | Yes (via AbstractWPCGroupType) | But semantically it IS the grid, not a reference to a survey |
 | `SeismicAcquisitionSurvey` | master-data | **No** | Same structural limitation |
 
-**Root cause**: `DDMSDatasets[]` is inherited from `AbstractWPCGroupType` — only WPCs get it. Master-data entities structurally cannot reference RDDMS objects.
+**Root cause**: `DDMSDatasets[]` is inherited from `AbstractWPCGroupType` - only WPCs get it. Master-data entities structurally cannot reference RDDMS objects.
 
 **Proposed solutions** (from Oslo'26):
-1. Add a `DDMSReferences[]` array to selected master-data schemas (breaking change — unlikely short-term)
+1. Add a `DDMSReferences[]` array to selected master-data schemas (breaking change - unlikely short-term)
 2. Intermediate WPC that bridges: master-data → WPC (with DDMSDatasets[]) → RDDMS
 3. Use `ExtensionProperties` or `NameAliases` as a workaround (fragile, not queryable)
 
-**Impact on ORES demo**: We use `GenericRepresentation` as the universal RDDMS catalog layer — which already serves as this bridging WPC. Our dual-catalog pattern (verified: records 012-016 = StructureMap, records 017-021 = GenericRepresentation, both pointing to same 5 Grid2d UUIDs) is the de facto solution to this gap.
+**Impact on ORES demo**: We use `GenericRepresentation` as the universal RDDMS catalog layer - which already serves as this bridging WPC. Our dual-catalog pattern (verified: records 012-016 = StructureMap, records 017-021 = GenericRepresentation, both pointing to same 5 Grid2d UUIDs) is the de facto solution to this gap.
 
 ---
 
@@ -101,17 +101,17 @@ EarthModelInterpretation / StructuralOrganizationInterpretation
    └── (new link) → Seismic3DInterpretationSet
 ```
 
-This would allow an earth model to declare "I was built from this seismic interpretation set" — essential for provenance across discipline boundaries.
+This would allow an earth model to declare "I was built from this seismic interpretation set" - essential for provenance across discipline boundaries.
 
 **Two options proposed**:
-1. `StructureMap.BinGridID` → `GenericBinGrid` (current M27 — geometry only, no survey provenance)
+1. `StructureMap.BinGridID` → `GenericBinGrid` (current M27 - geometry only, no survey provenance)
 2. `StructureMap` → `Seismic3DInterpretationSet` via a new `SeismicSourceID` field (full provenance)
 
 **Impact on ORES demo**: Not directly needed for structure map generation, but relevant if we add Activity-based provenance chains. (Verified: zero Activity generators or records in demo/seisint/.)
 
 ---
 
-### 2.6 HorizonControlPoints — Provenance from Picks to Surface
+### 2.6 HorizonControlPoints - Provenance from Picks to Surface
 
 `HorizonControlPoints:1.0.0` (M27 new) captures interpreter seed picks. The provenance chain:
 
@@ -121,8 +121,8 @@ HorizonControlPoints → SeismicHorizon (via HorizonControlPointsID) → Structu
 
 **What's implemented**: Our SeisInt.md documents this chain. Our demo generates SeismicHorizon records.
 
-**What's missing** (verified — `HorizonControlPoints.1.0.0.json` schema exists in `schemas/` but no generator or records):
-- [ ] HorizonControlPoints WPC generator from RDDMS PointSetRepresentation objects — *schema has `ColumnValues` (AbstractColumnBasedTable) for inline data + `DDMSDatasets[]` via AbstractRepresentation*
+**What's missing** (verified - `HorizonControlPoints.1.0.0.json` schema exists in `schemas/` but no generator or records):
+- [ ] HorizonControlPoints WPC generator from RDDMS PointSetRepresentation objects - *schema has `ColumnValues` (AbstractColumnBasedTable) for inline data + `DDMSDatasets[]` via AbstractRepresentation*
 - [ ] End-to-end lineage: picks → autotracking → gridded horizon → depth surface
 - [ ] ML/AI training data use case (HorizonControlPoints as labelled training sets)
 
@@ -183,7 +183,7 @@ The current pipeline discards or under-maps several RESQML 2.0.1 metadata fields
 
 ---
 
-### 2.10 RESQML 2.2 — Future-Proofing for OSDU Alignment
+### 2.10 RESQML 2.2 - Future-Proofing for OSDU Alignment
 
 RESQML 2.2 (officially released 2023) is significantly better aligned with OSDU metadata needs. Current RDDMS data uses **2.0.1** (`SchemaVersion: "2.0"`), but future datasets will likely use 2.2.
 
@@ -201,7 +201,7 @@ RESQML 2.2 (officially released 2023) is significantly better aligned with OSDU 
 
 ---
 
-## 3. ORES Demo — Concrete Follow-Up Tasks
+## 3. ORES Demo - Concrete Follow-Up Tasks
 
 ### 3.1 High Priority (MVP2 scope)
 - [ ] **Activity provenance**: Emit `Activity` records for each StructureMap generation, linking inputs (SeismicHorizon, GenericBinGrid) and outputs (StructureMap)
@@ -243,9 +243,9 @@ Based on the workshop discussions, these schema improvements would better serve 
 
 | Area | Issue | Proposed Action |
 |---|---|---|
-| `SeismicLatticeFeature` | Removed in RESQML 2.2 (`GenericFeatureInterpretation` optional) — but no clear OSDU counterpart | Document the gap; propose bridging pattern |
-| `PolylineSetRepresentation` | Used for both fault sticks AND non-fault lines (contours, horizons-2D) | WKS mapping context-dependent — needs decision tree |
-| Grid2dRepresentation | No native "I am a depth surface" flag — depends entirely on CRS | Recommend `osdu:DomainTypeID` in ExtraMetadata for round-trip safety |
+| `SeismicLatticeFeature` | Removed in RESQML 2.2 (`GenericFeatureInterpretation` optional) - but no clear OSDU counterpart | Document the gap; propose bridging pattern |
+| `PolylineSetRepresentation` | Used for both fault sticks AND non-fault lines (contours, horizons-2D) | WKS mapping context-dependent - needs decision tree |
+| Grid2dRepresentation | No native "I am a depth surface" flag - depends entirely on CRS | Recommend `osdu:DomainTypeID` in ExtraMetadata for round-trip safety |
 | Cross-object ancestry | RESQML `RepresentedObject` links interpretation → feature but not survey → interpretation set | Consider adding survey provenance in ExtraMetadata |
 
 ### 4.3 RDDMS Interoperability Improvements
@@ -258,9 +258,9 @@ Based on the workshop discussions, these schema improvements would better serve 
 
 ---
 
-## 5. Relationship Map — Current vs Target
+## 5. Relationship Map - Current vs Target
 
-### 5.1 What We Have (MVP1 — implemented)
+### 5.1 What We Have (MVP1 - implemented)
 
 ```mermaid
 graph TD
@@ -274,7 +274,7 @@ graph TD
     GR[GenericRepresentation] -.-> RDDMS
 ```
 
-### 5.2 Target (MVP2+ — to implement)
+### 5.2 Target (MVP2+ - to implement)
 
 ```mermaid
 graph TD
