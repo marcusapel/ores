@@ -11,8 +11,8 @@ RUN python -m venv /opt/venv \
 # ── Runtime stage ────────────────────────────────────────────────────
 FROM python:3.12-slim
 
-# Security: non-root user
-RUN groupadd -r ores && useradd -r -g ores -d /app -s /sbin/nologin ores
+# Security: non-root user (numeric UID required by Radix runAsNonRoot policy)
+RUN groupadd -g 1001 ores && useradd -u 1001 -g 1001 -r -d /app -s /sbin/nologin ores
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ COPY md/           ./md/
 # Own everything by the non-root user
 RUN mkdir -p /data && chown -R ores:ores /app /data
 
-USER ores
+USER 1001
 
 EXPOSE 8000
 
