@@ -426,13 +426,23 @@ flowchart LR
 
 ## 10) Open Questions & Roadmap
 
-| Question | Status |
-|---|---|
-| Should StructureMap carry `Interpreter` / `Remark[]`? | Open — SeismicHorizon has them; StructureMap uses inherited `AuthorIDs[]` |
-| `VelocityModelID` not on any M27 schema | Open — use `ExtensionProperties` for now |
-| SeismicSurfaceGeneration activity template | In progress |
-| MVP1: Structure Map end-to-end | Target |
-| MVP2: horizons + faults + activities | Follow-up |
+> See [SeisTodo.md](SeisTodo.md) for detailed follow-up work derived from the Oslo'26 DD Workshop.
+
+| Question | Status | Source |
+|---|---|---|
+| Should StructureMap carry `Interpreter` / `Remark[]`? | Open — uses inherited `AuthorIDs[]` | Pre-workshop |
+| `VelocityModelID` not on any M27 schema | Open — use `ExtensionProperties` | Pre-workshop |
+| SeismicSurfaceGeneration Activity Template (~85% complete) | In progress | Oslo'26 Slide 13 |
+| MVP1: Structure Map end-to-end | **Done** (this demo) | Oslo'26 Charter |
+| MVP2: horizons + faults + activities | **Partial** — fault catalog + HCP generator done; Activity records pending | Oslo'26 Charter |
+| **Fault polylines via GenericRepresentation** | **Done** — `gen_fault_polylines.py` emits GenericRep with Role=FaultStick (interim per Oslo'26 Slide 51). Tested: 24 faults (12 unique FaultInterpretations) from 44 polylines in maap/drogon | Oslo'26 Slides 30-31, 51 |
+| **HorizonControlPoints from PointSetRepresentation** | **Done** — `gen_horizon_controlpoints.py` emits HorizonControlPoints:1.0.0. Tested: 28 horizon picks (6 unique HorizonInterpretations, 24 depth + 4 time) from 48 PointSets | M27 schema |
+| **Dynamic RDDMS discovery (multi-type)** | **Done** — `build_rddms_catalog.py --discover` + `app/structuremap.py:discover_all_representations()`. Tested against live RDDMS (37 resource types enumerated) | ORES implementation |
+| **AbstractBinGrid longer-term deprecation** | Planned — GenericBinGrid is interim; AbstractBinGrid to be fully replaced | Oslo'26 Slide 15-16 |
+| **SeismicLatticeFeature → OSDU mapping ambiguity** | No agreed strategy — SeismicBinGrid? Seismic3DInterpretationSet? | Oslo'26 Slides 32-33, 40 |
+| **Master-data cannot hold DDMSDatasets[]** | Structural gap — Seismic3DInterpretationSet has no RDDMS link | Oslo'26 Slide 50 |
+| **Cross-domain provenance (Seismic → Earth Model)** | Proposals exist; needs formal schema link | Oslo'26 Slides 42, 44-45 |
+| **Catalog WPC pattern for polylines outside RDDMS** | No approved pattern yet | Oslo'26 Slide 50 |
 
 ---
 
@@ -461,4 +471,8 @@ flowchart LR
 
 - [CrsGuide.md](CrsGuide.md) — CRS mapping guide
 - [StratColumn.md](StratColumn.md) — Stratigraphic column mapping
+- [SeisTodo.md](SeisTodo.md) — Follow-up work from Oslo'26 DD Workshop
 - [`demo/seisint/`](../demo/seisint/) — Generator scripts and schemas
+- [`demo/seisint/gen_fault_polylines.py`](../demo/seisint/gen_fault_polylines.py) — Fault PolylineSet → GenericRepresentation catalog
+- [`demo/seisint/gen_horizon_controlpoints.py`](../demo/seisint/gen_horizon_controlpoints.py) — PointSet → HorizonControlPoints:1.0.0
+- [`demo/seisint/build_rddms_catalog.py`](../demo/seisint/build_rddms_catalog.py) — Dynamic multi-type RDDMS discovery + manifests/build
