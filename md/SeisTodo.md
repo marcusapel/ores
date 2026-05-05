@@ -1,24 +1,18 @@
 # Seismic Interpretation — Follow-Up Work & Schema Challenges
 
-> **Source**: Oslo'26 DD Workshop — "Structure Map MVP1/2" (April 2026), cross-referenced with the ORES demo implementation in [SeisInt.md](SeisInt.md).
->
-> This document captures **gaps, divergence points, and improvement opportunities** for seismic interpretation schemas, RESQML ↔ OSDU mapping, and the ORES demo pipeline.
->
-> **Verification status** (May 2025): All claims below were verified against the actual codebase — `app/structuremap.py`, `demo/seisint/gen_volantis_interp.py`, `demo/seisint/build_rddms_catalog.py`, `demo/seisint/records/` (22 records), and `demo/seisint/schemas/` (7 concrete + 28 abstract schemas).
+This document captures **gaps, divergence points, and improvement opportunities** for seismic interpretation schemas, RESQML ↔ OSDU mapping, and the ORES demo pipeline.
 
 ---
 
 ## 1. Context — What the Workshop Confirmed
 
-Our ORES demo (StructureMap + GenericBinGrid + SeismicHorizon + dual-catalog pattern) aligns well with the **MVP1 scope**: end-to-end depth structure map exchange. The interoperability group validated:
+ORES demo (StructureMap + GenericBinGrid + SeismicHorizon + dual-catalog pattern) aligns well with the **MVP1 scope**: end-to-end depth structure map exchange. The interoperability group validated:
 
 - StructureMap:1.0.0 as the correct catalog record for depth surfaces
 - GenericBinGrid:1.0.0 as the decoupled, non-seismic lattice abstraction
 - DDMSDatasets[] as the only bridge to Z-values in the RDDMS
 - Pattern A (inline) vs Pattern B (external BinGridID) as complementary strategies
 - Dual-catalog (GenericRepresentation + StructureMap) as the recommended approach
-
-**However**, the workshop also surfaced significant gaps in areas we have not yet implemented.
 
 ---
 
@@ -205,23 +199,12 @@ RESQML 2.2 (officially released 2023) is significantly better aligned with OSDU 
 | Metadata typing | Flat `NameValuePair` strings | Typed `CustomData` (XML any) | Richer `ExtensionProperties` |
 | Interpretation confidence | Not native | Optional confidence field | Quality/uncertainty metadata |
 
-**Preparation actions:**
-- [ ] Design dual-version detection: check `SchemaVersion` field (`"2.0"` vs `"2.2"`) in pipeline entry points
-- [ ] Prepare `resqml22.obj_*` type paths in RDDMS URLs (already namespaced in API)
-- [ ] Document 2.0.1→2.2 field name differences for Citation, CRS, Domain handling
-- [ ] When RDDMS publishes 2.2 objects: extract `Domain` directly, map `Description`, use typed metadata
-- [ ] Consider requesting Drogon/Volve reexport in RESQML 2.2 from SKUA team
-
 ---
 
 ## 3. ORES Demo — Concrete Follow-Up Tasks
 
 ### 3.1 High Priority (MVP2 scope)
-
-- [x] **Fault pipeline (catalog layer)**: `gen_fault_polylines.py` — discovers `PolylineSetRepresentation` in RDDMS, classifies fault vs non-fault, emits `GenericRepresentation:1.2.0` with `Role=FaultStick` / `Type=PolylineSetRepresentation` (interim pattern per Oslo'26 Slide 51). *Tested live: 44 polylines → 24 genuine fault sticks (12 unique FaultInterpretations, 12 depth + 6 time + 6 truth-case). 20 excluded: GL_* (FMU grid-line extractions), AOI, XYCoords (utility). All DDMSDatasets URIs, InterpretationIDs, ancestry verified.*
-- [x] **HorizonControlPoints generator**: `gen_horizon_controlpoints.py` — discovers `PointSetRepresentation` objects in RDDMS, emits HorizonControlPoints:1.0.0 records. *Tested live: 48 PointSets → 20 legitimate horizon picks (4 horizons: TopVolantis, BaseVolantis, TopTherys, TopVolon; 16 depth + 4 time domain). 28 excluded: 8 FMU model outputs (*_extracted), 20 non-horizon PointSets. RepresentationRole=Pick, RepresentationType=PointSet, DDMSDatasets all validated.*
 - [ ] **Activity provenance**: Emit `Activity` records for each StructureMap generation, linking inputs (SeismicHorizon, GenericBinGrid) and outputs (StructureMap)
-- [x] **Multi-type RDDMS discovery**: `app/structuremap.py:discover_all_representations()` enumerates Grid2d + PolylineSet + PointSet + TriangulatedSet in a single call; `build_rddms_catalog.py --discover` replaces hardcoded UUIDs with dynamic enumeration
 
 ### 3.2 Medium Priority
 
@@ -269,7 +252,6 @@ Based on the workshop discussions, these schema improvements would better serve 
 
 | Gap | Current State | Desired State |
 |---|---|---|
-| Write-back across CSPs | RDDMS write varies by platform | Standardized PUT/POST across all CSP implementations |
 | Fault discovery | No standard query for "all fault polylines in dataspace" | RDDMS catalog endpoint or type-filtered list |
 | Content negotiation | Z-values as JSON float array only | Support binary (Apache Arrow, Parquet) for large arrays |
 | Activity model in RDDMS | No native provenance objects | Either RESQML Activity objects or links back to OSDU Activities |
@@ -325,7 +307,6 @@ graph TD
 
 | Topic | Link |
 |---|---|
-| Oslo'26 Workshop deck | `Oslo26_DDWorkshop_StructureMap_MVP1_2_ver5.pptx` (this repo) |
 | SeisInt demo guide | [SeisInt.md](SeisInt.md) |
 | RDDMS mapping fix (MR#95) | [community.opengroup.org](https://community.opengroup.org/osdu/platform/domain-data-mgmt-services/reservoir/home/-/merge_requests/95) |
 | Issue #31 - Structure Map | [GitLab](https://gitlab.opengroup.org/osdu/subcommittees/data-def/projects/seismic/docs/-/issues/31) |
