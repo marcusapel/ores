@@ -2,6 +2,8 @@
 {% block title %}RDDMS - Resources{% endblock %}
 
 {% block head %}
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose', flowchart: { curve: 'basis', htmlLabels: true } });</script>
 <style>
   .meta-table { width: auto; min-width: 400px; }
   .meta-table th { background: #f3f2f1; font-weight: 600; }
@@ -41,7 +43,8 @@
                style="flex:1;padding:4px 8px;border:1px solid var(--eq-border,#ccc);border-radius:4px;font-size:13px;">
         <span id="ds-count" style="font-size:11px;color:#999;white-space:nowrap;"></span>
       </div>
-      <select id="ds" size="6" style="width:100%;"></select>
+      <select id="ds" size="6" multiple style="width:100%;"></select>
+      <span class="muted" style="font-size:11px;">Ctrl/Cmd+click for multi-select (GraphQL deep search)</span>
     </div>
   </div>
 
@@ -170,12 +173,7 @@
           <span class="muted" id="gql-status" style="font-size:12px;"></span>
         </div>
 
-        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
-          <label style="font-weight:600;font-size:13px;padding-top:2px;">Dataspaces:</label>
-          <select id="gql-ds-select" multiple size="3" style="font-size:12px;min-width:220px;max-width:400px;border:1px solid #ccc;border-radius:4px;padding:2px;">
-          </select>
-          <span class="muted" style="font-size:11px;padding-top:3px;">Ctrl/Cmd+click to select multiple</span>
-        </div>
+
 
         <textarea id="gql-editor" rows="18" style="width:100%;font-family:'Fira Code',Consolas,monospace;font-size:12px;line-height:1.45;border:1px solid #ccc;border-radius:4px;padding:10px;resize:vertical;background:#fafafa;tab-size:2;"></textarea>
 
@@ -184,8 +182,16 @@
           <textarea id="gql-vars" rows="3" style="width:100%;font-family:monospace;font-size:12px;border:1px solid #ccc;border-radius:4px;padding:8px;margin-top:4px;background:#fafafa;">{ }</textarea>
         </details>
 
-        <div id="gql-result" style="margin-top:10px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;">
+        <div style="margin-top:10px;display:flex;gap:6px;align-items:center;">
+          <button id="gql-tab-json" class="btn" style="font-size:12px;padding:3px 10px;background:#004578;color:#fff;">JSON</button>
+          <button id="gql-tab-graph" class="btn" style="font-size:12px;padding:3px 10px;">Graph</button>
+          <span id="gql-graph-hint" class="muted" style="font-size:11px;display:none;">Auto-generated from object_relations / deep_search results</span>
+        </div>
+        <div id="gql-result" style="margin-top:6px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;">
           <pre id="gql-output" style="font-size:12px;white-space:pre-wrap;padding:10px;margin:0;"></pre>
+        </div>
+        <div id="gql-graph" style="margin-top:6px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;padding:10px;display:none;">
+          <div id="gql-mermaid"></div>
         </div>
       </div>
     </details>
@@ -688,24 +694,6 @@
     const gqlStatus = $('gql-status');
     const gqlPreset = $('gql-preset');
     const gqlRun = $('gql-run');
-    const gqlDsSel = $('gql-ds-select');
-
-    // Populate GraphQL dataspace multi-select from the same source as Resources
-    function gqlPopulateDataspaces() {
-      const opts = Array.from(dsSel.options);
-      gqlDsSel.innerHTML = '';
-      opts.forEach(o => {
-        const opt = document.createElement('option');
-        opt.value = o.value;
-        opt.textContent = o.value;
-        if (o.value === dsSel.value) opt.selected = true;
-        gqlDsSel.appendChild(opt);
-      });
-    }
-    // Refresh when Resources dataspaces load
-    const _origDsChange = dsSel.onchange;
-    new MutationObserver(gqlPopulateDataspaces).observe(dsSel, { childList: true });
-    gqlPopulateDataspaces();
 
     const GQL_PRESETS = {
       // ─── Explore ───────────────────────────────────────────────────────
@@ -1103,13 +1091,13 @@
     };
 
     function gqlSelectedDataspaces() {
-      return Array.from(gqlDsSel.selectedOptions).map(o => o.value);
+      return Array.from(dsSel.selectedOptions).map(o => o.value);
     }
 
     function gqlCurrentDs() {
       // Returns first selected for single-dataspace presets
       const sel = gqlSelectedDataspaces();
-      return sel.length > 0 ? sel[0] : (dsSel.value || 'maap/drogon');
+      return sel.length > 0 ? sel[0] : 'maap/drogon';
     }
 
     function gqlDataspacesArg() {
@@ -1133,12 +1121,8 @@
     }
 
     gqlPreset.addEventListener('change', gqlLoadPreset);
-    gqlDsSel.addEventListener('change', gqlLoadPreset);
-    // Re-inject dataspaces when selection changes
-    dsSel.addEventListener('change', () => {
-      gqlPopulateDataspaces();
-      gqlLoadPreset();
-    });
+    // Re-inject dataspaces into preset when selection changes
+    dsSel.addEventListener('change', gqlLoadPreset);
     // Initialize with first preset
     gqlLoadPreset();
 
@@ -1157,6 +1141,25 @@
           badge.textContent = 'PostgreSQL';
           badge.style.background = '#dff6dd';
           badge.style.color = '#107c10';
+          // Pre-fill dataspaces from local PG – overrides REST list
+          try {
+            const dsResp = await fetch('/api/graphql/query', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: '{ dataspaces { path } }' }),
+            });
+            const dsData = await dsResp.json();
+            const pgDs = (dsData.data && dsData.data.dataspaces) || [];
+            if (pgDs.length) {
+              _allDsItems = pgDs;
+              _applyDsFilter();
+              // Select all PG dataspaces by default
+              Array.from(dsSel.options).forEach(o => { o.selected = true; });
+              gqlLoadPreset();
+              // Trigger loadTypes with first dataspace
+              loadTypes();
+            }
+          } catch (_) { /* ignore – dataspaces already populated from REST */ }
         } else if (st.includes('REST')) {
           badge.textContent = 'REST API';
           badge.style.background = '#deecf9';
@@ -1215,6 +1218,8 @@
           const count = data.data ? Object.keys(data.data).length : 0;
           gqlStatus.textContent = `Done – ${count} field(s) returned`;
         }
+        // Try to render graph visualisation
+        renderMermaidFromResponse(data);
       } catch (e) {
         gqlStatus.textContent = 'Request failed';
         gqlOutput.textContent = e.message;
@@ -1229,6 +1234,117 @@
         runGraphQLQuery();
       }
     });
+
+    // ── Graph visualisation (Mermaid) ─────────────────────────────────────────
+    const gqlTabJson = $('gql-tab-json');
+    const gqlTabGraph = $('gql-tab-graph');
+    const gqlGraphDiv = $('gql-graph');
+    const gqlResultDiv = $('gql-result');
+    const gqlMermaid = $('gql-mermaid');
+    const gqlGraphHint = $('gql-graph-hint');
+    let _lastMermaidCode = '';
+    let _mermaidRenderCount = 0;
+
+    gqlTabJson.addEventListener('click', () => {
+      gqlResultDiv.style.display = '';
+      gqlGraphDiv.style.display = 'none';
+      gqlTabJson.style.background = '#004578'; gqlTabJson.style.color = '#fff';
+      gqlTabGraph.style.background = ''; gqlTabGraph.style.color = '';
+      gqlGraphHint.style.display = 'none';
+    });
+    gqlTabGraph.addEventListener('click', () => {
+      if (!_lastMermaidCode) { gqlGraphHint.textContent = 'No graph data in last response'; gqlGraphHint.style.display = ''; return; }
+      gqlResultDiv.style.display = 'none';
+      gqlGraphDiv.style.display = '';
+      gqlTabGraph.style.background = '#004578'; gqlTabGraph.style.color = '#fff';
+      gqlTabJson.style.background = ''; gqlTabJson.style.color = '';
+      gqlGraphHint.style.display = '';
+    });
+
+    function _sanitize(s) { return (s || '').replace(/["<>]/g, '').replace(/[\[\](){}#&;]/g, ' ').substring(0, 60); }
+    function _shortType(t) { return (t || '').replace(/^resqml\d+\.obj_/, '').replace(/application.*\./g, ''); }
+    function _nodeId(uuid) { return 'n' + (uuid || 'x').replace(/[^a-zA-Z0-9]/g, '').substring(0, 12); }
+
+    function buildMermaidFromRelations(data) {
+      // object_relations response
+      const rels = data.data && data.data.objectRelations;
+      if (!rels || !rels.length) return '';
+      const lines = ['graph LR'];
+      const centerId = 'center';
+      lines.push(`  ${centerId}["Query Object"]`);
+      rels.forEach((r, i) => {
+        const nid = _nodeId(r.uuid) + i;
+        const label = _sanitize(r.name) || _shortType(r.typeName || r.type_name);
+        const stype = _shortType(r.typeName || r.type_name);
+        lines.push(`  ${nid}["${label}<br/><small>${stype}</small>"]`);
+        if (r.direction === 'target') {
+          lines.push(`  ${centerId} -->|target| ${nid}`);
+        } else {
+          lines.push(`  ${nid} -->|source| ${centerId}`);
+        }
+      });
+      return lines.join('\n');
+    }
+
+    function buildMermaidFromDeepSearch(data) {
+      // deep_search response
+      const ds = data.data && data.data.deepSearch;
+      if (!ds || !ds.objects || !ds.objects.length) return '';
+      const lines = ['graph TD'];
+      ds.objects.forEach((obj, oi) => {
+        const oid = _nodeId(obj.uuid) + oi;
+        const oLabel = _sanitize(obj.title) || obj.uuid.substring(0, 8);
+        const oType = _shortType(obj.typeName || obj.type_name);
+        lines.push(`  ${oid}["${oLabel}<br/><small>${oType}</small>"]`);
+        if (obj.properties && obj.properties.length) {
+          obj.properties.forEach((p, pi) => {
+            const pid = oid + 'p' + pi;
+            const pLabel = _sanitize(p.title) || p.uuid.substring(0, 8);
+            const kind = p.kind || '';
+            const stats = p.statistics ? `min=${p.statistics.minValue?.toFixed(2) ?? '?'} max=${p.statistics.maxValue?.toFixed(2) ?? '?'}` : '';
+            lines.push(`  ${pid}(["${pLabel}<br/><small>${kind} ${stats}</small>"])`);
+            lines.push(`  ${pid} -.->|property| ${oid}`);
+          });
+        }
+      });
+      return lines.join('\n');
+    }
+
+    function buildMermaidFromResqmlObjects(data) {
+      // resqml_objects or dataspaces list
+      const objs = data.data && (data.data.resqmlObjects || data.data.resourceTypes);
+      if (!objs || !objs.length || objs.length > 30) return '';
+      if (data.data.resourceTypes) {
+        // Type summary as a simple graph
+        const lines = ['graph LR'];
+        lines.push('  DS["Dataspace"]');
+        objs.forEach((t, i) => {
+          const nid = 'type' + i;
+          lines.push(`  ${nid}["${_shortType(t.name)}<br/><small>${t.count} objects</small>"]`);
+          lines.push(`  DS --- ${nid}`);
+        });
+        return lines.join('\n');
+      }
+      return '';
+    }
+
+    async function renderMermaidFromResponse(data) {
+      if (!data || !data.data) { _lastMermaidCode = ''; return; }
+      let code = buildMermaidFromRelations(data)
+               || buildMermaidFromDeepSearch(data)
+               || buildMermaidFromResqmlObjects(data);
+      _lastMermaidCode = code;
+      if (!code) return;
+      // Render into the hidden div (pre-render so switching is instant)
+      try {
+        _mermaidRenderCount++;
+        const id = 'gql-mmd-' + _mermaidRenderCount;
+        const { svg } = await mermaid.render(id, code);
+        gqlMermaid.innerHTML = svg;
+      } catch (e) {
+        gqlMermaid.innerHTML = `<pre style="color:#a80000;font-size:12px;">Diagram error: ${e.message}\n\n${code}</pre>`;
+      }
+    }
 
     // Delegate navigation for span[data-href]
     document.addEventListener('click', (ev) => {
