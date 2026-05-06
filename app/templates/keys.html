@@ -44,7 +44,10 @@
         <span id="ds-count" style="font-size:11px;color:#999;white-space:nowrap;"></span>
       </div>
       <select id="ds" size="6" multiple style="width:100%;"></select>
-      <span class="muted" style="font-size:11px;">Ctrl/Cmd+click for multi-select (GraphQL deep search)</span>
+      <span class="muted" style="font-size:11px;">Ctrl/Cmd+click for multi-select (GraphQL deep search)
+        &nbsp;|&nbsp; <span style="color:#107c10;">&bull; local</span>
+        &nbsp;<span style="color:#004578;">&#9675; remote</span>
+      </span>
     </div>
   </div>
 
@@ -97,6 +100,14 @@
     <div id="edges"><p class="muted">Click "Load details" to fetch graph.</p></div>
   </div>
 
+  <!-- Raw JSON -->
+  <div class="section">
+    <details>
+      <summary><b>Raw JSON</b></summary>
+      <pre id="meta" style="max-height: 500px; overflow:auto;"></pre>
+    </details>
+  </div>
+
   <!-- Arrays (populated by JS when object is loaded) -->
   <div class="section">
     <div id="arrays"></div>
@@ -118,7 +129,7 @@
   <!-- GraphQL Deep Search Panel -->
   <div class="section" id="graphql-section">
     <details>
-      <summary style="cursor:pointer;"><b>GraphQL Deep Search</b>
+      <summary style="cursor:pointer;"><span style="font-size:1.5em;font-weight:600;">GraphQL Deep Search</span>
         <span id="gql-backend-badge" style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;background:#e1dfdd;color:#605e5c;">checking…</span>
       </summary>
       <div style="margin-top:10px;">
@@ -168,6 +179,12 @@
               <option value="array_stats">Array statistics (Simgrid)</option>
               <option value="array_sample">Array sample values</option>
             </optgroup>
+            <optgroup label="Federated (Catalog + RDDMS)">
+              <option value="fed_local">Federated: local RDDMS only</option>
+              <option value="fed_catalog">Federated: OSDU catalog only</option>
+              <option value="fed_both">Federated: all three sources</option>
+              <option value="fed_enrich">Federated: all + enrichment</option>
+            </optgroup>
           </select>
           <span class="btn" id="gql-run" style="font-size:13px;padding:4px 14px;">▶ Run</span>
           <span class="muted" id="gql-status" style="font-size:12px;"></span>
@@ -194,13 +211,6 @@
           <div id="gql-mermaid"></div>
         </div>
       </div>
-    </details>
-  </div>
-
-  <div class="section">
-    <details>
-      <summary><b>Raw JSON</b></summary>
-      <pre id="meta" style="max-height: 500px; overflow:auto;"></pre>
     </details>
   </div>
 
@@ -273,7 +283,19 @@
         if (q1 && !seg1.includes(q1)) return;
         if (q2 && !seg2.includes(q2)) return;
         const o = document.createElement('option');
-        o.value = x.path; o.textContent = x.path;
+        o.value = x.path;
+        const src = x.source || '';
+        if (src === 'local') {
+          o.textContent = '\u25cf ' + x.path;
+          o.style.color = '#107c10';
+          o.title = 'Local RDDMS (PostgreSQL)';
+        } else if (src === 'remote') {
+          o.textContent = '\u25cb ' + x.path;
+          o.style.color = '#004578';
+          o.title = 'Remote OSDU RDDMS';
+        } else {
+          o.textContent = x.path;
+        }
         dsSel.appendChild(o);
         matched++;
       });
@@ -1087,6 +1109,90 @@
     statistics { minValue maxValue mean stdDev }
     sampleValues
   }
+}`,
+      // ─── Federated (Catalog + Local RDDMS + Remote RDDMS) ─────────────────
+      fed_local: `# Search local RDDMS only (un-indexed PG data)
+# Skips OSDU catalog and remote RDDMS
+{
+  federatedSearch(
+    text: "*"
+    searchCatalog: false
+    searchRddms: true
+    searchRemoteRddms: false
+    dataspaces: $DS_LIST
+    limit: 20
+  ) {
+    totalLocalRddms totalMerged sources queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInLocalRddms
+    }
+  }
+}`,
+      fed_catalog: `# Search OSDU catalog only (metadata level)
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--*:*"
+    searchCatalog: true
+    searchRddms: false
+    searchRemoteRddms: false
+    limit: 20
+  ) {
+    totalCatalog totalMerged sources queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog
+      osduId osduKind
+    }
+  }
+}`,
+      fed_both: `# Search ALL THREE: catalog + local PG + remote RDDMS
+# Results merged by UUID – flags show where each was found
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--*:*"
+    dataspaces: $DS_LIST
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: true
+    limit: 20
+  ) {
+    totalCatalog totalLocalRddms totalRemoteRddms totalRddms totalMerged
+    sources queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms foundInRemoteRddms
+      osduId osduKind
+    }
+  }
+}`,
+      fed_enrich: `# Full pipeline: all sources + relations + property stats
+{
+  federatedSearch(
+    text: "*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: true
+    includeRelations: true
+    includeProperties: true
+    includeStatistics: true
+    limit: 5
+  ) {
+    totalCatalog totalLocalRddms totalRemoteRddms totalMerged sources
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms foundInRemoteRddms
+      relations { uuid name typeName direction }
+      properties {
+        title kind
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
 }`
     };
 
@@ -1110,12 +1216,20 @@
       return `dataspaces: [${items}]`;
     }
 
+    function gqlDataspacesList() {
+      // Returns the JSON list string for dataspaces (federated search)
+      const sel = gqlSelectedDataspaces();
+      const ds = sel.length > 0 ? sel : [gqlCurrentDs()];
+      return `[${ds.map(d => `"${d}"`).join(', ')}]`;
+    }
+
     function gqlLoadPreset() {
       const key = gqlPreset.value;
       const tpl = GQL_PRESETS[key] || '';
       // For deep search presets, use dataspaces (multi) arg; for others, use single dataspace
       const isDeep = key.startsWith('deep_');
       let query = tpl.replace(/\$DS_ARG/g, gqlDataspacesArg());
+      query = query.replace(/\$DS_LIST/g, gqlDataspacesList());
       query = query.replace(/\$DS/g, gqlCurrentDs());
       gqlEditor.value = query;
     }
@@ -1141,7 +1255,7 @@
           badge.textContent = 'PostgreSQL';
           badge.style.background = '#dff6dd';
           badge.style.color = '#107c10';
-          // Pre-fill dataspaces from local PG – overrides REST list
+          // Pre-fill dataspaces from local PG – merge with existing remote items
           try {
             const dsResp = await fetch('/api/graphql/query', {
               method: 'POST',
@@ -1151,10 +1265,19 @@
             const dsData = await dsResp.json();
             const pgDs = (dsData.data && dsData.data.dataspaces) || [];
             if (pgDs.length) {
-              _allDsItems = pgDs;
+              // Tag PG dataspaces as local; keep existing remote items
+              const localPaths = new Set(pgDs.map(d => d.path));
+              const localItems = pgDs.map(d => ({ path: d.path, uri: d.uri || '', source: 'local' }));
+              // Keep remote items that aren't duplicates of local
+              const remoteItems = _allDsItems.filter(x => !localPaths.has(x.path) && x.source !== 'local');
+              // Re-tag remote items that lack a source
+              remoteItems.forEach(x => { if (!x.source) x.source = 'remote'; });
+              _allDsItems = [...localItems, ...remoteItems];
               _applyDsFilter();
-              // Select all PG dataspaces by default
-              Array.from(dsSel.options).forEach(o => { o.selected = true; });
+              // Select all local PG dataspaces by default
+              Array.from(dsSel.options).forEach(o => {
+                o.selected = localPaths.has(o.value);
+              });
               gqlLoadPreset();
               // Trigger loadTypes with first dataspace
               loadTypes();
