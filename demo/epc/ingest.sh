@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ingest Volve surfaces EPC into local OpenETPServer
+# Ingest Drogon EPC into local OpenETPServer
 # Requires: docker compose services running (see docker-compose.yaml)
 #
 # Usage: ./demo/epc/ingest.sh
@@ -7,8 +7,8 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ETP_URL="ws://localhost:9002"
-DATASPACE="demo/Volve"
-EPC_FILE="$SCRIPT_DIR/volve.surfaces.epc"
+DATASPACE="maap/drogon"
+EPC_FILE="$SCRIPT_DIR/drogon.epc"
 
 echo "=== Local OpenETPServer EPC Ingest ==="
 echo "  ETP URL:    $ETP_URL"
@@ -34,7 +34,7 @@ done
 echo ""
 echo "Creating dataspace '$DATASPACE'..."
 docker run --rm --network host "$ETP_IMAGE" \
-    openETPServer space -S "$ETP_URL" --new -s "$DATASPACE" 2>&1 || true
+    openETPServer space -S "$ETP_URL" --auth none --new -s "$DATASPACE" 2>&1 || true
 
 # Import EPC
 echo ""
@@ -42,19 +42,19 @@ echo "Importing EPC: $(basename $EPC_FILE)..."
 docker run --rm --network host \
     -v "$SCRIPT_DIR:/data" \
     "$ETP_IMAGE" \
-    openETPServer space -S "$ETP_URL" -s "$DATASPACE" \
+    openETPServer space -S "$ETP_URL" --auth none -s "$DATASPACE" \
     --import-epc "/data/$(basename $EPC_FILE)"
 
 # List content
 echo ""
 echo "Dataspace contents:"
 docker run --rm --network host "$ETP_IMAGE" \
-    openETPServer space -S "$ETP_URL" -s "$DATASPACE" --stats
+    openETPServer space -S "$ETP_URL" --auth none -s "$DATASPACE" --stats
 
 echo ""
 echo "=== Done! ==="
 echo ""
 echo "To connect GraphQL to this database, set:"
-echo '  export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=openetp user=tester password=tester"'
+echo '  export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=rddms user=foo password=bar"'
 echo ""
 echo "Then restart the ORES app and use the GraphQL panel."

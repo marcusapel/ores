@@ -6,19 +6,19 @@
 #   ./demo/epc/ingest.sh        # create dataspace + import EPC
 #
 # Then set in your shell or .env:
-#   export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=openetp user=tester password=tester"
+#   export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=rddms user=foo password=bar"
 
 services:
   postgres:
     image: postgres:latest
     environment:
-      POSTGRES_USER: tester
-      POSTGRES_PASSWORD: tester
-      POSTGRES_DB: openetp
+      POSTGRES_USER: foo
+      POSTGRES_PASSWORD: bar
+      POSTGRES_DB: rddms
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tester -d openetp"]
+      test: ["CMD-SHELL", "pg_isready -U foo -d rddms"]
       interval: 3s
       timeout: 5s
       retries: 10
@@ -31,7 +31,7 @@ services:
     environment:
       RDMS_DATA_PARTITION_MODE: single
       RDMS_DATA_CONNECTIVITY_MODE: standalone
-      POSTGRESQL_CONN_STRING: "host=postgres port=5432 dbname=openetp user=tester password=tester"
+      POSTGRESQL_CONN_STRING: "host=postgres port=5432 dbname=rddms user=foo password=bar"
     ports:
       - "9002:9002"
     command: ["openETPServer", "server", "--start", "--overwrite", "--authN", "none", "--authZ", "none"]

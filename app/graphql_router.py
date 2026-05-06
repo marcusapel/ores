@@ -945,13 +945,14 @@ class Query:
         description=(
             "Deep search: find representations with attached properties matching "
             "kind and cell-value criteria. Queries the RESQML graph + array data. "
-            "Works via REST API (no direct PG needed)."
+            "Supports multiple dataspaces via the 'dataspaces' list parameter."
         )
     )
     async def deep_search(
         self,
         info: Info,
-        dataspace: str,
+        dataspace: Optional[str] = None,
+        dataspaces: Optional[List[str]] = None,
         type_name: str = "resqml20.obj_Grid2dRepresentation",
         title_contains: Optional[str] = None,
         property_filter: Optional[PropertyFilter] = None,
@@ -962,22 +963,115 @@ class Query:
     ) -> DeepSearchResult:
         """
         The flagship query:
-          1. List objects of type_name in dataspace
+          1. List objects of type_name in dataspace(s)
           2. For each, find attached properties via sources (reverse graph)
           3. Filter by property kind
           4. Optionally load array values and apply threshold filter
 
-        Example: Grid2D with Porosity > 0.2
+        Supports querying multiple dataspaces at once via 'dataspaces' param.
+        Example: IjkGrid with Porosity > 0.25 across two dataspaces
         """
-        pool = await _get_pool()
-        if pool:
-            return await _deep_search_pg(
-                pool, dataspace, type_name, title_contains,
+        # Resolve dataspace list (backwards-compatible: single 'dataspace' still works)
+        ds_list: List[str] = []
+        if dataspaces:
+            ds_list = list(dataspaces)
+        elif dataspace:
+            ds_list = [dataspace]
+        else:
+            # Fall back to listing available dataspaces
+            pool = await _get_pool()
+            if pool:
+                all_ds = await _pg_list_dataspaces(pool)
+                ds_list = [d["path"] for d in all_ds][:5]  # cap at 5
+
+        if not ds_list:
+            return DeepSearchResult(
+                objects=[], total_scanned=0, total_matched=0,
+                query_description="No dataspace specified and none found",
+                backend="PostgreSQL" if await _get_pool() else "REST",
+            )
+
+        # Single dataspace: use existing path
+        if len(ds_list) == 1:
+            pool = await _get_pool()
+            if pool:
+                return await _deep_search_pg(
+                    pool, ds_list[0], type_name, title_contains,
+                    property_filter, include_statistics, include_sample_values,
+                    sample_size, limit,
+                )
+            token = _get_token_from_info(info)
+            return await self._deep_search_rest(
+                token, ds_list[0], type_name, title_contains,
                 property_filter, include_statistics, include_sample_values,
                 sample_size, limit,
             )
 
+        # Multiple dataspaces: run in parallel and merge
+        pool = await _get_pool()
+        if pool:
+            import asyncio
+            tasks = [
+                _deep_search_pg(
+                    pool, ds, type_name, title_contains,
+                    property_filter, include_statistics, include_sample_values,
+                    sample_size, limit,
+                )
+                for ds in ds_list
+            ]
+            results = await asyncio.gather(*tasks)
+            return self._merge_deep_results(results, ds_list, limit)
+
+        # REST multi-dataspace
         token = _get_token_from_info(info)
+        import asyncio
+        tasks = [
+            self._deep_search_rest(
+                token, ds, type_name, title_contains,
+                property_filter, include_statistics, include_sample_values,
+                sample_size, limit,
+            )
+            for ds in ds_list
+        ]
+        results = await asyncio.gather(*tasks)
+        return self._merge_deep_results(results, ds_list, limit)
+
+    @staticmethod
+    def _merge_deep_results(results: list, ds_list: List[str], limit: int) -> DeepSearchResult:
+        """Merge DeepSearchResult from multiple dataspaces."""
+        all_objects: List[ResqmlObject] = []
+        total_scanned = 0
+        total_matched = 0
+        backends = set()
+        for r in results:
+            total_scanned += r.total_scanned
+            total_matched += r.total_matched
+            all_objects.extend(r.objects)
+            backends.add(r.backend)
+        all_objects = all_objects[:limit]
+        backend = " + ".join(sorted(backends))
+        desc = f"Searched {len(ds_list)} dataspaces: {', '.join(ds_list)}"
+        return DeepSearchResult(
+            objects=all_objects,
+            total_scanned=total_scanned,
+            total_matched=total_matched,
+            query_description=desc,
+            backend=backend,
+        )
+
+    async def _deep_search_rest(
+        self,
+        token: str,
+        dataspace: str,
+        type_name: str,
+        title_contains: Optional[str],
+        property_filter: Optional[PropertyFilter],
+        include_statistics: bool,
+        include_sample_values: bool,
+        sample_size: int,
+        limit: int,
+    ) -> DeepSearchResult:
+        """REST-based deep search for a single dataspace."""
         backend = "REST"
 
         # Step 1: List target objects

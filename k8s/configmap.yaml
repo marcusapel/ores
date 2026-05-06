@@ -16,9 +16,9 @@ data:
   DEFAULT_INSTANCE: "eqndev"
 
   # ── GraphQL deep-search (optional) ──
-  # Set to enable direct PostgreSQL queries (same DB as OpenETPServer).
-  # Without this, GraphQL queries fall back to the RDDMS REST API.
-  # GRAPHQL_PG_CONN_STRING: "host=pg-host port=5432 dbname=openetp user=app password=secret"
+  # GRAPHQL_PG_CONN_STRING lives in secret.yaml (contains password).
+  # When set, enables direct PostgreSQL queries against the OpenETPServer DB.
+  # Without it, GraphQL queries fall back to the RDDMS REST API.
 
   # ── Auth redirect (set when behind a reverse proxy / ingress) ──
   # OIDC_REDIRECT_URI: "https://ores.equinor.com/auth/callback"
