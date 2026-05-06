@@ -51,12 +51,15 @@ Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars across both files.
 | Route | Purpose |
 |-------|---------|
 | `/` | Manage OSDU Dataspaces |
-| `/keys` | Browse record types and objects |
+| `/keys` | Browse record types and objects + GraphQL deep search |
 | `/search` | Query OSDU Search API |
 | `/analyse` | Compare BDs across decision gates |
 | `/add-dg` | Create new BusinessDecision records |
 | `/strat` | Stratigraphic column viewer |
 | `/howto` | Documentation articles |
+| `/graphql` | GraphiQL IDE for RESQML queries |
+| `/api/graphql/query` | GraphQL endpoint (POST) |
+| `/api/graphql/info` | GraphQL backend status (GET) |
 
 ## Demo pipelines
 
@@ -73,12 +76,37 @@ python demo/run_pipeline.py --help             # all options
 python -m pytest test/ -v     # 147 tests
 ```
 
+## GraphQL Deep Search
+
+The `/keys` page includes a GraphQL panel for deep RESQML queries — object browsing,
+relationship graph traversal, and array-level numerical filtering.
+
+To enable direct PostgreSQL access (fastest, bypasses REST):
+
+```bash
+export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=openetp user=tester password=tester"
+```
+
+Without this variable, queries fall back to the RDDMS REST API (always works with a valid token).
+
+For local testing with Docker:
+
+```bash
+cd demo/epc && docker compose up -d   # PostgreSQL + OpenETPServer
+./demo/epc/ingest.sh                   # Import Volve surfaces EPC
+python demo/epc/test_graphql.py        # Verify all queries
+```
+
+See [md/Query.md](md/Query.md) for the full query guide.
+
 ## Docker
 
 ```bash
 docker build -t ores .
 docker run -p 8000:8000 --env-file <(python k8s/env_from_k8s.py | sed 's/^export //') ores
 ```
+
+To enable GraphQL PostgreSQL access in Docker, add `-e GRAPHQL_PG_CONN_STRING="..."`.
 
 ## Documentation
 
@@ -98,3 +126,4 @@ Detailed guides live in [`md/`](md/Readme.md):
 | [Uncertainty](md/Uncertainty.md) | Uncertainty & volumes workflow |
 | [Volumes](md/Volumes.md) | ReservoirEstimatedVolumes schema |
 | [GeoLabelSet](md/GeoLabelSet.md) | GeoLabelSet headline KPIs |
+| [Query](md/Query.md) | Querying data: REST, ETP, GraphQL & OSDU Search |

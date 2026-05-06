@@ -1184,3 +1184,26 @@ async def graphql_query_api(request: Request):
             {"message": str(e), "path": e.path} for e in result.errors
         ]
     return JSONResponse(response)
+
+
+@router.get("/api/graphql/info")
+async def graphql_info():
+    """Return GraphQL backend configuration info (no auth required)."""
+    pool = await _get_pool()
+    pg_configured = bool(_PG_CONN_STRING)
+    pg_connected = pool is not None
+    # Mask password in connection string for display
+    display_conn = ""
+    if _PG_CONN_STRING:
+        import re
+        display_conn = re.sub(r"password=\S+", "password=***", _PG_CONN_STRING)
+        display_conn = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", display_conn)
+
+    return JSONResponse({
+        "pg_configured": pg_configured,
+        "pg_connected": pg_connected,
+        "pg_connection": display_conn or None,
+        "backend": "PostgreSQL" if pg_connected else ("REST API" if not pg_configured else "PG configured but not connected"),
+        "hint": "Set GRAPHQL_PG_CONN_STRING env var on the server to enable direct PostgreSQL access. "
+                "Example: host=localhost port=5433 dbname=openetp user=tester password=tester",
+    })

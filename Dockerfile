@@ -22,6 +22,10 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Optional: set GRAPHQL_PG_CONN_STRING at runtime to enable direct PostgreSQL
+# access for the GraphQL deep-search module (bypasses REST API).
+# Example: -e GRAPHQL_PG_CONN_STRING="host=pg port=5432 dbname=openetp user=app password=secret"
+
 # Copy application code
 COPY app/          ./app/
 COPY demo/         ./demo/

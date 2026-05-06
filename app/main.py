@@ -1861,6 +1861,12 @@ _HOWTO_SECTIONS: list[dict] = [
                 "title": "Stratigraphy",
                 "desc": "Data model, tooling & workflow",
             },
+            {
+                "slug": "query-guide",
+                "file": "Query.md",
+                "title": "Querying Data",
+                "desc": "REST, ETP, GraphQL & OSDU Search — all query paths explained",
+            },
         ],
     },
 ]
