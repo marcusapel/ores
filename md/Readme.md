@@ -32,6 +32,7 @@
 | **Analyse** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
 | **Add DG** (`/add-dg`) | Create and ingest a new BusinessDecision, linking REV, GeoLabelSet, Activity and Risk records |
 | **Stratigraphy** (`/strat`) | Preview and ingest stratigraphic column records |
+| **GraphQL** (`/graphql`) | GraphiQL IDE for RESQML deep-search queries |
 | **HowTo** (`/howto`) | Browse grouped markdown documentation articles |
 
 ### Key rendering features
@@ -51,6 +52,8 @@
 | FastAPI | 0.115+ | |
 | uvicorn | 0.32+ | |
 | httpx | latest | |
+| strawberry-graphql | 0.220+ | GraphQL schema + FastAPI integration |
+| asyncpg | 0.29+ | Direct PostgreSQL (optional, for GraphQL deep-search) |
 | Chart.js 4 | CDN | No npm install |
 | Mermaid 10 | CDN | No npm install |
 
@@ -174,6 +177,7 @@ app/
   instances.py         # OsduInstance dataclass & instance resolution
   ingest_router.py     # Manifest ingestion endpoints
   keys_router.py       # /keys page: browse dataspaces, types, objects
+  graphql_router.py    # GraphQL deep-search: PG-native + REST fallback
   analyse.py           # Analyse page: reservoir comparison across DGs
   addgate.py           # Add DG page: create new BusinessDecision records
   strat.py             # Stratigraphy manifest builders
@@ -304,4 +308,5 @@ python -m pytest test/ -v
 | Uncertainty | [md/Uncertainty.md](Uncertainty.md) |
 | Volumes | [md/Volumes.md](Volumes.md) |
 | GeoLabelSet | [md/GeoLabelSet.md](GeoLabelSet.md) |
+| Query guide | [md/Query.md](Query.md) |
 | DevConcept | [md/DevConcept.md](DevConcept.md) |
