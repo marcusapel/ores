@@ -94,9 +94,8 @@
     <div id="edges"><p class="muted">Click "Load details" to fetch graph.</p></div>
   </div>
 
-  <!-- Arrays -->
+  <!-- Arrays (populated by JS when object is loaded) -->
   <div class="section">
-    <h3>Arrays</h3>
     <div id="arrays"></div>
   </div>
 
@@ -110,6 +109,8 @@
     </div>
     <div id="grid2d-view" style="overflow:auto; max-height:700px; margin-top: 8px;"></div>
   </div>
+
+  <hr/>
 
   <!-- GraphQL Deep Search Panel -->
   <div class="section" id="graphql-section">
@@ -133,26 +134,47 @@
               <option value="status">Backend status</option>
               <option value="dataspaces">List dataspaces</option>
               <option value="types">Resource types &amp; counts</option>
-              <option value="objects">Browse objects by type</option>
+              <option value="objects_grid">Browse IjkGrids</option>
+              <option value="objects_wells">Browse wellbores</option>
             </optgroup>
             <optgroup label="Relationships">
-              <option value="rel_targets">Targets (what object references)</option>
-              <option value="rel_sources">Sources (who references this object)</option>
-              <option value="rel_chain">Chain: Grid2D → Interpretation → Feature</option>
-              <option value="rel_crs_users">Reverse: all objects using a CRS</option>
+              <option value="rel_grid_targets">Simgrid → targets (CRS, stratigraphy)</option>
+              <option value="rel_grid_sources">Simgrid ← sources (properties)</option>
+              <option value="rel_well_chain">Well chain: Feature → Interp → Trajectory</option>
             </optgroup>
-            <optgroup label="Deep Search">
-              <option value="deep_porosity">Grid2D + Porosity &gt; 0.2</option>
-              <option value="deep_depth">Grid2D + Depth &lt; 3000m</option>
-              <option value="deep_custom">Custom property filter</option>
+            <optgroup label="Deep Search (IjkGrid)">
+              <option value="deep_poro">Porosity &gt; 0.25 (IjkGrid)</option>
+              <option value="deep_perm">Permeability &gt; 500 mD (IjkGrid)</option>
+              <option value="deep_sw">Water saturation &lt; 0.3 (IjkGrid)</option>
+              <option value="deep_all_props">All properties on IjkGrids</option>
+            </optgroup>
+            <optgroup label="Deep Search (Surfaces)">
+              <option value="deep_grid2d_all">All Grid2D surfaces</option>
+              <option value="deep_grid2d_arrays">Grid2D array statistics</option>
+            </optgroup>
+            <optgroup label="Deep Search (Horizons)">
+              <option value="deep_horizon_surfaces">Horizon → surfaces (Grid2D)</option>
+              <option value="deep_horizon_wells">Horizon → well markers</option>
+            </optgroup>
+            <optgroup label="Deep Search (Well Logs)">
+              <option value="deep_well_phit">Wells with porosity &gt; 0.25</option>
+              <option value="deep_well_perm">Wells with permeability &gt; 100</option>
+              <option value="deep_well_all">All log properties on wells</option>
             </optgroup>
             <optgroup label="Numerical Data">
-              <option value="array_stats">Array statistics</option>
+              <option value="array_stats">Array statistics (Simgrid)</option>
               <option value="array_sample">Array sample values</option>
             </optgroup>
           </select>
           <span class="btn" id="gql-run" style="font-size:13px;padding:4px 14px;">▶ Run</span>
           <span class="muted" id="gql-status" style="font-size:12px;"></span>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
+          <label style="font-weight:600;font-size:13px;padding-top:2px;">Dataspaces:</label>
+          <select id="gql-ds-select" multiple size="3" style="font-size:12px;min-width:220px;max-width:400px;border:1px solid #ccc;border-radius:4px;padding:2px;">
+          </select>
+          <span class="muted" style="font-size:11px;padding-top:3px;">Ctrl/Cmd+click to select multiple</span>
         </div>
 
         <textarea id="gql-editor" rows="18" style="width:100%;font-family:'Fira Code',Consolas,monospace;font-size:12px;line-height:1.45;border:1px solid #ccc;border-radius:4px;padding:10px;resize:vertical;background:#fafafa;tab-size:2;"></textarea>
@@ -666,10 +688,28 @@
     const gqlStatus = $('gql-status');
     const gqlPreset = $('gql-preset');
     const gqlRun = $('gql-run');
+    const gqlDsSel = $('gql-ds-select');
+
+    // Populate GraphQL dataspace multi-select from the same source as Resources
+    function gqlPopulateDataspaces() {
+      const opts = Array.from(dsSel.options);
+      gqlDsSel.innerHTML = '';
+      opts.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.value;
+        if (o.value === dsSel.value) opt.selected = true;
+        gqlDsSel.appendChild(opt);
+      });
+    }
+    // Refresh when Resources dataspaces load
+    const _origDsChange = dsSel.onchange;
+    new MutationObserver(gqlPopulateDataspaces).observe(dsSel, { childList: true });
+    gqlPopulateDataspaces();
 
     const GQL_PRESETS = {
       // ─── Explore ───────────────────────────────────────────────────────
-      status: `# Check backend: shows PostgreSQL version if connected, else REST API
+      status: `# Check backend: PostgreSQL version if connected, else REST API info
 {
   status
 }`,
@@ -681,27 +721,32 @@
   }
 }`,
       types: `# Count of each RESQML type stored in this dataspace
+# Drogon has 29 types: IjkGrids, wells, horizons, faults, properties…
 {
   resourceTypes(dataspace: "$DS") {
     name
     count
   }
 }`,
-      objects: `# Browse objects of a specific type
-# Common types:
-#   resqml20.obj_Grid2dRepresentation   (surfaces / horizons)
-#   resqml20.obj_IjkGridRepresentation   (geocellular grids)
-#   resqml20.obj_TriangulatedSetRepresentation
-#   resqml20.obj_ContinuousProperty      (cell properties)
-#   resqml20.obj_HorizonInterpretation
-#   resqml20.obj_GeneticBoundaryFeature
-#   resqml20.obj_FaultInterpretation
-#   resqml20.obj_LocalDepth3dCrs
-#   resqml20.obj_Activity                (provenance)
+      objects_grid: `# Browse IjkGrid representations (geocellular grids)
+# Drogon has 2: "Simgrid" (107k cells) and "Geogrid" (927k cells)
 {
   resqmlObjects(
     dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    limit: 10
+  ) {
+    uuid
+    title
+    typeName
+  }
+}`,
+      objects_wells: `# Browse wellbore features
+# Drogon has 18 wells: exploration (55/33-*) and production (OP*)
+{
+  resqmlObjects(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_WellboreFeature"
     limit: 30
   ) {
     uuid
@@ -711,19 +756,13 @@
 }`,
 
       // ─── Relationships ────────────────────────────────────────────────
-      rel_targets: `# TARGETS: objects that THIS object references
-# (e.g. Grid2D → CRS, Grid2D → HorizonInterpretation)
-#
-# Relationship labels (contentType) from the xpa table:
-#   rsq:RepresentedInterpretation
-#   rsq:InterpretedFeature
-#   rsq:Grid2dPatch/rsq:Geometry/rsq:LocalCrs
-#   rsq:Parameter/rsq:DataObject
+      rel_grid_targets: `# TARGETS: what does the Simgrid reference?
+# Shows CRS and StratigraphicColumnRank links
 {
   objectRelations(
     dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
-    uuid: "PASTE-UUID-HERE"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
     direction: "targets"
   ) {
     uuid
@@ -733,16 +772,13 @@
     contentType
   }
 }`,
-      rel_sources: `# SOURCES: objects that reference THIS object (reverse graph)
-# Useful to find:
-#   • Properties attached to a Grid/Representation
-#   • Activities that produced this object
-#   • Representations of an Interpretation
+      rel_grid_sources: `# SOURCES: what references the Simgrid? (attached properties)
+# Returns ContinuousProperty and DiscreteProperty objects
 {
   objectRelations(
     dataspace: "$DS"
-    typeName: "resqml20.obj_HorizonInterpretation"
-    uuid: "PASTE-UUID-HERE"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
     direction: "sources"
   ) {
     uuid
@@ -752,19 +788,17 @@
     contentType
   }
 }`,
-      rel_chain: `# CHAIN TRAVERSAL: follow the RESQML ancestor hierarchy
-# Grid2dRepresentation → HorizonInterpretation → GeneticBoundaryFeature
+      rel_well_chain: `# WELL CHAIN: follow WellboreFeature → Interpretation → Trajectory
+# Step 1: Get sources of well "55_33-A-1" (finds Interpretation)
+# Step 2: Copy the Interp UUID and query its sources (finds Trajectory)
 #
-# Step 1: Get targets of a Grid2D (finds Interpretation + CRS)
-# Step 2: Copy the Interpretation UUID, switch typeName, re-run for Feature
-#
-# Start here – then follow the Interpretation UUID:
+# Start here:
 {
   objectRelations(
     dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
-    uuid: "PASTE-UUID-HERE"
-    direction: "targets"
+    typeName: "resqml20.obj_WellboreFeature"
+    uuid: "50495987-88f4-4e39-95c8-0b2624298c47"
+    direction: "sources"
   ) {
     uuid
     name
@@ -773,46 +807,30 @@
   }
 }
 
-# Then query the Interpretation's targets:
+# Then query the Interpretation's sources to find Trajectory:
 # {
 #   objectRelations(
 #     dataspace: "$DS"
-#     typeName: "resqml20.obj_HorizonInterpretation"
+#     typeName: "resqml20.obj_WellboreInterpretation"
 #     uuid: "INTERPRETATION-UUID"
-#     direction: "targets"
+#     direction: "sources"
 #   ) { uuid name typeName contentType }
 # }`,
-      rel_crs_users: `# REVERSE: list all objects that reference a LocalDepth3dCrs
-# (which grids share the same coordinate reference system?)
-{
-  objectRelations(
-    dataspace: "$DS"
-    typeName: "resqml20.obj_LocalDepth3dCrs"
-    uuid: "PASTE-CRS-UUID-HERE"
-    direction: "sources"
-  ) {
-    uuid
-    name
-    typeName
-    contentType
-  }
-}`,
 
-      // ─── Deep Search ──────────────────────────────────────────────────
-      deep_porosity: `# Deep search: find Grid2D representations that have an attached
-# ContinuousProperty with kind="Porosity" and cell values > 0.2
-#
-# This traverses the object graph AND reads the binary array data.
+      // ─── Deep Search (IjkGrid) ───────────────────────────────────────
+      deep_poro: `# Deep search: find IjkGrids with Porosity cells > 0.25
+# Drogon PORO ranges 0–0.36; this finds the high-porosity reservoir cells
+# Tip: select multiple dataspaces above to search across all of them
 {
   deepSearch(
-    dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
+    $DS_ARG
+    typeName: "resqml20.obj_IjkGridRepresentation"
     propertyFilter: {
-      kind: "Porosity"
-      arrayFilter: { threshold: 0.2, operator: GT }
+      titleContains: "PORO"
+      arrayFilter: { threshold: 0.25, operator: GT }
     }
     includeStatistics: true
-    limit: 10
+    limit: 5
   ) {
     backend
     totalScanned
@@ -829,44 +847,15 @@
     }
   }
 }`,
-      deep_depth: `# Deep search: Grid2D surfaces with depth values shallower than 3000m
-# Useful to find shallow horizons in a dataset
+      deep_perm: `# Deep search: IjkGrids with Permeability > 500 mD (high-perm zones)
+# PERMX ranges 0–4278 mD on Simgrid, 0–3830 on Geogrid
 {
   deepSearch(
-    dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
-    propertyFilter: {
-      kind: "Depth"
-      arrayFilter: { threshold: 3000.0, operator: LT }
-    }
-    includeStatistics: true
-    includeSampleValues: true
-    sampleSize: 10
-    limit: 10
-  ) {
-    backend totalScanned totalMatched queryDescription
-    objects {
-      uuid title
-      properties {
-        title kind
-        statistics { minValue maxValue mean }
-        matchingCells { count total fraction }
-        arrays { path totalElements sampleValues }
-      }
-    }
-  }
-}`,
-      deep_custom: `# Custom deep search — change typeName and propertyFilter
-# Works for any representation type + property kind combination:
-#   IjkGridRepresentation + Permeability > 100 mD
-#   TriangulatedSetRepresentation + Saturation > 0.5
-{
-  deepSearch(
-    dataspace: "$DS"
+    $DS_ARG
     typeName: "resqml20.obj_IjkGridRepresentation"
     propertyFilter: {
-      kind: "Permeability"
-      arrayFilter: { threshold: 100.0, operator: GT }
+      titleContains: "PERMX"
+      arrayFilter: { threshold: 500.0, operator: GT }
     }
     includeStatistics: true
     limit: 5
@@ -875,22 +864,214 @@
     objects {
       uuid title
       properties {
-        title kind uom
-        statistics { count minValue maxValue mean stdDev }
+        title kind
+        statistics { count minValue maxValue mean }
         matchingCells { count total fraction }
+      }
+    }
+  }
+}`,
+      deep_sw: `# Deep search: IjkGrids where initial water saturation < 0.3
+# Low SWATINIT = oil/gas zone; high = water zone
+{
+  deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    propertyFilter: {
+      titleContains: "SWATINIT"
+      arrayFilter: { threshold: 0.3, operator: LT }
+    }
+    includeStatistics: true
+    limit: 5
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      properties {
+        title kind
+        statistics { count minValue maxValue mean }
+        matchingCells { count total fraction }
+      }
+    }
+  }
+}`,
+      deep_all_props: `# List ALL properties on IjkGrids (no filter, just browse)
+# Shows every ContinuousProperty and DiscreteProperty attached
+{
+  deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    includeStatistics: true
+    limit: 2
+  ) {
+    backend totalScanned totalMatched
+    objects {
+      uuid title
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}`,
+
+      // ─── Deep Search (Surfaces / Grid2D) ──────────────────────────────
+      deep_grid2d_all: `# Browse all Grid2D surfaces (depth/time maps)
+# Drogon has 48 surfaces: DS_ (depth), TS_ (time), GS_ (velocity)
+{
+  resqmlObjects(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    limit: 48
+  ) {
+    uuid
+    title
+    typeName
+  }
+}`,
+      deep_grid2d_arrays: `# Grid2D surface array statistics
+# Grid2D nodes store the Z-values (depth or time) directly as arrays
+# This shows the DS_interp surface for BaseVolantis
+{
+  objectArrays(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    uuid: "02a9d0b6-1f7c-4553-994b-5060cd725d6d"
+    includeStatistics: true
+    includeSampleValues: true
+    sampleSize: 10
+  ) {
+    path
+    dataType
+    dimensions
+    totalElements
+    statistics { count minValue maxValue mean stdDev }
+    sampleValues
+  }
+}`,
+
+      // ─── Deep Search (Horizons) ───────────────────────────────────────
+      deep_horizon_surfaces: `# Horizon → all representations (Grid2D surfaces, points, polylines)
+# TopVolantis has ~14 depth surfaces + point sets + fault line traces
+# Shows the full representation tree rooted at a horizon interpretation
+{
+  objectRelations(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_HorizonInterpretation"
+    uuid: "02e954a9-d7db-4b57-aef7-12b8ebf47a65"
+    direction: "sources"
+  ) {
+    uuid
+    name
+    typeName
+    contentType
+  }
+}
+
+# Horizons available (paste UUID above):
+#   TopVolantis  02e954a9-d7db-4b57-aef7-12b8ebf47a65
+#   BaseVolantis 3657ca0b-d21f-41ca-801b-4a6a7eb1f426
+#   TopTherys    6c6eeb68-bb4d-4fa4-9eb4-b880b5bd7086
+#   TopVolon     db54a781-84ad-41e5-8bdd-c510246375cd
+#   MSL          7da0e4d7-1955-4031-8eaf-68a93515414d
+#   BaseVelmodel 011ae8ee-bfa5-4804-a675-1f4704b1730c`,
+      deep_horizon_wells: `# Horizon → which wells penetrate it? (well markers)
+# WellboreMarkerFrameRepresentations reference the horizon interpretation
+# Filter for typeName containing "WellboreMarker" in the results
+{
+  objectRelations(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_HorizonInterpretation"
+    uuid: "02e954a9-d7db-4b57-aef7-12b8ebf47a65"
+    direction: "sources"
+  ) {
+    uuid
+    name
+    typeName
+    contentType
+  }
+}
+# Results with typeName = WellboreMarkerFrameRepresentation
+# are the wells that have picks at this horizon (TopVolantis)`,
+
+      // ─── Deep Search (Well Logs) ──────────────────────────────────────
+      deep_well_phit: `# Wells with Total Porosity (PHIT) > 0.25
+# Searches WellboreFrameRepresentations for attached log curves
+# containing "PHIT" with sample values exceeding 0.25
+{
+  deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_WellboreFrameRepresentation"
+    propertyFilter: {
+      titleContains: "PHIT"
+      arrayFilter: { threshold: 0.25, operator: GT }
+    }
+    includeStatistics: true
+    limit: 10
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      properties {
+        title kind
+        statistics { count minValue maxValue mean }
+        matchingCells { count total fraction }
+      }
+    }
+  }
+}`,
+      deep_well_perm: `# Wells with Permeability (KLOGH) > 100 mD
+# KLOGH is the log-derived horizontal permeability
+{
+  deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_WellboreFrameRepresentation"
+    propertyFilter: {
+      titleContains: "KLOGH"
+      arrayFilter: { threshold: 100.0, operator: GT }
+    }
+    includeStatistics: true
+    limit: 10
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      properties {
+        title kind
+        statistics { count minValue maxValue mean }
+        matchingCells { count total fraction }
+      }
+    }
+  }
+}`,
+      deep_well_all: `# All log properties on wells (browse curves available)
+# Drogon wells have: PHIT, KLOGH, VSH, DENS, AI, VP, VS, Sw, Facies…
+{
+  deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_WellboreFrameRepresentation"
+    includeStatistics: true
+    limit: 3
+  ) {
+    backend totalScanned totalMatched
+    objects {
+      uuid title
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
       }
     }
   }
 }`,
 
       // ─── Numerical Data ───────────────────────────────────────────────
-      array_stats: `# Get array metadata and statistics for any object
-# (Grid2D points, Property values, etc.)
+      array_stats: `# Get array metadata and statistics for the Simgrid
+# (geometry pillars, cell connectivity, etc.)
 {
   objectArrays(
     dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
-    uuid: "PASTE-UUID-HERE"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
     includeStatistics: true
   ) {
     path
@@ -902,12 +1083,12 @@
     }
   }
 }`,
-      array_sample: `# Read sample values from an array (first N elements)
+      array_sample: `# Read sample values from Simgrid arrays (first 20 elements)
 {
   objectArrays(
     dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
-    uuid: "PASTE-UUID-HERE"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
     includeStatistics: true
     includeSampleValues: true
     sampleSize: 20
@@ -921,17 +1102,43 @@
 }`
     };
 
+    function gqlSelectedDataspaces() {
+      return Array.from(gqlDsSel.selectedOptions).map(o => o.value);
+    }
+
     function gqlCurrentDs() {
-      return dsSel.value || 'my/dataspace';
+      // Returns first selected for single-dataspace presets
+      const sel = gqlSelectedDataspaces();
+      return sel.length > 0 ? sel[0] : (dsSel.value || 'maap/drogon');
+    }
+
+    function gqlDataspacesArg() {
+      // Returns the GraphQL argument string for dataspaces
+      const sel = gqlSelectedDataspaces();
+      if (sel.length <= 1) {
+        return `dataspace: "${sel[0] || gqlCurrentDs()}"`;
+      }
+      const items = sel.map(d => `"${d}"`).join(', ');
+      return `dataspaces: [${items}]`;
     }
 
     function gqlLoadPreset() {
       const key = gqlPreset.value;
       const tpl = GQL_PRESETS[key] || '';
-      gqlEditor.value = tpl.replace(/\$DS/g, gqlCurrentDs());
+      // For deep search presets, use dataspaces (multi) arg; for others, use single dataspace
+      const isDeep = key.startsWith('deep_');
+      let query = tpl.replace(/\$DS_ARG/g, gqlDataspacesArg());
+      query = query.replace(/\$DS/g, gqlCurrentDs());
+      gqlEditor.value = query;
     }
 
     gqlPreset.addEventListener('change', gqlLoadPreset);
+    gqlDsSel.addEventListener('change', gqlLoadPreset);
+    // Re-inject dataspaces when selection changes
+    dsSel.addEventListener('change', () => {
+      gqlPopulateDataspaces();
+      gqlLoadPreset();
+    });
     // Initialize with first preset
     gqlLoadPreset();
 

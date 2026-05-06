@@ -83,14 +83,20 @@ def main():
     # Secrets override config (same key → secret wins)
     merged = {**config, **secrets}
 
+    import os
+    skipped = 0
     for key, val in sorted(merged.items()):
+        # Don't override vars already in the environment (e.g. from .bashrc)
+        if key in os.environ:
+            skipped += 1
+            continue
         # Shell-safe quoting
         safe_val = val.replace("'", "'\\''")
         print(f"export {key}='{safe_val}'")
 
     count_cfg = len(config)
     count_sec = len(secrets)
-    print(f"# Loaded {count_cfg} config + {count_sec} secret vars", file=sys.stderr)
+    print(f"# Loaded {count_cfg} config + {count_sec} secret vars ({skipped} skipped - already in env)", file=sys.stderr)
 
 
 if __name__ == "__main__":
