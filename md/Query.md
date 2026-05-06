@@ -12,10 +12,13 @@ ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
             ──► ETP WebSocket      (bulk import/export, streaming)
             ──► GraphQL /api/graphql/query  (deep search + arrays + graph)
                     │
-               ┌────┴────┐
-               │ asyncpg │  ←  Direct PG (fast, when GRAPHQL_PG_CONN_STRING set)
-               │ REST    │  ←  Fallback via RDDMS v2
-               └─────────┘
+               ┌────┴─────────────────────────────┐
+               │ Path A: OSDU Catalog (ES)        │  ← kind + text search
+               │ Path B: Local PG (asyncpg)       │  ← fastest, un-indexed data
+               │ Path C: Remote RDDMS (REST)      │  ← Azure-hosted dataspaces
+               └──────────────────────────────────┘
+                         ↓ merge by UUID ↓
+                    FederatedSearchResult
 ```
 
 | Path | Best for | Speed |
@@ -24,6 +27,7 @@ ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
 | RDDMS REST | Browse dataspaces, single objects, full XML | Medium |
 | ETP WebSocket | Bulk EPC import/export, streaming | Fast |
 | GraphQL (PG) | Deep filtering, array predicates, multi-dataspace | Fastest |
+| GraphQL federated | OSDU + RDDMS simultaneously, UUID dedup | Fast (parallel) |
 
 ---
 
@@ -98,6 +102,7 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 | `objectArrays(dataspace, typeName, uuid)` | Arrays + statistics |
 | `deepSearch(dataspace, typeName, propertyFilter)` | Combined filter |
 | `deepSearch(dataspaces: [...])` | Multi-dataspace |
+| `federatedSearch(text, dataspaces, kind)` | OSDU catalog + RDDMS dual-path |
 
 ### PropertyFilter Reference
 
@@ -114,17 +119,12 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 
 ```graphql
 { status }
-```
-
-```graphql
 { dataspaces { path uri } }
-```
-
-```graphql
 { resourceTypes(dataspace: "maap/drogon") { name count } }
 ```
 
 ```graphql
+# Browse objects of a type (swap typeName for any RESQML type)
 {
   resqmlObjects(
     dataspace: "maap/drogon"
@@ -134,22 +134,12 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 }
 ```
 
-```graphql
-{
-  resqmlObjects(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_WellboreFeature"
-    limit: 30
-  ) { uuid title typeName }
-}
-```
-
 ---
 
 ### Relationships (Graph Traversal)
 
 ```graphql
-# Forward refs: what does Simgrid reference?
+# Forward refs (targets): what does Simgrid reference?
 {
   objectRelations(
     dataspace: "maap/drogon"
@@ -161,7 +151,7 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 ```
 
 ```graphql
-# Reverse refs: what properties are attached to Simgrid?
+# Reverse refs (sources): what properties/representations point to this object?
 {
   objectRelations(
     dataspace: "maap/drogon"
@@ -172,48 +162,23 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 }
 ```
 
-```graphql
-# Well chain: Feature → Interpretation → Trajectory
-{
-  objectRelations(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_WellboreFeature"
-    uuid: "50495987-88f4-4e39-95c8-0b2624298c47"
-    direction: "sources"
-  ) { uuid name typeName contentType }
-}
-```
+Common traversal patterns (same query, swap `typeName`, `uuid`, `direction`):
 
-```graphql
-# Horizon → all representations (surfaces, point sets, well markers)
-{
-  objectRelations(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_HorizonInterpretation"
-    uuid: "02e954a9-d7db-4b57-aef7-12b8ebf47a65"
-    direction: "sources"
-  ) { uuid name typeName contentType }
-}
-```
-
-```graphql
-# Which surface represents which horizon? (Grid2D → targets)
-{
-  objectRelations(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_Grid2dRepresentation"
-    uuid: "02a9d0b6-1f7c-4553-994b-5060cd725d6d"
-    direction: "targets"
-  ) { uuid name typeName contentType }
-}
-```
+| Pattern | typeName | direction | What you get |
+|---------|----------|-----------|--------------|
+| Grid → CRS + StratColumn | `obj_IjkGridRepresentation` | targets | Referenced objects |
+| Grid → all properties | `obj_IjkGridRepresentation` | sources | Attached ContinuousProperty/DiscreteProperty |
+| Well Feature → Interp → Traj | `obj_WellboreFeature` | sources | Chain of representations |
+| Horizon → surfaces | `obj_HorizonInterpretation` | sources | Grid2D representations |
+| Surface → horizon | `obj_Grid2dRepresentation` | targets | Which horizon it represents |
+| Well frame → log curves | `obj_WellboreFrameRepresentation` | both | All attached properties |
 
 ---
 
-### Deep Search — IjkGrid Properties
+### Deep Search — Property Filtering
 
 ```graphql
-# Porosity > 0.25
+# Find grids where porosity > 0.25 (change titleContains/threshold for other properties)
 {
   deepSearch(
     dataspace: "maap/drogon"
@@ -229,7 +194,7 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
     objects {
       uuid title
       properties {
-        title kind
+        title kind uom
         statistics { count minValue maxValue mean }
         matchingCells { count total fraction }
       }
@@ -238,44 +203,20 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 }
 ```
 
-```graphql
-# Permeability > 500 mD
-{
-  deepSearch(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    propertyFilter: {
-      titleContains: "PERMX"
-      arrayFilter: { threshold: 500.0, operator: GT }
-    }
-    includeStatistics: true
-    limit: 5
-  ) {
-    backend totalScanned totalMatched queryDescription
-    objects { uuid title properties { title kind statistics { minValue maxValue mean } matchingCells { count total fraction } } }
-  }
-}
-```
+Common filter variations (same query structure, swap `titleContains` + `threshold` + `operator`):
+
+| Use case | titleContains | threshold | operator |
+|----------|--------------|-----------|----------|
+| High porosity zones | `"PORO"` | 0.25 | GT |
+| High-perm streaks | `"PERMX"` | 500.0 | GT |
+| Hydrocarbon zones (low Sw) | `"SWATINIT"` | 0.3 | LT |
+| Tight zones (low perm) | `"PERMX"` | 1.0 | LT |
+| Net-to-gross cutoff | `"ntg_pem"` | 0.5 | GT |
+| Well log porosity | `"PHIT"` | 0.25 | GT |
+| Well log permeability | `"KLOGH"` | 100.0 | GT |
 
 ```graphql
-# Water saturation < 0.3 (hydrocarbon zones)
-{
-  deepSearch(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    propertyFilter: {
-      titleContains: "SWATINIT"
-      arrayFilter: { threshold: 0.3, operator: LT }
-    }
-    includeStatistics: true
-  ) {
-    objects { uuid title properties { title kind matchingCells { count total fraction } } }
-  }
-}
-```
-
-```graphql
-# Browse ALL properties (no filter)
+# Browse ALL properties on IjkGrids (no filter — omit propertyFilter)
 {
   deepSearch(
     dataspace: "maap/drogon"
@@ -288,52 +229,7 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 }
 ```
 
----
-
-### Deep Search — Well Logs
-
-```graphql
-# Wells with PHIT > 0.25
-{
-  deepSearch(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_WellboreFrameRepresentation"
-    propertyFilter: { titleContains: "PHIT", arrayFilter: { threshold: 0.25, operator: GT } }
-    includeStatistics: true
-    limit: 14
-  ) {
-    totalScanned totalMatched
-    objects { uuid title properties { title kind statistics { minValue maxValue mean } matchingCells { count total fraction } } }
-  }
-}
-```
-
-```graphql
-# Wells with permeability (KLOGH) > 100 mD
-{
-  deepSearch(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_WellboreFrameRepresentation"
-    propertyFilter: { titleContains: "KLOGH", arrayFilter: { threshold: 100.0, operator: GT } }
-    includeStatistics: true
-    limit: 14
-  ) {
-    objects { uuid title properties { title kind matchingCells { count total fraction } } }
-  }
-}
-```
-
-```graphql
-# All log curves on a well frame
-{
-  objectRelations(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_WellboreFrameRepresentation"
-    uuid: "0086eb99-eca4-485b-882a-af15bc9add89"
-    direction: "both"
-  ) { uuid name typeName direction }
-}
-```
+For **well logs**, use `typeName: "resqml20.obj_WellboreFrameRepresentation"` with the same filter pattern.
 
 ---
 
@@ -356,10 +252,119 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 
 ---
 
+### Federated Search (OSDU + RDDMS)
+
+The `federatedSearch` resolver combines **three independent sources** in a single query:
+
+| Source | Parameter | What it searches | Speed |
+|--------|-----------|------------------|-------|
+| OSDU Catalog | `searchCatalog` | Elasticsearch metadata (kind, text, spatial) | Fast |
+| Local RDDMS | `searchRddms` | PostgreSQL (direct, when `GRAPHQL_PG_CONN_STRING` set) | Fastest |
+| Remote RDDMS | `searchRemoteRddms` | OSDU Reservoir-DDMS REST API (Azure-hosted) | Medium |
+
+**How routing works:**
+
+1. Selected dataspaces are classified as _local_ (present in PG) or _remote_ (only on OSDU RDDMS).
+2. Local dataspaces are queried via direct PostgreSQL; remote ones go through the REST API.
+3. The OSDU catalog is searched independently (by `kind` + free-text).
+4. Results are **merged by UUID** — if the same object appears in multiple sources, flags indicate where it was found: `foundInCatalog`, `foundInLocalRddms`, `foundInRemoteRddms`.
+
+**When to use which mode:**
+
+| Scenario | Settings |
+|----------|----------|
+| Browse local un-indexed data (fast, offline) | `searchRddms:true`, others `false` |
+| Check what's in the OSDU catalog | `searchCatalog:true`, others `false` |
+| Verify catalog records exist in RDDMS | All three `true`, compare flags |
+| Search remote + local RDDMS together | `searchRddms:true, searchRemoteRddms:true`, catalog off |
+| Full discovery across everything | All three `true` (default) |
+| Enrich results with relations/properties | Add `includeRelations`, `includeProperties`, `includeStatistics` |
+
+**Key parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `text` | String | `"*"` | Free-text filter (title match for RDDMS, query string for catalog) |
+| `kind` | String | `*:*` | OSDU kind filter (catalog path only) |
+| `typeName` | String | — | RESQML type filter (RDDMS paths only) |
+| `dataspaces` | [String] | auto-discover | Which dataspaces to search |
+| `searchCatalog` | Boolean | true | Enable OSDU catalog path |
+| `searchRddms` | Boolean | true | Enable local PG path |
+| `searchRemoteRddms` | Boolean | true | Enable remote RDDMS REST path |
+| `includeRelations` | Boolean | false | Enrich hits with graph edges |
+| `includeProperties` | Boolean | false | Enrich hits with attached properties |
+| `includeStatistics` | Boolean | false | Compute array min/max/mean for properties |
+| `propertyFilter` | PropertyFilter | — | Filter results by property name/threshold |
+| `limit` | Int | 30 | Max results returned |
+
+```graphql
+# Search both catalog and RDDMS for "grid"
+{
+  federatedSearch(
+    text: "grid"
+    searchCatalog: true
+    searchRddms: true
+    dataspaces: ["maap/drogon"]
+    limit: 10
+  ) {
+    totalCatalog totalRddms totalMerged sources queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInRddms
+      osduId osduKind
+    }
+  }
+}
+```
+
+```graphql
+# RDDMS-only with enrichment (relations + property statistics)
+{
+  federatedSearch(
+    text: "Simgrid"
+    searchCatalog: false
+    searchRddms: true
+    dataspaces: ["maap/drogon"]
+    includeRelations: true
+    includeProperties: true
+    includeStatistics: true
+    limit: 5
+  ) {
+    totalRddms totalMerged
+    hits {
+      uuid title typeName dataspace
+      relations { uuid name typeName direction }
+      properties {
+        uuid title kind
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}
+```
+
+```graphql
+# Catalog-only — search by OSDU kind
+{
+  federatedSearch(
+    text: "Drogon"
+    kind: "osdu:wks:work-product-component--GenericRepresentation:*"
+    searchCatalog: true
+    searchRddms: false
+    limit: 20
+  ) {
+    totalCatalog
+    hits { uuid title typeName dataspace osduId osduKind foundInCatalog }
+  }
+}
+```
+
+---
+
 ### Array Statistics & Samples
 
 ```graphql
-# Surface Z-values with statistics
+# Get array metadata, statistics, and sample values for any object
 {
   objectArrays(
     dataspace: "maap/drogon"
@@ -372,19 +377,7 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 }
 ```
 
-```graphql
-# IjkGrid geometry arrays
-{
-  objectArrays(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
-    includeStatistics: true
-    includeSampleValues: true
-    sampleSize: 20
-  ) { path dimensions totalElements statistics { minValue maxValue mean stdDev } sampleValues }
-}
-```
+Works with any object type — swap `typeName` + `uuid` for IjkGrids, WellboreFrames, etc.
 
 ---
 
@@ -402,65 +395,11 @@ openETPServer space -S ws://localhost:9002 --auth none --list ""
 | Surfaces for a horizon | GraphQL `objectRelations(sources)` |
 | Depth stats for a surface | GraphQL `objectArrays` |
 | Search multiple dataspaces | GraphQL `deepSearch(dataspaces:[...])` |
+| Search OSDU catalog + RDDMS at once | GraphQL `federatedSearch` |
+| Find un-indexed local RESQML data | GraphQL `federatedSearch(searchRddms:true)` |
+| Match OSDU records to RDDMS objects | GraphQL `federatedSearch` (UUID merge) |
 | Import/export EPC file | ETP CLI |
 | Full XML of an object | RDDMS REST |
-
----
-
-## Drogon Dataset Reference
-
-| Category | Count | Details |
-|----------|-------|---------|
-| IjkGrids | 2 | Simgrid (107k cells), Geogrid (927k cells) |
-| Grid2D surfaces | 48 | DS_ (depth), TS_ (time), GS_ (velocity) |
-| Wells | 18 | Exploration (55/33-*), production (OP*) |
-| Horizons | 6 | TopVolantis, BaseVolantis, TopTherys, TopVolon, MSL, BaseVelmodel |
-| Continuous Properties | 215 | Grid properties + well logs |
-| Discrete Properties | 82 | Zone, Region, FaultBlock, Facies |
-| Well log frames | 14 | ~20 curves per well |
-| Total objects | 589 | |
-| Total arrays | 618 | |
-
-### IjkGrid Properties
-
-| Property | Range (Simgrid) | Description |
-|----------|-----------------|-------------|
-| PORO | 0 – 0.36 | Porosity |
-| PERMX/Y | 0 – 4,278 | Horizontal perm (mD) |
-| PERMZ | 0 – 2,497 | Vertical perm (mD) |
-| SWATINIT | 0 – 1.0 | Initial water saturation |
-| ntg_pem | 0 – 1.0 | Net-to-gross |
-| FWL | 0 – 1,677 | Free water level (m) |
-| GOC | 0 – 1,648 | Gas-oil contact (m) |
-| Zone | 1 – 5 | Stratigraphic zone (discrete) |
-| Region | 1 – 6 | Region index (discrete) |
-| SATNUM | 1 – 6 | Saturation region (discrete) |
-
-### Well Log Curves
-
-| Curve | Range | Description |
-|-------|-------|-------------|
-| PHIT | 0 – 0.40 | Total porosity |
-| KLOGH | 0 – 5,000 | Permeability (mD) |
-| VSH | 0 – 1.0 | Shale volume |
-| DENS | 1.8 – 2.8 | Bulk density (g/cm³) |
-| AI | 4,000 – 12,000 | Acoustic impedance |
-| VP / VS | 2,000–5,000 / 1,000–3,000 | P/S-wave velocity (m/s) |
-| Sw | 0 – 1.0 | Water saturation |
-| Facies | 0 – 5 | Lithofacies (discrete) |
-
-### Key UUIDs
-
-| Object | UUID |
-|--------|------|
-| Simgrid (IjkGrid) | `0bc36994-2032-4e08-bad8-60ce0871002a` |
-| Geogrid (IjkGrid) | `2c6de928-7e08-4601-b979-34048bd68c02` |
-| TopVolantis (HorizonInterp) | `02e954a9-d7db-4b57-aef7-12b8ebf47a65` |
-| BaseVolantis (HorizonInterp) | `3657ca0b-d21f-41ca-801b-4a6a7eb1f426` |
-| DS_interp surface (Grid2D) | `02a9d0b6-1f7c-4553-994b-5060cd725d6d` |
-| Well 55_33-A-1 (Feature) | `50495987-88f4-4e39-95c8-0b2624298c47` |
-| Log frame (55_33-A-2) | `0086eb99-eca4-485b-882a-af15bc9add89` |
-| Local Depth CRS | `0a0ae03b-aee1-4651-8f11-5433eeda0ec2` |
 
 ---
 

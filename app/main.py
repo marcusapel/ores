@@ -1831,6 +1831,12 @@ _HOWTO_SECTIONS: list[dict] = [
                 "desc": "Web client capabilities, project layout & pipeline guide",
             },
             {
+                "slug": "query-guide",
+                "file": "Query.md",
+                "title": "Querying Data",
+                "desc": "REST, ETP, GraphQL & OSDU Search — all query paths explained",
+            },
+            {
                 "slug": "business-decision",
                 "file": "BusinessDecision.md",
                 "title": "Business Decision",
@@ -1860,12 +1866,6 @@ _HOWTO_SECTIONS: list[dict] = [
                 "file": "StratColumn.md",
                 "title": "Stratigraphy",
                 "desc": "Data model, tooling & workflow",
-            },
-            {
-                "slug": "query-guide",
-                "file": "Query.md",
-                "title": "Querying Data",
-                "desc": "REST, ETP, GraphQL & OSDU Search — all query paths explained",
             },
         ],
     },

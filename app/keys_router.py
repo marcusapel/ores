@@ -64,17 +64,36 @@ async def keys_page(request: Request):
 
 @router.get("/keys/dataspaces.json")
 async def keys_dataspaces(request: Request):
+    """Merge dataspaces from local PG + remote OSDU RDDMS, tagged with source."""
     at = _access_token(request)
+    items: List[Dict[str, Any]] = []
+    seen_paths: set = set()
+
+    # 1. Local PG dataspaces (fast, direct)
+    try:
+        from .graphql_router import _get_pool, _pg_list_dataspaces
+        pool = await _get_pool()
+        if pool:
+            pg_rows = await _pg_list_dataspaces(pool)
+            for x in pg_rows:
+                p = x.get("path", "")
+                if p and p not in seen_paths:
+                    items.append({"path": p, "uri": x.get("uri", ""), "source": "local"})
+                    seen_paths.add(p)
+    except Exception as e:
+        log.debug("keys_dataspaces local PG failed: %s", e)
+
+    # 2. Remote OSDU RDDMS dataspaces
     try:
         rows = await osdu.list_dataspaces(at)
+        for x in rows:
+            p = x.get("path") or x.get("Path") or x.get("DataspaceId") or ""
+            if p and p not in seen_paths:
+                items.append({"path": p, "uri": x.get("uri", ""), "source": "remote"})
+                seen_paths.add(p)
     except Exception as e:
-        log.warning("keys_dataspaces failed: %s", e)
-        rows = []
-    items = []
-    for x in rows:
-        p = x.get("path") or x.get("Path") or x.get("DataspaceId") or ""
-        if p:
-            items.append({"path": p, "uri": x.get("uri", "")})
+        log.warning("keys_dataspaces remote RDDMS failed: %s", e)
+
     return JSONResponse({"items": items})
 
 @router.get("/keys/types.json")

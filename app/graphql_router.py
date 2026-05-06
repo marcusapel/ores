@@ -32,6 +32,7 @@ Dependencies:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 import os
@@ -240,18 +241,18 @@ async def _pg_list_arrays(pool, dataspace: str, uuid: str) -> List[Dict[str, Any
         """, src["obj_id"])
         results = []
         for r in rows:
-            dims = [int(r[f"dim{i}"]) for i in range(1, 5) if r[f"dim{i}"] and r[f"dim{i}"] > 0]
+            dims = [int(r[f"dim{i}"]) for i in range(1, 5) if r[f"dim{i}"] is not None and r[f"dim{i}"] > 0]
             total = 1
             for d in dims:
                 total *= d
             results.append({
                 "ary_id": int(r["id"]),
-                "path": r["path"],
-                "type": int(r["type"]),
-                "rank": int(r["rank1"]),
+                "path": r["path"] or "",
+                "type": int(r["type"]) if r["type"] is not None else 1,
+                "rank": int(r["rank1"]) if r["rank1"] is not None else 0,
                 "dimensions": dims,
                 "total_elements": total,
-                "usize": int(r["usize"]),
+                "usize": int(r["usize"]) if r["usize"] is not None else 8,
             })
         return results
 
@@ -278,9 +279,11 @@ async def _pg_read_array(pool, dataspace: str, uuid: str, path: str) -> List[flo
         raw = b"".join(b["value"] for b in bins)
 
         # Determine element format
-        fmt_char = _ARY_TYPE_FMT.get(ary["type"], "d")
+        fmt_char = _ARY_TYPE_FMT.get(ary["type"] if ary["type"] is not None else 1, "d")
         elem_size = struct.calcsize(fmt_char)
-        n_elements = len(raw) // elem_size
+        n_elements = len(raw) // elem_size if elem_size else 0
+        if n_elements == 0:
+            return []
         values = list(struct.unpack_from(f"<{n_elements}{fmt_char}", raw))
         return [float(v) for v in values]
 
@@ -452,6 +455,43 @@ class DeepSearchResult:
     total_matched: int
     query_description: str
     backend: str  # "REST" or "PostgreSQL"
+
+
+@strawberry.type
+class FederatedHit:
+    """A single unified result from federated search (OSDU catalog + local RDDMS + remote RDDMS)."""
+    uuid: str
+    title: str
+    type_name: str = ""
+    dataspace: str = ""
+    # Source flags
+    found_in_catalog: bool = False
+    found_in_rddms: bool = False          # True if found in either local or remote RDDMS
+    found_in_local_rddms: bool = False     # Local PostgreSQL
+    found_in_remote_rddms: bool = False    # Remote OSDU RDDMS (REST)
+    # OSDU catalog metadata (if found there)
+    osdu_id: Optional[str] = None
+    osdu_kind: Optional[str] = None
+    data_json: Optional[str] = None
+    # RESQML deep data (if found in RDDMS)
+    relations: Optional[List[RelationInfo]] = None
+    properties: Optional[List[PropertyInfo]] = None
+
+
+@strawberry.type
+class FederatedSearchResult:
+    """
+    Combined search across OSDU catalog + local RDDMS (PG) + remote RDDMS (REST).
+    Searches all sources in parallel, merges by UUID, deduplicates.
+    """
+    hits: List[FederatedHit]
+    total_catalog: int
+    total_rddms: int           # Combined local + remote
+    total_local_rddms: int = 0
+    total_remote_rddms: int = 0
+    total_merged: int
+    query_description: str
+    sources: List[str]  # e.g. ["OSDU catalog", "PostgreSQL", "Remote RDDMS"]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1035,6 +1075,420 @@ class Query:
         ]
         results = await asyncio.gather(*tasks)
         return self._merge_deep_results(results, ds_list, limit)
+
+    @strawberry.field(
+        description=(
+            "Federated search: query OSDU catalog AND Reservoir DDMS simultaneously. "
+            "Merges results by UUID. Covers: (1) indexed OSDU records with ETP links, "
+            "(2) un-indexed RDDMS data (local PG), (3) both together with dedup. "
+            "Set search_catalog=false to skip OSDU (e.g. local-only demo). "
+            "Set search_rddms=false to skip RDDMS (e.g. catalog-only lookup)."
+        )
+    )
+    async def federated_search(
+        self,
+        info: Info,
+        text: str = "*",
+        kind: Optional[str] = None,
+        type_name: Optional[str] = None,
+        dataspaces: Optional[List[str]] = None,
+        search_catalog: bool = True,
+        search_rddms: bool = True,
+        search_remote_rddms: bool = True,
+        include_relations: bool = False,
+        include_properties: bool = False,
+        include_statistics: bool = False,
+        property_filter: Optional[PropertyFilter] = None,
+        limit: int = 30,
+    ) -> FederatedSearchResult:
+        """
+        Three-path federated search.
+
+        Path A (OSDU Catalog):
+          Hits OSDU Search API with `kind` + `text` query.
+          Extracts UUID, dataspace, RESQML type from each record's ResourceURI
+          (eml:///dataspace('x/y')/resqml20.obj_Type('uuid')).
+
+        Path B (Local RDDMS / PostgreSQL):
+          Queries local PG for objects matching `type_name`
+          and optional `text` title filter, within local dataspaces.
+
+        Path C (Remote RDDMS / REST):
+          Queries the remote OSDU RDDMS REST API for objects in
+          remote dataspaces (those not available in local PG).
+
+        Merge: Results are merged by UUID. If same object found in multiple
+               sources, metadata is combined.
+
+        Use cases:
+          • "Search everything for 'porosity'" → hits all three
+          • "Find OSDU Grid2D records & show their RESQML relations" → catalog + enrich
+          • "Browse local un-indexed PG data" → search_catalog=false, search_rddms=true
+          • "Compare local vs remote RDDMS" → both, check flags
+          • "Check if OSDU records actually exist in RDDMS" → all three, compare flags
+        """
+        import httpx
+        import json as _json
+        import re as _re
+
+        token = _get_token_from_info(info)
+        hits_by_uuid: Dict[str, FederatedHit] = {}
+        total_catalog = 0
+        total_rddms = 0
+        sources: List[str] = []
+
+        # ── Path A: OSDU Catalog ──────────────────────────────────────────────
+        if search_catalog and osdu.OSDU_BASE_URL:
+            search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
+            hdr = osdu.headers(token)
+            osdu_kind = kind or "osdu:wks:work-product-component--*:*"
+            payload: Dict[str, Any] = {
+                "kind": osdu_kind,
+                "query": text if text != "*" else "*",
+                "limit": min(limit, 100),
+                "returnedFields": ["id", "kind", "version", "data"],
+                "trackTotalCount": True,
+            }
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    r = await client.post(search_url, headers=hdr, json=payload)
+                    r.raise_for_status()
+                    resp = r.json()
+                    total_catalog = int(resp.get("totalCount") or 0)
+                    sources.append("OSDU catalog")
+
+                    for hit in resp.get("results", [])[:limit]:
+                        rid = hit.get("id", "")
+                        rkind = hit.get("kind", "")
+                        data = hit.get("data") or {}
+                        name = (
+                            data.get("Name") or data.get("FacilityName")
+                            or data.get("Description") or data.get("ProjectName")
+                            or (rid.rsplit(":", 1)[0].rsplit("--", 1)[-1] if rid else "")
+                        )
+                        uuid = Query._extract_uuid(data, rid)
+                        ds = Query._extract_dataspace(data, rid)
+                        rtype = Query._extract_resqml_type(rkind, data)
+
+                        fh = FederatedHit(
+                            uuid=uuid or rid,
+                            title=name,
+                            type_name=rtype or "",
+                            dataspace=ds or "",
+                            found_in_catalog=True,
+                            osdu_id=rid,
+                            osdu_kind=rkind,
+                            data_json=_json.dumps(data) if data else None,
+                        )
+                        key = uuid or rid
+                        hits_by_uuid[key] = fh
+
+            except Exception as e:
+                log.warning("federated_search catalog path failed: %s", e)
+                sources.append(f"OSDU catalog (error: {e})")
+
+        # ── Determine RESQML types to search ──────────────────────────────────
+        target_types: List[str] = []
+        if type_name:
+            target_types = [type_name]
+        else:
+            target_types = [
+                "resqml20.obj_IjkGridRepresentation",
+                "resqml20.obj_Grid2dRepresentation",
+                "resqml20.obj_WellboreFrameRepresentation",
+                "resqml20.obj_WellboreFeature",
+                "resqml20.obj_HorizonInterpretation",
+            ]
+
+        title_filter = text if text != "*" else None
+        total_local_rddms = 0
+        total_remote_rddms = 0
+
+        # ── Path B: Local RDDMS (PostgreSQL direct) ───────────────────────────
+        if search_rddms:
+            pool = await _get_pool()
+            if pool:
+                # Discover which of the requested dataspaces are in local PG
+                local_ds_set: set = set()
+                all_local = await _pg_list_dataspaces(pool)
+                local_ds_set = {d["path"] for d in all_local}
+
+                ds_list = list(dataspaces) if dataspaces else []
+                if not ds_list:
+                    ds_list = list(local_ds_set)[:10]
+
+                # Only search local dataspaces via PG
+                local_dataspaces = [d for d in ds_list if d in local_ds_set]
+
+                if local_dataspaces:
+                    sources.append("PostgreSQL")
+                    for ds in local_dataspaces:
+                        for ttype in target_types:
+                            try:
+                                resources = await _pg_list_resources(pool, ds, ttype, limit)
+                                for r in resources:
+                                    uid = r["uuid"]
+                                    rtitle = r["title"]
+                                    if title_filter and title_filter.lower() not in rtitle.lower():
+                                        continue
+                                    total_local_rddms += 1
+                                    key = uid or f"{ds}::{ttype}::{rtitle}"
+
+                                    if key in hits_by_uuid:
+                                        hits_by_uuid[key].found_in_rddms = True
+                                        hits_by_uuid[key].found_in_local_rddms = True
+                                        if not hits_by_uuid[key].dataspace:
+                                            hits_by_uuid[key].dataspace = ds
+                                        if not hits_by_uuid[key].type_name:
+                                            hits_by_uuid[key].type_name = ttype
+                                    else:
+                                        hits_by_uuid[key] = FederatedHit(
+                                            uuid=uid or key, title=rtitle,
+                                            type_name=ttype, dataspace=ds,
+                                            found_in_rddms=True,
+                                            found_in_local_rddms=True,
+                                        )
+                            except Exception:
+                                pass
+                            if len(hits_by_uuid) >= limit:
+                                break
+                        if len(hits_by_uuid) >= limit:
+                            break
+
+        # ── Path C: Remote RDDMS (REST API) ──────────────────────────────────
+        if search_remote_rddms and osdu.OSDU_BASE_URL:
+            pool = await _get_pool()
+            ds_list = list(dataspaces) if dataspaces else []
+
+            # Determine which dataspaces are remote (not in local PG)
+            local_ds_set_c: set = set()
+            if pool:
+                all_local_c = await _pg_list_dataspaces(pool)
+                local_ds_set_c = {d["path"] for d in all_local_c}
+
+            remote_dataspaces = [d for d in ds_list if d not in local_ds_set_c]
+
+            # If no specific dataspaces given, try to list from remote RDDMS
+            if not ds_list:
+                try:
+                    remote_rows = await _rest_list_dataspaces(token)
+                    remote_dataspaces = [d["path"] for d in remote_rows
+                                        if d["path"] not in local_ds_set_c][:10]
+                except Exception:
+                    remote_dataspaces = []
+
+            if remote_dataspaces:
+                sources.append("Remote RDDMS")
+                for ds in remote_dataspaces:
+                    for ttype in target_types:
+                        try:
+                            resources = await _rest_list_resources(token, ds, ttype, limit)
+                            for r in resources:
+                                uid = r["uuid"]
+                                rtitle = r["title"]
+                                if title_filter and title_filter.lower() not in rtitle.lower():
+                                    continue
+                                total_remote_rddms += 1
+                                key = uid or f"{ds}::{ttype}::{rtitle}"
+
+                                if key in hits_by_uuid:
+                                    hits_by_uuid[key].found_in_rddms = True
+                                    hits_by_uuid[key].found_in_remote_rddms = True
+                                    if not hits_by_uuid[key].dataspace:
+                                        hits_by_uuid[key].dataspace = ds
+                                    if not hits_by_uuid[key].type_name:
+                                        hits_by_uuid[key].type_name = ttype
+                                else:
+                                    hits_by_uuid[key] = FederatedHit(
+                                        uuid=uid or key, title=rtitle,
+                                        type_name=ttype, dataspace=ds,
+                                        found_in_rddms=True,
+                                        found_in_remote_rddms=True,
+                                    )
+                        except Exception:
+                            pass
+                        if len(hits_by_uuid) >= limit:
+                            break
+                    if len(hits_by_uuid) >= limit:
+                        break
+
+        total_rddms = total_local_rddms + total_remote_rddms
+
+        # ── Enrichment phase: relations + properties ──────────────────────────
+        if include_relations or include_properties or property_filter:
+            pool = await _get_pool()
+            for fh in list(hits_by_uuid.values())[:limit]:
+                if not fh.dataspace or not fh.type_name or not fh.uuid:
+                    continue
+                try:
+                    if pool and include_relations:
+                        rels = await _pg_list_relations(pool, fh.dataspace, fh.type_name, fh.uuid, "both")
+                        fh.relations = [
+                            RelationInfo(
+                                uuid=r["uuid"], name=r["name"], type_name=r["type_name"],
+                                direction=r["direction"], content_type=r["content_type"],
+                            ) for r in rels
+                        ]
+                    elif not pool and include_relations:
+                        try:
+                            targets = await _rest_list_targets(token, fh.dataspace, fh.type_name, fh.uuid)
+                            sources_r = await _rest_list_sources(token, fh.dataspace, fh.type_name, fh.uuid)
+                            rels_list: List[RelationInfo] = []
+                            for t in targets:
+                                ct = t.get("ContentType") or ""
+                                rels_list.append(RelationInfo(
+                                    uuid=t.get("UUID") or t.get("uuid") or "",
+                                    name=t.get("Title") or t.get("name") or "",
+                                    type_name=ct, direction="target", content_type=ct,
+                                ))
+                            for s in sources_r:
+                                ct = s.get("ContentType") or ""
+                                rels_list.append(RelationInfo(
+                                    uuid=s.get("UUID") or s.get("uuid") or "",
+                                    name=s.get("Title") or s.get("name") or "",
+                                    type_name=ct, direction="source", content_type=ct,
+                                ))
+                            fh.relations = rels_list
+                        except Exception:
+                            pass
+
+                    if pool and (include_properties or property_filter):
+                        # Find property sources
+                        if not fh.relations:
+                            rels = await _pg_list_relations(pool, fh.dataspace, fh.type_name, fh.uuid, "sources")
+                            all_rels = rels
+                        else:
+                            all_rels = [{"uuid": r.uuid, "name": r.name, "type_name": r.type_name, "direction": r.direction}
+                                       for r in (fh.relations or [])]
+                        prop_rels = [
+                            r for r in all_rels
+                            if r.get("direction", "") == "source" and "Property" in r.get("type_name", "")
+                        ]
+                        if prop_rels:
+                            props: List[PropertyInfo] = []
+                            passes_filter = not property_filter
+                            for pr in prop_rels[:20]:
+                                pi = PropertyInfo(
+                                    uuid=pr["uuid"], title=pr["name"],
+                                    type_name=pr["type_name"], kind="",
+                                )
+                                if include_statistics or property_filter:
+                                    try:
+                                        arrays = await _pg_list_arrays(pool, fh.dataspace, pr["uuid"])
+                                        if arrays:
+                                            values = await _pg_read_array(pool, fh.dataspace, pr["uuid"], arrays[0]["path"])
+                                            if values:
+                                                pi.statistics = _compute_statistics(values)
+                                                if property_filter and property_filter.array_filter:
+                                                    af = property_filter.array_filter
+                                                    match = _check_threshold(values, af.threshold, af.operator)
+                                                    pi.matching_cells = match
+                                                    if match.count > 0:
+                                                        passes_filter = True
+                                    except Exception:
+                                        pass
+
+                                # Title filter on property
+                                if property_filter and property_filter.title_contains:
+                                    if property_filter.title_contains.lower() not in pi.title.lower():
+                                        continue
+                                props.append(pi)
+
+                            if property_filter and not passes_filter:
+                                # Remove this hit - doesn't pass filter
+                                del hits_by_uuid[fh.uuid]
+                                continue
+                            fh.properties = props if props else None
+                except Exception as e:
+                    log.debug("federated enrichment failed for %s: %s", fh.uuid, e)
+
+        # ── Build result ──────────────────────────────────────────────────────
+        merged = list(hits_by_uuid.values())[:limit]
+        desc_parts = []
+        if text != "*":
+            desc_parts.append(f"text='{text}'")
+        if kind:
+            desc_parts.append(f"kind={kind}")
+        if type_name:
+            desc_parts.append(f"type={type_name}")
+        if dataspaces:
+            desc_parts.append(f"dataspaces={dataspaces}")
+        desc_parts.append(f"sources: {', '.join(sources)}")
+
+        return FederatedSearchResult(
+            hits=merged,
+            total_catalog=total_catalog,
+            total_rddms=total_rddms,
+            total_local_rddms=total_local_rddms,
+            total_remote_rddms=total_remote_rddms,
+            total_merged=len(merged),
+            query_description=" | ".join(desc_parts),
+            sources=sources,
+        )
+
+    @staticmethod
+    def _extract_uuid(data: Dict[str, Any], rid: str) -> Optional[str]:
+        """Extract a RESQML UUID from OSDU record data or ID."""
+        import re as _re
+        # From data.ResourceURI: eml:///dataspace('x/y')/resqml20.obj_Type('uuid')
+        uri = data.get("ResourceURI") or data.get("DataObjectURI") or ""
+        m = _re.search(r"\(([0-9a-f-]{36})\)", uri)
+        if m:
+            return m.group(1)
+        # Check data fields
+        for key in ("ResourceID", "UUID", "Uuid", "uuid", "NativeIdentifier"):
+            val = data.get(key)
+            if val and _re.match(r"^[0-9a-f-]{36}$", str(val)):
+                return str(val)
+        # Try from record ID (often: ...--TypeName:UUID:version)
+        parts = rid.split(":")
+        for p in parts:
+            if _re.match(r"^[0-9a-f-]{36}$", p):
+                return p
+        return None
+
+    @staticmethod
+    def _extract_dataspace(data: Dict[str, Any], rid: str) -> Optional[str]:
+        """Extract dataspace from OSDU record ResourceURI."""
+        import re as _re
+        # eml:///dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation(...)
+        uri = data.get("ResourceURI") or data.get("DataObjectURI") or ""
+        m = _re.search(r"dataspace\(['\"]?([^'\")\s]+)['\"]?\)", uri)
+        if m:
+            return m.group(1)
+        return None
+
+    @staticmethod
+    def _extract_resqml_type(kind: str, data: Dict[str, Any]) -> Optional[str]:
+        """Infer RESQML type from ResourceURI or OSDU kind."""
+        import re as _re
+        # From ResourceURI: eml:///dataspace('x')/resqml20.obj_Grid2dRepresentation('uuid')
+        uri = data.get("ResourceURI") or data.get("DataObjectURI") or ""
+        m = _re.search(r"(resqml\d+\.obj_\w+)", uri)
+        if m:
+            return m.group(1)
+        # From OSDU kind: work-product-component--IjkGridRepresentation:1.0.0
+        kind_type = kind.rsplit("--", 1)[-1].split(":")[0] if "--" in kind else ""
+        type_map = {
+            "IjkGridRepresentation": "resqml20.obj_IjkGridRepresentation",
+            "Grid2dRepresentation": "resqml20.obj_Grid2dRepresentation",
+            "WellboreFeature": "resqml20.obj_WellboreFeature",
+            "WellboreTrajectory": "resqml20.obj_WellboreTrajectoryRepresentation",
+            "HorizonInterpretation": "resqml20.obj_HorizonInterpretation",
+            "FaultInterpretation": "resqml20.obj_FaultInterpretation",
+            "ContinuousProperty": "resqml20.obj_ContinuousProperty",
+            "DiscreteProperty": "resqml20.obj_DiscreteProperty",
+            "WellboreFrameRepresentation": "resqml20.obj_WellboreFrameRepresentation",
+            "GenericRepresentation": "resqml20.obj_Grid2dRepresentation",
+        }
+        if kind_type in type_map:
+            return type_map[kind_type]
+        # From data.SchemaFormatTypeID
+        ct = data.get("SchemaFormatTypeID") or data.get("ContentType") or ""
+        m = _re.search(r"(resqml\d+\.obj_\w+)", ct)
+        if m:
+            return m.group(1)
+        return kind_type if kind_type else None
 
     @staticmethod
     def _merge_deep_results(results: list, ds_list: List[str], limit: int) -> DeepSearchResult:
