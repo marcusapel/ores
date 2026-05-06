@@ -111,7 +111,64 @@
     <div id="grid2d-view" style="overflow:auto; max-height:700px; margin-top: 8px;"></div>
   </div>
 
-  <!-- Raw JSON (collapsed) -->
+  <!-- GraphQL Deep Search Panel -->
+  <div class="section" id="graphql-section">
+    <details>
+      <summary style="cursor:pointer;"><b>GraphQL Deep Search</b>
+        <span id="gql-backend-badge" style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;background:#e1dfdd;color:#605e5c;">checking…</span>
+      </summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;font-size:13px;line-height:1.5;">
+          Query RESQML objects, traverse relationships (Feature→Interpretation→Representation),
+          and filter on numerical array data — all via a single GraphQL endpoint.<br>
+          <span style="color:#605e5c;">The server connects to PostgreSQL when <code>GRAPHQL_PG_CONN_STRING</code> is set,
+          otherwise queries go through the RDDMS REST&nbsp;API.</span>
+          <a href="/graphql" target="_blank" style="margin-left:8px;font-size:12px;">GraphiQL IDE ↗</a>
+        </p>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
+          <label style="font-weight:600;font-size:13px;">Preset:</label>
+          <select id="gql-preset" style="font-size:13px;padding:3px 8px;border-radius:4px;border:1px solid #ccc;">
+            <optgroup label="Explore">
+              <option value="status">Backend status</option>
+              <option value="dataspaces">List dataspaces</option>
+              <option value="types">Resource types &amp; counts</option>
+              <option value="objects">Browse objects by type</option>
+            </optgroup>
+            <optgroup label="Relationships">
+              <option value="rel_targets">Targets (what object references)</option>
+              <option value="rel_sources">Sources (who references this object)</option>
+              <option value="rel_chain">Chain: Grid2D → Interpretation → Feature</option>
+              <option value="rel_crs_users">Reverse: all objects using a CRS</option>
+            </optgroup>
+            <optgroup label="Deep Search">
+              <option value="deep_porosity">Grid2D + Porosity &gt; 0.2</option>
+              <option value="deep_depth">Grid2D + Depth &lt; 3000m</option>
+              <option value="deep_custom">Custom property filter</option>
+            </optgroup>
+            <optgroup label="Numerical Data">
+              <option value="array_stats">Array statistics</option>
+              <option value="array_sample">Array sample values</option>
+            </optgroup>
+          </select>
+          <span class="btn" id="gql-run" style="font-size:13px;padding:4px 14px;">▶ Run</span>
+          <span class="muted" id="gql-status" style="font-size:12px;"></span>
+        </div>
+
+        <textarea id="gql-editor" rows="18" style="width:100%;font-family:'Fira Code',Consolas,monospace;font-size:12px;line-height:1.45;border:1px solid #ccc;border-radius:4px;padding:10px;resize:vertical;background:#fafafa;tab-size:2;"></textarea>
+
+        <details style="margin-top:6px;">
+          <summary style="font-size:12px;cursor:pointer;color:#605e5c;">Variables (JSON)</summary>
+          <textarea id="gql-vars" rows="3" style="width:100%;font-family:monospace;font-size:12px;border:1px solid #ccc;border-radius:4px;padding:8px;margin-top:4px;background:#fafafa;">{ }</textarea>
+        </details>
+
+        <div id="gql-result" style="margin-top:10px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;">
+          <pre id="gql-output" style="font-size:12px;white-space:pre-wrap;padding:10px;margin:0;"></pre>
+        </div>
+      </div>
+    </details>
+  </div>
+
   <div class="section">
     <details>
       <summary><b>Raw JSON</b></summary>
@@ -601,6 +658,370 @@
     $('load-details').addEventListener('click', loadDetails);
     btnTable.addEventListener('click', loadTable);
     btnMap.addEventListener('click', loadMap);
+
+    // ── GraphQL query panel ──────────────────────────────────────────────
+    const gqlEditor = $('gql-editor');
+    const gqlVars = $('gql-vars');
+    const gqlOutput = $('gql-output');
+    const gqlStatus = $('gql-status');
+    const gqlPreset = $('gql-preset');
+    const gqlRun = $('gql-run');
+
+    const GQL_PRESETS = {
+      // ─── Explore ───────────────────────────────────────────────────────
+      status: `# Check backend: shows PostgreSQL version if connected, else REST API
+{
+  status
+}`,
+      dataspaces: `# List all dataspaces (projects) in the store
+{
+  dataspaces {
+    path
+    uri
+  }
+}`,
+      types: `# Count of each RESQML type stored in this dataspace
+{
+  resourceTypes(dataspace: "$DS") {
+    name
+    count
+  }
+}`,
+      objects: `# Browse objects of a specific type
+# Common types:
+#   resqml20.obj_Grid2dRepresentation   (surfaces / horizons)
+#   resqml20.obj_IjkGridRepresentation   (geocellular grids)
+#   resqml20.obj_TriangulatedSetRepresentation
+#   resqml20.obj_ContinuousProperty      (cell properties)
+#   resqml20.obj_HorizonInterpretation
+#   resqml20.obj_GeneticBoundaryFeature
+#   resqml20.obj_FaultInterpretation
+#   resqml20.obj_LocalDepth3dCrs
+#   resqml20.obj_Activity                (provenance)
+{
+  resqmlObjects(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    limit: 30
+  ) {
+    uuid
+    title
+    typeName
+  }
+}`,
+
+      // ─── Relationships ────────────────────────────────────────────────
+      rel_targets: `# TARGETS: objects that THIS object references
+# (e.g. Grid2D → CRS, Grid2D → HorizonInterpretation)
+#
+# Relationship labels (contentType) from the xpa table:
+#   rsq:RepresentedInterpretation
+#   rsq:InterpretedFeature
+#   rsq:Grid2dPatch/rsq:Geometry/rsq:LocalCrs
+#   rsq:Parameter/rsq:DataObject
+{
+  objectRelations(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    uuid: "PASTE-UUID-HERE"
+    direction: "targets"
+  ) {
+    uuid
+    name
+    typeName
+    direction
+    contentType
+  }
+}`,
+      rel_sources: `# SOURCES: objects that reference THIS object (reverse graph)
+# Useful to find:
+#   • Properties attached to a Grid/Representation
+#   • Activities that produced this object
+#   • Representations of an Interpretation
+{
+  objectRelations(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_HorizonInterpretation"
+    uuid: "PASTE-UUID-HERE"
+    direction: "sources"
+  ) {
+    uuid
+    name
+    typeName
+    direction
+    contentType
+  }
+}`,
+      rel_chain: `# CHAIN TRAVERSAL: follow the RESQML ancestor hierarchy
+# Grid2dRepresentation → HorizonInterpretation → GeneticBoundaryFeature
+#
+# Step 1: Get targets of a Grid2D (finds Interpretation + CRS)
+# Step 2: Copy the Interpretation UUID, switch typeName, re-run for Feature
+#
+# Start here – then follow the Interpretation UUID:
+{
+  objectRelations(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    uuid: "PASTE-UUID-HERE"
+    direction: "targets"
+  ) {
+    uuid
+    name
+    typeName
+    contentType
+  }
+}
+
+# Then query the Interpretation's targets:
+# {
+#   objectRelations(
+#     dataspace: "$DS"
+#     typeName: "resqml20.obj_HorizonInterpretation"
+#     uuid: "INTERPRETATION-UUID"
+#     direction: "targets"
+#   ) { uuid name typeName contentType }
+# }`,
+      rel_crs_users: `# REVERSE: list all objects that reference a LocalDepth3dCrs
+# (which grids share the same coordinate reference system?)
+{
+  objectRelations(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_LocalDepth3dCrs"
+    uuid: "PASTE-CRS-UUID-HERE"
+    direction: "sources"
+  ) {
+    uuid
+    name
+    typeName
+    contentType
+  }
+}`,
+
+      // ─── Deep Search ──────────────────────────────────────────────────
+      deep_porosity: `# Deep search: find Grid2D representations that have an attached
+# ContinuousProperty with kind="Porosity" and cell values > 0.2
+#
+# This traverses the object graph AND reads the binary array data.
+{
+  deepSearch(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    propertyFilter: {
+      kind: "Porosity"
+      arrayFilter: { threshold: 0.2, operator: GT }
+    }
+    includeStatistics: true
+    limit: 10
+  ) {
+    backend
+    totalScanned
+    totalMatched
+    queryDescription
+    objects {
+      uuid
+      title
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+        matchingCells { count total fraction }
+      }
+    }
+  }
+}`,
+      deep_depth: `# Deep search: Grid2D surfaces with depth values shallower than 3000m
+# Useful to find shallow horizons in a dataset
+{
+  deepSearch(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    propertyFilter: {
+      kind: "Depth"
+      arrayFilter: { threshold: 3000.0, operator: LT }
+    }
+    includeStatistics: true
+    includeSampleValues: true
+    sampleSize: 10
+    limit: 10
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      properties {
+        title kind
+        statistics { minValue maxValue mean }
+        matchingCells { count total fraction }
+        arrays { path totalElements sampleValues }
+      }
+    }
+  }
+}`,
+      deep_custom: `# Custom deep search — change typeName and propertyFilter
+# Works for any representation type + property kind combination:
+#   IjkGridRepresentation + Permeability > 100 mD
+#   TriangulatedSetRepresentation + Saturation > 0.5
+{
+  deepSearch(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    propertyFilter: {
+      kind: "Permeability"
+      arrayFilter: { threshold: 100.0, operator: GT }
+    }
+    includeStatistics: true
+    limit: 5
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+        matchingCells { count total fraction }
+      }
+    }
+  }
+}`,
+
+      // ─── Numerical Data ───────────────────────────────────────────────
+      array_stats: `# Get array metadata and statistics for any object
+# (Grid2D points, Property values, etc.)
+{
+  objectArrays(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    uuid: "PASTE-UUID-HERE"
+    includeStatistics: true
+  ) {
+    path
+    dataType
+    dimensions
+    totalElements
+    statistics {
+      count minValue maxValue mean stdDev nanCount
+    }
+  }
+}`,
+      array_sample: `# Read sample values from an array (first N elements)
+{
+  objectArrays(
+    dataspace: "$DS"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    uuid: "PASTE-UUID-HERE"
+    includeStatistics: true
+    includeSampleValues: true
+    sampleSize: 20
+  ) {
+    path
+    dimensions
+    totalElements
+    statistics { minValue maxValue mean stdDev }
+    sampleValues
+  }
+}`
+    };
+
+    function gqlCurrentDs() {
+      return dsSel.value || 'my/dataspace';
+    }
+
+    function gqlLoadPreset() {
+      const key = gqlPreset.value;
+      const tpl = GQL_PRESETS[key] || '';
+      gqlEditor.value = tpl.replace(/\$DS/g, gqlCurrentDs());
+    }
+
+    gqlPreset.addEventListener('change', gqlLoadPreset);
+    // Initialize with first preset
+    gqlLoadPreset();
+
+    // Auto-check backend status and update badge
+    (async function checkGqlBackend() {
+      const badge = document.getElementById('gql-backend-badge');
+      try {
+        const resp = await fetch('/api/graphql/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: '{ status }' }),
+        });
+        const data = await resp.json();
+        const st = (data.data && data.data.status) || '';
+        if (st.startsWith('PostgreSQL direct')) {
+          badge.textContent = 'PostgreSQL';
+          badge.style.background = '#dff6dd';
+          badge.style.color = '#107c10';
+        } else if (st.includes('REST')) {
+          badge.textContent = 'REST API';
+          badge.style.background = '#deecf9';
+          badge.style.color = '#004578';
+        } else {
+          badge.textContent = 'connected';
+          badge.style.background = '#dff6dd';
+          badge.style.color = '#107c10';
+        }
+      } catch (e) {
+        badge.textContent = 'offline';
+        badge.style.background = '#fde7e9';
+        badge.style.color = '#a80000';
+      }
+    })();
+
+    // Update $DS placeholder when dataspace changes
+    dsSel.addEventListener('change', () => {
+      const current = gqlEditor.value;
+      if (current.includes('dataspace:')) {
+        // smart-replace the dataspace argument
+        gqlEditor.value = current.replace(
+          /dataspace:\s*"[^"]*"/g,
+          `dataspace: "${gqlCurrentDs()}"`
+        );
+      }
+    });
+
+    async function runGraphQLQuery() {
+      const query = gqlEditor.value.trim();
+      if (!query) { gqlStatus.textContent = 'Empty query'; return; }
+
+      let variables = {};
+      try {
+        const vt = gqlVars.value.trim();
+        if (vt && vt !== '{}') variables = JSON.parse(vt);
+      } catch (e) {
+        gqlStatus.textContent = 'Invalid variables JSON';
+        return;
+      }
+
+      gqlStatus.textContent = 'Running…';
+      gqlOutput.textContent = '';
+
+      try {
+        const resp = await fetch('/api/graphql/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables }),
+        });
+        const data = await resp.json();
+        gqlOutput.textContent = JSON.stringify(data, null, 2);
+        if (data.errors && data.errors.length) {
+          gqlStatus.textContent = `Done (${data.errors.length} error(s))`;
+        } else {
+          const count = data.data ? Object.keys(data.data).length : 0;
+          gqlStatus.textContent = `Done – ${count} field(s) returned`;
+        }
+      } catch (e) {
+        gqlStatus.textContent = 'Request failed';
+        gqlOutput.textContent = e.message;
+      }
+    }
+
+    gqlRun.addEventListener('click', runGraphQLQuery);
+    // Ctrl+Enter to run
+    gqlEditor.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runGraphQLQuery();
+      }
+    });
 
     // Delegate navigation for span[data-href]
     document.addEventListener('click', (ev) => {
