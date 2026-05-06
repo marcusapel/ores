@@ -64,35 +64,71 @@ async def keys_page(request: Request):
 
 @router.get("/keys/dataspaces.json")
 async def keys_dataspaces(request: Request):
-    """Merge dataspaces from local PG + remote OSDU RDDMS, tagged with source."""
+    """Merge dataspaces from local PG + remote OSDU RDDMS, tagged with source.
+
+    Both sources are fetched in parallel for speed.
+    Query params:
+      ?source=local  → only local PG (instant)
+      ?source=remote → only remote RDDMS
+      (default)      → both merged
+    """
+    import asyncio
     at = _access_token(request)
     items: List[Dict[str, Any]] = []
     seen_paths: set = set()
 
-    # 1. Local PG dataspaces (fast, direct)
-    try:
-        from .graphql_router import _get_pool, _pg_list_dataspaces
-        pool = await _get_pool()
-        if pool:
-            pg_rows = await _pg_list_dataspaces(pool)
-            for x in pg_rows:
-                p = x.get("path", "")
-                if p and p not in seen_paths:
-                    items.append({"path": p, "uri": x.get("uri", ""), "source": "local"})
-                    seen_paths.add(p)
-    except Exception as e:
-        log.debug("keys_dataspaces local PG failed: %s", e)
+    source_filter = (request.query_params.get("source") or "").lower()
+
+    # --- Fetch functions ---
+    async def _fetch_local() -> List[Dict[str, Any]]:
+        try:
+            from .graphql_router import _get_pool, _pg_list_dataspaces
+            pool = await _get_pool()
+            if pool:
+                return await _pg_list_dataspaces(pool)
+        except Exception as e:
+            log.debug("keys_dataspaces local PG failed: %s", e)
+        return []
+
+    async def _fetch_remote() -> List[Dict[str, Any]]:
+        try:
+            return await osdu.list_dataspaces(at)
+        except Exception as e:
+            log.debug("keys_dataspaces remote RDDMS failed with user token: %s", e)
+        # Fallback: use instance-level token (client_credentials / env RT)
+        try:
+            from .instances import get_active
+            inst = get_active()
+            fallback_at = await inst.get_access_token()
+            if fallback_at and fallback_at != at:
+                return await osdu.list_dataspaces(fallback_at)
+        except Exception as e2:
+            log.warning("keys_dataspaces remote RDDMS fallback also failed: %s", e2)
+        return []
+
+    # --- Choose what to fetch based on ?source= ---
+    if source_filter == "local":
+        pg_rows = await _fetch_local()
+        remote_rows = []
+    elif source_filter == "remote":
+        pg_rows = []
+        remote_rows = await _fetch_remote()
+    else:
+        pg_rows, remote_rows = await asyncio.gather(_fetch_local(), _fetch_remote())
+
+    # 1. Local PG dataspaces
+    for x in pg_rows:
+        p = x.get("path", "")
+        if p and p not in seen_paths:
+            items.append({"path": p, "uri": x.get("uri", ""), "source": "local"})
+            seen_paths.add(p)
 
     # 2. Remote OSDU RDDMS dataspaces
-    try:
-        rows = await osdu.list_dataspaces(at)
-        for x in rows:
-            p = x.get("path") or x.get("Path") or x.get("DataspaceId") or ""
-            if p and p not in seen_paths:
-                items.append({"path": p, "uri": x.get("uri", ""), "source": "remote"})
-                seen_paths.add(p)
-    except Exception as e:
-        log.warning("keys_dataspaces remote RDDMS failed: %s", e)
+    for x in remote_rows:
+        p = x.get("path") or x.get("Path") or x.get("DataspaceId") or ""
+        if p and p not in seen_paths:
+            items.append({"path": p, "uri": x.get("uri", ""), "source": "remote"})
+            seen_paths.add(p)
 
     return JSONResponse({"items": items})
 
@@ -105,17 +141,31 @@ async def keys_types(
     at = _access_token(request)
     items: List[Dict[str, Any]] = []
     if source == "live":
-        enc = urllib.parse.quote(ds, safe="")
+        # Try local PG first (instant, no network), fall back to REST
+        pg_done = False
         try:
-            rows = await osdu.list_types(at, enc)
+            from .graphql_router import _get_pool, _pg_list_types
+            pool = await _get_pool()
+            if pool:
+                pg_items = await _pg_list_types(pool, ds)
+                if pg_items:
+                    items = pg_items
+                    pg_done = True
         except Exception as e:
-            log.warning("keys_types list_types failed: %s", e)
-            rows = []
-        for r in rows or []:
-            name = r.get("name") if isinstance(r, dict) else r
-            count = r.get("count") if isinstance(r, dict) else None
-            if name:
-                items.append({"name": name, "count": count})
+            log.debug("keys_types PG failed for %s: %s", ds, e)
+
+        if not pg_done:
+            enc = urllib.parse.quote(ds, safe="")
+            try:
+                rows = await osdu.list_types(at, enc)
+            except Exception as e:
+                log.warning("keys_types list_types failed: %s", e)
+                rows = []
+            for r in rows or []:
+                name = r.get("name") if isinstance(r, dict) else r
+                count = r.get("count") if isinstance(r, dict) else None
+                if name:
+                    items.append({"name": name, "count": count})
     else:
         # curated fallback list
         items = [{"name": x} for x in [
@@ -387,6 +437,7 @@ async def keys_objects(
 ):
     """
     Aggregated list endpoint used by app.js:
+    - Try local PG first (fast), fall back to RDDMS REST.
     - If 'typ' provided -> list via RDDMS /resources/{type}
     - If 'typ' omitted  -> try RDDMS /resources/all; on failure/empty, fall back to
       enumerating types via /resources and aggregating /resources/{type}.
@@ -395,42 +446,72 @@ async def keys_objects(
     at = _access_token(request)
     enc = urllib.parse.quote(ds, safe="")
     rows: List[Dict[str, Any]] = []
+
+    # --- Try local PG first (instant, no network) ---
+    pg_done = False
     try:
-        if typ:
-            rows = await osdu.list_resources(at, enc, typ)
-        else:
-            # Try /resources/all first
-            try:
-                rows = await osdu.list_all_resources(at, enc)
-            except Exception as e_all:
-                log.warning("keys_objects: resources/all failed: %s", e_all)
-                rows = []
-            # Fallback: enumerate types and aggregate (parallel)
-            if not rows:
-                try:
-                    types = await osdu.list_types(at, enc) or []
-                    names = [t.get("name") if isinstance(t, dict) else t for t in types if t]
-                    names = [n for n in names if n]
-
-                    async def _fetch_type(name):
-                        try:
-                            return await osdu.list_resources(at, enc, name) or []
-                        except Exception as e_type:
-                            log.warning("keys_objects: list_resources(%s) failed: %s", name, e_type)
-                            return []
-
+        from .graphql_router import _get_pool, _pg_list_resources, _pg_list_types
+        pool = await _get_pool()
+        if pool:
+            if typ:
+                pg_rows = await _pg_list_resources(pool, ds, typ, limit=500)
+            else:
+                # Get all types then aggregate
+                pg_types = await _pg_list_types(pool, ds)
+                if pg_types:
                     import asyncio
-                    parts = await asyncio.gather(*[_fetch_type(n) for n in names])
-                    agg: List[Dict[str, Any]] = []
+                    parts = await asyncio.gather(
+                        *[_pg_list_resources(pool, ds, t["name"], limit=500) for t in pg_types if t.get("name")]
+                    )
+                    pg_rows = []
                     for part in parts:
-                        agg.extend(part)
-                    rows = agg
-                except Exception as e:
-                    log.warning("keys_objects: types aggregation failed: %s", e)
-                    rows = []
+                        pg_rows.extend(part)
+                else:
+                    pg_rows = []
+            if pg_rows:
+                rows = pg_rows
+                pg_done = True
     except Exception as e:
-        log.warning("keys_objects failed: %s", e)
-        rows = []
+        log.debug("keys_objects PG failed for %s: %s", ds, e)
+
+    # --- Fall back to RDDMS REST ---
+    if not pg_done:
+        try:
+            if typ:
+                rows = await osdu.list_resources(at, enc, typ)
+            else:
+                # Try /resources/all first
+                try:
+                    rows = await osdu.list_all_resources(at, enc)
+                except Exception as e_all:
+                    log.warning("keys_objects: resources/all failed: %s", e_all)
+                    rows = []
+                # Fallback: enumerate types and aggregate (parallel)
+                if not rows:
+                    try:
+                        types = await osdu.list_types(at, enc) or []
+                        names = [t.get("name") if isinstance(t, dict) else t for t in types if t]
+                        names = [n for n in names if n]
+
+                        async def _fetch_type(name):
+                            try:
+                                return await osdu.list_resources(at, enc, name) or []
+                            except Exception as e_type:
+                                log.warning("keys_objects: list_resources(%s) failed: %s", name, e_type)
+                                return []
+
+                        import asyncio
+                        parts = await asyncio.gather(*[_fetch_type(n) for n in names])
+                        agg: List[Dict[str, Any]] = []
+                        for part in parts:
+                            agg.extend(part)
+                        rows = agg
+                    except Exception as e:
+                        log.warning("keys_objects: types aggregation failed: %s", e)
+                        rows = []
+        except Exception as e:
+            log.warning("keys_objects failed: %s", e)
+            rows = []
 
     # Normalize + server-side filter
     out = []

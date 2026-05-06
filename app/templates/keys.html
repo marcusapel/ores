@@ -18,6 +18,8 @@
   .badge { display: inline-block; background: #e1dfdd; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-left: 6px; }
   .tag { display: inline-block; background: #deecf9; color: #004578; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-right: 4px; }
   .truncation-notice { background: #fff4ce; padding: 6px 10px; border-left: 3px solid #ffb900; margin-bottom: 8px; font-size: 13px; }
+  .btn-action { font-size:13px; font-weight:700; padding:6px 18px; background:#0078d4; color:#fff; border-color:#0078d4; border-radius:5px; box-shadow:0 2px 6px rgba(0,120,212,.35); }
+  .btn-action:hover { background: #106ebe !important; box-shadow: 0 3px 8px rgba(0,120,212,.45) !important; }
   .grid2d-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .grid2d-btns .btn { min-width: 130px; text-align: center; }
   .grid2d-btns .btn.active { background: #004578; color: #fff; }
@@ -63,7 +65,7 @@
 
   <div class="row">
     <label></label>
-    <span class="btn" id="load-details">Load details</span>
+    <span class="btn btn-action" id="load-details">Load details</span>
   </div>
 
   <p class="muted" id="msg" style="display:none;"></p>
@@ -128,10 +130,9 @@
 
   <!-- GraphQL Deep Search Panel -->
   <div class="section" id="graphql-section">
-    <details>
-      <summary style="cursor:pointer;"><span style="font-size:1.5em;font-weight:600;">GraphQL Deep Search</span>
-        <span id="gql-backend-badge" style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;background:#e1dfdd;color:#605e5c;">checking…</span>
-      </summary>
+    <h2>GraphQL Deep Search
+      <span id="gql-backend-badge" style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;background:#e1dfdd;color:#605e5c;">checking…</span>
+    </h2>
       <div style="margin-top:10px;">
         <p class="muted" style="margin-bottom:8px;font-size:13px;line-height:1.5;">
           Query RESQML objects, traverse relationships (Feature→Interpretation→Representation),
@@ -186,13 +187,13 @@
               <option value="fed_enrich">Federated: all + enrichment</option>
             </optgroup>
           </select>
-          <span class="btn" id="gql-run" style="font-size:13px;padding:4px 14px;">▶ Run</span>
+          <span class="btn btn-action" id="gql-run">▶ Run</span>
           <span class="muted" id="gql-status" style="font-size:12px;"></span>
         </div>
 
 
 
-        <textarea id="gql-editor" rows="18" style="width:100%;font-family:'Fira Code',Consolas,monospace;font-size:12px;line-height:1.45;border:1px solid #ccc;border-radius:4px;padding:10px;resize:vertical;background:#fafafa;tab-size:2;"></textarea>
+        <textarea id="gql-editor" rows="6" style="width:100%;font-family:'Fira Code',Consolas,monospace;font-size:12px;line-height:1.45;border:1px solid #b4d6f5;border-radius:4px;padding:10px;resize:vertical;background:#f0f6fc;tab-size:2;min-height:100px;overflow-y:auto;"></textarea>
 
         <details style="margin-top:6px;">
           <summary style="font-size:12px;cursor:pointer;color:#605e5c;">Variables (JSON)</summary>
@@ -204,14 +205,13 @@
           <button id="gql-tab-graph" class="btn" style="font-size:12px;padding:3px 10px;">Graph</button>
           <span id="gql-graph-hint" class="muted" style="font-size:11px;display:none;">Auto-generated from object_relations / deep_search results</span>
         </div>
-        <div id="gql-result" style="margin-top:6px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;">
+        <div id="gql-result" style="margin-top:6px;max-height:70vh;overflow:auto;border:1px solid #c8e6c9;border-radius:4px;background:#f6fdf6;">
           <pre id="gql-output" style="font-size:12px;white-space:pre-wrap;padding:10px;margin:0;"></pre>
         </div>
         <div id="gql-graph" style="margin-top:6px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;padding:10px;display:none;">
           <div id="gql-mermaid"></div>
         </div>
       </div>
-    </details>
   </div>
 
   <script>
@@ -353,35 +353,67 @@
     }
 
     async function loadDataspaces() {
+      // Progressive load: local first (instant), then remote in background
       showLoading('Loading dataspaces…');
+      let gotSome = false;
       try {
-        const r = await fetch('/keys/dataspaces.json', { credentials: 'same-origin' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const js = await r.json();
-        if (js.items && js.items.length > 0) {
-          populateDataspaces(js.items);
-          setMsg('');
-          return true;
+        // Phase 1: fast local PG dataspaces
+        const rLocal = await fetch('/keys/dataspaces.json?source=local', { credentials: 'same-origin' });
+        if (rLocal.ok) {
+          const jsLocal = await rLocal.json();
+          if (jsLocal.items && jsLocal.items.length > 0) {
+            populateDataspaces(jsLocal.items);
+            setMsg('');
+            gotSome = true;
+          }
         }
-        if (Array.isArray(window.PREFILL_DS) && window.PREFILL_DS.length > 0) {
-          populateDataspaces(window.PREFILL_DS);
-          setMsg('');
-          return true;
-        }
-        setMsg('No dataspaces found.');
-        return false;
       } catch (e) {
-        if (Array.isArray(window.PREFILL_DS) && window.PREFILL_DS.length > 0) {
-          populateDataspaces(window.PREFILL_DS);
-          setMsg('');
-          return true;
-        }
-        setMsg('Failed to load dataspaces.');
-        console.error(e);
-        return false;
-      } finally {
-        hideLoading();
+        // Non-fatal - continue to remote
+        console.debug('Local dataspaces failed:', e);
       }
+      hideLoading();
+
+      // Phase 2: fetch remote in background (no spinner, non-blocking)
+      (async () => {
+        try {
+          const rRemote = await fetch('/keys/dataspaces.json?source=remote', { credentials: 'same-origin' });
+          if (rRemote.ok) {
+            const jsRemote = await rRemote.json();
+            if (jsRemote.items && jsRemote.items.length > 0) {
+              // Merge with existing local items (dedup by path)
+              const existingPaths = new Set(_allDsItems.map(x => x.path));
+              const merged = [..._allDsItems];
+              for (const item of jsRemote.items) {
+                if (item.path && !existingPaths.has(item.path)) {
+                  merged.push(item);
+                  existingPaths.add(item.path);
+                }
+              }
+              populateDataspaces(merged);
+              gotSome = true;
+            }
+          }
+        } catch (e) {
+          console.debug('Remote dataspaces failed:', e);
+        }
+        // Final fallback if nothing loaded
+        if (!gotSome) {
+          if (Array.isArray(window.PREFILL_DS) && window.PREFILL_DS.length > 0) {
+            populateDataspaces(window.PREFILL_DS);
+            setMsg('');
+          } else {
+            setMsg('No dataspaces found.');
+          }
+        }
+      })();
+
+      // If local delivered results, we're good to proceed already
+      if (!gotSome && Array.isArray(window.PREFILL_DS) && window.PREFILL_DS.length > 0) {
+        populateDataspaces(window.PREFILL_DS);
+        setMsg('');
+        gotSome = true;
+      }
+      return gotSome;
     }
 
     async function loadTypes() {
@@ -1335,6 +1367,7 @@
         });
         const data = await resp.json();
         gqlOutput.textContent = JSON.stringify(data, null, 2);
+        autoSizeOutput();
         if (data.errors && data.errors.length) {
           gqlStatus.textContent = `Done (${data.errors.length} error(s))`;
         } else {
@@ -1346,7 +1379,31 @@
       } catch (e) {
         gqlStatus.textContent = 'Request failed';
         gqlOutput.textContent = e.message;
+        autoSizeOutput();
       }
+    }
+
+    // Auto-resize editor textarea to fit content (min 4, max 24 rows)
+    function autoSizeEditor() {
+      const lines = gqlEditor.value.split('\n').length;
+      gqlEditor.rows = Math.max(4, Math.min(lines + 1, 24));
+    }
+    gqlEditor.addEventListener('input', autoSizeEditor);
+    // Also size on preset load
+    const _origPreset = gqlPreset.onchange;
+    gqlPreset.addEventListener('change', () => setTimeout(autoSizeEditor, 0));
+    autoSizeEditor();
+
+    // Shrink/grow output container based on content
+    function autoSizeOutput() {
+      const el = document.getElementById('gql-result');
+      const pre = document.getElementById('gql-output');
+      // reset to auto to measure
+      el.style.maxHeight = 'none';
+      const h = pre.scrollHeight + 20;
+      // cap at 70vh
+      const cap = window.innerHeight * 0.7;
+      el.style.maxHeight = (h > cap ? cap : h) + 'px';
     }
 
     gqlRun.addEventListener('click', runGraphQLQuery);

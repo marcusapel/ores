@@ -673,6 +673,11 @@ async def _deep_search_pg(
                 p_type = f"{ps['p_ml']}.{ps['p_typ_xml']}"
                 p_obj_id = ps["p_obj_id"]
 
+                # Title filter: skip properties whose name doesn't match
+                if property_filter and property_filter.title_contains:
+                    if property_filter.title_contains.lower() not in p_name.lower():
+                        continue
+
                 # Determine kind from XML object content
                 kind = "Unknown"
                 try:
