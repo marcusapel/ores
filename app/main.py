@@ -38,6 +38,7 @@ from .strat import router as strat_router
 from .analyse import router as analyse_router
 from .addgate import router as addgate_router
 from .keys_router import router as keys_router
+from .graphql_router import router as graphql_router, close_pool as _close_gql_pool
 
 # ──────────────────────────────────────────────────────────────────────────────
 # App setup & logging
@@ -135,12 +136,14 @@ app.include_router(strat_router)
 app.include_router(analyse_router)
 app.include_router(addgate_router)
 app.include_router(keys_router)
+app.include_router(graphql_router)
 
 
 # Close shared httpx client on shutdown (#9)
 @app.on_event("shutdown")
 async def _shutdown():
     await osdu.close_shared_client()
+    await _close_gql_pool()
 
 
 app.mount(

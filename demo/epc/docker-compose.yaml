@@ -1,0 +1,37 @@
+# Docker Compose for local GraphQL deep-search testing
+# Starts PostgreSQL + OpenETPServer, then use the ingest script to load data.
+#
+# Usage:
+#   docker compose -f demo/epc/docker-compose.yaml up -d
+#   ./demo/epc/ingest.sh        # create dataspace + import EPC
+#
+# Then set in your shell or .env:
+#   export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=openetp user=tester password=tester"
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: tester
+      POSTGRES_PASSWORD: tester
+      POSTGRES_DB: openetp
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tester -d openetp"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  etp-server:
+    image: community.opengroup.org:5555/osdu/platform/domain-data-mgmt-services/reservoir/open-etp-server/open-etp-server-main:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      RDMS_DATA_PARTITION_MODE: single
+      RDMS_DATA_CONNECTIVITY_MODE: standalone
+      POSTGRESQL_CONN_STRING: "host=postgres port=5432 dbname=openetp user=tester password=tester"
+    ports:
+      - "9002:9002"
+    command: ["openETPServer", "server", "--start", "--overwrite", "--authN", "none", "--authZ", "none"]
