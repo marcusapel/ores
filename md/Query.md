@@ -1,7 +1,5 @@
 # Querying OSDU & Reservoir Data
 
-> All examples use the **Drogon** model (589 objects, 18 wells, 48 surfaces, 2 grids).
-
 ---
 
 ## Query Paths
@@ -71,24 +69,7 @@ ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
 
 ---
 
-## 3. ETP WebSocket (CLI)
-
-```bash
-# Import EPC
-openETPServer space -S ws://localhost:9002 --auth none \
-  -s "maap/drogon" --import-epc drogon.epc
-
-# Export EPC
-openETPServer space -S ws://localhost:9002 --auth none \
-  -s "maap/drogon" --export-epc ./export.epc --overwrite
-
-# List dataspaces
-openETPServer space -S ws://localhost:9002 --auth none --list ""
-```
-
----
-
-## 4. GraphQL Deep Search
+## 3. GraphQL Deep Search
 
 ### Available Queries
 
@@ -175,7 +156,7 @@ Common traversal patterns (same query, swap `typeName`, `uuid`, `direction`):
 
 ---
 
-### Deep Search — Property Filtering
+### Deep Search - Property Filtering
 
 ```graphql
 # Find grids where porosity > 0.25 (change titleContains/threshold for other properties)
@@ -216,7 +197,7 @@ Common filter variations (same query structure, swap `titleContains` + `threshol
 | Well log permeability | `"KLOGH"` | 100.0 | GT |
 
 ```graphql
-# Browse ALL properties on IjkGrids (no filter — omit propertyFilter)
+# Browse ALL properties on IjkGrids (no filter - omit propertyFilter)
 {
   deepSearch(
     dataspace: "maap/drogon"
@@ -233,7 +214,7 @@ For **well logs**, use `typeName: "resqml20.obj_WellboreFrameRepresentation"` wi
 
 ---
 
-### Deep Search — Multiple Dataspaces
+### Deep Search - Multiple Dataspaces
 
 ```graphql
 {
@@ -267,7 +248,7 @@ The `federatedSearch` resolver combines **three independent sources** in a singl
 1. Selected dataspaces are classified as _local_ (present in PG) or _remote_ (only on OSDU RDDMS).
 2. Local dataspaces are queried via direct PostgreSQL; remote ones go through the REST API.
 3. The OSDU catalog is searched independently (by `kind` + free-text).
-4. Results are **merged by UUID** — if the same object appears in multiple sources, flags indicate where it was found: `foundInCatalog`, `foundInLocalRddms`, `foundInRemoteRddms`.
+4. Results are **merged by UUID** - if the same object appears in multiple sources, flags indicate where it was found: `foundInCatalog`, `foundInLocalRddms`, `foundInRemoteRddms`.
 
 **When to use which mode:**
 
@@ -286,7 +267,7 @@ The `federatedSearch` resolver combines **three independent sources** in a singl
 |-----------|------|---------|-------------|
 | `text` | String | `"*"` | Free-text filter (title match for RDDMS, query string for catalog) |
 | `kind` | String | `*:*` | OSDU kind filter (catalog path only) |
-| `typeName` | String | — | RESQML type filter (RDDMS paths only) |
+| `typeName` | String | - | RESQML type filter (RDDMS paths only) |
 | `dataspaces` | [String] | auto-discover | Which dataspaces to search |
 | `searchCatalog` | Boolean | true | Enable OSDU catalog path |
 | `searchRddms` | Boolean | true | Enable local PG path |
@@ -294,7 +275,7 @@ The `federatedSearch` resolver combines **three independent sources** in a singl
 | `includeRelations` | Boolean | false | Enrich hits with graph edges |
 | `includeProperties` | Boolean | false | Enrich hits with attached properties |
 | `includeStatistics` | Boolean | false | Compute array min/max/mean for properties |
-| `propertyFilter` | PropertyFilter | — | Filter results by property name/threshold |
+| `propertyFilter` | PropertyFilter | - | Filter results by property name/threshold |
 | `limit` | Int | 30 | Max results returned |
 
 ```graphql
@@ -344,7 +325,7 @@ The `federatedSearch` resolver combines **three independent sources** in a singl
 ```
 
 ```graphql
-# Catalog-only — search by OSDU kind
+# Catalog-only - search by OSDU kind
 {
   federatedSearch(
     text: "Drogon"
@@ -377,7 +358,7 @@ The `federatedSearch` resolver combines **three independent sources** in a singl
 }
 ```
 
-Works with any object type — swap `typeName` + `uuid` for IjkGrids, WellboreFrames, etc.
+Works with any object type - swap `typeName` + `uuid` for IjkGrids, WellboreFrames, etc.
 
 ---
 
@@ -403,7 +384,7 @@ Works with any object type — swap `typeName` + `uuid` for IjkGrids, WellboreFr
 
 ---
 
-## Setup — Local PostgreSQL
+## Setup - Local PostgreSQL
 
 ```bash
 # 1. Start Docker (PG on 5433, ETP on 9002)

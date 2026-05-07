@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional, Set
 import httpx
 from httpx import HTTPStatusError
 from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
@@ -156,6 +156,21 @@ templates = Jinja2Templates(
 )
 # Make auth_mode available in every template (for nav Sign-out link)
 templates.env.globals["auth_mode"] = AUTH_MODE
+
+
+# ─── Favicon (avoid 404 noise in logs) ───────────────────────────────────── #
+
+_FAVICON_SVG = (
+    b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+    b'<circle cx="16" cy="16" r="14" fill="#FF1243"/>'
+    b'<text x="16" y="22" font-size="16" text-anchor="middle" fill="#fff" '
+    b'font-family="sans-serif" font-weight="bold">O</text></svg>'
+)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def _favicon():
+    return Response(content=_FAVICON_SVG, media_type="image/svg+xml")
 
 
 def _jinja_pretty_val(val):
@@ -1834,7 +1849,7 @@ _HOWTO_SECTIONS: list[dict] = [
                 "slug": "query-guide",
                 "file": "Query.md",
                 "title": "Querying Data",
-                "desc": "REST, ETP, GraphQL & OSDU Search — all query paths explained",
+                "desc": "REST, ETP, GraphQL & OSDU Search - all query paths explained",
             },
             {
                 "slug": "business-decision",

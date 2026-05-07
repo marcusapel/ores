@@ -270,7 +270,7 @@ def main():
         if len(scheme_counts) == 1:
             _wpc_scheme_filter = list(scheme_counts.keys())[0]
         elif len(scheme_counts) > 1:
-            # Multiple schemes present — warn and pick the largest
+            # Multiple schemes present - warn and pick the largest
             dominant = scheme_counts.most_common(1)[0][0]
             print(f"WARNING: {len(scheme_counts)} schemes found in output. "
                   f"WPC will reference only '{dominant}' records. "

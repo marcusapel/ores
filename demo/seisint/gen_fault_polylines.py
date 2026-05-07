@@ -58,7 +58,7 @@ POLYLINE_TYPE = "resqml20.obj_PolylineSetRepresentation"
 #   "application/x-resqml+xml;version=2.0;type=obj_FaultInterpretation"
 FAULT_CONTENT_MARKERS = ("FaultInterpretation",)
 
-# Name prefixes to EXCLUDE — these are FMU modelling line extractions or
+# Name prefixes to EXCLUDE - these are FMU modelling line extractions or
 # utility geometry, not seismic interpretation objects.
 # GL_ = Grid Lines extracted algorithmically from reservoir models.
 # AOI = Area of Interest (study boundary).
@@ -304,10 +304,10 @@ def discover_and_generate(
     print(f"  Classification: {len(faults)} fault, {len(nonfault)} non-fault, {len(errors)} error")
 
     if dry_run:
-        print("\n  DRY RUN — no files written")
+        print("\n  DRY RUN - no files written")
         for c in classified:
             role = "FAULT" if c.get("is_fault") else "non-fault"
-            print(f"    [{role}] {c['title']} ({c['uuid'][:8]}...) — {c.get('n_polylines', '?')} polylines")
+            print(f"    [{role}] {c['title']} ({c['uuid'][:8]}...) - {c.get('n_polylines', '?')} polylines")
         return {"found": len(classified), "faults": len(faults), "nonfault": len(nonfault), "records": []}
 
     # Generate records
