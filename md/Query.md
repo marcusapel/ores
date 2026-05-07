@@ -424,6 +424,147 @@ curl -X POST http://localhost:8000/api/graphql/query \
 
 ---
 
+## Easy Mode – Visual Query Builder
+
+The `/keys` page offers an **Easy Mode** tab that builds GraphQL queries without writing raw syntax.
+
+### How it works
+
+1. Select **Query type** (Deep Search, Browse, Relations, Federated)
+2. Pick an **Object type** from categorized dropdown (Grid, Well, Surface, Property, …)
+3. Optionally enter a **Property** name/alias (e.g. `poro`, `sw`, `perm`)
+4. Set an **operator + threshold** filter (e.g. `> 0.25`)
+5. Toggle **Statistics**, **Relations**, **Sample values**
+6. Click **▶ Run Query**
+
+Results render as **colored cards** with type-category badges, sparkline statistics bars, and matching-cell percentages.
+
+### Query types in Easy Mode
+
+| Action | GraphQL query generated | Use case |
+|--------|------------------------|----------|
+| Deep Search | `deepSearch(…)` | Find objects by type + filter on numerical property arrays |
+| Browse | `resqmlObjects(…)` | List objects of a type (no filter) |
+| Relations | `objectRelations(…)` | Graph traversal from a specific UUID |
+| Federated | `federatedSearch(…)` | Search OSDU catalog + RDDMS simultaneously |
+
+### Match modes
+
+| Mode | Filter field | Behaviour |
+|------|--------------|-----------|
+| **Loose** (default) | `titleContains` | Substring match on property title or kind |
+| **Strict** | `kind` | Exact match on canonical RESQML property kind |
+
+Click **"Show generated GraphQL"** to see the raw query and switch to Advanced Mode for tweaking.
+
+---
+
+## Property Alias Map & Reference Data
+
+### `/api/graphql/reference` endpoint
+
+Returns the full reference dataset used by Easy Mode:
+
+```json
+{
+  "propertyKinds": [
+    { "name": "porosity", "aliases": ["poro", "phit", "phi", "nphi"],
+      "description": "Fraction of void space in rock", "uom": "v/v" },
+    ...
+  ],
+  "resqmlTypes": [
+    { "name": "resqml20.obj_IjkGridRepresentation", "short": "IjkGrid",
+      "category": "Grid", "description": "3D geocellular grid (corner-point or parametric)" },
+    ...
+  ],
+  "operators": [
+    { "value": "GT", "label": "> (greater than)", "symbol": ">" },
+    ...
+  ],
+  "aliasMap": { "poro": "porosity", "sw": "water saturation", "perm": "permeability", ... }
+}
+```
+
+**Counts:** 20 property kinds, 29 RESQML types (9 categories), 5 operators, 90 alias entries.
+
+### `/api/graphql/resolve-alias?term=<term>` endpoint
+
+Resolves a shorthand term to its canonical RESQML property kind:
+
+```bash
+# Exact match
+curl /api/graphql/resolve-alias?term=poro
+# → { "matches": [{ "name": "porosity", "aliases": [...], "uom": "v/v" }], "mode": "exact" }
+
+# Fuzzy match (multiple candidates)
+curl /api/graphql/resolve-alias?term=sat
+# → { "matches": [{ "name": "water saturation" }, { "name": "oil saturation" }, ...], "mode": "fuzzy" }
+```
+
+### Standard Property Kinds (RESQML reference)
+
+| Canonical name | Common aliases | Unit | Description |
+|----------------|---------------|------|-------------|
+| porosity | poro, phit, phi, nphi | v/v | Fraction of void space |
+| permeability | perm, permx, permy, permz, kh | mD | Flow capacity |
+| water saturation | sw, swat, swatinit | v/v | Water fraction in pore space |
+| oil saturation | so, soil | v/v | Oil fraction in pore space |
+| gas saturation | sg, sgas | v/v | Gas fraction in pore space |
+| net-to-gross | ntg, n2g | ratio | Net reservoir thickness / gross |
+| depth | tvd, tvdss, z | m | Vertical depth |
+| pressure | pres, pressure, bhp | bar | Fluid pressure |
+| temperature | temp | °C | Formation temperature |
+| bulk density | rhob, den | g/cm³ | Bulk density log |
+| gamma ray | gr, gamma | API | Natural gamma radiation |
+| resistivity | rt, res, ild | ohm·m | Formation resistivity |
+| acoustic impedance | ai, imp | (m/s)·(g/cm³) | Seismic impedance |
+| velocity | vp, vs, vel | m/s | Seismic velocities |
+| facies | facies, lith, litho | - | Discrete rock type |
+| zone | zone, region, segment | - | Discrete zone/region index |
+| thickness | thick, dz, isochore | m | Layer thickness |
+| volume | vol, bulk_vol, bv | m³ | Volume attribute |
+| age | age, chrono | Ma | Geological age |
+| displacement | throw, heave | m | Fault displacement |
+
+### RESQML Type Categories
+
+| Category | Example types |
+|----------|--------------|
+| Grid | IjkGrid, UnstructuredGrid |
+| Surface | Grid2d, TriangulatedSet |
+| Well | WellboreFeature, WellboreInterpretation, WellboreTrajectory, WellboreFrame |
+| Property | ContinuousProperty, DiscreteProperty, CategoricalProperty |
+| Stratigraphy | StratigraphicColumn, HorizonInterpretation, FaultInterpretation |
+| Organization | StructuralOrganization, StratigraphicColumnRankInterpretation |
+| CRS | LocalDepth3dCrs, LocalTime3dCrs |
+| Provenance | Activity, ActivityTemplate |
+| Container | EpcExternalPartReference |
+
+---
+
+## Colored Result Cards
+
+Easy Mode renders results as **type-colored cards** instead of raw JSON:
+
+| Category | Color scheme | Badge |
+|----------|-------------|-------|
+| Grid | Green bg, dark green text | `IjkGrid` |
+| Surface | Blue bg, dark blue text | `Grid2d` |
+| Well | Orange bg, dark orange text | `WellboreFeature` |
+| Property | Purple bg, dark purple text | `ContinuousProperty` |
+| Stratigraphy | Pink bg, dark pink text | `HorizonInterpretation` |
+| CRS | Grey bg, dark grey text | `LocalDepth3dCrs` |
+
+Each card includes:
+- **UUID** (monospace, selectable)
+- **Title** (bold, category-colored)
+- **Type badge** (short name like `IjkGrid` instead of `resqml20.obj_IjkGridRepresentation`)
+- **Sparkline bar** for statistics (min → mean → max with blue needle for mean)
+- **Matching cells bar** (green/orange/red based on fraction)
+- **Source flags** for federated results (Catalog, Local PG, Remote)
+
+---
+
 ## Links
 
 | Resource | URL |
@@ -433,4 +574,6 @@ curl -X POST http://localhost:8000/api/graphql/query \
 | ETP 1.2 Spec | [energistics.org](https://www.energistics.org/energistics-transfer-protocol/) |
 | RESQML 2.0/2.2 | [energistics.org](https://www.energistics.org/resqml/) |
 | Strawberry GraphQL | [strawberry.rocks](https://strawberry.rocks/) |
+| GraphQL language reference | [graphql.org/learn](https://graphql.org/learn/) |
 | ORES GraphQL module | `app/graphql_router.py` |
+| ORES source & issues | [github.com/equinor/ores](https://github.com/equinor/ores) |
