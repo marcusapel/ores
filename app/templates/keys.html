@@ -142,6 +142,73 @@
           <a href="/graphql" target="_blank" style="margin-left:8px;font-size:12px;">GraphiQL IDE ↗</a>
         </p>
 
+        <!-- ── Mode tabs: Easy | Advanced ──────────────────────────────────── -->
+        <div style="display:flex;gap:2px;margin-bottom:10px;">
+          <button id="mode-easy" class="btn" style="font-size:12px;padding:4px 14px;border-radius:4px 4px 0 0;background:#004578;color:#fff;border-bottom:2px solid #004578;">Easy Mode</button>
+          <button id="mode-advanced" class="btn" style="font-size:12px;padding:4px 14px;border-radius:4px 4px 0 0;background:#f3f2f1;color:#323130;border-bottom:2px solid #e1dfdd;">GraphQL</button>
+        </div>
+
+        <!-- ── Easy Mode: Visual Query Builder ─────────────────────────────── -->
+        <div id="easy-panel" style="border:1px solid #e1dfdd;border-radius:0 4px 4px 4px;padding:14px;background:#fafcff;">
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px 12px;align-items:center;font-size:13px;">
+
+            <label style="font-weight:600;color:#323130;">Query type</label>
+            <select id="ez-action" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+              <option value="deep_search">Deep Search (find objects + filter on properties)</option>
+              <option value="browse">Browse Objects (list by type)</option>
+              <option value="relations">Object Relations (graph traversal)</option>
+              <option value="federated">Federated Search (catalog + RDDMS)</option>
+            </select>
+
+            <label style="font-weight:600;color:#323130;">Object type</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <select id="ez-type" style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;"></select>
+              <span id="ez-type-cat" class="tag" style="font-size:11px;"></span>
+            </div>
+
+            <label style="font-weight:600;color:#323130;">Property</label>
+            <div style="display:flex;gap:6px;align-items:center;" id="ez-prop-row">
+              <input id="ez-prop" type="text" placeholder="Type name or alias (e.g. poro, perm, sw)…"
+                     list="ez-prop-list" autocomplete="off"
+                     style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+              <datalist id="ez-prop-list"></datalist>
+              <span id="ez-prop-resolved" style="font-size:11px;color:#107c10;white-space:nowrap;"></span>
+              <select id="ez-match-mode" style="font-size:11px;padding:2px 6px;border-radius:3px;border:1px solid #ccc;">
+                <option value="loose" title="Substring match on title or kind">Loose</option>
+                <option value="strict" title="Exact canonical property kind">Strict</option>
+              </select>
+            </div>
+
+            <label style="font-weight:600;color:#323130;">Filter</label>
+            <div style="display:flex;gap:6px;align-items:center;" id="ez-filter-row">
+              <select id="ez-op" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+                <option value="">(no threshold filter)</option>
+              </select>
+              <input id="ez-threshold" type="number" step="any" placeholder="value"
+                     style="width:90px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+            </div>
+
+            <label style="font-weight:600;color:#323130;">Options</label>
+            <div style="display:flex;gap:12px;align-items:center;font-size:12px;">
+              <label><input type="checkbox" id="ez-stats" checked> Statistics</label>
+              <label><input type="checkbox" id="ez-relations"> Relations</label>
+              <label><input type="checkbox" id="ez-sample"> Sample values</label>
+              <label>Limit: <input id="ez-limit" type="number" value="5" min="1" max="50" style="width:45px;font-size:12px;"></label>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+            <span class="btn btn-action" id="ez-run">▶ Run Query</span>
+            <span class="btn" id="ez-show-gql" style="font-size:12px;padding:4px 12px;">Show generated GraphQL</span>
+            <span id="ez-status" class="muted" style="font-size:12px;"></span>
+          </div>
+
+          <!-- Easy Mode Results (colored cards) -->
+          <div id="ez-results" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- ── Advanced Mode: Raw GraphQL ──────────────────────────────────── -->
+        <div id="advanced-panel" style="display:none;">
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
           <label style="font-weight:600;font-size:13px;">Preset:</label>
           <select id="gql-preset" style="font-size:13px;padding:3px 8px;border-radius:4px;border:1px solid #ccc;">
@@ -211,6 +278,7 @@
         <div id="gql-graph" style="margin-top:6px;max-height:600px;overflow:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;padding:10px;display:none;">
           <div id="gql-mermaid"></div>
         </div>
+        </div><!-- /advanced-panel -->
       </div>
   </div>
 
@@ -240,6 +308,481 @@
       d.textContent = s || '';
       return d.innerHTML;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EASY MODE: Visual Query Builder + Colored Result Cards
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Category → color mapping for badges
+    const TYPE_COLORS = {
+      Grid: { bg: '#e8f5e9', fg: '#2e7d32', border: '#a5d6a7' },
+      Surface: { bg: '#e3f2fd', fg: '#1565c0', border: '#90caf9' },
+      Well: { bg: '#fff3e0', fg: '#e65100', border: '#ffcc80' },
+      Property: { bg: '#f3e5f5', fg: '#6a1b9a', border: '#ce93d8' },
+      Stratigraphy: { bg: '#fce4ec', fg: '#880e4f', border: '#f48fb1' },
+      Organization: { bg: '#e0f2f1', fg: '#004d40', border: '#80cbc4' },
+      CRS: { bg: '#eceff1', fg: '#37474f', border: '#b0bec5' },
+      Provenance: { bg: '#fff8e1', fg: '#f57f17', border: '#ffe082' },
+      Container: { bg: '#efebe9', fg: '#4e342e', border: '#bcaaa4' },
+    };
+    const DEFAULT_COLOR = { bg: '#f5f5f5', fg: '#424242', border: '#e0e0e0' };
+
+    // Reference data (loaded from /api/graphql/reference)
+    let _refData = { propertyKinds: [], resqmlTypes: [], operators: [], aliasMap: {} };
+
+    async function loadReferenceData() {
+      try {
+        const r = await fetch('/api/graphql/reference');
+        _refData = await r.json();
+        populateEasyForm();
+      } catch (e) {
+        console.warn('Failed to load reference data:', e);
+      }
+    }
+
+    function populateEasyForm() {
+      // Populate type dropdown
+      const ezType = $('ez-type');
+      ezType.innerHTML = '';
+      const categories = [...new Set(_refData.resqmlTypes.map(t => t.category))];
+      categories.forEach(cat => {
+        const og = document.createElement('optgroup');
+        og.label = cat;
+        _refData.resqmlTypes.filter(t => t.category === cat).forEach(t => {
+          const o = document.createElement('option');
+          o.value = t.name;
+          o.textContent = `${t.short} — ${t.description}`;
+          o.dataset.category = cat;
+          og.appendChild(o);
+        });
+        ezType.appendChild(og);
+      });
+      // Default to IjkGrid
+      ezType.value = 'resqml20.obj_IjkGridRepresentation';
+      updateTypeBadge();
+
+      // Populate operator dropdown
+      const ezOp = $('ez-op');
+      ezOp.innerHTML = '<option value="">(no threshold filter)</option>';
+      _refData.operators.forEach(op => {
+        const o = document.createElement('option');
+        o.value = op.value;
+        o.textContent = `${op.symbol} ${op.label.split('(')[0].trim()}`;
+        ezOp.appendChild(o);
+      });
+
+      // Populate property datalist (aliases)
+      const dl = $('ez-prop-list');
+      dl.innerHTML = '';
+      _refData.propertyKinds.forEach(pk => {
+        const o = document.createElement('option');
+        o.value = pk.aliases[0] || pk.name;
+        o.label = `${pk.name} (${pk.description})`;
+        dl.appendChild(o);
+        // Also add canonical name
+        const o2 = document.createElement('option');
+        o2.value = pk.name;
+        dl.appendChild(o2);
+      });
+    }
+
+    function updateTypeBadge() {
+      const sel = $('ez-type');
+      const opt = sel.selectedOptions[0];
+      const cat = opt ? opt.dataset.category : '';
+      const badge = $('ez-type-cat');
+      const colors = TYPE_COLORS[cat] || DEFAULT_COLOR;
+      badge.textContent = cat;
+      badge.style.background = colors.bg;
+      badge.style.color = colors.fg;
+      badge.style.border = `1px solid ${colors.border}`;
+    }
+
+    function resolvePropertyAlias() {
+      const term = $('ez-prop').value.trim().toLowerCase();
+      const resolved = $('ez-prop-resolved');
+      if (!term) { resolved.textContent = ''; return; }
+      const canonical = _refData.aliasMap[term];
+      if (canonical) {
+        const pk = _refData.propertyKinds.find(p => p.name === canonical);
+        resolved.textContent = `→ ${canonical}` + (pk ? ` (${pk.uom})` : '');
+        resolved.style.color = '#107c10';
+      } else {
+        // Fuzzy search
+        const matches = _refData.propertyKinds.filter(pk =>
+          pk.name.includes(term) || pk.aliases.some(a => a.includes(term))
+        );
+        if (matches.length === 1) {
+          resolved.textContent = `→ ${matches[0].name} (${matches[0].uom})`;
+          resolved.style.color = '#107c10';
+        } else if (matches.length > 1) {
+          resolved.textContent = `? ${matches.length} matches`;
+          resolved.style.color = '#795548';
+        } else {
+          resolved.textContent = '(custom term)';
+          resolved.style.color = '#605e5c';
+        }
+      }
+    }
+
+    function buildEasyQuery() {
+      const action = $('ez-action').value;
+      const typeName = $('ez-type').value;
+      const prop = $('ez-prop').value.trim();
+      const op = $('ez-op').value;
+      const threshold = $('ez-threshold').value;
+      const stats = $('ez-stats').checked;
+      const relations = $('ez-relations').checked;
+      const sample = $('ez-sample').checked;
+      const limit = parseInt($('ez-limit').value) || 5;
+      const matchMode = $('ez-match-mode').value;
+
+      // Get dataspaces
+      const dsList = Array.from(dsSel.selectedOptions).map(o => o.value);
+      const dsArg = dsList.length > 0 ? `dataspaces: ${JSON.stringify(dsList)}` : `dataspace: "maap/drogon"`;
+      const singleDs = dsList.length > 0 ? dsList[0] : 'maap/drogon';
+
+      if (action === 'deep_search') {
+        let propFilter = '';
+        if (prop) {
+          const filterField = matchMode === 'strict' ? 'kind' : 'titleContains';
+          propFilter = `propertyFilter: { ${filterField}: "${prop}"`;
+          if (op && threshold) {
+            propFilter += `, arrayFilter: { threshold: ${parseFloat(threshold)}, operator: ${op} }`;
+          }
+          propFilter += ' }';
+        }
+        return `{
+  deepSearch(
+    ${dsArg}
+    typeName: "${typeName}"
+    ${propFilter ? propFilter : ''}
+    includeStatistics: ${stats}
+    includeSampleValues: ${sample}
+    limit: ${limit}
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title typeName
+      properties {
+        title kind uom
+        ${stats ? 'statistics { count minValue maxValue mean stdDev }' : ''}
+        ${(op && threshold) ? 'matchingCells { count total fraction }' : ''}
+        ${sample ? 'sampleValues' : ''}
+      }
+    }
+  }
+}`;
+      } else if (action === 'browse') {
+        return `{
+  resqmlObjects(
+    dataspace: "${singleDs}"
+    typeName: "${typeName}"
+    limit: ${limit}
+  ) {
+    uuid title typeName
+  }
+}`;
+      } else if (action === 'relations') {
+        return `# Select an object UUID from the browse results above, then paste it below
+{
+  objectRelations(
+    dataspace: "${singleDs}"
+    typeName: "${typeName}"
+    uuid: "PASTE-UUID-HERE"
+    direction: "both"
+  ) {
+    uuid name typeName direction contentType
+  }
+}`;
+      } else if (action === 'federated') {
+        return `{
+  federatedSearch(
+    text: "${prop || '*'}"
+    ${dsArg}
+    typeName: "${typeName}"
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: true
+    includeRelations: ${relations}
+    includeProperties: ${stats}
+    includeStatistics: ${stats}
+    limit: ${limit}
+  ) {
+    totalCatalog totalLocalRddms totalRemoteRddms totalMerged sources
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms foundInRemoteRddms
+      ${relations ? 'relations { uuid name typeName direction }' : ''}
+      ${stats ? 'properties { title kind statistics { count minValue maxValue mean } }' : ''}
+    }
+  }
+}`;
+      }
+      return '{ status }';
+    }
+
+    // ── Colored Result Cards ─────────────────────────────────────────────────
+
+    function renderResultCards(data) {
+      const container = $('ez-results');
+      if (!data || !data.data) {
+        container.innerHTML = '<p class="muted">No results</p>';
+        return;
+      }
+
+      const d = data.data;
+      let html = '';
+
+      // Deep search results
+      if (d.deepSearch) {
+        const ds = d.deepSearch;
+        html += `<div style="margin-bottom:8px;padding:8px 12px;background:#e8f5e9;border-radius:4px;border-left:4px solid #4caf50;font-size:13px;">
+          <strong>${ds.totalMatched}</strong> matched / <strong>${ds.totalScanned}</strong> scanned
+          &nbsp;|&nbsp; <span style="color:#605e5c;">${esc(ds.queryDescription)}</span>
+          &nbsp;|&nbsp; <span class="tag">${esc(ds.backend)}</span>
+        </div>`;
+        (ds.objects || []).forEach(obj => {
+          html += renderObjectCard(obj);
+        });
+      }
+
+      // Federated results
+      if (d.federatedSearch) {
+        const fs = d.federatedSearch;
+        html += `<div style="margin-bottom:8px;padding:8px 12px;background:#e3f2fd;border-radius:4px;border-left:4px solid #1976d2;font-size:13px;">
+          <strong>${fs.totalMerged}</strong> merged results
+          &nbsp;|&nbsp; Catalog: ${fs.totalCatalog || 0} &nbsp; Local: ${fs.totalLocalRddms || 0} &nbsp; Remote: ${fs.totalRemoteRddms || 0}
+          &nbsp;|&nbsp; Sources: ${(fs.sources || []).map(s => `<span class="tag">${esc(s)}</span>`).join(' ')}
+        </div>`;
+        (fs.hits || []).forEach(hit => {
+          html += renderFederatedCard(hit);
+        });
+      }
+
+      // Browse results
+      if (d.resqmlObjects) {
+        html += `<div style="margin-bottom:8px;padding:8px 12px;background:#f3e5f5;border-radius:4px;border-left:4px solid #9c27b0;font-size:13px;">
+          <strong>${d.resqmlObjects.length}</strong> objects found
+        </div>`;
+        d.resqmlObjects.forEach(obj => {
+          const tShort = (obj.typeName || '').replace(/^resqml\d+\.obj_/, '');
+          const cat = (_refData.resqmlTypes.find(t => t.name === obj.typeName) || {}).category || '';
+          const colors = TYPE_COLORS[cat] || DEFAULT_COLOR;
+          html += `<div style="margin-bottom:6px;padding:8px 12px;background:${colors.bg};border:1px solid ${colors.border};border-radius:4px;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;font-family:monospace;color:#605e5c;user-select:all;flex-shrink:0;">${esc(obj.uuid)}</span>
+            <strong style="color:${colors.fg};">${esc(obj.title)}</strong>
+            <span class="tag" style="background:${colors.bg};color:${colors.fg};border:1px solid ${colors.border};">${tShort}</span>
+          </div>`;
+        });
+      }
+
+      // Relation results
+      if (d.objectRelations) {
+        const rels = d.objectRelations;
+        const targets = rels.filter(r => r.direction === 'target');
+        const sources = rels.filter(r => r.direction === 'source');
+        html += `<div style="margin-bottom:8px;padding:8px 12px;background:#fff3e0;border-radius:4px;border-left:4px solid #ff9800;font-size:13px;">
+          <strong>${rels.length}</strong> relations (${targets.length} targets, ${sources.length} sources)
+        </div>`;
+        rels.forEach(rel => {
+          const tShort = (rel.typeName || '').replace(/^resqml\d+\.obj_/, '');
+          const dirColor = rel.direction === 'target' ? '#1565c0' : '#2e7d32';
+          const dirIcon = rel.direction === 'target' ? '→' : '←';
+          html += `<div style="margin-bottom:4px;padding:6px 10px;background:#fff;border:1px solid #e1dfdd;border-radius:4px;display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span style="color:${dirColor};font-weight:bold;font-size:14px;">${dirIcon}</span>
+            <span style="font-family:monospace;font-size:10px;color:#999;flex-shrink:0;">${esc(rel.uuid).substring(0, 8)}…</span>
+            <strong>${esc(rel.name)}</strong>
+            <span class="tag">${tShort}</span>
+            <span style="color:#605e5c;font-size:11px;">${esc(rel.contentType || '')}</span>
+          </div>`;
+        });
+      }
+
+      container.innerHTML = html || '<p class="muted">Query returned no renderable results. Check JSON tab for raw output.</p>';
+    }
+
+    function renderObjectCard(obj) {
+      const tShort = (obj.typeName || '').replace(/^resqml\d+\.obj_/, '');
+      const cat = (_refData.resqmlTypes.find(t => t.name === obj.typeName) || {}).category || 'Grid';
+      const colors = TYPE_COLORS[cat] || DEFAULT_COLOR;
+
+      let html = `<div style="margin-bottom:10px;border:1px solid ${colors.border};border-radius:6px;overflow:hidden;">
+        <div style="padding:8px 12px;background:${colors.bg};display:flex;align-items:center;gap:10px;border-bottom:1px solid ${colors.border};">
+          <span style="font-size:11px;font-family:monospace;color:#605e5c;user-select:all;">${esc(obj.uuid)}</span>
+          <strong style="color:${colors.fg};font-size:14px;">${esc(obj.title)}</strong>
+          <span class="tag" style="background:${colors.bg};color:${colors.fg};border:1px solid ${colors.border};">${tShort}</span>
+        </div>`;
+
+      if (obj.properties && obj.properties.length) {
+        html += '<div style="padding:8px 12px;">';
+        obj.properties.forEach(p => {
+          html += renderPropertyCard(p);
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function renderPropertyCard(p) {
+      const stats = p.statistics;
+      const match = p.matchingCells;
+      let html = `<div style="margin-bottom:6px;padding:6px 10px;background:#fafafa;border:1px solid #e8e8e8;border-radius:4px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <strong style="color:#37474f;">${esc(p.title)}</strong>
+          ${p.kind ? `<span style="font-size:11px;color:#795548;background:#efebe9;padding:1px 5px;border-radius:3px;">${esc(p.kind)}</span>` : ''}
+          ${p.uom ? `<span style="font-size:11px;color:#605e5c;">[${esc(p.uom)}]</span>` : ''}
+        </div>`;
+
+      if (stats) {
+        const range = (stats.maxValue != null && stats.minValue != null) ? stats.maxValue - stats.minValue : 0;
+        const meanPct = range > 0 ? ((stats.mean - stats.minValue) / range * 100) : 50;
+        html += `<div style="display:flex;align-items:center;gap:12px;font-size:12px;color:#424242;">
+          <span>min: <b>${fmtNum(stats.minValue)}</b></span>
+          <div style="flex:1;height:6px;background:#e0e0e0;border-radius:3px;position:relative;min-width:80px;">
+            <div style="position:absolute;left:${meanPct.toFixed(1)}%;top:-2px;width:2px;height:10px;background:#1976d2;border-radius:1px;" title="mean=${fmtNum(stats.mean)}"></div>
+          </div>
+          <span>max: <b>${fmtNum(stats.maxValue)}</b></span>
+          <span style="color:#1976d2;">μ=${fmtNum(stats.mean)}</span>
+          ${stats.stdDev != null ? `<span style="color:#7b1fa2;">σ=${fmtNum(stats.stdDev)}</span>` : ''}
+          <span style="color:#605e5c;">(n=${stats.count?.toLocaleString() || '?'})</span>
+        </div>`;
+      }
+
+      if (match) {
+        const pct = (match.fraction * 100).toFixed(1);
+        const barColor = match.fraction > 0.5 ? '#4caf50' : match.fraction > 0.2 ? '#ff9800' : '#f44336';
+        html += `<div style="margin-top:4px;display:flex;align-items:center;gap:8px;font-size:11px;">
+          <span style="color:#605e5c;">Matching cells:</span>
+          <div style="flex:1;max-width:120px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;"></div>
+          </div>
+          <span><b>${match.count?.toLocaleString()}</b> / ${match.total?.toLocaleString()} (${pct}%)</span>
+        </div>`;
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderFederatedCard(hit) {
+      const tShort = (hit.typeName || '').replace(/^resqml\d+\.obj_/, '');
+      const cat = (_refData.resqmlTypes.find(t => t.name === hit.typeName) || {}).category || '';
+      const colors = TYPE_COLORS[cat] || DEFAULT_COLOR;
+
+      let sourceFlags = '';
+      if (hit.foundInCatalog) sourceFlags += '<span style="background:#e3f2fd;color:#1565c0;padding:1px 5px;border-radius:3px;font-size:10px;margin-right:3px;">Catalog</span>';
+      if (hit.foundInLocalRddms) sourceFlags += '<span style="background:#e8f5e9;color:#2e7d32;padding:1px 5px;border-radius:3px;font-size:10px;margin-right:3px;">Local PG</span>';
+      if (hit.foundInRemoteRddms) sourceFlags += '<span style="background:#fff3e0;color:#e65100;padding:1px 5px;border-radius:3px;font-size:10px;margin-right:3px;">Remote</span>';
+
+      let html = `<div style="margin-bottom:6px;padding:8px 12px;background:${colors.bg};border:1px solid ${colors.border};border-radius:4px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong style="color:${colors.fg};">${esc(hit.title)}</strong>
+          <span class="tag" style="background:${colors.bg};color:${colors.fg};border:1px solid ${colors.border};">${tShort}</span>
+          ${sourceFlags}
+          ${hit.dataspace ? `<span style="font-size:11px;color:#605e5c;">ds: ${esc(hit.dataspace)}</span>` : ''}
+          <span style="font-size:10px;font-family:monospace;color:#999;user-select:all;">${esc(hit.uuid)}</span>
+        </div>`;
+
+      if (hit.properties && hit.properties.length) {
+        html += '<div style="margin-top:6px;padding-left:8px;">';
+        hit.properties.forEach(p => { html += renderPropertyCard(p); });
+        html += '</div>';
+      }
+      if (hit.relations && hit.relations.length) {
+        html += `<div style="margin-top:4px;font-size:11px;color:#605e5c;padding-left:8px;">
+          ${hit.relations.length} relations: ${hit.relations.slice(0, 3).map(r => esc(r.name)).join(', ')}${hit.relations.length > 3 ? '…' : ''}
+        </div>`;
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function fmtNum(v) {
+      if (v == null) return '?';
+      if (Math.abs(v) >= 1000) return v.toFixed(1);
+      if (Math.abs(v) >= 1) return v.toFixed(3);
+      if (Math.abs(v) >= 0.001) return v.toFixed(4);
+      return v.toExponential(2);
+    }
+
+    // ── Mode switching ────────────────────────────────────────────────────────
+
+    $('mode-easy').addEventListener('click', () => {
+      $('easy-panel').style.display = '';
+      $('advanced-panel').style.display = 'none';
+      $('mode-easy').style.background = '#004578'; $('mode-easy').style.color = '#fff'; $('mode-easy').style.borderBottom = '2px solid #004578';
+      $('mode-advanced').style.background = '#f3f2f1'; $('mode-advanced').style.color = '#323130'; $('mode-advanced').style.borderBottom = '2px solid #e1dfdd';
+    });
+    $('mode-advanced').addEventListener('click', () => {
+      $('easy-panel').style.display = 'none';
+      $('advanced-panel').style.display = '';
+      $('mode-advanced').style.background = '#004578'; $('mode-advanced').style.color = '#fff'; $('mode-advanced').style.borderBottom = '2px solid #004578';
+      $('mode-easy').style.background = '#f3f2f1'; $('mode-easy').style.color = '#323130'; $('mode-easy').style.borderBottom = '2px solid #e1dfdd';
+    });
+
+    // ── Easy Mode event handlers ──────────────────────────────────────────────
+
+    $('ez-type').addEventListener('change', updateTypeBadge);
+    $('ez-prop').addEventListener('input', resolvePropertyAlias);
+
+    $('ez-show-gql').addEventListener('click', () => {
+      const q = buildEasyQuery();
+      $('gql-editor').value = q;
+      $('mode-advanced').click();
+      autoSizeEditor();
+    });
+
+    $('ez-run').addEventListener('click', async () => {
+      const query = buildEasyQuery();
+      $('ez-status').textContent = 'Running…';
+      $('ez-results').innerHTML = '';
+      try {
+        const resp = await fetch('/api/graphql/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        const data = await resp.json();
+        if (data.errors && data.errors.length) {
+          $('ez-status').textContent = `Error: ${data.errors[0].message}`;
+          $('ez-results').innerHTML = `<pre style="color:#a80000;font-size:12px;padding:8px;background:#fde7e9;border-radius:4px;">${esc(JSON.stringify(data.errors, null, 2))}</pre>`;
+        } else {
+          const count = countResults(data);
+          $('ez-status').textContent = `Done – ${count} result(s)`;
+          renderResultCards(data);
+        }
+        // Also populate the advanced view
+        $('gql-output').textContent = JSON.stringify(data, null, 2);
+        $('gql-editor').value = query;
+        renderMermaidFromResponse(data);
+      } catch (e) {
+        $('ez-status').textContent = 'Request failed: ' + e.message;
+      }
+    });
+
+    function countResults(data) {
+      if (!data || !data.data) return 0;
+      const d = data.data;
+      if (d.deepSearch) return (d.deepSearch.objects || []).length;
+      if (d.federatedSearch) return (d.federatedSearch.hits || []).length;
+      if (d.resqmlObjects) return d.resqmlObjects.length;
+      if (d.objectRelations) return d.objectRelations.length;
+      return Object.keys(d).length;
+    }
+
+    // Show/hide filter row and prop row based on action
+    $('ez-action').addEventListener('change', () => {
+      const action = $('ez-action').value;
+      $('ez-prop-row').style.display = (action === 'browse') ? 'none' : '';
+      $('ez-filter-row').style.display = (action === 'deep_search') ? '' : 'none';
+    });
+
+    // Load reference data on init
+    loadReferenceData();
+
+    // ═══════════════════════════════════════════════════════════════════════════
 
     function setMsg(text) {
       msg.textContent = text || '';
