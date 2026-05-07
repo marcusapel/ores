@@ -1,7 +1,7 @@
 # ORES - OSDU RDDMS Explorer & Demo Toolkit
 
 Administrative web UI and pipeline toolkit for OSDU Reservoir Data / Decision Management.
-Browse dataspaces, compare Business Decisions across decision gates, manage seismic interpretations, stratigraphy columns, and ingest records.
+Federated query using GraphQL, Browse dataspaces, compare Business Decisions across decision gates, manage seismic interpretations, stratigraphy columns, and ingest records.
 
 ## Quick start
 
