@@ -15,6 +15,7 @@ env:
 jobs:
   # ── Build & push Docker image ───────────────────────────────────────
   build:
+    if: github.repository == 'equinor/ores'
     runs-on: ubuntu-latest
     permissions:
       contents: read
