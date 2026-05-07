@@ -18,8 +18,8 @@
   .badge { display: inline-block; background: #e1dfdd; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-left: 6px; }
   .tag { display: inline-block; background: #deecf9; color: #004578; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-right: 4px; }
   .truncation-notice { background: #fff4ce; padding: 6px 10px; border-left: 3px solid #ffb900; margin-bottom: 8px; font-size: 13px; }
-  .btn-action { font-size:13px; font-weight:700; padding:6px 18px; background:#0078d4; color:#fff; border-color:#0078d4; border-radius:5px; box-shadow:0 2px 6px rgba(0,120,212,.35); }
-  .btn-action:hover { background: #106ebe !important; box-shadow: 0 3px 8px rgba(0,120,212,.45) !important; }
+  .btn-action { font-size:13px; font-weight:700; padding:6px 18px; background:#0d6efd; color:#fff; border-color:#0d6efd; border-radius:5px; box-shadow:0 2px 6px rgba(13,110,253,.35); }
+  .btn-action:hover { background:#0b5ed7 !important; border-color:#0b5ed7 !important; box-shadow: 0 3px 8px rgba(13,110,253,.45) !important; }
   .grid2d-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .grid2d-btns .btn { min-width: 130px; text-align: center; }
   .grid2d-btns .btn.active { background: #004578; color: #fff; }
@@ -139,7 +139,8 @@
           and filter on numerical array data - all via a single GraphQL endpoint.<br>
           <span style="color:#605e5c;">The server connects to PostgreSQL when <code>GRAPHQL_PG_CONN_STRING</code> is set,
           otherwise queries go through the RDDMS REST&nbsp;API.</span>
-          <a href="/graphql" target="_blank" style="margin-left:8px;font-size:12px;">GraphiQL IDE ↗</a>
+          <a href="/graphql" target="_blank" style="margin-left:8px;font-size:12px;font-weight:700;">GraphiQL IDE ↗</a>
+          <a href="https://graphql.org/learn/" target="_blank" rel="noopener" style="margin-left:8px;font-size:12px;">GraphQL Reference ↗</a>
         </p>
 
         <!-- ── Mode tabs: Easy | Advanced ──────────────────────────────────── -->
@@ -167,11 +168,13 @@
             </div>
 
             <label style="font-weight:600;color:#323130;">Property</label>
-            <div style="display:flex;gap:6px;align-items:center;" id="ez-prop-row">
-              <input id="ez-prop" type="text" placeholder="Type name or alias (e.g. poro, perm, sw)…"
-                     list="ez-prop-list" autocomplete="off"
-                     style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
-              <datalist id="ez-prop-list"></datalist>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;" id="ez-prop-row">
+              <select id="ez-prop-pick" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;min-width:140px;">
+                <option value="">(pick or type below)</option>
+              </select>
+              <input id="ez-prop" type="text" placeholder="or type alias: poro, perm, sw…"
+                     autocomplete="off"
+                     style="flex:1;min-width:140px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
               <span id="ez-prop-resolved" style="font-size:11px;color:#107c10;white-space:nowrap;"></span>
               <select id="ez-match-mode" style="font-size:11px;padding:2px 6px;border-radius:3px;border:1px solid #ccc;">
                 <option value="loose" title="Substring match on title or kind">Loose</option>
@@ -181,11 +184,12 @@
 
             <label style="font-weight:600;color:#323130;">Filter</label>
             <div style="display:flex;gap:6px;align-items:center;" id="ez-filter-row">
-              <select id="ez-op" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
-                <option value="">(no threshold filter)</option>
+              <select id="ez-op" style="width:80px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+                <option value="">—</option>
               </select>
-              <input id="ez-threshold" type="number" step="any" placeholder="value"
-                     style="width:90px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+              <input id="ez-threshold" type="number" step="any" placeholder="threshold value"
+                     style="flex:1;max-width:180px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+              <span style="font-size:11px;color:#605e5c;">(e.g. 0.25, 500)</span>
             </div>
 
             <label style="font-weight:600;color:#323130;">Options</label>
@@ -363,26 +367,30 @@
 
       // Populate operator dropdown
       const ezOp = $('ez-op');
-      ezOp.innerHTML = '<option value="">(no threshold filter)</option>';
+      ezOp.innerHTML = '<option value="">—</option>';
       _refData.operators.forEach(op => {
         const o = document.createElement('option');
         o.value = op.value;
-        o.textContent = `${op.symbol} ${op.label.split('(')[0].trim()}`;
+        o.textContent = op.symbol;
+        o.title = op.label;
         ezOp.appendChild(o);
       });
 
-      // Populate property datalist (aliases)
-      const dl = $('ez-prop-list');
-      dl.innerHTML = '';
+      // Populate property picker dropdown
+      const propPick = $('ez-prop-pick');
+      propPick.innerHTML = '<option value="">(pick or type below)</option>';
       _refData.propertyKinds.forEach(pk => {
         const o = document.createElement('option');
         o.value = pk.aliases[0] || pk.name;
-        o.label = `${pk.name} (${pk.description})`;
-        dl.appendChild(o);
-        // Also add canonical name
-        const o2 = document.createElement('option');
-        o2.value = pk.name;
-        dl.appendChild(o2);
+        o.textContent = `${pk.name} [${pk.uom}]`;
+        o.title = pk.description + ' — aliases: ' + pk.aliases.join(', ');
+        propPick.appendChild(o);
+      });
+      propPick.addEventListener('change', () => {
+        if (propPick.value) {
+          $('ez-prop').value = propPick.value;
+          resolvePropertyAlias();
+        }
       });
     }
 

@@ -7,8 +7,8 @@
 .sc-wrap { max-width: 96rem; }
 .sc-panel { border:1px solid #e1dfdd; border-radius:8px; background:#fff; padding:.75rem; }
 .muted { color:#605e5c; }
-.btn { display:inline-block; padding:.35rem .6rem; border:1px solid #605e5c; border-radius:3px; background:#fff; cursor:pointer; }
-.btn:hover { background:#f3f2f1; }
+.btn { display:inline-block; padding:.35rem .6rem; border:1px solid #0d6efd; border-radius:3px; background:#0d6efd; color:#fff; cursor:pointer; }
+.btn:hover { background:#0b5ed7; border-color:#0b5ed7; }
 #matrix-root { overflow:auto; max-height: 78vh; border:1px solid #ccc; border-radius:6px; }
 .sc-table { border-collapse: collapse; width: 100%; }
 .sc-table th, .sc-table td { padding: 4px 7px; text-align: left; vertical-align: middle; }
@@ -48,8 +48,8 @@
 .imp-status.err { background:#ffeaea; color:#c62828; }
 .imp-status.info { background:#e3f2fd; color:#1565c0; }
 .imp-preview { max-height:280px; overflow:auto; margin-top:.5rem; font-size:12.5px; }
-.btn-ingest { background:#007079; color:#fff; border-color:#007079; }
-.btn-ingest:hover { background:#004F55; border-color:#004F55; }
+.btn-ingest { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+.btn-ingest:hover { background:#0b5ed7; border-color:#0b5ed7; }
 
 /* ---- Examples popup ---- */
 .examples-wrap { position:relative; display:inline-block; }
@@ -141,10 +141,64 @@
   </div>
 </section>
 
-<!-- Import / Ingest -->
-<details class="sc-wrap" style="margin-bottom:1rem;">
-  <summary style="font-weight:600; font-size:15px; cursor:pointer; color:#007079;">Import &amp; Ingest Stratigraphic Columns</summary>
-  <section class="sc-wrap sc-panel imp-panel" style="margin-top:.5rem;">
+<!-- Legend + Matrix -->
+<section class="sc-wrap sc-panel">
+  <span id="load-status" class="muted" style="display:inline-block;margin-bottom:.5rem;"></span>
+  <div id="legend" class="legend"></div>
+  <div id="matrix-root"></div>
+  <div class="sc-footnote">
+    Columns represent rank levels (coarsest left, finest right).
+    Cells span rows to show the hierarchical nesting of stratigraphic units.
+    Ages displayed as supplementary information within each cell.
+  </div>
+
+    <!-- Horizon Generation Panel (shown after column is loaded) -->
+  <div id="horizon-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #c8e6c9; border-radius:6px; background:#f1f8f2;">
+    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#2e7d32;">
+      Generate Horizons from Unit Boundaries
+    </div>
+    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
+      Derive <code>HorizonInterpretation</code> records from the age boundaries of units in this column.
+      Each unique boundary age produces one horizon. <strong>Existing</strong> horizons are kept &mdash; only missing boundaries are generated.
+    </p>
+    <div id="horizon-info" class="muted" style="font-size:13px; margin-bottom:.4rem;"></div>
+    <div style="display:flex; gap:.5rem; align-items:center;">
+      <button class="btn" id="btn-horizon-preview" type="button" title="Preview generated horizons without ingesting">Preview</button>
+      <button class="btn btn-ingest" id="btn-horizon-ingest" type="button" title="Generate and ingest horizons to OSDU Storage">Generate &amp; Ingest to OSDU</button>
+      <span id="horizon-status" class="muted" style="font-size:13px;"></span>
+    </div>
+    <div id="horizon-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
+  </div>
+
+  <!-- Unit Generation Panel (inverse: horizons → units) -->
+  <div id="unitgen-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #bbdefb; border-radius:6px; background:#e3f2fd;">
+    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#1565c0;">
+      Generate Units from Horizon Boundaries
+    </div>
+    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
+      Derive <code>StratigraphicUnitInterpretation</code> records from consecutive horizon boundaries.
+      Each pair of adjacent horizons (sorted by age) produces one unit interval. <strong>Existing</strong> units are kept &mdash; only missing intervals are generated.
+    </p>
+    <div id="unitgen-info" class="muted" style="font-size:13px; margin-bottom:.4rem;"></div>
+    <div style="display:flex; gap:.5rem; align-items:center;">
+      <button class="btn" id="btn-unitgen-preview" type="button" title="Preview generated units without ingesting">Preview</button>
+      <button class="btn btn-ingest" id="btn-unitgen-ingest" type="button" title="Generate and ingest units to OSDU Storage">Generate &amp; Ingest to OSDU</button>
+      <span id="unitgen-status" class="muted" style="font-size:13px;"></span>
+    </div>
+    <div id="unitgen-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
+  </div>
+
+  <details style="margin-top:.75rem;">
+    <summary class="muted">Raw metadata</summary>
+    <table class="sc-table" style="font-size:13px;">
+      <tbody id="meta-body"></tbody>
+    </table>
+  </details>
+</section>
+
+<!-- Import / Ingest (always visible, lowermost section) -->
+<section class="sc-wrap sc-panel imp-panel" style="margin-top:.75rem;">
+    <h3 style="margin:0 0 .5rem 0; color:#007079;">Import &amp; Ingest Stratigraphic Columns</h3>
     <div class="imp-tabs">
       <span class="imp-tab active" data-tab="ow">OpenWorks JSON</span>
       <span class="imp-tab" data-tab="smda">SMDA API</span>
@@ -305,62 +359,6 @@
       </div>
       <div id="rddms-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
     </div>
-  </section>
-</details>
-
-<!-- Legend + Matrix -->
-<section class="sc-wrap sc-panel">
-  <span id="load-status" class="muted" style="display:inline-block;margin-bottom:.5rem;"></span>
-  <div id="legend" class="legend"></div>
-  <div id="matrix-root"></div>
-  <div class="sc-footnote">
-    Columns represent rank levels (coarsest left, finest right).
-    Cells span rows to show the hierarchical nesting of stratigraphic units.
-    Ages displayed as supplementary information within each cell.
-  </div>
-
-    <!-- Horizon Generation Panel (shown after column is loaded) -->
-  <div id="horizon-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #c8e6c9; border-radius:6px; background:#f1f8f2;">
-    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#2e7d32;">
-      Generate Horizons from Unit Boundaries
-    </div>
-    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
-      Derive <code>HorizonInterpretation</code> records from the age boundaries of units in this column.
-      Each unique boundary age produces one horizon. <strong>Existing</strong> horizons are kept &mdash; only missing boundaries are generated.
-    </p>
-    <div id="horizon-info" class="muted" style="font-size:13px; margin-bottom:.4rem;"></div>
-    <div style="display:flex; gap:.5rem; align-items:center;">
-      <button class="btn" id="btn-horizon-preview" type="button" title="Preview generated horizons without ingesting">Preview</button>
-      <button class="btn btn-ingest" id="btn-horizon-ingest" type="button" title="Generate and ingest horizons to OSDU Storage">Generate &amp; Ingest to OSDU</button>
-      <span id="horizon-status" class="muted" style="font-size:13px;"></span>
-    </div>
-    <div id="horizon-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
-  </div>
-
-  <!-- Unit Generation Panel (inverse: horizons → units) -->
-  <div id="unitgen-panel" style="display:none; margin-top:1rem; padding:.75rem; border:1px solid #bbdefb; border-radius:6px; background:#e3f2fd;">
-    <div style="font-weight:600; font-size:14px; margin-bottom:.2rem; color:#1565c0;">
-      Generate Units from Horizon Boundaries
-    </div>
-    <p class="muted" style="font-size:.82rem; margin:0 0 .5rem;">
-      Derive <code>StratigraphicUnitInterpretation</code> records from consecutive horizon boundaries.
-      Each pair of adjacent horizons (sorted by age) produces one unit interval. <strong>Existing</strong> units are kept &mdash; only missing intervals are generated.
-    </p>
-    <div id="unitgen-info" class="muted" style="font-size:13px; margin-bottom:.4rem;"></div>
-    <div style="display:flex; gap:.5rem; align-items:center;">
-      <button class="btn" id="btn-unitgen-preview" type="button" title="Preview generated units without ingesting">Preview</button>
-      <button class="btn btn-ingest" id="btn-unitgen-ingest" type="button" title="Generate and ingest units to OSDU Storage">Generate &amp; Ingest to OSDU</button>
-      <span id="unitgen-status" class="muted" style="font-size:13px;"></span>
-    </div>
-    <div id="unitgen-result" style="display:none; margin-top:.5rem; font-size:13px; padding:.5rem; border-radius:4px;"></div>
-  </div>
-
-  <details style="margin-top:.75rem;">
-    <summary class="muted">Raw metadata</summary>
-    <table class="sc-table" style="font-size:13px;">
-      <tbody id="meta-body"></tbody>
-    </table>
-  </details>
 </section>
 
 <script>
