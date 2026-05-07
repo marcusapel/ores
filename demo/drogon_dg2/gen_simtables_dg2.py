@@ -5,7 +5,7 @@ gen_simtables_dg2.py - Generate OSDU ColumnBasedTable WPC records for
 the Drogon DG2 simulator table outputs.
 
 These are **catalog + schema** records (column definitions, metadata)
-without embedding the full data arrays — the actual table data lives
+without embedding the full data arrays - the actual table data lives
 in the RDDMS dataspace or as files referenced by DDMSDatasets.
 
 Tables generated:

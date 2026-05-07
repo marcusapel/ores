@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────
-# run_pipeline_dg2.ps1 — Drogon DG2 (Concept Select) end-to-end pipeline
+# run_pipeline_dg2.ps1 - Drogon DG2 (Concept Select) end-to-end pipeline
 #
-# DEPRECATED — Use the generic Python pipeline runner instead:
+# DEPRECATED - Use the generic Python pipeline runner instead:
 #   python demo/run_pipeline.py drogon_dg2
 #   python demo/run_pipeline.py drogon_dg2 --skip-ingest
 #   python demo/run_pipeline.py drogon_dg2 --dry-run
@@ -43,7 +43,7 @@ try {
     foreach ($f in $requiredDG1) {
         $path = Join-Path $dg1Dir $f
         if (-not (Test-Path $path)) {
-            throw "DG1 manifest missing: $path — run DG1 pipeline first"
+            throw "DG1 manifest missing: $path - run DG1 pipeline first"
         }
         Write-Host "  OK $f" -ForegroundColor Green
     }

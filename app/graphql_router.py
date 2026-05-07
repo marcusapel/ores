@@ -1147,9 +1147,21 @@ class Query:
             search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
             hdr = osdu.headers(token)
             osdu_kind = kind or "osdu:wks:work-product-component--*:*"
+
+            # Build query: include type_name in search text so catalog
+            # filters by RESQML type (e.g. "IjkGridRepresentation")
+            query_text = text if text != "*" else "*"
+            if type_name and query_text == "*":
+                # Extract the short class name for the catalog text query
+                short_type = type_name.rsplit(".", 1)[-1].replace("obj_", "")
+                query_text = f"\"{short_type}\""
+            elif type_name and query_text != "*":
+                short_type = type_name.rsplit(".", 1)[-1].replace("obj_", "")
+                query_text = f"{query_text} AND \"{short_type}\""
+
             payload: Dict[str, Any] = {
                 "kind": osdu_kind,
-                "query": text if text != "*" else "*",
+                "query": query_text,
                 "limit": min(limit, 100),
                 "returnedFields": ["id", "kind", "version", "data"],
                 "trackTotalCount": True,
@@ -1174,6 +1186,14 @@ class Query:
                         uuid = Query._extract_uuid(data, rid)
                         ds = Query._extract_dataspace(data, rid)
                         rtype = Query._extract_resqml_type(rkind, data)
+
+                        # Post-filter: skip catalog hits that don't match the
+                        # requested type_name (if one was specified)
+                        if type_name and rtype:
+                            short_requested = type_name.rsplit(".", 1)[-1].replace("obj_", "").lower()
+                            short_actual = rtype.rsplit(".", 1)[-1].replace("obj_", "").lower()
+                            if short_requested != short_actual:
+                                continue
 
                         fh = FederatedHit(
                             uuid=uuid or rid,

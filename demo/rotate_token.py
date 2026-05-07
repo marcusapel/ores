@@ -145,7 +145,7 @@ def main() -> None:
     # Persist to storage
     if not args.dry_run and not rotated:
         if verbose:
-            print("  Token unchanged — no files to update.", file=sys.stderr)
+            print("  Token unchanged - no files to update.", file=sys.stderr)
     else:
         _update_k8s_secret(new_rt, instance=args.instance, dry_run=args.dry_run)
         _update_gocad_env(new_rt, dry_run=args.dry_run)
@@ -155,7 +155,7 @@ def main() -> None:
         print(new_rt)
     elif verbose:
         print(file=sys.stderr)
-        print("Done. The new token is valid — use it within 90 days to keep it alive.", file=sys.stderr)
+        print("Done. The new token is valid - use it within 90 days to keep it alive.", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@
 | Page | Purpose |
 |------|---------|
 | **RddmsAdmin** (`/`) | List and manage OSDU Dataspaces - create, lock, unlock, delete, build manifests |
-| **RddmsResources** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
+| **RddmsQuery** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
 | **OsduSearch** (`/search`) | Query OSDU Search API with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet) |
 | **Analyse** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
 | **Add DG** (`/add-dg`) | Create and ingest a new BusinessDecision, linking REV, GeoLabelSet, Activity and Risk records |

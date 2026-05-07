@@ -78,7 +78,7 @@ python -m pytest test/ -v     # 147 tests
 
 ## GraphQL Deep Search
 
-The `/keys` page includes a GraphQL panel for deep RESQML queries — object browsing,
+The `/keys` page includes a GraphQL panel for deep RESQML queries - object browsing,
 relationship graph traversal, and array-level numerical filtering.
 
 To enable direct PostgreSQL access (fastest, bypasses REST):

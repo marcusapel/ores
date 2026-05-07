@@ -10,7 +10,7 @@ with real SpatialArea, IndexableElementCount, and DDMSDatasets URIs derived from
 the actual RESQML content.
 
 This script:
-  1. Discovers objects in the dataspace (Grid2d, PolylineSet, PointSet) — or
+  1. Discovers objects in the dataspace (Grid2d, PolylineSet, PointSet) - or
      uses hardcoded UUIDs for reproducibility.
   2. Calls manifests/build for discovered objects.
   3. Saves the full manifest as manifest_rddms_catalog.json
@@ -111,7 +111,7 @@ def discover_objects(
     for short_name in types:
         resqml_type = RDDMS_TYPES.get(short_name)
         if not resqml_type:
-            print(f"  WARN: Unknown type '{short_name}' — skipping")
+            print(f"  WARN: Unknown type '{short_name}' - skipping")
             continue
 
         url = f"{host}/api/reservoir-ddms/v2/dataspaces/{enc}/resources/{resqml_type}"
@@ -149,7 +149,7 @@ def build_manifest(host: str, token: str, partition: str, uuids: list[str], *, d
         host: RDDMS host base URL.
         token: Bearer token.
         partition: Data partition ID.
-        uuids: List of UUIDs (used only if uris is None — assumes Grid2d type).
+        uuids: List of UUIDs (used only if uris is None - assumes Grid2d type).
         ds_path: Dataspace path for URI construction.
         uris: Pre-built EML URIs. If provided, uuids is ignored.
     """
@@ -246,7 +246,7 @@ def main():
     else:
         all_uuids = list(SURFACES.values())
         all_uris_display = [f"  {name}: {uuid}" for name, uuid in SURFACES.items()]
-        print(f"\nSurfaces ({len(all_uuids)}) — hardcoded mode:")
+        print(f"\nSurfaces ({len(all_uuids)}) - hardcoded mode:")
         for line in all_uris_display:
             print(line)
 

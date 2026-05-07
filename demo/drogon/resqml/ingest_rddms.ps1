@@ -139,7 +139,7 @@ if (-not $SkipCreate) {
     }
 
     $domain = "$DATA_PARTITION_ID.dataservices.energy"
-    # Build xdata JSON — single quotes in the sh command protect the double quotes
+    # Build xdata JSON - single quotes in the sh command protect the double quotes
     $xdataRaw = "{""legaltags"":[""$LEGAL_TAG""],""otherRelevantDataCountries"":[""NO""],""owners"":[""data.default.owners@$domain""],""viewers"":[""data.default.viewers@$domain""]}"
 
     $createCmd = "$space_root_cmd space --new -s $DataspaceName --xdata '$xdataRaw'"
@@ -166,7 +166,7 @@ $epcToImport = @("drogon_tables.epc", "drogon_activity.epc")
 foreach ($epcName in $epcToImport) {
     $epcFull = Join-Path $tempDir $epcName
     if (-not (Test-Path $epcFull)) {
-        Write-Host "  ERROR: $epcName not found in temp dir — run gen_resqml.py first" -ForegroundColor Red
+        Write-Host "  ERROR: $epcName not found in temp dir - run gen_resqml.py first" -ForegroundColor Red
         exit 1
     }
 

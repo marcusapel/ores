@@ -62,7 +62,7 @@ POINTSET_TYPE = "resqml20.obj_PointSetRepresentation"
 #   "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation"
 HORIZON_CONTENT_MARKERS = ("HorizonInterpretation",)
 
-# Name suffixes/patterns to EXCLUDE — these are FMU model extraction outputs,
+# Name suffixes/patterns to EXCLUDE - these are FMU model extraction outputs,
 # not interpreter seed picks.
 # *_extracted = surfaces extracted from a reservoir model run (HUM, global-field).
 EXCLUDE_NAME_SUFFIXES = ("_extracted",)
@@ -150,7 +150,7 @@ def get_pointset_arrays(host: str, token: str, partition: str, ds_path: str, uui
 # ── Classification ──────────────────────────────────────────────────────
 
 def classify_pointset(obj: dict[str, Any]) -> dict[str, Any]:
-    """Classify a PointSetRepresentation — is it horizon control points?
+    """Classify a PointSetRepresentation - is it horizon control points?
 
     Returns metadata dict with classification.
     """
@@ -369,10 +369,10 @@ def discover_and_generate(
     print(f"  Classification: {len(horizon_picks)} horizon picks, {len(other)} other, {len(errors)} error")
 
     if dry_run:
-        print("\n  DRY RUN — no files written")
+        print("\n  DRY RUN - no files written")
         for c in classified:
             kind = "HORIZON" if c.get("is_horizon_picks") else "other"
-            print(f"    [{kind}] {c['title']} ({c['uuid'][:8]}...) — {c.get('n_points', '?')} pts, domain={c.get('domain', '?')}")
+            print(f"    [{kind}] {c['title']} ({c['uuid'][:8]}...) - {c.get('n_points', '?')} pts, domain={c.get('domain', '?')}")
         return {"found": len(classified), "horizon": len(horizon_picks), "other": len(other), "records": []}
 
     # Generate records (only for horizon-linked point sets)
