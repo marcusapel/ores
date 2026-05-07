@@ -68,6 +68,15 @@ def _fake_bd_record(record_id: str = "opendes:master-data--BusinessDecision:dg2-
             "DecisionPhase": "DG2",
             "OperatorID": "opendes:master-data--Organisation:Equinor:",
             "FieldID": "opendes:master-data--Field:Drogon:",
+            "Parameters": [
+                {
+                    "Title": "GeoLabelSet (segment volumes + properties)",
+                    "ParameterKindID": "opendes:reference-data--ParameterKind:DataObject:",
+                    "ParameterRoleID": "opendes:reference-data--ParameterRole:Input:",
+                    "DataObjectParameter": "opendes:work-product-component--GeoLabelSet:gls-001:1",
+                    "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "GeoLabelSet"}],
+                },
+            ],
             "Volumes": {
                 "KeyColumns": [{"ColumnName": "Phase"}],
                 "Columns": [
@@ -81,6 +90,44 @@ def _fake_bd_record(record_id: str = "opendes:master-data--BusinessDecision:dg2-
                     "P10": [120.5, 45.3, 30.1],
                     "P50": [95.2, 38.7, 25.4],
                     "P90": [72.1, 28.9, 18.6],
+                },
+            },
+        },
+    }
+
+
+def _fake_geolabelset_record() -> dict:
+    """Fake GeoLabelSet:1.0.0 record with segment volumes and properties."""
+    return {
+        "id": "opendes:work-product-component--GeoLabelSet:gls-001:1",
+        "kind": "osdu:wks:work-product-component--GeoLabelSet:1.0.0",
+        "version": 1,
+        "data": {
+            "Name": "Drogon Valysar - GeoLabelSet (DG2)",
+            "GeoLabels": {
+                "KeyColumns": [
+                    {"ColumnName": "SegmentID", "ColumnRole": "Key", "ValueType": "string"},
+                    {"ColumnName": "Facies", "ColumnRole": "Key", "ValueType": "string"},
+                ],
+                "Columns": [
+                    {"ColumnName": "Oil.P90", "ColumnRole": "Value", "ValueType": "number"},
+                    {"ColumnName": "Oil.P50", "ColumnRole": "Value", "ValueType": "number"},
+                    {"ColumnName": "Oil.P10", "ColumnRole": "Value", "ValueType": "number"},
+                    {"ColumnName": "Recoverable.P90", "ColumnRole": "Value", "ValueType": "number"},
+                    {"ColumnName": "Recoverable.P50", "ColumnRole": "Value", "ValueType": "number"},
+                    {"ColumnName": "Recoverable.P10", "ColumnRole": "Value", "ValueType": "number"},
+                    {"ColumnName": "Porosity", "ColumnRole": "Value", "ValueType": "number"},
+                ],
+                "ColumnValues": {
+                    "SegmentID": ["Valysar", "Therys", "TOTAL"],
+                    "Facies": ["ALL", "ALL", "ALL"],
+                    "Oil.P90": [45000000.0, 28000000.0, 73000000.0],
+                    "Oil.P50": [62000000.0, 38000000.0, 100000000.0],
+                    "Oil.P10": [85000000.0, 52000000.0, 137000000.0],
+                    "Recoverable.P90": [18000000.0, 11000000.0, 29000000.0],
+                    "Recoverable.P50": [25000000.0, 15000000.0, 40000000.0],
+                    "Recoverable.P10": [34000000.0, 21000000.0, 55000000.0],
+                    "Porosity": [0.22, 0.18, 0.20],
                 },
             },
         },
@@ -211,14 +258,19 @@ class TestKeysPage:
 # 2. Business Decisions - search & fetch
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _mock_httpx_for_search(records: list):
+def _mock_httpx_for_search(records: list, extra_records: list = None):
     """
     Return a context manager that patches httpx.AsyncClient so that:
       - POST to /search/v2/query → returns record IDs
       - GET  to /storage/v2/records/{id} → returns full record
+    extra_records: additional records fetchable by GET but not in search results.
     """
     search_results = [{"id": r["id"], "kind": r["kind"], "version": r.get("version", 1)} for r in records]
     record_map = {r["id"]: r for r in records}
+    # Add extra records (e.g. linked GeoLabelSet, ETPDataspace etc.)
+    if extra_records:
+        for r in extra_records:
+            record_map[r["id"]] = r
 
     original_init = httpx.AsyncClient.__init__
 
@@ -299,8 +351,9 @@ class TestBusinessDecisionView:
 
     def test_view_record(self, authed_client):
         bd = _fake_bd_record()
+        gls = _fake_geolabelset_record()
 
-        with _mock_httpx_for_search([bd]):
+        with _mock_httpx_for_search([bd], extra_records=[gls]):
             resp = authed_client.get(
                 "/search/view/opendes:master-data--BusinessDecision:dg2-001"
             )
@@ -309,6 +362,23 @@ class TestBusinessDecisionView:
         body = resp.text
         # Should render HTML with the record data somewhere
         assert "text/html" in resp.headers["content-type"]
+
+    def test_view_record_has_geolabel_volumes(self, authed_client):
+        """Headline volumes from GeoLabelSet should appear in the BD view."""
+        bd = _fake_bd_record()
+        gls = _fake_geolabelset_record()
+
+        with _mock_httpx_for_search([bd], extra_records=[gls]):
+            resp = authed_client.get(
+                "/search/view/opendes:master-data--BusinessDecision:dg2-001"
+            )
+
+        assert resp.status_code == 200
+        body = resp.text
+        # The GeoLabelSet has Oil.P50 = 100_000_000 → shown as 100.00 MSm³
+        assert "100.00" in body or "STOIIP" in body
+        # Should NOT show "No headline volumes"
+        assert "No headline volumes available" not in body
 
 
 class TestBusinessDecisionCompare:

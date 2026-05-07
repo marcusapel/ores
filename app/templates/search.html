@@ -21,7 +21,20 @@
   .results-table tbody tr { cursor: pointer; transition: background .15s; }
   .results-table tbody tr:hover { background: #e8f0fa; }
   .results-table tbody tr.active-row { background: #d0e2f4; font-weight: 500; }
-  .results-scroll { max-height: 28rem; overflow-y: auto; overflow-x: auto; border: 1px solid #e1dfdd; border-radius: 6px; width: 100%; }
+  .results-scroll { max-height: 16rem; overflow-y: auto; overflow-x: auto; border: 1px solid #e1dfdd; border-radius: 6px; width: 100%; }
+  .detail-panel { border: 1px solid #d1d1d1; border-radius: 6px; padding: .8rem 1rem; margin-top: .6rem; background: #faf9f8; max-height: 36rem; overflow-y: auto; }
+  .detail-panel h5 { margin: 0 0 .5rem; color: #004578; }
+  .detail-panel pre { white-space: pre-wrap; word-break: break-word; font-size: .82rem; line-height: 1.4; background: #fff; border: 1px solid #e1dfdd; border-radius: 4px; padding: .5rem; max-height: 28rem; overflow-y: auto; }
+  .detail-panel .detail-kv { display: grid; grid-template-columns: 160px 1fr; gap: .25rem .6rem; font-size: .87rem; }
+  .detail-panel .detail-kv .k { color: #605e5c; font-weight: 500; }
+  .detail-panel .detail-kv .v { word-break: break-word; }
+  .detail-panel .loading { color: #605e5c; font-style: italic; }
+  .detail-panel .schema-props-table { border-collapse: collapse; width: 100%; font-size: .82rem; margin-top: .4rem; }
+  .detail-panel .schema-props-table th, .detail-panel .schema-props-table td { padding: .25rem .4rem; border: 1px solid #e1dfdd; text-align: left; }
+  .detail-panel .schema-props-table th { background: #f0f0f0; font-weight: 600; }
+  .detail-panel .tab-btns { display: flex; gap: .3rem; margin-bottom: .5rem; }
+  .detail-panel .tab-btns button { padding: .2rem .6rem; border: 1px solid #d1d1d1; border-radius: 3px; background: #fff; cursor: pointer; font-size: .8rem; }
+  .detail-panel .tab-btns button.active { background: #0078d4; color: #fff; border-color: #0078d4; }
   .results-scroll thead th { position: sticky; top: 0; background: #f5f5f5; z-index: 1; border-bottom: 2px solid #d1d1d1; }
   .kpi-grid { display:grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap:.5rem; }
   .kpi { border:1px solid #e1dfdd; border-radius:6px; padding:.45rem .55rem; background:#faf9f8; }
@@ -185,7 +198,21 @@
 
 <h2>Search</h2>
 
-<form method="post" action="/search/run" class="search-form">
+<!-- ── Search Mode Tabs ── -->
+<div class="search-mode-tabs" style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid #e1dfdd;">
+  <button type="button" class="mode-tab{% if not search_mode or search_mode == 'records' %} active{% endif %}" data-mode="records">Records</button>
+  <button type="button" class="mode-tab{% if search_mode == 'schemas' %} active{% endif %}" data-mode="schemas">Schemas</button>
+  <button type="button" class="mode-tab{% if search_mode == 'refdata' %} active{% endif %}" data-mode="refdata">Reference Data</button>
+</div>
+<style>
+  .mode-tab { padding:.45rem 1.1rem; border:none; background:transparent; font-size:.9rem;
+    cursor:pointer; color:#605e5c; border-bottom:2px solid transparent; margin-bottom:-2px; font-weight:500; }
+  .mode-tab:hover { color:#004578; background:#f3f2f1; }
+  .mode-tab.active { color:#004578; border-bottom-color:#004578; font-weight:600; }
+</style>
+
+<!-- ── Records Search Form (existing) ── -->
+<form method="post" action="/search/run" class="search-form" id="form-records" {% if search_mode and search_mode != 'records' %}style="display:none"{% endif %}>
 
   <label>Kind (primary)</label>
   <div class="kind-row" style="grid-template-columns: 220px 1fr;">
@@ -209,46 +236,43 @@
     <span class="examples-wrap">
       <button type="button" class="btn-ex" id="btn-examples">Examples ▾</button>
       <div class="examples-popup" id="examples-popup">
-        <div class="ex-hdr">Click an example to use it</div>
-        <div class="ex-item" data-q="*">
-          <code>*</code>
-          <span class="ex-desc">All records of the selected kind</span>
-        </div>
-        <div class="ex-item" data-q="data.Name:Gudrun">
-          <code>data.Name:Gudrun</code>
-          <span class="ex-desc">Exact field match on Name</span>
-        </div>
-        <div class="ex-item" data-q="data.Name:*Drogon*">
+        <div class="ex-hdr">OSDU Search query syntax</div>
+        <div class="ex-item" data-q="data.Name:*Drogon*" data-target="searchQuery" data-kind="osdu:wks:master-data--BusinessDecision:1.0.0">
           <code>data.Name:*Drogon*</code>
-          <span class="ex-desc">Wildcard name search</span>
+          <span class="ex-desc">Wildcard match – Name contains "Drogon"</span>
         </div>
-        <div class="ex-item" data-q="data.Description:*exploration*">
-          <code>data.Description:*exploration*</code>
-          <span class="ex-desc">Free-text search in description</span>
+        <div class="ex-item" data-q="data.Description:*Valysar* AND data.Name:*DG2*" data-target="searchQuery" data-kind="osdu:wks:master-data--BusinessDecision:1.0.0">
+          <code>data.Description:*Valysar* AND data.Name:*DG2*</code>
+          <span class="ex-desc">Boolean AND – both conditions must match</span>
         </div>
-        <div class="ex-item" data-q='"dev:work-product-component--StratigraphicColumn:"'>
-          <code>"dev:work-product-component--StratigraphicColumn:…"</code>
-          <span class="ex-desc">Exact quoted ID (finds records referencing this ID)</span>
+        <div class="ex-item" data-q="data.Name:*Porosity* OR data.Name:*Seal*" data-target="searchQuery" data-kind="osdu:wks:master-data--Risk:1.2.0">
+          <code>data.Name:*Porosity* OR data.Name:*Seal*</code>
+          <span class="ex-desc">Boolean OR – match either condition</span>
         </div>
-        <div class="ex-item" data-q="data.StratigraphicColumnRankInterpretationIDs:*">
-          <code>data.StratigraphicColumnRankInterpretationIDs:*</code>
-          <span class="ex-desc">Records that have rank references (e.g. full columns)</span>
+        <div class="ex-item" data-q="data.HorizonName:TopVolantis" data-target="searchQuery" data-kind="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
+          <code>data.HorizonName:TopVolantis</code>
+          <span class="ex-desc">Exact field match – maps for a specific horizon</span>
         </div>
-        <div class="ex-item" data-q="data.RiskCategory:*">
-          <code>data.RiskCategory:*</code>
-          <span class="ex-desc">Records with a RiskCategory field (Risk records)</span>
+        <div class="ex-item" data-q="data.DDMSDatasets:*Grid2dRepresentation*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
+          <code>data.DDMSDatasets:*Grid2dRepresentation*</code>
+          <span class="ex-desc">Array field wildcard – records with RDDMS grid maps</span>
         </div>
-        <div class="ex-item" data-q="data.Name:Gudrun AND data.RiskCategory:*">
-          <code>data.Name:Gudrun AND data.RiskCategory:*</code>
-          <span class="ex-desc">Combine conditions with AND / OR</span>
+        <div class="ex-item" data-q="NOT data.Name:*test*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--Document:1.2.0">
+          <code>NOT data.Name:*test*</code>
+          <span class="ex-desc">Negation – exclude records matching pattern</span>
         </div>
-        <div class="ex-item" data-q="NOT data.Name:Test*">
-          <code>NOT data.Name:Test*</code>
-          <span class="ex-desc">Exclude records matching a pattern</span>
+        <div class="ex-item" data-q="data.StratigraphicColumnRankInterpretationSet:*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--StratigraphicColumn:1.2.0">
+          <code>data.StratigraphicColumnRankInterpretationSet:*</code>
+          <span class="ex-desc">Field existence – has rank interpretations linked</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:*facies_fraction*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
+          <code>data.Name:*facies_fraction*</code>
+          <span class="ex-desc">Find facies fraction maps by partial name</span>
         </div>
       </div>
     </span>
   </div>
+  <small id="queryHintText" style="color:#605e5c;display:none;"></small>
 
   <label>limit</label>
   <input type="number" name="limit" value="{{ limit or 50 }}" min="1" max="500">
@@ -259,33 +283,174 @@
 
   <button type="submit" id="searchBtn" class="btn">Search</button>
 </form>
+
+<!-- ── Schema Search Form ── -->
+<form method="post" action="/search/schemas" class="search-form" id="form-schemas" {% if search_mode != 'schemas' %}style="display:none"{% endif %}>
+  <label>Filter</label>
+  <div style="display:flex;gap:.4rem;align-items:center;width:100%;">
+    <input type="text" name="query" id="schemaQuery" value="{{ schema_q or '' }}" placeholder="WellLog or authority:osdu source:wks" style="flex:1;">
+    <span class="examples-wrap">
+      <button type="button" class="btn-ex" id="btn-schema-examples">Examples ▾</button>
+      <div class="examples-popup" id="schema-examples-popup">
+        <div class="ex-hdr">Schema Service query syntax</div>
+        <div class="ex-item" data-q="authority:osdu source:wks status:PUBLISHED" data-target="schemaQuery">
+          <code>authority:osdu source:wks status:PUBLISHED</code>
+          <span class="ex-desc">Filter by authority, source and status</span>
+        </div>
+        <div class="ex-item" data-q="authority:osdu source:wks scope:SHARED" data-target="schemaQuery">
+          <code>authority:osdu source:wks scope:SHARED</code>
+          <span class="ex-desc">All shared schemas from OSDU WKS</span>
+        </div>
+        <div class="ex-item" data-q="authority:osdu source:wks StructureMap" data-target="schemaQuery">
+          <code>authority:osdu source:wks StructureMap</code>
+          <span class="ex-desc">Combine API filters with keyword substring match</span>
+        </div>
+        <div class="ex-item" data-q="work-product-component" data-target="schemaQuery">
+          <code>work-product-component</code>
+          <span class="ex-desc">Keyword filter – all WPC entity types</span>
+        </div>
+        <div class="ex-item" data-q="master-data" data-target="schemaQuery">
+          <code>master-data</code>
+          <span class="ex-desc">Keyword filter – all master-data entity types</span>
+        </div>
+        <div class="ex-item" data-q="Seismic" data-target="schemaQuery">
+          <code>Seismic</code>
+          <span class="ex-desc">Search for seismic-related schemas</span>
+        </div>
+      </div>
+    </span>
+  </div>
+  <small style="color:#605e5c;">Type a keyword (e.g. <code>Risk</code>, <code>Well</code>) or use <code>authority:osdu</code>, <code>source:wks</code>, <code>status:PUBLISHED</code></small>
+
+  <label>limit</label>
+  <input type="number" name="limit" value="{{ limit or 50 }}" min="1" max="500">
+
+  <button type="submit" class="btn">Search Schemas</button>
+</form>
+
+<!-- ── Reference Data Search Form ── -->
+<form method="post" action="/search/refdata" class="search-form" id="form-refdata" {% if search_mode != 'refdata' %}style="display:none"{% endif %}>
+  <label>Reference Data Kind <small>(required — pick from the list below)</small></label>
+  <input type="text" id="refdataKindFilter" placeholder="Type to filter kinds… e.g. Risk, Chrono, Unit"
+    style="width:100%;max-width:600px;margin-bottom:.3rem;" autocomplete="off">
+  <input type="hidden" name="kind" id="refdataKindValue"
+    value="{{ kind if kind and kind != 'osdu:wks:reference-data--*:*' else '' }}">
+  <div id="refdataKindListBox" style="max-height:11rem;overflow-y:auto;border:1px solid #e1dfdd;border-radius:4px;background:#fff;margin-bottom:.6rem;">
+    {% for opt in refdata_kinds or [] %}
+      <div class="refkind-item" data-kind="{{ opt.kind }}" style="padding:.25rem .6rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid #f3f2f1;"
+        {% if opt.kind == kind %}data-selected="1"{% endif %}>{{ opt.kind }}</div>
+    {% endfor %}
+  </div>
+  <small id="refdataKindSelected" style="color:#004578;font-weight:500;">{% if kind and kind != 'osdu:wks:reference-data--*:*' %}Selected: {{ kind }}{% else %}No kind selected{% endif %}</small>
+
+  <label style="margin-top:.5rem;">Query <small>(optional filter within the kind)</small></label>
+  <input type="text" name="query" id="refdataQuery" value="{{ refdata_q or '*' }}" placeholder="* or data.Name:Exploration" style="width:100%;max-width:600px;">
+
+  <label>limit</label>
+  <input type="number" name="limit" value="{{ limit or 50 }}" min="1" max="100">
+
+  <button type="submit" class="btn">Search Reference Data</button>
+</form>
+
+<!-- ── Mode switching logic ── -->
 <script>
 (function(){
-  var form = document.querySelector('form.search-form');
-  if (form) form.addEventListener('submit', function() {
-    if (window.showLoading) window.showLoading('Searching OSDU…');
-    var btn = document.getElementById('searchBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
+  var tabs = document.querySelectorAll('.mode-tab');
+  var forms = {
+    records: document.getElementById('form-records'),
+    schemas: document.getElementById('form-schemas'),
+    refdata: document.getElementById('form-refdata')
+  };
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var mode = tab.dataset.mode;
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      Object.keys(forms).forEach(function(k) {
+        if (forms[k]) forms[k].style.display = (k === mode) ? '' : 'none';
+      });
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  // Submit handler for ALL search forms
+  document.querySelectorAll('form.search-form').forEach(function(form) {
+    form.addEventListener('submit', function() {
+      if (window.showLoading) window.showLoading('Searching OSDU…');
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
+    });
   });
 
-  // Examples popup
-  var btnEx = document.getElementById('btn-examples');
-  var exPopup = document.getElementById('examples-popup');
-  if (btnEx && exPopup) {
+  // Generic examples popup handler - works for records, schemas and refdata
+  function setupExamplesPopup(btnId, popupId) {
+    var btnEx = document.getElementById(btnId);
+    var exPopup = document.getElementById(popupId);
+    if (!btnEx || !exPopup) return;
     btnEx.addEventListener('click', function(e) {
       e.stopPropagation();
+      // Close all other popups first
+      document.querySelectorAll('.examples-popup.open').forEach(function(p) {
+        if (p !== exPopup) p.classList.remove('open');
+      });
       exPopup.classList.toggle('open');
     });
     exPopup.querySelectorAll('.ex-item').forEach(function(item) {
       item.addEventListener('click', function() {
         var q = item.getAttribute('data-q');
-        var inp = document.getElementById('searchQuery');
+        var target = item.getAttribute('data-target');
+        var kindVal = item.getAttribute('data-kind');
+        var inp = target ? document.getElementById(target) : null;
         if (inp && q != null) inp.value = q;
         exPopup.classList.remove('open');
       });
     });
-    document.addEventListener('click', function() { exPopup.classList.remove('open'); });
   }
+
+  // Records examples: also set the kind input
+  function setupRecordExamples() {
+    var btnEx = document.getElementById('btn-examples');
+    var exPopup = document.getElementById('examples-popup');
+    if (!btnEx || !exPopup) return;
+    btnEx.addEventListener('click', function(e) {
+      e.stopPropagation();
+      document.querySelectorAll('.examples-popup.open').forEach(function(p) {
+        if (p !== exPopup) p.classList.remove('open');
+      });
+      exPopup.classList.toggle('open');
+    });
+    exPopup.querySelectorAll('.ex-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        var q = item.getAttribute('data-q');
+        var target = item.getAttribute('data-target');
+        var kindVal = item.getAttribute('data-kind');
+        var inp = target ? document.getElementById(target) : null;
+        if (inp && q != null) inp.value = q;
+        if (kindVal) {
+          var kindInp = document.getElementById('kindInput');
+          if (kindInp) kindInp.value = kindVal;
+          // Also update the preset selector to match
+          var preset = document.getElementById('kindPreset');
+          if (preset) {
+            preset.value = kindVal;
+          }
+        }
+        exPopup.classList.remove('open');
+      });
+    });
+  }
+  setupRecordExamples();
+  setupExamplesPopup('btn-schema-examples', 'schema-examples-popup');
+
+  // Close all popups on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.examples-wrap')) {
+      document.querySelectorAll('.examples-popup.open').forEach(function(p) { p.classList.remove('open'); });
+    }
+  });
 })();
 </script>
 
@@ -298,7 +463,105 @@
       input.value = preset.value;
     }
     preset?.addEventListener('change', applyPreset);
+
+    // ── Kind-aware query hint for Records tab ──
+    const hintEl = document.getElementById('queryHintText');
+    function updateQueryHint() {
+      if (!input || !hintEl) return;
+      const k = (input.value || '').toLowerCase();
+      let hint = '';
+      if (k.includes('businessdecision')) {
+        hint = 'Tip: try <code>data.Name:Gudrun</code> or <code>data.RiskCategory:*</code>';
+      } else if (k.includes('risk')) {
+        hint = 'Tip: try <code>data.RiskCategory:*</code> or <code>data.Probability:*</code>';
+      } else if (k.includes('stratigraphiccolumn')) {
+        hint = 'Tip: try <code>data.StratigraphicColumnRankInterpretationIDs:*</code>';
+      } else if (k.includes('well')) {
+        hint = 'Tip: try <code>data.FacilityName:*</code> or <code>data.CurrentOperator:*</code>';
+      } else if (k.includes('document')) {
+        hint = 'Tip: try <code>data.DocumentType:*</code>';
+      }
+      if (hint) { hintEl.innerHTML = hint; hintEl.style.display = ''; }
+      else { hintEl.style.display = 'none'; }
+    }
+    if (input) {
+      input.addEventListener('change', updateQueryHint);
+      input.addEventListener('input', updateQueryHint);
+      updateQueryHint();
+    }
+    if (preset) preset.addEventListener('change', function() { setTimeout(updateQueryHint, 50); });
   })();
+</script>
+
+<!-- ── Reference Data kind list filter ── -->
+<script>
+(function() {
+  const filterInput = document.getElementById('refdataKindFilter');
+  const hiddenInput = document.getElementById('refdataKindValue');
+  const listBox = document.getElementById('refdataKindListBox');
+  const selectedLabel = document.getElementById('refdataKindSelected');
+  if (!filterInput || !listBox || !hiddenInput) return;
+
+  let allItems = Array.from(listBox.querySelectorAll('.refkind-item'));
+
+  // Highlight pre-selected item
+  allItems.forEach(function(item) {
+    if (item.dataset.selected === '1') {
+      item.style.background = '#d0e2f4';
+      item.style.fontWeight = '600';
+    }
+  });
+
+  function applyFilter() {
+    const q = filterInput.value.toLowerCase();
+    allItems.forEach(function(item) {
+      const match = !q || item.dataset.kind.toLowerCase().includes(q);
+      item.style.display = match ? '' : 'none';
+    });
+  }
+
+  filterInput.addEventListener('input', applyFilter);
+
+  // Select on click
+  listBox.addEventListener('click', function(e) {
+    const item = e.target.closest('.refkind-item');
+    if (!item) return;
+    allItems.forEach(function(i) { i.style.background = ''; i.style.fontWeight = ''; });
+    item.style.background = '#d0e2f4';
+    item.style.fontWeight = '600';
+    hiddenInput.value = item.dataset.kind;
+    selectedLabel.textContent = 'Selected: ' + item.dataset.kind;
+    selectedLabel.style.color = '#004578';
+  });
+
+  // Dynamically enrich the list from the schema service API
+  fetch('/search/api/refdata-kinds')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.kinds || !data.kinds.length) return;
+      const existing = new Set(allItems.map(function(i) { return i.dataset.kind; }));
+      let added = 0;
+      data.kinds.forEach(function(kind) {
+        if (existing.has(kind)) return;
+        existing.add(kind);
+        const div = document.createElement('div');
+        div.className = 'refkind-item';
+        div.dataset.kind = kind;
+        div.style.cssText = 'padding:.25rem .6rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid #f3f2f1;';
+        div.textContent = kind;
+        listBox.appendChild(div);
+        added++;
+      });
+      if (added > 0) {
+        // Re-sort all items alphabetically
+        allItems = Array.from(listBox.querySelectorAll('.refkind-item'));
+        allItems.sort(function(a, b) { return a.dataset.kind.localeCompare(b.dataset.kind); });
+        allItems.forEach(function(item) { listBox.appendChild(item); });
+        applyFilter();
+      }
+    })
+    .catch(function() { /* static list is fine as fallback */ });
+})();
 </script>
 
 {% if error %}
@@ -311,6 +574,80 @@
     </details>
     {% endif %}
   </div>
+{% endif %}
+
+{# ── Schema Results Table ── #}
+{% if schema_results is defined and schema_results %}
+  <h4>Schemas ({{ schema_results|length }}{% if schema_total and schema_total > schema_results|length %} of {{ schema_total }}{% endif %})</h4>
+  <div class="results-scroll">
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Entity Type</th>
+          <th>Authority</th>
+          <th>Source</th>
+          <th>Version</th>
+          <th>Status</th>
+          <th>Scope</th>
+          <th>Full Kind</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in schema_results %}
+        <tr data-schema-kind="{{ s.kind }}" title="Click to view schema definition">
+          <td><strong>{{ s.entityType }}</strong></td>
+          <td>{{ s.authority }}</td>
+          <td>{{ s.source }}</td>
+          <td>{{ s.version }}</td>
+          <td><span class="chip" style="{% if s.status == 'PUBLISHED' %}background:#c6f6d5;color:#22543d{% elif s.status == 'DEVELOPMENT' %}background:#bee3f8;color:#2b6cb0{% else %}background:#e2e8f0{% endif %}">{{ s.status }}</span></td>
+          <td>{{ s.scope }}</td>
+          <td style="font-size:.8rem;color:#605e5c;" title="{{ s.kind }}">{{ s.kind }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="detail-panel" id="schema-detail-panel" style="display:none;"></div>
+{% elif search_mode == 'schemas' and not error %}
+  {% if schema_results is defined %}
+    <p>No schemas matched your filter.</p>
+  {% endif %}
+{% endif %}
+
+{# ── Reference Data Results Table ── #}
+{% if refdata_results is defined and refdata_results %}
+  <h4>Reference Data ({{ refdata_results|length }}{% if refdata_total and refdata_total > refdata_results|length %} of {{ refdata_total }}{% endif %})</h4>
+  <div class="results-scroll">
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Code</th>
+          <th>Entity Type</th>
+          <th>Description</th>
+          <th>Kind</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in refdata_results %}
+        <tr data-record-id="{{ r.id }}" title="Click to view record details">
+          <td><strong>{{ r.name or '-' }}</strong></td>
+          <td>{{ r.code or '-' }}</td>
+          <td>{{ r.entityType }}</td>
+          <td title="{{ r.description }}">{{ (r.description or '-')[:80] }}{% if (r.description or '')|length > 80 %}…{% endif %}</td>
+          <td style="font-size:.8rem;color:#605e5c;" title="{{ r.kind }}">{{ r.kind }}</td>
+          <td><a href="/search/view/{{ r.id }}">Full page</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="detail-panel" id="refdata-detail-panel" style="display:none;"></div>
+{% elif search_mode == 'refdata' and not error %}
+  {% if refdata_results is defined %}
+    <p>No reference data records matched your query.</p>
+  {% endif %}
 {% endif %}
 
 {% if results %}
@@ -538,6 +875,7 @@
                 <a href="/search/view/{{ rec.id }}" style="font-size:.85rem;">Open full record →</a>
                 {% if ds_uri %}{% set ds_link_name = ds_uri | replace('eml:///dataspace(', '') | replace(')', '') %}
                 <a href="/keys?ds={{ ds_link_name }}" style="font-size:.85rem;margin-left:1.2rem;">Browse in RDDMS →</a>
+                <a href="/keys?ds={{ ds_link_name }}#graphql-section" style="font-size:.85rem;margin-left:1.2rem;">GraphQL Deep Query →</a>
                 {% endif %}
               </div>
             </div>
@@ -578,7 +916,10 @@
                   {% endif %}
                   {% if srv_url %}<div class="ds-server">Server: <code>{{ srv_url }}</code></div>{% endif %}
                   {% if raw_uri %}{% set ds_link_name = raw_uri | replace('eml:///dataspace(', '') | replace(')', '') %}
-                  <div style="margin-top:.4rem;"><a href="/keys?ds={{ ds_link_name }}">Browse in RDDMS →</a></div>
+                  <div style="margin-top:.4rem;">
+                    <a href="/keys?ds={{ ds_link_name }}">Browse in RDDMS →</a>
+                    <a href="/keys?ds={{ ds_link_name }}#graphql-section" style="margin-left:1rem;">GraphQL Deep Query →</a>
+                  </div>
                   {% endif %}
                 </div>
               {% endfor %}
@@ -1142,7 +1483,10 @@
                   {% endif %}
                   {% if srv_url %}<div class="ds-server">Server: <code>{{ srv_url }}</code></div>{% endif %}
                   {% if raw_uri %}{% set ds_link_name = raw_uri | replace('eml:///dataspace(', '') | replace(')', '') %}
-                  <div style="margin-top:.4rem;"><a href="/keys?ds={{ ds_link_name }}">Browse in RDDMS →</a></div>
+                  <div style="margin-top:.4rem;">
+                    <a href="/keys?ds={{ ds_link_name }}">Browse in RDDMS →</a>
+                    <a href="/keys?ds={{ ds_link_name }}#graphql-section" style="margin-left:1rem;">GraphQL Deep Query →</a>
+                  </div>
                   {% endif %}
                 </div>
               {% endfor %}
@@ -2374,4 +2718,184 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
     </script>
   {% endif %}
 {% endif %}
+
+{# ── Schema & Refdata inline detail viewer ── #}
+<script>
+(function() {
+  // ─── Schema detail on row click ───
+  const schemaPanel = document.getElementById('schema-detail-panel');
+  if (schemaPanel) {
+    document.querySelectorAll('tr[data-schema-kind]').forEach(row => {
+      row.addEventListener('click', function(e) {
+        if (e.target.closest('a')) return;
+        const kind = row.dataset.schemaKind;
+        if (!kind) return;
+        // Highlight active row
+        row.closest('tbody').querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
+        row.classList.add('active-row');
+        // Show loading
+        schemaPanel.style.display = '';
+        schemaPanel.innerHTML = '<span class="loading">Loading schema definition for <strong>' + kind + '</strong>…</span>';
+        schemaPanel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        // Fetch
+        fetch('/search/api/schema/' + encodeURIComponent(kind))
+          .then(r => r.json())
+          .then(data => {
+            if (data.error) {
+              schemaPanel.innerHTML = '<strong>Error:</strong> ' + data.error;
+              return;
+            }
+            renderSchemaDetail(kind, data, schemaPanel);
+          })
+          .catch(err => {
+            schemaPanel.innerHTML = '<strong>Fetch error:</strong> ' + err.message;
+          });
+      });
+    });
+  }
+
+  function renderSchemaDetail(kind, schema, panel) {
+    // Extract properties from the schema definition
+    const props = schema.properties || {};
+    const dataProps = (props.data && props.data.properties) ? props.data.properties : {};
+    const required = (props.data && props.data.required) || [];
+
+    let html = '<div class="tab-btns">';
+    html += '<button class="active" data-tab="properties">Properties</button>';
+    html += '<button data-tab="raw">Raw JSON</button>';
+    html += '</div>';
+
+    // Properties tab
+    html += '<div class="tab-content" data-tab="properties">';
+    html += '<h5>Schema: ' + kind + '</h5>';
+    const propKeys = Object.keys(dataProps);
+    if (propKeys.length > 0) {
+      html += '<table class="schema-props-table"><thead><tr><th>Property</th><th>Type</th><th>Description</th><th>Req</th></tr></thead><tbody>';
+      propKeys.sort().forEach(function(key) {
+        const p = dataProps[key];
+        let ptype = p.type || (p['$ref'] ? 'ref' : (p.items ? 'array' : ''));
+        if (p.type === 'array' && p.items) {
+          const itemType = p.items.type || p.items['$ref'] || 'object';
+          ptype = 'array&lt;' + itemType.split('/').pop() + '&gt;';
+        }
+        if (p['$ref']) ptype = p['$ref'].split('/').pop();
+        const desc = (p.description || p.title || '').substring(0, 120);
+        const isReq = required.includes(key) ? '✓' : '';
+        html += '<tr><td><strong>' + key + '</strong></td><td>' + ptype + '</td><td>' + desc + '</td><td>' + isReq + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<p style="color:#605e5c;">No data properties found in this schema. See raw JSON for the full definition.</p>';
+    }
+    html += '</div>';
+
+    // Raw JSON tab
+    html += '<div class="tab-content" data-tab="raw" style="display:none;">';
+    html += '<pre>' + JSON.stringify(schema, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+    html += '</div>';
+
+    panel.innerHTML = html;
+
+    // Tab switching within detail panel
+    panel.querySelectorAll('.tab-btns button').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        panel.querySelectorAll('.tab-btns button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        panel.querySelectorAll('.tab-content').forEach(c => {
+          c.style.display = c.dataset.tab === btn.dataset.tab ? '' : 'none';
+        });
+      });
+    });
+  }
+
+  // ─── Reference Data detail on row click ───
+  const refdataPanel = document.getElementById('refdata-detail-panel');
+  if (refdataPanel) {
+    document.querySelectorAll('tr[data-record-id]').forEach(row => {
+      row.addEventListener('click', function(e) {
+        if (e.target.closest('a')) return;
+        const recId = row.dataset.recordId;
+        if (!recId) return;
+        // Highlight active row
+        row.closest('tbody').querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
+        row.classList.add('active-row');
+        // Show loading
+        refdataPanel.style.display = '';
+        refdataPanel.innerHTML = '<span class="loading">Loading record…</span>';
+        refdataPanel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        // Fetch
+        fetch('/search/api/record/' + encodeURIComponent(recId))
+          .then(r => r.json())
+          .then(data => {
+            if (data.error) {
+              refdataPanel.innerHTML = '<strong>Error:</strong> ' + data.error;
+              return;
+            }
+            renderRecordDetail(data, refdataPanel);
+          })
+          .catch(err => {
+            refdataPanel.innerHTML = '<strong>Fetch error:</strong> ' + err.message;
+          });
+      });
+    });
+  }
+
+  function renderRecordDetail(rec, panel) {
+    const d = rec.data || {};
+    const meta = rec.meta || (rec.acl ? {acl: rec.acl, legal: rec.legal} : {});
+
+    let html = '<div class="tab-btns">';
+    html += '<button class="active" data-tab="overview">Overview</button>';
+    html += '<button data-tab="data">Data Fields</button>';
+    html += '<button data-tab="raw">Raw JSON</button>';
+    html += '</div>';
+
+    // Overview tab
+    html += '<div class="tab-content" data-tab="overview">';
+    html += '<h5>' + (d.Name || rec.id || 'Record') + '</h5>';
+    html += '<div class="detail-kv">';
+    html += '<div class="k">ID</div><div class="v">' + (rec.id || '-') + '</div>';
+    html += '<div class="k">Kind</div><div class="v">' + (rec.kind || '-') + '</div>';
+    html += '<div class="k">Version</div><div class="v">' + (rec.version || '-') + '</div>';
+    if (d.Name) html += '<div class="k">Name</div><div class="v">' + d.Name + '</div>';
+    if (d.Code) html += '<div class="k">Code</div><div class="v">' + d.Code + '</div>';
+    if (d.Description) html += '<div class="k">Description</div><div class="v">' + d.Description + '</div>';
+    if (d.Source) html += '<div class="k">Source</div><div class="v">' + d.Source + '</div>';
+    html += '</div>';
+    html += '<p style="margin-top:.5rem;"><a href="/search/view/' + encodeURIComponent(rec.id) + '">Open full page view →</a></p>';
+    html += '</div>';
+
+    // Data fields tab
+    html += '<div class="tab-content" data-tab="data" style="display:none;">';
+    html += '<table class="schema-props-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
+    Object.keys(d).sort().forEach(function(key) {
+      let val = d[key];
+      if (val === null || val === undefined) val = '-';
+      else if (typeof val === 'object') val = '<code>' + JSON.stringify(val, null, 1).replace(/</g, '&lt;').substring(0, 300) + '</code>';
+      else val = String(val);
+      html += '<tr><td><strong>' + key + '</strong></td><td>' + val + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // Raw JSON tab
+    html += '<div class="tab-content" data-tab="raw" style="display:none;">';
+    html += '<pre>' + JSON.stringify(rec, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+    html += '</div>';
+
+    panel.innerHTML = html;
+
+    // Tab switching
+    panel.querySelectorAll('.tab-btns button').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        panel.querySelectorAll('.tab-btns button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        panel.querySelectorAll('.tab-content').forEach(c => {
+          c.style.display = c.dataset.tab === btn.dataset.tab ? '' : 'none';
+        });
+      });
+    });
+  }
+})();
+</script>
+
 {% endblock %}
