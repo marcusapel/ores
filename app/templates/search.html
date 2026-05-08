@@ -103,6 +103,12 @@
   .vol-modal-close { position: absolute; top: .6rem; right: .8rem; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #718096; line-height: 1; padding: .15rem .4rem; border-radius: 4px; }
   .vol-modal-close:hover { background: #edf2f7; color: #2d3748; }
   .vol-modal h4 { margin: 0 0 .6rem; font-size: 1.1rem; color: #1a3a5c; }
+  /* ── JSON record modal (reuses vol-modal base) ── */
+  .json-modal-pre { max-height: 70vh; overflow: auto; border: 1px solid #ddd; padding: .75rem; font-size: .82rem; background: #faf9f8; white-space: pre-wrap; word-break: break-word; border-radius: 6px; margin-top: .5rem; }
+  .json-modal-toolbar { display: flex; gap: .5rem; align-items: center; margin-bottom: .25rem; }
+  .json-modal-toolbar button { font-size: .82rem; padding: .25rem .65rem; border-radius: 4px; border: 1px solid #004578; background: #fff; color: #004578; cursor: pointer; }
+  .json-modal-toolbar button:hover { background: #ebf4ff; }
+  .btn-json-modal:hover { background: #ebf4ff !important; }
   .vol-chart-wrap { position: relative; height: 380px; }
   .vol-chart-controls { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
   .vol-chart-controls label { font-size: .82rem; color: #4a5568; cursor: pointer; }
@@ -727,6 +733,15 @@
       {% set raw_name = (rec.data or {}).get('Name') or '' %}
       {% set feature_name = (rec.data or {}).get('FeatureName') or '' %}
       {% set name = raw_name if (raw_name and raw_name != '|UNNAMED|') else (feature_name or raw_name) %}
+      {# ETPDataspace fallback: extract path from URI or ID when Name is empty #}
+      {% if not name and 'ETPDataspace' in (rec.kind or '') %}
+        {% set ds_uri = ((rec.data or {}).get('DatasetProperties') or {}).get('URI') or '' %}
+        {% if 'dataspace(' in ds_uri %}
+          {% set name = ds_uri.split('dataspace(')[1].split(')')[0] %}
+        {% elif 'ETPDataspace:' in (rec.id or '') %}
+          {% set name = (rec.id or '').split('ETPDataspace:')[1].split(':')[0].replace('-', '/', 1) %}
+        {% endif %}
+      {% endif %}
       {% set label = name or rec.id %}
 
       {# Volumes helpers #}
@@ -1834,14 +1849,18 @@ REC{{ rec_index }}["{{ esc_label(label) }}"]:::rec_self
 click REC{{ rec_index }} href "/search/view/{{ rec.id }}" "Open record"
 {% for p in ns_grp.ancestry_p %}
 {% set pinfo = (rec.linked_labels or {}).get(p, {}) %}
-{% set pname = pinfo.name or p.split('--')[1].split(':')[0] if '--' in p else p %}
+{% set _ptype = p.split('--')[1].split(':')[0] if '--' in p else '' %}
+{% set _pid = p.split(':')[-2] if p.count(':') >= 3 else (p.split(':')[-1] if ':' in p else p) %}
+{% set pname = pinfo.name if pinfo.name else (_ptype ~ ': ' ~ _pid if _ptype else p) %}
 P{{ rec_index }}a{{ loop.index0 }}["{{ esc_label(pname) }}"]
 P{{ rec_index }}a{{ loop.index0 }} --> REC{{ rec_index }}:::ancestry_parent
 click P{{ rec_index }}a{{ loop.index0 }} href "/search/view/{{ p }}" "Open parent"
 {% endfor %}
 {% for ch in ns_grp.ancestry_c %}
 {% set cinfo = (rec.linked_labels or {}).get(ch, {}) %}
-{% set cname = cinfo.name or ch.split('--')[1].split(':')[0] if '--' in ch else ch %}
+{% set _ctype = ch.split('--')[1].split(':')[0] if '--' in ch else '' %}
+{% set _cid = ch.split(':')[-2] if ch.count(':') >= 3 else (ch.split(':')[-1] if ':' in ch else ch) %}
+{% set cname = cinfo.name if cinfo.name else (_ctype ~ ': ' ~ _cid if _ctype else ch) %}
 C{{ rec_index }}c{{ loop.index0 }}["{{ esc_label(cname) }}"]
 REC{{ rec_index }} --> C{{ rec_index }}c{{ loop.index0 }}:::ancestry_child
 click C{{ rec_index }}c{{ loop.index0 }} href "/search/view/{{ ch }}" "Open child"
@@ -1850,7 +1869,9 @@ click C{{ rec_index }}c{{ loop.index0 }} href "/search/view/{{ ch }}" "Open chil
 {% if items|length <= 3 %}
 {% for l in items %}
 {% set info = (rec.linked_labels or {}).get(l.id, {}) %}
-{% set lname = info.name or l.id.split(':')[-2] if ':' in l.id else l.id %}
+{% set _ftype = l.id.split('--')[1].split(':')[0] if '--' in l.id else '' %}
+{% set _fid = l.id.split(':')[-2] if l.id.count(':') >= 3 else (l.id.split(':')[-1] if ':' in l.id else l.id) %}
+{% set lname = info.name if info.name else (_ftype ~ ': ' ~ _fid if _ftype else l.id) %}
 F{{ rec_index }}_{{ etype }}_{{ loop.index0 }}["{{ esc_label(lname) }}"]
 REC{{ rec_index }} --> F{{ rec_index }}_{{ etype }}_{{ loop.index0 }}:::{{ (l.role or 'ref') | replace('-','_') }}
 click F{{ rec_index }}_{{ etype }}_{{ loop.index0 }} href "/search/view/{{ l.id }}" "Open"
@@ -1864,7 +1885,9 @@ REC{{ rec_index }} --> G{{ rec_index }}_{{ etype }}
 {% if items|length <= 3 %}
 {% for l in items %}
 {% set info = (rec.linked_labels or {}).get(l.id, {}) %}
-{% set lname = info.name or l.id.split(':')[-2] if ':' in l.id else l.id %}
+{% set _rtype = l.id.split('--')[1].split(':')[0] if '--' in l.id else '' %}
+{% set _rid = l.id.split(':')[-2] if l.id.count(':') >= 3 else (l.id.split(':')[-1] if ':' in l.id else l.id) %}
+{% set lname = info.name if info.name else (_rtype ~ ': ' ~ _rid if _rtype else l.id) %}
 R{{ rec_index }}_{{ etype }}_{{ loop.index0 }}["{{ esc_label(lname) }}"]
 R{{ rec_index }}_{{ etype }}_{{ loop.index0 }} --> REC{{ rec_index }}:::referenced_by
 click R{{ rec_index }}_{{ etype }}_{{ loop.index0 }} href "/search/view/{{ l.id }}" "Open"
@@ -1918,9 +1941,12 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
                 <ul style="margin:0;padding-left:1.2rem;">
                   {% for l in items %}
                     {% set info = (rec.linked_labels or {}).get(l.id, {}) %}
+                    {% set etype = l.id.split('--')[1].split(':')[0] if '--' in l.id else '' %}
+                    {% set short_id = l.id.split(':')[-2] if l.id.count(':') >= 3 else (l.id.split(':')[-1] if ':' in l.id else l.id) %}
+                    {% set link_label = info.name if info.name else (etype ~ ': ' ~ short_id if etype and short_id else l.id) %}
                     <li>
-                      <a href="/search/view/{{ l.id }}" title="{{ l.role or 'ref' }}{% if info.kind %} · {{ info.kind }}{% endif %}">{{ info.name or l.id }}</a>
-                      {% if info.kind %}<span class="muted" style="font-size:.75rem;">{{ info.kind.split('--')[-1].split(':')[0] }}</span>{% endif %}
+                      <a href="/search/view/{{ l.id }}" title="{{ l.role or 'ref' }}{% if info.kind %} · {{ info.kind }}{% endif %}">{{ link_label }}</a>
+                      {% if info.kind and info.name %}<span class="muted" style="font-size:.75rem;">{{ info.kind.split('--')[-1].split(':')[0] }}</span>{% endif %}
                     </li>
                   {% endfor %}
                 </ul>
@@ -1946,6 +1972,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
               <div class="meta-toolbar" style="display:flex;gap:.5rem;align-items:center;margin:.25rem 0;">
                 <input type="text" class="meta-filter" placeholder="Filter metadata names…" style="flex:1;max-width:20rem;">
                 <button type="button" class="meta-copy" title="Copy table as CSV">Copy (CSV)</button>
+                <button type="button" class="btn-json-modal" onclick="openJsonModal(this)" title="View full record as JSON" style="font-size:.82rem;padding:.2rem .6rem;border:1px solid #004578;border-radius:4px;background:#fff;color:#004578;cursor:pointer;">{ } Full Record</button>
               </div>
               <table class="meta-table" style="width:100%;border-collapse:collapse">
                 <thead>
@@ -1980,14 +2007,8 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
               <div class="muted" style="font-size:.85rem;margin-top:.25rem;">Tabular volume arrays are intentionally hidden here and shown only in the reconstructed table below.</div>
               {% endif %}
             </div>
-            </details>
-          </section>
-
-          {# ── Full record JSON viewer ── #}
-          <section class="section-card">
-            <details>
-              <summary style="cursor:pointer;font-weight:600;color:#004578;">Metadata JSON (full record)</summary>
-              <pre style="max-height:24rem;overflow:auto;border:1px solid #ddd;padding:.5rem;font-size:.82rem;background:#faf9f8;margin-top:.4rem;white-space:pre-wrap;word-break:break-word;">{{ rec.data | tojson(indent=2) }}</pre>
+            {# Hidden JSON payload for the modal #}
+            <script type="application/json" class="rec-json-data">{{ rec.data | tojson }}</script>
             </details>
           </section>
 
@@ -2344,6 +2365,36 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
       let activeModal = null;
       let activeChart = null;
 
+      window.openJsonModal = function(btn) {
+        const section = btn.closest('.section-card');
+        if (!section) return;
+        const dataEl = section.querySelector('.rec-json-data');
+        if (!dataEl) return;
+        let pretty;
+        try {
+          pretty = JSON.stringify(JSON.parse(dataEl.textContent), null, 2);
+        } catch (e) {
+          pretty = dataEl.textContent;
+        }
+        if (activeModal) { activeModal.remove(); activeModal = null; }
+        const overlay = document.createElement('div');
+        overlay.className = 'vol-modal-overlay';
+        overlay.innerHTML = `
+          <div class="vol-modal" style="max-width:56rem;">
+            <button class="vol-modal-close" title="Close">&times;</button>
+            <h4>Full Record JSON</h4>
+            <div class="json-modal-toolbar">
+              <button onclick="(function(b){var t=b.closest('.vol-modal').querySelector('pre').textContent;navigator.clipboard.writeText(t).then(function(){b.textContent='Copied!';setTimeout(function(){b.textContent='Copy';},1500);});})(this)">Copy</button>
+            </div>
+            <pre class="json-modal-pre"></pre>
+          </div>`;
+        overlay.querySelector('pre').textContent = pretty;
+        overlay.querySelector('.vol-modal-close').onclick = function() { overlay.remove(); activeModal = null; };
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); activeModal = null; } });
+        document.body.appendChild(overlay);
+        activeModal = overlay;
+      };
+
       window.openVolHistogram = function(btn) {
         const section = btn.closest('.section-card');
         if (!section) return;
@@ -2623,7 +2674,10 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
     </script>
     <script type="module">
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-      mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+      mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose',
+        flowchart: { htmlLabels: true, nodeSpacing: 30, rankSpacing: 40 },
+        themeVariables: { fontSize: '11px' }
+      });
 
       const blocks = Array.from(document.querySelectorAll('.rec-block'));
 
