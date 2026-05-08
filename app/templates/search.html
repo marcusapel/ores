@@ -11,7 +11,7 @@
   .chip { background: #e1dfdd; border-radius: 999px; padding: .15rem .6rem; font-size: .85rem; }
   .record-sections { display: grid; gap: .75rem; }
   .section-card { border: 1px solid #e1dfdd; border-radius: 6px; padding: .7rem; }
-  .section-card h5 { margin: 0 0 .5rem 0; color: #004578; }
+  .section-card h5 { margin: 0 0 .5rem 0; color: #004578; font-size: 1.15rem; font-weight: 600; }
   .mini-grid { display: grid; grid-template-columns: 190px 1fr; gap: .3rem .8rem; }
   .mini-grid .k { color: #605e5c; }
   .meta-table td:last-child { word-break: break-word; }
@@ -93,6 +93,12 @@
   .bd-card { max-width: 72rem; }
   .bd-kpi-row { max-width: 56rem; }
   .kpi-grid { max-width: 56rem; }
+
+  /* ── Mermaid relationship graph sizing ── */
+  pre.mermaid svg { max-width: 72rem; }
+  pre.mermaid .nodeLabel { font-size: .82rem !important; }
+  pre.mermaid .edgeLabel { font-size: .75rem !important; }
+  pre.mermaid .label { font-size: .82rem !important; }
 
   /* ── Production profile chart ── */
   .prod-chart-wrap { max-width: 56rem; height: 320px; position: relative; margin-bottom: .75rem; }
@@ -2675,8 +2681,7 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
     <script type="module">
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
       mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose',
-        flowchart: { htmlLabels: true, nodeSpacing: 30, rankSpacing: 40 },
-        themeVariables: { fontSize: '11px' }
+        flowchart: { htmlLabels: true, nodeSpacing: 20, rankSpacing: 30, padding: 8 }
       });
 
       const blocks = Array.from(document.querySelectorAll('.rec-block'));
