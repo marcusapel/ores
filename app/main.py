@@ -318,22 +318,26 @@ async def api_add_instance(request: Request):
     sec_path = os.path.join(k8s_dir, "secret.yaml")
 
     try:
-        # ── Append to configmap.yaml ──
-        cm_lines = [f"\n  # ── \"{name}\" - added via ORES UI ──"]
-        for field, val in config_fields.items():
-            cm_lines.append(f'  {PREFIX}{field}: "{val}"')
-        with open(cm_path, "a") as f:
-            f.write("\n".join(cm_lines) + "\n")
+        # ── Try to persist to k8s YAML files (will fail on read-only FS like Radix) ──
+        files_written = False
+        try:
+            cm_lines = [f"\n  # ── \"{name}\" - added via ORES UI ──"]
+            for field, val in config_fields.items():
+                cm_lines.append(f'  {PREFIX}{field}: "{val}"')
+            with open(cm_path, "a") as f:
+                f.write("\n".join(cm_lines) + "\n")
 
-        # ── Append to secret.yaml ──
-        sec_lines = [f"\n  # ── \"{name}\" - added via ORES UI ──"]
-        for field, val in secret_fields.items():
-            if val:
-                sec_lines.append(f'  {PREFIX}{field}: "{val}"')
-            else:
-                sec_lines.append(f'  # {PREFIX}{field}: ""')
-        with open(sec_path, "a") as f:
-            f.write("\n".join(sec_lines) + "\n")
+            sec_lines = [f"\n  # ── \"{name}\" - added via ORES UI ──"]
+            for field, val in secret_fields.items():
+                if val:
+                    sec_lines.append(f'  {PREFIX}{field}: "{val}"')
+                else:
+                    sec_lines.append(f'  # {PREFIX}{field}: ""')
+            with open(sec_path, "a") as f:
+                f.write("\n".join(sec_lines) + "\n")
+            files_written = True
+        except OSError as io_err:
+            log.info("Could not write k8s YAMLs (%s) - registering in-memory only", io_err)
 
         # ── Set env vars so _load_instances picks them up ──
         for field, val in config_fields.items():
@@ -352,7 +356,7 @@ async def api_add_instance(request: Request):
         templates.env.globals["auth_mode"] = _am
 
         token = await inst.get_access_token()
-        log.info("Added and activated instance '%s' → %s", name, inst.hostname)
+        log.info("Added and activated instance '%s' → %s (persisted=%s)", name, inst.hostname, files_written)
 
         return {
             "ok": True,
@@ -361,6 +365,7 @@ async def api_add_instance(request: Request):
             "partition": inst.data_partition_id,
             "auth_mode": inst.auth_mode,
             "token_ok": token is not None,
+            "persisted": files_written,
         }
 
     except Exception as e:
