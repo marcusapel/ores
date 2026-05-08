@@ -298,7 +298,12 @@ def _apply_instance(inst: OsduInstance):
     auth_mod.AUTHORIZE_URL = f"{auth_mod.AUTH_BASE}/authorize"
     auth_mod.TOKEN_URL = f"{auth_mod.AUTH_BASE}/token"
     auth_mod.ENV_REFRESH_TOKEN = inst.refresh_token or None
-    auth_mod.AUTH_MODE = "env_token" if inst.refresh_token else "per_user_pkce"
+    if inst.refresh_token:
+        auth_mod.AUTH_MODE = "env_token"
+    elif inst.client_secret:
+        auth_mod.AUTH_MODE = "client_credentials"
+    else:
+        auth_mod.AUTH_MODE = "per_user_pkce"
 
 
 def get_active_name() -> str:
