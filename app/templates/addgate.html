@@ -3,6 +3,22 @@
 
 {% block head %}
 <style>
+  /* ── Mode tabs ── */
+  .mode-tabs {
+    display: flex; gap: 0; margin-bottom: 1.2rem;
+    border-bottom: 2px solid var(--eq-border);
+  }
+  .mode-tab {
+    padding: .6rem 1.4rem; font-size: 14px; font-weight: 600;
+    background: none; border: none; cursor: pointer;
+    color: var(--eq-grey); border-bottom: 3px solid transparent;
+    margin-bottom: -2px; transition: color .15s, border-color .15s;
+  }
+  .mode-tab:hover { color: var(--eq-charcoal); }
+  .mode-tab.active {
+    color: var(--eq-red); border-bottom-color: var(--eq-red);
+  }
+
   /* ── Page layout ── */
   .addgate-wrap { max-width: 72rem; }
   .addgate-panel {
@@ -119,6 +135,16 @@
 
 {% block content %}
 <div class="addgate-wrap">
+  <!-- ═══ Mode selector tabs ═══ -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="bd" onclick="switchMode('bd')">Add Decision Gate</button>
+    <button class="mode-tab" data-mode="cp" onclick="switchMode('cp')">Add Collaboration Project</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Business Decision                                             -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div class="mode-panel" id="mode-bd">
   <h2>Add Decision Gate</h2>
   <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
     Create a new <code>BusinessDecision</code> record linked to an existing Reservoir and its data records, then ingest it to OSDU.
@@ -282,6 +308,132 @@
     </div>
     <div id="result-area"></div>
   </div>
+
+  </div><!-- /mode-bd -->
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Collaboration Project                                         -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div class="mode-panel" id="mode-cp" style="display:none;">
+  <h2>Add Collaboration Project</h2>
+  <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
+    Create a new <code>CollaborationProject</code> record - a multi-user collaboration workspace linking to trusted data and RDDMS dataspaces.
+  </p>
+
+  <!-- ═══ CP 1. Project metadata ═══ -->
+  <div class="addgate-panel">
+    <h3>1. Project Metadata</h3>
+    <div class="form-grid">
+      <label for="cp-name">Project name *</label>
+      <input type="text" id="cp-name" placeholder="e.g. Drogon DG2 Geomodelling" />
+
+      <label for="cp-description">Description</label>
+      <textarea id="cp-description" rows="3" placeholder="Human-readable project description…"></textarea>
+
+      <label for="cp-purpose">Purpose</label>
+      <textarea id="cp-purpose" rows="2" placeholder="Objectives of this collaboration project…"></textarea>
+
+      <label for="cp-lifecycle">Lifecycle status</label>
+      <select id="cp-lifecycle">
+        <option value="Open" selected>Open</option>
+        <option value="Closed">Closed</option>
+        <option value="Archived">Archived</option>
+      </select>
+      <span class="hint">Maps to <code>reference-data--CollaborationProjectLifecycleStatus</code></span>
+
+      <label for="cp-begin-date">Begin date</label>
+      <input type="date" id="cp-begin-date" />
+
+      <label for="cp-end-date">End date</label>
+      <input type="date" id="cp-end-date" />
+      <span class="hint">Planning timeline (not enforced by the platform).</span>
+
+      <label for="cp-namespace">Namespace</label>
+      <input type="text" id="cp-namespace" placeholder="Auto-generated if empty" />
+      <span class="hint">Data platform namespace for WIP resources. Leave blank for auto.</span>
+    </div>
+  </div>
+
+  <!-- ═══ CP 2. Linked Business Decision ═══ -->
+  <div class="addgate-panel">
+    <h3>2. Related Business Decision <span class="link-badge optional">optional</span></h3>
+    <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
+      Link this project to an existing <code>BusinessDecision</code> record via the <code>ParentProjectID</code> field.
+    </p>
+    <div class="link-row">
+      <label>Business Decision</label>
+      <input type="text" id="cp-link-bd" placeholder="dev:master-data--BusinessDecision:…" />
+      <button class="btn" type="button" onclick="openBrowse('cp-link-bd','osdu:wks:master-data--BusinessDecision:*')">Browse</button>
+    </div>
+  </div>
+
+  <!-- ═══ CP 3. Linked records (Parameters) ═══ -->
+  <div class="addgate-panel">
+    <h3>3. Linked Records (Parameters)</h3>
+    <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
+      Reference OSDU data objects consumed or produced by this project.
+    </p>
+    <div class="link-section">
+      <div class="link-row">
+        <label>ETP Dataspace <span class="link-badge optional">optional</span></label>
+        <input type="text" id="cp-link-dataspace" placeholder="dev:dataset--ETPDataspace:…" />
+        <button class="btn" type="button" onclick="openBrowse('cp-link-dataspace','osdu:wks:dataset--ETPDataspace:*')">Browse</button>
+      </div>
+      <div class="link-row">
+        <label>Reservoir <span class="link-badge optional">optional</span></label>
+        <input type="text" id="cp-link-reservoir" placeholder="dev:master-data--Reservoir:…" />
+        <button class="btn" type="button" onclick="openBrowse('cp-link-reservoir','osdu:wks:master-data--Reservoir:*')">Browse</button>
+      </div>
+      <div class="link-row">
+        <label>Collection <span class="link-badge optional">optional</span></label>
+        <input type="text" id="cp-link-collection" placeholder="dev:work-product-component--PersistedCollection:…" />
+        <button class="btn" type="button" onclick="openBrowse('cp-link-collection','osdu:wks:work-product-component--PersistedCollection:*')">Browse</button>
+      </div>
+      <div class="link-row">
+        <label>Activity <span class="link-badge optional">optional</span></label>
+        <input type="text" id="cp-link-activity" placeholder="dev:work-product-component--Activity:…" />
+        <button class="btn" type="button" onclick="openBrowse('cp-link-activity','osdu:wks:work-product-component--Activity:*')">Browse</button>
+      </div>
+    </div>
+
+    <h4 style="margin:1rem 0 .4rem;font-size:14px;font-weight:600;color:var(--eq-charcoal);">
+      Additional records <span class="link-badge optional" style="font-size:.7rem;vertical-align:middle;">optional</span>
+    </h4>
+    <div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;">
+      <input type="text" id="cp-custom-rec-label" placeholder="Label" style="width:180px;" />
+      <input type="text" id="cp-custom-rec-id" placeholder="Record ID" style="flex:1;" />
+      <button class="btn" type="button" onclick="openBrowse('cp-custom-rec-id','osdu:wks:*:*')">Browse</button>
+      <button class="btn" type="button" onclick="addCpCustomRecord()">+ Add</button>
+    </div>
+    <div class="risk-list" id="cp-custom-rec-list"></div>
+  </div>
+
+  <!-- ═══ CP 4. Access control ═══ -->
+  <div class="addgate-panel">
+    <h3>4. Access Control <span class="link-badge optional">optional</span></h3>
+    <div class="form-grid">
+      <label for="cp-contributor-owners">Contributor ACL owners</label>
+      <input type="text" id="cp-contributor-owners" placeholder="e.g. team.geomodel@dev.dataservices.energy" />
+      <span class="hint">Comma-separated email-style ACL groups for contributors.</span>
+
+      <label for="cp-contributor-viewers">Contributor ACL viewers</label>
+      <input type="text" id="cp-contributor-viewers" placeholder="e.g. data.viewers@dev.dataservices.energy" />
+    </div>
+  </div>
+
+  <!-- ═══ CP 5. Preview & submit ═══ -->
+  <div class="addgate-panel">
+    <h3>5. Review & Ingest</h3>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn" type="button" onclick="previewCpRecord()">Preview JSON</button>
+      <button class="btn btn-primary" type="button" onclick="submitCpRecord()">Create & Ingest to OSDU</button>
+    </div>
+    <div class="preview-wrap" id="cp-preview-wrap" style="display:none;">
+      <pre id="cp-preview-json"></pre>
+    </div>
+    <div id="cp-result-area"></div>
+  </div>
+  </div><!-- /mode-cp -->
 </div>
 
 <!-- ═══ WPC browse modal ═══ -->
@@ -506,6 +658,114 @@
   document.getElementById('wpc-modal-bg').addEventListener('click', function(e) {
     if (e.target === this) closeBrowse();
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Mode tab switching
+  // ══════════════════════════════════════════════════════════════════════
+  window.switchMode = function(mode) {
+    document.querySelectorAll('.mode-tab').forEach(function(t) {
+      t.classList.toggle('active', t.getAttribute('data-mode') === mode);
+    });
+    document.querySelectorAll('.mode-panel').forEach(function(p) {
+      p.style.display = p.id === 'mode-' + mode ? '' : 'none';
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Collaboration Project form logic
+  // ══════════════════════════════════════════════════════════════════════
+  var cpCustomRecords = [];
+
+  window.addCpCustomRecord = function() {
+    var labelInp = document.getElementById('cp-custom-rec-label');
+    var idInp = document.getElementById('cp-custom-rec-id');
+    var lbl = labelInp.value.trim();
+    var rid = idInp.value.trim();
+    if (!lbl || !rid) { alert('Both a label and a record ID are required.'); return; }
+    cpCustomRecords.push({label: lbl, id: rid});
+    labelInp.value = ''; idInp.value = '';
+    renderCpCustomRecords();
+  };
+
+  window.removeCpCustomRecord = function(idx) {
+    cpCustomRecords.splice(idx, 1);
+    renderCpCustomRecords();
+  };
+
+  function renderCpCustomRecords() {
+    var el = document.getElementById('cp-custom-rec-list');
+    if (!cpCustomRecords.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No custom records added yet.</span>'; return; }
+    el.innerHTML = cpCustomRecords.map(function(rec, i) {
+      return '<div class="risk-item"><strong style="min-width:120px;font-size:12px;">' + escHtml(rec.label) + '</strong>' +
+             '<span class="risk-id">' + escHtml(rec.id) + '</span>' +
+             '<button class="remove-btn" onclick="removeCpCustomRecord(' + i + ')" title="Remove">&times;</button></div>';
+    }).join('');
+  }
+  renderCpCustomRecords();
+
+  function buildCpPayload() {
+    return {
+      name:                 document.getElementById('cp-name').value.trim(),
+      description:          document.getElementById('cp-description').value.trim(),
+      purpose:              document.getElementById('cp-purpose').value.trim(),
+      lifecycle_status:     document.getElementById('cp-lifecycle').value,
+      begin_date:           document.getElementById('cp-begin-date').value,
+      end_date:             document.getElementById('cp-end-date').value,
+      namespace:            document.getElementById('cp-namespace').value.trim(),
+      parent_bd_id:         document.getElementById('cp-link-bd').value.trim(),
+      dataspace_id:         document.getElementById('cp-link-dataspace').value.trim(),
+      reservoir_id:         document.getElementById('cp-link-reservoir').value.trim(),
+      collection_id:        document.getElementById('cp-link-collection').value.trim(),
+      activity_id:          document.getElementById('cp-link-activity').value.trim(),
+      contributor_owners:   document.getElementById('cp-contributor-owners').value.trim(),
+      contributor_viewers:  document.getElementById('cp-contributor-viewers').value.trim(),
+      custom_records:       cpCustomRecords.slice(),
+    };
+  }
+
+  window.previewCpRecord = function() {
+    var payload = buildCpPayload();
+    var wrap = document.getElementById('cp-preview-wrap');
+    var pre = document.getElementById('cp-preview-json');
+    pre.textContent = JSON.stringify(payload, null, 2);
+    wrap.style.display = 'block';
+  };
+
+  window.submitCpRecord = function() {
+    var payload = buildCpPayload();
+    if (!payload.name) { alert('Please enter a project name.'); return; }
+
+    document.getElementById('submit-overlay').classList.add('active');
+    document.getElementById('cp-result-area').innerHTML = '';
+
+    fetch('/add-dg/create-cp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json().then(function(d) { return {status: r.status, data: d}; }); })
+    .then(function(res) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      var area = document.getElementById('cp-result-area');
+      if (res.data.ok) {
+        area.innerHTML = '<div class="result-ok">' +
+          '<strong>&#10003; CollaborationProject created successfully</strong><br>' +
+          '<span class="bd-id">' + escHtml(res.data.cp_id) + '</span><br>' +
+          '<span class="muted">Status: ' + res.status + ' &middot; ' +
+          res.data.parameters_count + ' parameters</span></div>';
+      } else {
+        area.innerHTML = '<div class="result-err">' +
+          '<strong>Ingest failed (HTTP ' + res.status + ')</strong><br>' +
+          '<pre style="margin:.4rem 0 0;font-size:12px;white-space:pre-wrap;">' +
+          escHtml(res.data.response || res.data.error || JSON.stringify(res.data)) + '</pre></div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      document.getElementById('cp-result-area').innerHTML =
+        '<div class="result-err"><strong>Network error:</strong> ' + escHtml(err.message) + '</div>';
+    });
+  };
 })();
 </script>
 {% endblock %}

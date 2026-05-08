@@ -392,3 +392,198 @@ async def create_bd(request: Request):
             {"ok": False, "bd_id": bd_id, "status": status, "response": resp_body},
             status_code=status,
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Create Collaboration Project
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/add-dg/create-cp", summary="Create and ingest a new CollaborationProject")
+async def create_cp(request: Request):
+    """
+    Build a CollaborationProject record from form data, PUT it to Storage API.
+
+    Schema: osdu:wks:master-data--CollaborationProject:1.0.0
+    Inherits: AbstractProject, AbstractProjectActivity (Parameters[]).
+
+    Expects JSON body with fields:
+      name, description, purpose, lifecycle_status, begin_date, end_date,
+      namespace, parent_bd_id, dataspace_id, reservoir_id, collection_id,
+      activity_id, contributor_owners, contributor_viewers,
+      custom_records[{label, id}]
+    """
+    at = _access_token(request)
+    body = await request.json()
+
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+
+    description = body.get("description", "").strip()
+    purpose = body.get("purpose", "").strip()
+    lifecycle_status = body.get("lifecycle_status", "Open").strip()
+    begin_date = body.get("begin_date", "").strip()
+    end_date = body.get("end_date", "").strip()
+    namespace = body.get("namespace", "").strip()
+    parent_bd_id = body.get("parent_bd_id", "").strip()
+    dataspace_id = body.get("dataspace_id", "").strip()
+    reservoir_id = body.get("reservoir_id", "").strip()
+    collection_id = body.get("collection_id", "").strip()
+    activity_id = body.get("activity_id", "").strip()
+    contributor_owners = body.get("contributor_owners", "").strip()
+    contributor_viewers = body.get("contributor_viewers", "").strip()
+    custom_records: List[Dict[str, str]] = body.get("custom_records", [])
+
+    # Derive ID prefix
+    id_prefix = "dev"
+    for ref in [parent_bd_id, reservoir_id, dataspace_id, collection_id]:
+        if ref and ":" in ref:
+            id_prefix = ref.split(":")[0]
+            break
+
+    # Generate CP ID
+    cp_slug = name.replace(" ", "-")[:80]
+    cp_uuid = str(uuid.uuid4())[:8]
+    cp_id = f"{id_prefix}:master-data--CollaborationProject:{cp_slug}-{cp_uuid}:1"
+
+    # Auto-generate namespace if empty
+    if not namespace:
+        namespace = f"project-{uuid.uuid4()}"
+
+    # ACL and legal from OSDU defaults
+    acl = {
+        "owners": osdu.DEFAULT_OWNERS,
+        "viewers": osdu.DEFAULT_VIEWERS,
+    }
+    legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    # Build Parameters[] (same pattern as BusinessDecision)
+    parameters: List[Dict[str, Any]] = []
+
+    if dataspace_id:
+        parameters.append({
+            "Title": "GeoModelDataspace",
+            "Selection": "RDDMS ETP dataspace with geomodel data",
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:InputReference:",
+            "DataObjectParameter": dataspace_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "ETPDataspace"}],
+        })
+
+    if reservoir_id:
+        parameters.append({
+            "Title": "Reservoir scope",
+            "Selection": "Master-data context for the project",
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:InputReference:",
+            "DataObjectParameter": reservoir_id,
+        })
+
+    if collection_id:
+        parameters.append({
+            "Title": "PersistedCollection",
+            "Selection": "Persisted collection of related records",
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:InputReference:",
+            "DataObjectParameter": collection_id,
+            "Keys": [{"ParameterKey": "artifact", "StringParameterKey": "PersistedCollection"}],
+        })
+
+    if activity_id:
+        parameters.append({
+            "Title": "Activity",
+            "Selection": "Related workflow activity",
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:Input:",
+            "DataObjectParameter": activity_id,
+        })
+
+    # User-defined arbitrary records
+    for crec in custom_records:
+        clabel = crec.get("label", "").strip()
+        cid = crec.get("id", "").strip()
+        if clabel and cid:
+            parameters.append({
+                "Title": clabel,
+                "Selection": f"User-defined record: {clabel}",
+                "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:DataObject:",
+                "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:Input:",
+                "DataObjectParameter": cid,
+                "Keys": [{"ParameterKey": "artifact", "StringParameterKey": clabel.replace(' ', '-')}],
+            })
+
+    # Build the data block
+    cp_data: Dict[str, Any] = {
+        "ProjectName": name,
+        "Description": description,
+        "Namespace": namespace,
+        "LifecycleStatusID": f"{id_prefix}:reference-data--CollaborationProjectLifecycleStatus:{lifecycle_status}:",
+    }
+
+    if purpose:
+        cp_data["Purpose"] = purpose
+    if begin_date:
+        cp_data["ProjectBeginDate"] = begin_date + "T00:00:00Z"
+    if end_date:
+        cp_data["ProjectEndDate"] = end_date + "T00:00:00Z"
+    if parent_bd_id:
+        cp_data["ParentProjectID"] = parent_bd_id
+
+    if parameters:
+        cp_data["Parameters"] = parameters
+
+    # ProjectContributorACL (optional)
+    if contributor_owners or contributor_viewers:
+        owners_list = [o.strip() for o in contributor_owners.split(",") if o.strip()] if contributor_owners else osdu.DEFAULT_OWNERS
+        viewers_list = [v.strip() for v in contributor_viewers.split(",") if v.strip()] if contributor_viewers else osdu.DEFAULT_VIEWERS
+        cp_data["ProjectContributorACL"] = {
+            "owners": owners_list,
+            "viewers": viewers_list,
+        }
+
+    # TrustedCollectionID: link to collection if provided
+    if collection_id:
+        cp_data["TrustedCollectionID"] = collection_id
+
+    cp_record = {
+        "id": cp_id,
+        "kind": "osdu:wks:master-data--CollaborationProject:1.0.0",
+        "acl": acl,
+        "legal": legal,
+        "data": cp_data,
+    }
+
+    # PUT to Storage API
+    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
+    hdr = osdu.headers(at)
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.put(storage_url, json=[cp_record], headers=hdr)
+            status = r.status_code
+            resp_body = r.text[:2000]
+    except Exception as e:
+        log.error("Storage API PUT (CP) failed: %s", e)
+        return JSONResponse(
+            {"ok": False, "error": str(e)},
+            status_code=502,
+        )
+
+    if status in (200, 201):
+        log.info("CP created: %s (status=%d)", cp_id, status)
+        return JSONResponse({
+            "ok": True,
+            "cp_id": cp_id,
+            "status": status,
+            "parameters_count": len(parameters),
+            "response": resp_body,
+        })
+    else:
+        log.warning("CP ingest failed (%d): %s", status, resp_body)
+        return JSONResponse(
+            {"ok": False, "cp_id": cp_id, "status": status, "response": resp_body},
+            status_code=status,
+        )
