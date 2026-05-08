@@ -131,6 +131,7 @@ def cmd_search(args):
     url = f"https://{host}/api/search/v2/query"
 
     for kind in args.kinds:
+        short = kind.split("--")[-1].split(":")[0] if "--" in kind else kind
         payload: Dict[str, Any] = {
             "kind": kind,
             "query": args.query or "*",
@@ -140,12 +141,11 @@ def cmd_search(args):
         }
         status, data = _post(url, hdr, payload)
         if status != 200:
-            print(f"ERROR {status} for {short}", file=sys.stderr)
+            print(f"ERROR {status} for {short}: {json.dumps(data, indent=2)}", file=sys.stderr)
             continue
         total = data.get("totalCount", "?")
         results = data.get("results") or []
 
-        short = kind.split("--")[-1].split(":")[0] if "--" in kind else kind
         print(f"\n{'━' * 60}")
         print(f"  {short}  -  {total} total, showing {len(results)}")
         print(f"{'━' * 60}")

@@ -286,11 +286,16 @@ async def _enrich_record_light(
 ) -> Dict[str, Any]:
     """Lightweight enrichment for the search results list.
 
-    Does NOT call external APIs for BD volumes/geolabel/production/maps.
-    Only normalizes inline volumes and extracts metadata from the record itself.
-    This makes search responses fast (seconds instead of 30+s).
+    For most record types, does NOT call external APIs.
+    For BusinessDecision records, fetches GeoLabelSet + stat REV volumes
+    (2-3 targeted calls) so headline KPIs render in the list view.
     """
-    from .main import _normalize_volumes
+    from .main import (
+        _normalize_volumes,
+        _enrich_bd_volumes,
+        _enrich_bd_geolabel,
+        _enrich_bd_production,
+    )
 
     rid = full.get("id", "")
     data_block = full.get("data", {}) or {}
@@ -340,10 +345,33 @@ async def _enrich_record_light(
                 "rtype": rtype,
             })
     result["ddms_refs"] = ddms_refs
-    # BD-specific fields left empty (populated on individual view)
-    result["bd_geolabel"] = {}
-    result["bd_production"] = {}
-    result["bd_activity"] = {}
+    # BD-specific enrichment: fetch GeoLabelSet + stat REV + production
+    # for headline volumes (2-3 targeted calls, fast enough for list view)
+    bd_geolabel: Dict[str, Any] = {}
+    bd_production: Dict[str, Any] = {}
+    bd_activity: Dict[str, Any] = {}
+    if "businessdecision" in (full.get("kind") or "").lower():
+        try:
+            vol_task = _enrich_bd_volumes(data_block, client, storage_url, hdr) \
+                if not (volumes or {}).get("ColumnValues") else asyncio.sleep(0)
+            gl_task = _enrich_bd_geolabel(data_block, client, storage_url, hdr)
+            prod_task = _enrich_bd_production(data_block, client, storage_url, hdr)
+            vol_r, gl_r, prod_r = await asyncio.gather(
+                vol_task, gl_task, prod_task,
+                return_exceptions=True,
+            )
+            if isinstance(vol_r, dict) and vol_r.get("ColumnValues"):
+                volumes = vol_r
+                result["volumes"] = volumes
+            if isinstance(gl_r, dict):
+                bd_geolabel = gl_r
+            if isinstance(prod_r, dict):
+                bd_production = prod_r
+        except Exception as e:
+            log.warning("[ENRICH-LIGHT] BD enrichment failed for %s: %s", rid, e)
+    result["bd_geolabel"] = bd_geolabel
+    result["bd_production"] = bd_production
+    result["bd_activity"] = bd_activity
     result["bd_maps"] = {"maps": [], "all": []}
     return result
 
@@ -430,7 +458,7 @@ async def _enrich_record(
                     rr = r_link.json()
                     nm = (rr.get("data") or {}).get("Name")
                     entry: Dict[str, Any] = {
-                        "name": nm or lid,
+                        "name": nm or None,
                         "kind": rr.get("kind"),
                         "version": rr.get("version"),
                     }
@@ -439,7 +467,7 @@ async def _enrich_record(
                     return (lid, entry)
             except Exception:
                 pass
-            return (lid, {"name": lid})
+            return (lid, {})
 
         results = await asyncio.gather(*[_fetch_label(lid) for lid in unique_lids])
         for lid, entry in results:
