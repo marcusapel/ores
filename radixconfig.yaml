@@ -58,6 +58,15 @@ spec:
             INSTANCE_EQNDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
             INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
             INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
+            # preship - Microsoft pre-ship M26
+            INSTANCE_PRESHIP_HOSTNAME: "osdu-ship.msft-osdu-test.org"
+            INSTANCE_PRESHIP_DATA_PARTITION_ID: "opendes"
+            INSTANCE_PRESHIP_AUTHORITY: "osdu"
+            INSTANCE_PRESHIP_SCHEMA_SOURCE: "wks"
+            INSTANCE_PRESHIP_DEFAULT_LEGAL_TAG: "opendes-RDDMS-LegalTag"
+            INSTANCE_PRESHIP_DEFAULT_OWNERS: "data.default.owners@opendes.contoso.com"
+            INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
+            INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
           monitoring: true
 
         - environment: prod
@@ -76,6 +85,15 @@ spec:
             INSTANCE_EQNDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
             INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
             INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
+            # preship - Microsoft pre-ship M26
+            INSTANCE_PRESHIP_HOSTNAME: "osdu-ship.msft-osdu-test.org"
+            INSTANCE_PRESHIP_DATA_PARTITION_ID: "opendes"
+            INSTANCE_PRESHIP_AUTHORITY: "osdu"
+            INSTANCE_PRESHIP_SCHEMA_SOURCE: "wks"
+            INSTANCE_PRESHIP_DEFAULT_LEGAL_TAG: "opendes-RDDMS-LegalTag"
+            INSTANCE_PRESHIP_DEFAULT_OWNERS: "data.default.owners@opendes.contoso.com"
+            INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
+            INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
           monitoring: true
           horizontalScaling:
             minReplicas: 2
@@ -92,6 +110,10 @@ spec:
         - INSTANCE_EQNDEV_CLIENT_ID
         - INSTANCE_EQNDEV_CLIENT_SECRET
         - INSTANCE_EQNDEV_SCOPE
+        - INSTANCE_PRESHIP_TENANT_ID
+        - INSTANCE_PRESHIP_CLIENT_ID
+        - INSTANCE_PRESHIP_CLIENT_SECRET
+        - INSTANCE_PRESHIP_SCOPE
         # Uncomment when SMDA integration is needed
         # - SMDA_CLIENT_ID
         # - SMDA_SCOPE
