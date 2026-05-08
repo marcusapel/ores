@@ -52,15 +52,6 @@ data:
   INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
   INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
 
-  # ── "oresdev" - ores-dev app (client_credentials, same OSDU backend as eqndev) ──
-  INSTANCE_ORESDEV_HOSTNAME: "equinorswedev.energy.azure.com"
-  INSTANCE_ORESDEV_DATA_PARTITION_ID: "dev"
-  INSTANCE_ORESDEV_AUTHORITY: "osdu"
-  INSTANCE_ORESDEV_SCHEMA_SOURCE: "wks"
-  INSTANCE_ORESDEV_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
-  INSTANCE_ORESDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
-  INSTANCE_ORESDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
-  INSTANCE_ORESDEV_DEFAULT_COUNTRIES: "NO"
 
   # ── Example: "prod" instance (uncomment to enable) ──
   # INSTANCE_PROD_TENANT_ID: ""

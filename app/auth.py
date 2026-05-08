@@ -115,6 +115,19 @@ async def login(request: Request):
     if not CLIENT_ID or not TENANT:
         return JSONResponse({"error": "AZURE_CLIENT_ID / AZURE_TENANT_ID not configured"}, status_code=500)
 
+    # Don't attempt PKCE for client_credentials-only instances - their app
+    # registration won't have redirect URIs configured.
+    if AUTH_MODE == "client_credentials":
+        from .instances import get_active_name, get_active
+        inst = get_active()
+        return JSONResponse({
+            "error": f"Instance '{get_active_name()}' uses client_credentials only (no user login). "
+                     f"If you're seeing the login page, the service principal token may have failed "
+                     f"(expired secret?). Check the instance credentials.",
+            "instance": get_active_name(),
+            "auth_mode": inst.auth_mode,
+        }, status_code=400)
+
     redirect_uri = _build_redirect_uri(request)
     code_verifier = secrets.token_urlsafe(64)
     state = secrets.token_urlsafe(32)

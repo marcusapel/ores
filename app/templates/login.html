@@ -112,8 +112,18 @@
       <span class="inst-toast" id="inst-toast"></span>
     </div>
 
+    {% set active_info = instances.get(active_instance, {}) %}
+    {% if active_info.get('auth_mode', '').startswith('client_credentials') and 'refresh_token' not in active_info.get('auth_mode', '') %}
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;text-align:left;font-size:13px;color:#664d03;">
+      <strong>⚠ Instance "{{ active_instance }}" uses client_credentials only</strong><br>
+      User login is not available for this instance. Authentication is handled automatically
+      via the service principal. If you ended up here, the client secret may be expired or
+      the service principal token failed. Check the instance credentials in Radix / secret.yaml.
+    </div>
+    {% else %}
     <a class="btn-login" href="/login">Sign in with Microsoft</a>
     <div class="note">Uses Azure AD with PKCE - no passwords are stored by this app.</div>
+    {% endif %}
   </div>
 
   <!-- ════════════════════════════════════════════════════════ -->
