@@ -39,6 +39,7 @@ DEFAULT_MANIFESTS = [
     "manifest_wpcstat_drogon.json",           # 3. STAT WPC (refs Reservoir & WP)
     "manifest_risk_drogon.json",              # 4. Risk (no ancestry deps)
     "manifest_bd_drogon.json",                # 5. BusinessDecision (refs Risk & WPC)
+    "manifest_cp_drogon.json",                # 6. CollaborationProject + Collection
 ]
 
 

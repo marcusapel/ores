@@ -29,6 +29,7 @@ MANIFEST_ORDER = [
     "manifest_activity_drogon.json",        # ActivityTemplate + Activity (merged workflow)
     "manifest_risk_drogon.json",            # Risk
     "manifest_bd_drogon.json",              # BusinessDecision (references everything)
+    "manifest_cp_drogon.json",              # CollaborationProject + Collection
 ]
 
 

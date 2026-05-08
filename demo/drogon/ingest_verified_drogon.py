@@ -35,11 +35,12 @@ REPO_ROOT  = SCRIPT_DIR.parent.parent
 DEFAULT_MANIFESTS = [
     "reftypes_associatedliquid.json",       # 0. new ref value (no deps)
     "manifest_masterwp_drogon.json",        # 1. Reservoir + Segments + WP
-    "manifest_wpcraw_drogon.json",          # 2. RAW WPC → refs Reservoir & WP
-    "manifest_wpcstat_drogon.json",         # 3. STAT WPC → refs Reservoir & WP
+    "manifest_wpcraw_drogon.json",          # 2. RAW WPC -> refs Reservoir & WP
+    "manifest_wpcstat_drogon.json",         # 3. STAT WPC -> refs Reservoir & WP
     "manifest_risk_drogon.json",            # 4. Risk (no ancestry deps)
-    "manifest_devconcept_drogon.json",      # 5. DevelopmentConcept WPC → refs Reservoir
+    "manifest_devconcept_drogon.json",      # 5. DevelopmentConcept WPC -> refs Reservoir
     "manifest_bd_drogon.json",              # 6. BusinessDecision
+    "manifest_cp_drogon.json",              # 7. CollaborationProject + Collection
 ]
 
 

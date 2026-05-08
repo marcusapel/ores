@@ -86,12 +86,18 @@ def _collect_manifest_kinds() -> List[Dict[str, Any]]:
     _KINDS: list[str] = [
         "osdu:wks:dataset--ETPDataspace:1.0.0",
         "osdu:wks:master-data--BusinessDecision:1.0.0",
+        "osdu:wks:master-data--CollaborationProject:1.0.0",
+        "osdu:wks:master-data--Field:1.1.0",
         "osdu:wks:master-data--LocalBoundaryFeature:1.1.0",
+        "osdu:wks:master-data--Organisation:1.1.0",
         "osdu:wks:master-data--Reservoir:2.0.0",
         "osdu:wks:master-data--ReservoirSegment:2.0.0",
         "osdu:wks:master-data--Risk:1.2.0",
+        "osdu:wks:master-data--Well:1.1.0",
+        "osdu:wks:master-data--Wellbore:1.2.0",
         "osdu:wks:work-product-component--Activity:1.0.0",
         "osdu:wks:work-product-component--ActivityTemplate:1.0.0",
+        "osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0",
         "osdu:wks:work-product-component--ColumnBasedTable:1.4.0",
         "osdu:wks:work-product-component--DevelopmentConcept:3.0.0",
         "osdu:wks:work-product-component--Document:1.2.0",
@@ -107,10 +113,14 @@ def _collect_manifest_kinds() -> List[Dict[str, Any]]:
         "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
         "osdu:wks:work-product-component--SeismicBinGrid:1.3.0",
         "osdu:wks:work-product-component--SeismicHorizon:2.1.0",
+        "osdu:wks:work-product-component--SeismicTraceData:1.3.0",
         "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
         "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:1.3.0",
         "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0",
         "osdu:wks:work-product-component--StructureMap:1.0.0",
+        "osdu:wks:work-product-component--WellLog:1.3.0",
+        "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
+        "osdu:wks:work-product-component--WellboreTrajectory:1.2.0",
     ]
     return [{"kind": k} for k in _KINDS]
 
@@ -633,7 +643,7 @@ async def search_run(
             valid_records = [f for f in full_records if f is not None]
 
             # Phase 3: Light enrichment for the result list (no deep BD
-            # enrichment — that happens on individual record view only).
+            # enrichment - that happens on individual record view only).
             # This avoids 6+ extra API calls per record during search.
             enriched_results = []
             for full in valid_records:
