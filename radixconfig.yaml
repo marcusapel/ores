@@ -48,7 +48,7 @@ spec:
             LOG_LEVEL: "INFO"
             DEBUG: "False"
             DEFAULT_DATASPACE: "maap/drogon"
-            APP_KEY: "test-app"
+            APP_KEY: "ores"
             DEFAULT_INSTANCE: "eqndev"
             INSTANCE_EQNDEV_HOSTNAME: "equinorswedev.energy.azure.com"
             INSTANCE_EQNDEV_DATA_PARTITION_ID: "dev"
