@@ -20,7 +20,7 @@
   "data": {
     "Name": "Drogon Valysar - Reservoir Estimated Volumes (statistics)",
     "Description": "Statistics aggregated across Realisations by SegmentID, Zone, Facies. Includes per-segment totals, per-facies totals, and grand total.",
-    "EstimatedVolumeTypeID": "dev:reference-data--ReservoirEstimatedVolumeType:EstimatedInPlaceVolumes",
+    "EstimatedVolumeTypeID": "dev:reference-data--ReservoirEstimatedVolumeType:EstimatedInPlaceVolumes:",
     "ParentObjectID": "dev:master-data--Reservoir:5b8dc759-4be9-493a-9bd3-eb0e55fd078e:1",
     "ParentWorkProductID": "dev:work-product:862b5d29-3d8b-4e9f-9d38-7b78185079f7:1",
     "ancestry": {
@@ -38,7 +38,7 @@
       ]
     },
     "Volumes": {
-      "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc",
+      "ColumnBasedTableTypeID": "dev:reference-data--ColumnBasedTableType:AdHoc:",
       "KeyColumns": [
         {
           "ColumnName": "Zone",
@@ -63,11 +63,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -76,11 +76,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -89,11 +89,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -102,11 +102,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -115,11 +115,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -128,11 +128,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -141,11 +141,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -154,11 +154,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -167,11 +167,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -180,11 +180,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -193,11 +193,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -206,11 +206,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P10"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P10:"
             }
           ]
         },
@@ -219,11 +219,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -232,11 +232,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -245,11 +245,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -258,11 +258,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -271,11 +271,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -284,11 +284,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -297,11 +297,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -310,11 +310,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -323,11 +323,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -336,11 +336,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -349,11 +349,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -362,11 +362,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P50"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P50:"
             }
           ]
         },
@@ -375,11 +375,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -388,11 +388,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -401,11 +401,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -414,11 +414,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -427,11 +427,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -440,11 +440,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -453,11 +453,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -466,11 +466,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -479,11 +479,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -492,11 +492,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -505,11 +505,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -518,11 +518,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:P90"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:P90:"
             }
           ]
         },
@@ -531,11 +531,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -544,11 +544,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -557,11 +557,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -570,11 +570,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -583,11 +583,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -596,11 +596,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -609,11 +609,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -622,11 +622,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -635,11 +635,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -648,11 +648,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -661,11 +661,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -674,11 +674,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:ArithmeticMean:"
             }
           ]
         },
@@ -687,11 +687,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -700,11 +700,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -713,11 +713,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -726,11 +726,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -739,11 +739,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -752,11 +752,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -765,11 +765,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -778,11 +778,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -791,11 +791,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -804,11 +804,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -817,11 +817,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -830,11 +830,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Minimum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Minimum:"
             }
           ]
         },
@@ -843,11 +843,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -856,11 +856,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -869,11 +869,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -882,11 +882,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -895,11 +895,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -908,11 +908,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -921,11 +921,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -934,11 +934,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -947,11 +947,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -960,11 +960,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -973,11 +973,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -986,11 +986,11 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
-              "FacetRoleID": "dev:reference-data--FacetRole:Maximum"
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
+              "FacetRoleID": "dev:reference-data--FacetRole:Maximum:"
             }
           ]
         },
@@ -999,10 +999,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1012,10 +1012,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1025,10 +1025,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1038,10 +1038,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Oil:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1051,10 +1051,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedGas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1064,10 +1064,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1077,10 +1077,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1090,10 +1090,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:HydrocarbonPore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1103,10 +1103,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Gas:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1116,10 +1116,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:AssociatedLiquid:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1129,10 +1129,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
@@ -1142,10 +1142,10 @@
           "ColumnRole": "Value",
           "ValueType": "number",
           "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Pore:",
-          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
+          "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3:",
           "FacetIDs": [
             {
-              "FacetTypeID": "dev:reference-data--FacetType:statistics",
+              "FacetTypeID": "dev:reference-data--FacetType:statistics:",
               "FacetRoleID": "dev:reference-data--FacetRole:StandardDeviation:"
             }
           ]
