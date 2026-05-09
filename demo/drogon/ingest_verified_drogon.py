@@ -42,6 +42,8 @@ DEFAULT_MANIFESTS = [
     "manifest_bd_drogon.json",              # 6. BusinessDecision
     "manifest_cp_drogon.json",              # 7. CollaborationProject + Collection
     "manifest_wells_drogon.json",           # 8. Well + Wellbore master-data (Drogon + Volve)
+    "manifest_litho_strat_drogon.json",     # 9. StratColumn + Rank + Unit interpretations
+    "manifest_markers_drogon.json",         # 10. WellboreMarkerSet (formation tops per wellbore)
 ]
 
 
