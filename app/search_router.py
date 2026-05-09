@@ -82,47 +82,56 @@ def _parse_kind_inputs(kind: str, kinds_extra: str) -> List[str]:
 
 
 def _collect_manifest_kinds() -> List[Dict[str, Any]]:
-    """Return an alphabetically sorted list of OSDU kinds for the search dropdown."""
+    """Return an alphabetically sorted list of OSDU kinds for the search dropdown.
+
+    Uses wildcard versions (``*``) so the dropdown matches all indexed
+    versions of each entity type.  The user can manually edit the
+    version in the text input if a specific one is needed.
+
+    The search route automatically resolves wildcard kinds to concrete
+    versions when the query contains leading wildcards (an ADME
+    limitation that rejects ``kind:*`` + ``data.X:*foo*``).
+    """
     _KINDS: list[str] = [
-        "osdu:wks:dataset--ETPDataspace:1.0.0",
-        "osdu:wks:master-data--BusinessDecision:1.0.0",
-        "osdu:wks:master-data--CollaborationProject:1.0.0",
-        "osdu:wks:master-data--Field:1.1.0",
-        "osdu:wks:master-data--LocalBoundaryFeature:1.1.0",
-        "osdu:wks:master-data--Organisation:1.1.0",
-        "osdu:wks:master-data--Reservoir:2.0.0",
-        "osdu:wks:master-data--ReservoirSegment:2.0.0",
-        "osdu:wks:master-data--Risk:1.2.0",
-        "osdu:wks:master-data--Well:1.1.0",
-        "osdu:wks:master-data--Wellbore:1.2.0",
-        "osdu:wks:work-product-component--Activity:1.0.0",
-        "osdu:wks:work-product-component--ActivityTemplate:1.0.0",
-        "osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0",
-        "osdu:wks:work-product-component--ColumnBasedTable:1.4.0",
-        "osdu:wks:work-product-component--DevelopmentConcept:3.0.0",
-        "osdu:wks:work-product-component--Document:1.2.0",
-        "osdu:wks:work-product-component--GenericBinGrid:1.0.0",
-        "osdu:wks:work-product-component--GenericRepresentation:1.2.0",
-        "osdu:wks:work-product-component--GeoLabelSet:1.0.0",
-        "osdu:wks:work-product-component--HorizonControlPoints:1.0.0",
-        "osdu:wks:work-product-component--HorizonInterpretation:1.2.0",
-        "osdu:wks:work-product-component--IjkGridRepresentation:1.0.0",
-        "osdu:wks:work-product-component--LocalBoundaryFeature:1.2.0",
-        "osdu:wks:work-product-component--LocalModelCompoundCrs:1.2.0",
-        "osdu:wks:work-product-component--PersistedCollection:1.2.0",
-        "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
-        "osdu:wks:work-product-component--SeismicBinGrid:1.3.0",
-        "osdu:wks:work-product-component--SeismicHorizon:2.1.0",
-        "osdu:wks:work-product-component--SeismicTraceData:1.3.0",
-        "osdu:wks:work-product-component--StratigraphicColumn:1.2.0",
-        "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:1.3.0",
-        "osdu:wks:work-product-component--StratigraphicUnitInterpretation:1.3.0",
-        "osdu:wks:work-product-component--StructureMap:1.0.0",
-        "osdu:wks:work-product-component--WellLog:1.3.0",
-        "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
-        "osdu:wks:work-product-component--WellboreTrajectory:1.2.0",
+        "osdu:wks:dataset--ETPDataspace:*",
+        "osdu:wks:master-data--BusinessDecision:*",
+        "osdu:wks:master-data--CollaborationProject:*",
+        "osdu:wks:master-data--Field:*",
+        "osdu:wks:master-data--LocalBoundaryFeature:*",
+        "osdu:wks:master-data--Organisation:*",
+        "osdu:wks:master-data--Reservoir:*",
+        "osdu:wks:master-data--ReservoirSegment:*",
+        "osdu:wks:master-data--Risk:*",
+        "osdu:wks:master-data--Well:*",
+        "osdu:wks:master-data--Wellbore:*",
+        "osdu:wks:work-product-component--Activity:*",
+        "osdu:wks:work-product-component--ActivityTemplate:*",
+        "osdu:wks:work-product-component--CollaborationProjectCollection:*",
+        "osdu:wks:work-product-component--ColumnBasedTable:*",
+        "osdu:wks:work-product-component--DevelopmentConcept:*",
+        "osdu:wks:work-product-component--Document:*",
+        "osdu:wks:work-product-component--GenericBinGrid:*",
+        "osdu:wks:work-product-component--GenericRepresentation:*",
+        "osdu:wks:work-product-component--GeoLabelSet:*",
+        "osdu:wks:work-product-component--HorizonControlPoints:*",
+        "osdu:wks:work-product-component--HorizonInterpretation:*",
+        "osdu:wks:work-product-component--IjkGridRepresentation:*",
+        "osdu:wks:work-product-component--LocalBoundaryFeature:*",
+        "osdu:wks:work-product-component--LocalModelCompoundCrs:*",
+        "osdu:wks:work-product-component--PersistedCollection:*",
+        "osdu:wks:work-product-component--ReservoirEstimatedVolumes:*",
+        "osdu:wks:work-product-component--SeismicBinGrid:*",
+        "osdu:wks:work-product-component--SeismicHorizon:*",
+        "osdu:wks:work-product-component--SeismicTraceData:*",
+        "osdu:wks:work-product-component--StratigraphicColumn:*",
+        "osdu:wks:work-product-component--StratigraphicColumnRankInterpretation:*",
+        "osdu:wks:work-product-component--StratigraphicUnitInterpretation:*",
+        "osdu:wks:work-product-component--StructureMap:*",
+        "osdu:wks:work-product-component--WellLog:*",
+        "osdu:wks:work-product-component--WellboreMarkerSet:*",
+        "osdu:wks:work-product-component--WellboreTrajectory:*",
     ]
-    return [{"kind": k} for k in _KINDS]
+    return [{"kind": k, "label": re.sub(r"^.*--", "", k).replace(":*", "")} for k in _KINDS]
 
 
 def _collect_refdata_kinds() -> List[Dict[str, Any]]:
@@ -607,10 +616,88 @@ async def search_run(
                     "returnedFields": ["id", "kind", "version"],
                     "trackTotalCount": True,
                 }
+
+                # ADME rejects wildcard kind + leading-wildcard query.
+                # Detect this and resolve to concrete versions first.
+                _has_wildcard_kind = current_kind.endswith(":*")
+                _has_leading_wildcard = bool(
+                    re.search(r':\s*\*[^\s]', query)
+                ) if query and query.strip() != "*" else False
+
+                if _has_wildcard_kind and _has_leading_wildcard:
+                    # Discover actual versions via a quick query=* probe
+                    probe_payload = {
+                        "kind": current_kind,
+                        "query": "*",
+                        "limit": 1,
+                        "returnedFields": ["kind"],
+                        "trackTotalCount": True,
+                    }
+                    try:
+                        pr = await client.post(search_url, headers=hdr, json=probe_payload)
+                        pr.raise_for_status()
+                        probe_res = pr.json()
+                        # Collect distinct kind strings from probe results
+                        probe_kinds: Set[str] = set()
+                        for prec in probe_res.get("results", []):
+                            pk = prec.get("kind")
+                            if pk:
+                                probe_kinds.add(pk)
+                        # Also try a larger probe if we got hits
+                        probe_total = int(probe_res.get("totalCount") or 0)
+                        if probe_total > 1 and len(probe_kinds) < 5:
+                            probe_payload["limit"] = min(probe_total, 50)
+                            pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
+                            if pr2.status_code == 200:
+                                for prec in pr2.json().get("results", []):
+                                    pk = prec.get("kind")
+                                    if pk:
+                                        probe_kinds.add(pk)
+                        if probe_kinds:
+                            log.info("[SEARCH] Resolved %s to versions: %s", current_kind, probe_kinds)
+                            # Search each concrete version with the user's query
+                            for concrete_kind in sorted(probe_kinds):
+                                payload["kind"] = concrete_kind
+                                r = await client.post(search_url, headers=hdr, json=payload)
+                                r.raise_for_status()
+                                res = r.json()
+                                hit_count = int(res.get("totalCount") or len(res.get("results", [])))
+                                merged_total_count += hit_count
+                                log.info("[SEARCH] kind=%s status=%d hits=%d", concrete_kind, r.status_code, len(res.get("results", [])))
+                                for rec in res.get("results", []):
+                                    rid = rec.get("id")
+                                    if rid and rid not in seen_record_ids:
+                                        seen_record_ids.add(rid)
+                                        all_hit_ids.append(rid)
+                                    if len(all_hit_ids) >= int(limit):
+                                        break
+                                if len(all_hit_ids) >= int(limit):
+                                    break
+                            continue  # skip the normal search for this kind
+                        else:
+                            log.info("[SEARCH] Probe for %s returned 0 records", current_kind)
+                    except Exception as e:
+                        log.warning("[SEARCH] Version probe failed for %s: %s", current_kind, e)
+
                 r = await client.post(search_url, headers=hdr, json=payload)
                 r.raise_for_status()
                 res = r.json()
-                merged_total_count += int(res.get("totalCount") or len(res.get("results", [])))
+                hit_count = int(res.get("totalCount") or len(res.get("results", [])))
+
+                # Auto-retry with wildcard version when exact version returns 0
+                if hit_count == 0 and not current_kind.endswith(":*"):
+                    wildcard_kind = re.sub(r":[^:]+$", ":*", current_kind)
+                    if wildcard_kind != current_kind:
+                        log.info("[SEARCH] kind=%s returned 0 hits, retrying with %s", current_kind, wildcard_kind)
+                        payload["kind"] = wildcard_kind
+                        r = await client.post(search_url, headers=hdr, json=payload)
+                        r.raise_for_status()
+                        res = r.json()
+                        hit_count = int(res.get("totalCount") or len(res.get("results", [])))
+                        if hit_count > 0:
+                            current_kind = wildcard_kind
+
+                merged_total_count += hit_count
                 log.info(
                     "[SEARCH] kind=%s status=%d hits=%d",
                     current_kind, r.status_code, len(res.get("results", [])),
@@ -746,17 +833,36 @@ async def search_schemas(
 
         # When doing local keyword filtering, fetch a large set from the API
         # (the keyword might not be in the first N results).
+        # Paginate through all pages to ensure we find every match.
         if local_filter_keyword:
             params["limit"] = 1000
+            schema_list: list = []
+            offset = 0
+            async with httpx.AsyncClient(timeout=60) as client:
+                while True:
+                    params["offset"] = offset
+                    r = await client.get(schema_url, headers=hdr, params=params)
+                    r.raise_for_status()
+                    data = r.json()
+                    page = data.get("schemaInfos") or data.get("schemas") or []
+                    if isinstance(data, list):
+                        page = data
+                    if not page:
+                        break
+                    schema_list.extend(page)
+                    # Stop if we got fewer than requested (last page)
+                    if len(page) < params["limit"]:
+                        break
+                    offset += len(page)
+        else:
+            async with httpx.AsyncClient(timeout=60) as client:
+                r = await client.get(schema_url, headers=hdr, params=params)
+                r.raise_for_status()
+                data = r.json()
 
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.get(schema_url, headers=hdr, params=params)
-            r.raise_for_status()
-            data = r.json()
-
-        schema_list = data.get("schemaInfos") or data.get("schemas") or []
-        if isinstance(data, list):
-            schema_list = data
+            schema_list = data.get("schemaInfos") or data.get("schemas") or []
+            if isinstance(data, list):
+                schema_list = data
 
         # Apply local keyword filter if needed (substring match on entityType/kind)
         if local_filter_keyword:
@@ -766,6 +872,11 @@ async def search_schemas(
                     (s.get("schemaIdentity") or {}).get("entityType", "")
                 ).lower()
             ]
+
+        # Sort alphabetically by entityType
+        schema_list.sort(
+            key=lambda s: ((s.get("schemaIdentity") or {}).get("entityType", "")).lower()
+        )
 
         table_rows = []
         for s in schema_list[:int(limit)]:
@@ -908,6 +1019,9 @@ async def search_refdata(
                 "description": d.get("Description", ""),
                 "version": rec.get("version", ""),
             })
+
+        # Sort alphabetically by name, then code
+        table_rows.sort(key=lambda r: (r["name"].lower(), r["code"].lower()))
 
         return templates.TemplateResponse(
             request, "search.html",

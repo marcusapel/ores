@@ -41,6 +41,7 @@ DEFAULT_MANIFESTS = [
     "manifest_devconcept_drogon.json",      # 5. DevelopmentConcept WPC -> refs Reservoir
     "manifest_bd_drogon.json",              # 6. BusinessDecision
     "manifest_cp_drogon.json",              # 7. CollaborationProject + Collection
+    "manifest_wells_drogon.json",           # 8. Well + Wellbore master-data (Drogon + Volve)
 ]
 
 

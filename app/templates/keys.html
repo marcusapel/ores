@@ -904,6 +904,43 @@
     }
 
     async function loadDataspaces() {
+      // Check for prefetched cache from howto page
+      const cachedLocal = sessionStorage.getItem('_ds_keys_local');
+      const cachedRemote = sessionStorage.getItem('_ds_keys_remote');
+      if (cachedLocal || cachedRemote) {
+        sessionStorage.removeItem('_ds_keys_local');
+        sessionStorage.removeItem('_ds_keys_remote');
+        try {
+          const localItems = cachedLocal ? JSON.parse(cachedLocal) : [];
+          const remoteItems = cachedRemote ? JSON.parse(cachedRemote) : [];
+          // Merge (dedup by path)
+          const seen = new Set();
+          const merged = [];
+          for (const item of [...localItems, ...remoteItems]) {
+            if (item.path && !seen.has(item.path)) { merged.push(item); seen.add(item.path); }
+          }
+          if (merged.length) {
+            populateDataspaces(merged);
+            setMsg('');
+            // Still refresh remote in background for freshness
+            fetch('/keys/dataspaces.json?source=remote', { credentials: 'same-origin' })
+              .then(r => r.ok ? r.json() : null)
+              .then(js => {
+                if (js && js.items && js.items.length) {
+                  const paths = new Set(_allDsItems.map(x => x.path));
+                  const m2 = [..._allDsItems];
+                  for (const item of js.items) {
+                    if (item.path && !paths.has(item.path)) { m2.push(item); paths.add(item.path); }
+                  }
+                  populateDataspaces(m2);
+                }
+              })
+              .catch(() => {});
+            return true;
+          }
+        } catch (_) {}
+      }
+
       // Progressive load: local first (instant), then remote in background
       showLoading('Loading dataspaces…');
       let gotSome = false;

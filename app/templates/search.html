@@ -18,6 +18,11 @@
   /* clickable result rows */
   .results-table { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
   .results-table th, .results-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: .3rem .5rem; font-size: .88rem; line-height: 1.3; }
+  .results-table th { cursor: pointer; user-select: none; position: relative; }
+  .results-table th:hover { background: #e8e8e8; }
+  .results-table th::after { content: ''; display: inline-block; width: .55em; margin-left: .3em; font-size: .75em; vertical-align: middle; }
+  .results-table th.sort-asc::after { content: '▲'; }
+  .results-table th.sort-desc::after { content: '▼'; }
   .results-table tbody tr { cursor: pointer; transition: background .15s; }
   .results-table tbody tr:hover { background: #e8f0fa; }
   .results-table tbody tr.active-row { background: #d0e2f4; font-weight: 500; }
@@ -229,16 +234,16 @@
   <label>Kind (primary)</label>
   <div class="kind-row" style="grid-template-columns: 220px 1fr;">
     <select id="kindPreset" style="min-width: 0;">
-      <option value="">Select kind from repo manifests…</option>
+      <option value="">Select kind…</option>
       {% for opt in kind_options or [] %}
-        <option value="{{ opt.kind }}" {% if opt.kind == kind %}selected{% endif %}>{{ opt.kind }}{% if opt.count %} ({{ opt.count }}){% endif %}</option>
+        <option value="{{ opt.kind }}" {% if opt.kind == kind %}selected{% endif %}>{{ opt.label or opt.kind }}</option>
       {% endfor %}
     </select>
-    <input type="text" id="kindInput" name="kind" value="{{ kind or '' }}" list="kindCatalog" placeholder="osdu:wks:...">
+    <input type="text" id="kindInput" name="kind" value="{{ kind or '' }}" list="kindCatalog" placeholder="osdu:wks:... (edit version or leave :* for all)">
   </div>
   <datalist id="kindCatalog">
     {% for opt in kind_options or [] %}
-      <option value="{{ opt.kind }}"></option>
+      <option value="{{ opt.kind }}">{{ opt.label or '' }}</option>
     {% endfor %}
   </datalist>
 
@@ -249,42 +254,53 @@
       <button type="button" class="btn-ex" id="btn-examples">Examples ▾</button>
       <div class="examples-popup" id="examples-popup">
         <div class="ex-hdr">OSDU Search query syntax</div>
-        <div class="ex-item" data-q="data.Name:*Drogon*" data-target="searchQuery" data-kind="osdu:wks:master-data--BusinessDecision:1.0.0">
-          <code>data.Name:*Drogon*</code>
+        <div class="ex-item" data-q="data.Name:&quot;*Drogon*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--BusinessDecision:*">
+          <code>data.Name:"*Drogon*"</code>
           <span class="ex-desc">Wildcard match – Name contains "Drogon"</span>
         </div>
-        <div class="ex-item" data-q="data.Description:*Valysar* AND data.Name:*DG2*" data-target="searchQuery" data-kind="osdu:wks:master-data--BusinessDecision:1.0.0">
-          <code>data.Description:*Valysar* AND data.Name:*DG2*</code>
+        <div class="ex-item" data-q="data.Name:&quot;*Drogon*&quot; AND data.Name:&quot;*DG2*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--Risk:*">
+          <code>data.Name:"*Drogon*" AND data.Name:"*DG2*"</code>
           <span class="ex-desc">Boolean AND – both conditions must match</span>
         </div>
-        <div class="ex-item" data-q="data.Name:*Porosity* OR data.Name:*Seal*" data-target="searchQuery" data-kind="osdu:wks:master-data--Risk:1.2.0">
-          <code>data.Name:*Porosity* OR data.Name:*Seal*</code>
+        <div class="ex-item" data-q="data.Name:&quot;*Fault*&quot; OR data.Name:&quot;*Seal*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--Risk:*">
+          <code>data.Name:"*Fault*" OR data.Name:"*Seal*"</code>
           <span class="ex-desc">Boolean OR – match either condition</span>
         </div>
-        <div class="ex-item" data-q="data.HorizonName:TopVolantis" data-target="searchQuery" data-kind="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
-          <code>data.HorizonName:TopVolantis</code>
-          <span class="ex-desc">Exact field match – maps for a specific horizon</span>
+        <div class="ex-item" data-q="data.Name:&quot;*DG2*&quot;" data-target="searchQuery" data-kind="osdu:wks:work-product-component--StructureMap:*">
+          <code>data.Name:"*DG2*"</code>
+          <span class="ex-desc">Wildcard match – structure maps for DG2</span>
         </div>
-        <div class="ex-item" data-q="data.DDMSDatasets:*Grid2dRepresentation*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
-          <code>data.DDMSDatasets:*Grid2dRepresentation*</code>
-          <span class="ex-desc">Array field wildcard – records with RDDMS grid maps</span>
-        </div>
-        <div class="ex-item" data-q="NOT data.Name:*test*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--Document:1.2.0">
-          <code>NOT data.Name:*test*</code>
+        <div class="ex-item" data-q="NOT data.Name:&quot;*DG1*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--BusinessDecision:*">
+          <code>NOT data.Name:"*DG1*"</code>
           <span class="ex-desc">Negation – exclude records matching pattern</span>
         </div>
-        <div class="ex-item" data-q="data.StratigraphicColumnRankInterpretationSet:*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--StratigraphicColumn:1.2.0">
+        <div class="ex-item" data-q="data.StratigraphicColumnRankInterpretationSet:*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--StratigraphicColumn:*">
           <code>data.StratigraphicColumnRankInterpretationSet:*</code>
           <span class="ex-desc">Field existence – has rank interpretations linked</span>
         </div>
-        <div class="ex-item" data-q="data.Name:*facies_fraction*" data-target="searchQuery" data-kind="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
-          <code>data.Name:*facies_fraction*</code>
-          <span class="ex-desc">Find facies fraction maps by partial name</span>
+        <div class="ex-item" data-q="data.Name:&quot;*Drogon*&quot;" data-target="searchQuery" data-kind="osdu:wks:work-product-component--Document:*">
+          <code>data.Name:"*Drogon*"</code>
+          <span class="ex-desc">Documents – find Drogon-related reports</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:&quot;*basevolon*&quot;" data-target="searchQuery" data-kind="osdu:wks:work-product-component--StructureMap:*">
+          <code>data.Name:"*basevolon*"</code>
+          <span class="ex-desc">Structure maps for a specific horizon</span>
+        </div>
+        <div class="ex-item" data-q="data.FacilityName:&quot;*55/33*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--Well:*">
+          <code>data.FacilityName:"*55/33*"</code>
+          <span class="ex-desc">Wells – Drogon field wells (55/33 block)</span>
+        </div>
+        <div class="ex-item" data-q="data.FacilityName:&quot;*15/9*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--Well:*">
+          <code>data.FacilityName:"*15/9*"</code>
+          <span class="ex-desc">Wells – Volve field wells (15/9 block)</span>
+        </div>
+        <div class="ex-item" data-q="data.TargetFormation:&quot;*Valysar*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--Wellbore:*">
+          <code>data.TargetFormation:"*Valysar*"</code>
+          <span class="ex-desc">Wellbores – targeting Valysar formation (Drogon)</span>
         </div>
       </div>
     </span>
   </div>
-  <small id="queryHintText" style="color:#605e5c;display:none;"></small>
 
   <label>limit</label>
   <input type="number" name="limit" value="{{ limit or 50 }}" min="1" max="500">
@@ -476,32 +492,7 @@
     }
     preset?.addEventListener('change', applyPreset);
 
-    // ── Kind-aware query hint for Records tab ──
-    const hintEl = document.getElementById('queryHintText');
-    function updateQueryHint() {
-      if (!input || !hintEl) return;
-      const k = (input.value || '').toLowerCase();
-      let hint = '';
-      if (k.includes('businessdecision')) {
-        hint = 'Tip: try <code>data.Name:Gudrun</code> or <code>data.RiskCategory:*</code>';
-      } else if (k.includes('risk')) {
-        hint = 'Tip: try <code>data.RiskCategory:*</code> or <code>data.Probability:*</code>';
-      } else if (k.includes('stratigraphiccolumn')) {
-        hint = 'Tip: try <code>data.StratigraphicColumnRankInterpretationIDs:*</code>';
-      } else if (k.includes('well')) {
-        hint = 'Tip: try <code>data.FacilityName:*</code> or <code>data.CurrentOperator:*</code>';
-      } else if (k.includes('document')) {
-        hint = 'Tip: try <code>data.DocumentType:*</code>';
-      }
-      if (hint) { hintEl.innerHTML = hint; hintEl.style.display = ''; }
-      else { hintEl.style.display = 'none'; }
-    }
-    if (input) {
-      input.addEventListener('change', updateQueryHint);
-      input.addEventListener('input', updateQueryHint);
-      updateQueryHint();
-    }
-    if (preset) preset.addEventListener('change', function() { setTimeout(updateQueryHint, 50); });
+
   })();
 </script>
 
@@ -2954,6 +2945,55 @@ classDef group_node fill:#fefcbf,stroke:#d69e2e,color:#222,font-style:italic;
       });
     });
   }
+})();
+</script>
+
+<script>
+/* ── Sortable table headers (all .results-table) ── */
+(function() {
+  function sortTable(th) {
+    var table = th.closest('table');
+    if (!table) return;
+    var thead = table.querySelector('thead');
+    var tbody = table.querySelector('tbody');
+    if (!thead || !tbody) return;
+    var ths = Array.from(thead.querySelectorAll('th'));
+    var colIdx = ths.indexOf(th);
+    if (colIdx < 0) return;
+
+    // Determine direction
+    var asc = !th.classList.contains('sort-asc');
+    ths.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+    th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+
+    // Sort rows
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function(a, b) {
+      var cellA = a.children[colIdx];
+      var cellB = b.children[colIdx];
+      var tA = (cellA ? cellA.textContent : '').trim().toLowerCase();
+      var tB = (cellB ? cellB.textContent : '').trim().toLowerCase();
+      // Try numeric comparison first
+      var nA = parseFloat(tA), nB = parseFloat(tB);
+      if (!isNaN(nA) && !isNaN(nB)) {
+        return asc ? nA - nB : nB - nA;
+      }
+      if (tA < tB) return asc ? -1 : 1;
+      if (tA > tB) return asc ? 1 : -1;
+      return 0;
+    });
+    rows.forEach(function(row) { tbody.appendChild(row); });
+  }
+
+  document.querySelectorAll('.results-table').forEach(function(table) {
+    table.querySelectorAll('thead th').forEach(function(th) {
+      th.addEventListener('click', function(e) {
+        // Don't sort if clicking a link inside th
+        if (e.target.tagName === 'A') return;
+        sortTable(th);
+      });
+    });
+  });
 })();
 </script>
 

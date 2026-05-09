@@ -45,6 +45,12 @@ _HOWTO_SECTIONS: list[dict] = [
                 "desc": "REST, ETP, GraphQL & OSDU Search - all query paths explained",
             },
             {
+                "slug": "activity",
+                "file": "Activity.md",
+                "title": "Activity & Provenance",
+                "desc": "ActivityTemplate + Activity records for workflow provenance",
+            },
+            {
                 "slug": "business-decision",
                 "file": "BusinessDecision.md",
                 "title": "Business Decision",
@@ -56,12 +62,6 @@ _HOWTO_SECTIONS: list[dict] = [
                     {"slug": "risk",         "file": "Risk.md",         "title": "Risk",           "desc": "Subsurface risk data management"},
                     {"slug": "uncertainty",  "file": "Uncertainty.md",  "title": "Uncertainty",    "desc": "FMU ensemble / Monte Carlo in OSDU"},
                 ],
-            },
-            {
-                "slug": "activity",
-                "file": "Activity.md",
-                "title": "Activity & Provenance",
-                "desc": "ActivityTemplate + Activity records for workflow provenance",
             },
             {
                 "slug": "seismic-interp",

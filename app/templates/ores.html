@@ -441,5 +441,35 @@ async function submitAdd(e) {
   }
   return false;
 }
+
+/* ── Prefetch dataspaces in background so RDDMS pages load instantly ── */
+(function prefetchDataspaces() {
+  // Admin dataspaces
+  fetch('/admin/dataspaces.json', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(js => {
+      if (js.items && js.items.length)
+        sessionStorage.setItem('_ds_admin', JSON.stringify(js.items));
+    })
+    .catch(() => {});
+
+  // Keys dataspaces – local (fast)
+  fetch('/keys/dataspaces.json?source=local', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(js => {
+      if (js.items && js.items.length)
+        sessionStorage.setItem('_ds_keys_local', JSON.stringify(js.items));
+    })
+    .catch(() => {});
+
+  // Keys dataspaces – remote (slower, but starts early)
+  fetch('/keys/dataspaces.json?source=remote', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(js => {
+      if (js.items && js.items.length)
+        sessionStorage.setItem('_ds_keys_remote', JSON.stringify(js.items));
+    })
+    .catch(() => {});
+})();
 </script>
 {% endblock %}
