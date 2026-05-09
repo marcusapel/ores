@@ -228,11 +228,10 @@
     // Spacer
     root.appendChild(el('span', { 'class': 'nav-spacer' }));
 
-    // Auth links (only visible in per-user PKCE mode - no REFRESH_TOKEN)
-    if (document.body.getAttribute('data-auth-mode') === 'per_user_pkce') {
-      root.appendChild(linkSpan('/login-page', 'Sign in', 'nav-signin'));
-      root.appendChild(linkSpan('/logout', 'Sign out', 'nav-signout'));
-    }
+    // Auth links - always visible so users can do per-user PKCE login
+    // even when the instance's primary auth is client_credentials or env_token
+    root.appendChild(linkSpan('/login-page', 'Sign in', 'nav-signin'));
+    root.appendChild(linkSpan('/logout', 'Sign out', 'nav-signout'));
 
     // OSDU logo (right side)
     var logo = document.createElement('img');
