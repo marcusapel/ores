@@ -69,10 +69,15 @@ async def _http(timeout: float = 60) -> AsyncIterator[httpx.AsyncClient]:
 
     Re-uses a module-level client so TCP connections are pooled across
     calls instead of opening a fresh connection per request.
+    The *timeout* is applied per-request via the client, not at creation
+    time, so callers that need longer deadlines get them.
     """
     global _shared_client
     if _shared_client is None or _shared_client.is_closed:
         _shared_client = httpx.AsyncClient(timeout=timeout)
+    else:
+        # Update timeout for this call if different from the client default
+        _shared_client.timeout = httpx.Timeout(timeout)
     yield _shared_client
 
 

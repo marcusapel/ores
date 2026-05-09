@@ -45,7 +45,7 @@ async def _enrich_geolabel(
     storage_url: str,
     hdr: dict,
 ) -> Dict[str, Any]:
-    from .main import _enrich_bd_geolabel
+    from .bd_enrichment import _enrich_bd_geolabel
     return await _enrich_bd_geolabel(data_block, client, storage_url, hdr)
 
 

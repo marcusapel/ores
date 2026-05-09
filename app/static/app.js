@@ -221,12 +221,21 @@ function getSelectedItems() {
 
 async function buildManifest() {
   setText(buildSummary, 'Building…');
+  if (btnBuild) btnBuild.disabled = true;
 
   const items = getSelectedItems();
   if (!items.length) {
     setText(buildSummary, 'Select one or more objects first.');
+    if (btnBuild) btnBuild.disabled = false;
     return;
   }
+
+  const t0 = performance.now();
+  // Show a live elapsed timer while waiting
+  const timer = setInterval(() => {
+    const s = ((performance.now() - t0) / 1000).toFixed(0);
+    setText(buildSummary, `Building… ${s}s`);
+  }, 1000);
 
   try {
     let res;
@@ -252,18 +261,24 @@ async function buildManifest() {
       res = await r.json();
     }
 
+    clearInterval(timer);
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     const mf = res.manifest || {};
     manifestBox.textContent = JSON.stringify(mf, null, 2);
-    let msg = `Built manifest (uris=${res.countUris || 0})`;
+    let msg = `Built manifest (uris=${res.countUris || 0}) in ${elapsed}s`;
     if (res.skippedUris) {
-      msg += ` - ${res.skippedUris} URI(s) skipped (${(res.skippedTypes||[]).join(', ')})`;
+      msg += ` — ${res.skippedUris} URI(s) skipped (${(res.skippedTypes||[]).join(', ')})`;
     }
     setText(buildSummary, msg);
     if (btnIngest) btnIngest.disabled = false;
   } catch (e) {
+    clearInterval(timer);
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     console.warn('build error:', e);
-    setText(buildSummary, `Build failed: ${e.message}`);
+    setText(buildSummary, `Build failed after ${elapsed}s: ${e.message}`);
     if (btnIngest) btnIngest.disabled = true;
+  } finally {
+    if (btnBuild) btnBuild.disabled = false;
   }
 }
 
