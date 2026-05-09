@@ -30,7 +30,7 @@
 | **RddmsQuery** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
 | **OsduSearch** (`/search`) | Query OSDU Search API with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet) |
 | **Analyse** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
-| **Add DG** (`/add-dg`) | Create and ingest a new BusinessDecision, linking REV, GeoLabelSet, Activity and Risk records |
+| **Add DG** (`/add-dg`) | Create and ingest BusinessDecision, Activity, ActivityTemplate, CollaborationProject, PersistedCollection and generic records. See [Activity guide](Activity.md) |
 | **Stratigraphy** (`/strat`) | Preview and ingest stratigraphic column records |
 | **GraphQL** (`/graphql`) | GraphiQL IDE for RESQML deep-search queries |
 | **HowTo** (`/howto`) | Browse grouped markdown documentation articles |
@@ -299,6 +299,7 @@ python -m pytest test/ -v
 | OSDU client | `app/osdu.py` |
 | Demo auth | `demo/_auth.py` |
 | Pipeline runner | `demo/run_pipeline.py` |
+| Activity guide | [md/Activity.md](Activity.md) |
 | BD guide | [md/BdDemo.md](BdDemo.md) |
 | SeisInt guide | [md/SeisInt.md](SeisInt.md) |
 | Strat guide | [md/StratColumn.md](StratColumn.md) |
