@@ -20,9 +20,11 @@ Provides:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
+import time
 import urllib.parse
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -549,11 +551,9 @@ async def keys_objects(
 # ── route: manifest building ──────────────────────────────────────────────────
 
 # Types whose URIs crash the RDDMS manifests/build endpoint (server 500).
-# Grid2dRepresentation carries large HDF5 array data that the builder
-# cannot serialise; EpcExternalPartReference is an internal packaging
-# artefact with no OSDU WPC mapping.
+# EpcExternalPartReference is an internal EPC packaging artefact (array
+# data references) with no OSDU WPC mapping — the builder cannot handle it.
 _MANIFEST_SKIP_TYPES = {
-    "obj_Grid2dRepresentation",
     "obj_EpcExternalPartReference",
 }
 
@@ -607,19 +607,27 @@ async def dataspaces_manifest_build_uris(
 
     # Build canonical primary URI (no GET content)
     uris: Set[str] = { osdu._eml_uri_from_parts(ds, typ_s, uuid_s) }
+    t0 = time.monotonic()
 
-    # Expand refs via graph endpoints
+    # Expand refs via graph endpoints (parallel)
     if include_refs:
-        try:
-            sources = await osdu.list_sources(at, enc, typ_s, uuid_s)
-        except Exception as e:
-            log.warning("build-uris: list_sources failed: %s", e)
-            sources = []
-        try:
-            targets = await osdu.list_targets(at, enc, typ_s, uuid_s)
-        except Exception as e:
-            log.warning("build-uris: list_targets failed: %s", e)
-            targets = []
+        async def _get_sources():
+            try:
+                return await osdu.list_sources(at, enc, typ_s, uuid_s)
+            except Exception as e:
+                log.warning("build-uris: list_sources failed: %s", e)
+                return []
+
+        async def _get_targets():
+            try:
+                return await osdu.list_targets(at, enc, typ_s, uuid_s)
+            except Exception as e:
+                log.warning("build-uris: list_targets failed: %s", e)
+                return []
+
+        sources, targets = await asyncio.gather(_get_sources(), _get_targets())
+        log.info("build-uris: refs resolved in %.1fs (sources=%d, targets=%d)",
+                 time.monotonic() - t0, len(sources or []), len(targets or []))
 
         for node in (sources or []):
             if isinstance(node, dict): _add_node_uri(node, uris, ds)
@@ -638,6 +646,7 @@ async def dataspaces_manifest_build_uris(
             status_code=422,
         )
 
+    t1 = time.monotonic()
     try:
         manifest = await osdu.build_manifest_for_uris(
             at,
@@ -659,6 +668,8 @@ async def dataspaces_manifest_build_uris(
             },
             status_code=r.status_code or 500,
         )
+    log.info("build-uris: manifest built in %.1fs (uris=%d, total=%.1fs)",
+             time.monotonic() - t1, len(safe_uris), time.monotonic() - t0)
     request.app.state.last_manifest = manifest
     result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
     if skipped:
@@ -719,6 +730,7 @@ async def dataspaces_manifest_build_from_selection(
             uris.add(f"eml:///dataspace('{p}')")
 
     # 3) Add canonical object URIs for all selections and optionally expand refs
+    ref_tasks = []
     for it in items:
         ds = str(it.get("ds") or "")
         typ = _sanitize_type(str(it.get("typ") or ""))
@@ -731,21 +743,27 @@ async def dataspaces_manifest_build_from_selection(
         uris.add(osdu._eml_uri_from_parts(ds, typ, uid))
 
         if include_refs:
-            try:
-                sources = await osdu.list_sources(at, enc, typ, uid)
-            except Exception as e:
-                log.warning("build-from-selection: list_sources failed: %s", e)
-                sources = []
-            try:
-                targets = await osdu.list_targets(at, enc, typ, uid)
-            except Exception as e:
-                log.warning("build-from-selection: list_targets failed: %s", e)
-                targets = []
+            async def _expand(ds_=ds, enc_=enc, typ_=typ, uid_=uid):
+                nodes = []
+                try:
+                    nodes += await osdu.list_sources(at, enc_, typ_, uid_) or []
+                except Exception as e:
+                    log.warning("build-from-selection: list_sources failed: %s", e)
+                try:
+                    nodes += await osdu.list_targets(at, enc_, typ_, uid_) or []
+                except Exception as e:
+                    log.warning("build-from-selection: list_targets failed: %s", e)
+                return ds_, nodes
+            ref_tasks.append(_expand())
 
-            for node in (sources or []):
-                if isinstance(node, dict): _add_node_uri(node, uris, ds)
-            for node in (targets or []):
-                if isinstance(node, dict): _add_node_uri(node, uris, ds)
+    if ref_tasks:
+        t_ref = time.monotonic()
+        ref_results = await asyncio.gather(*ref_tasks)
+        for ds_r, nodes in ref_results:
+            for node in nodes:
+                if isinstance(node, dict): _add_node_uri(node, uris, ds_r)
+        log.info("build-from-selection: refs resolved in %.1fs (%d items)",
+                 time.monotonic() - t_ref, len(ref_tasks))
 
     # 4) Filter out types that crash manifests/build
     safe_uris, skipped = _filter_manifest_uris(uris)

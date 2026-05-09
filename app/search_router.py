@@ -300,7 +300,7 @@ async def _enrich_record_light(
     For BusinessDecision records, fetches GeoLabelSet + stat REV volumes
     (2-3 targeted calls) so headline KPIs render in the list view.
     """
-    from .main import (
+    from .bd_enrichment import (
         _normalize_volumes,
         _enrich_bd_volumes,
         _enrich_bd_geolabel,
@@ -398,7 +398,7 @@ async def _enrich_record(
     Returns a dict ready for template rendering.
     """
     # Import BD enrichment helpers from main lazily (they depend on heavy logic there)
-    from .main import (
+    from .bd_enrichment import (
         _normalize_volumes,
         _enrich_bd_volumes,
         _enrich_bd_geolabel,
