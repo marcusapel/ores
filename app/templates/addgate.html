@@ -130,6 +130,75 @@
   .preview-wrap pre {
     max-height: 400px; overflow: auto; font-size: 12px; line-height: 1.4;
   }
+
+  /* ── Generic record type cards ── */
+  .gen-type-card {
+    display: flex; flex-direction: column; align-items: flex-start;
+    padding: 10px 14px; border: 1px solid var(--eq-border); border-radius: var(--radius);
+    background: var(--eq-white); cursor: pointer; text-align: left;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .gen-type-card:hover { border-color: var(--eq-red); background: rgba(255,18,67,.03); }
+  .gen-type-card.selected { border-color: var(--eq-red); background: rgba(255,18,67,.05); box-shadow: 0 0 0 2px rgba(255,18,67,.15); }
+  .gen-type-card .gtc-icon { font-size: 18px; margin-bottom: 2px; }
+  .gen-type-card .gtc-label { font-size: 13px; font-weight: 700; color: var(--eq-charcoal); }
+  .gen-type-card .gtc-desc { font-size: 11px; color: var(--eq-grey); margin-top: 1px; }
+
+  /* ── Activity tab ── */
+  .act-subtabs { display:flex; gap:0; margin-bottom:1rem; }
+  .act-subtab {
+    flex:1; padding:10px 8px; border:1px solid var(--eq-border); background:var(--eq-white);
+    font-size:13px; font-weight:600; cursor:pointer; text-align:center;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .act-subtab:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .act-subtab:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+  .act-subtab:not(:first-child) { border-left: none; }
+  .act-subtab { color: var(--eq-grey); }
+  .act-subtab:hover { color: var(--eq-charcoal); background: rgba(255,18,67,.03); }
+  .act-subtab.active { color: var(--eq-red); border-color: var(--eq-red); background: rgba(255,18,67,.05); font-weight: 700; }
+  .act-subpanel { display:none; }
+  .act-subpanel.active { display:block; }
+  .param-row {
+    display:flex; gap:6px; align-items:center; padding:6px 8px;
+    border:1px solid var(--eq-border); border-radius: var(--radius);
+    margin-bottom:4px; background: var(--eq-white); font-size:12px;
+  }
+  .param-row input, .param-row select { font-size:12px; padding:3px 6px; border:1px solid var(--eq-border); border-radius:3px; }
+  .param-row .pk { flex:1; min-width:120px; font-weight:600; }
+  .param-row .pv { flex:2; min-width:100px; }
+  .param-preset-cards {
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap:8px; margin-bottom:12px;
+  }
+  .act-preset-card {
+    display:flex; flex-direction:column; align-items:flex-start;
+    padding:10px 14px; border:1px solid var(--eq-border); border-radius:var(--radius);
+    background:var(--eq-white); cursor:pointer; text-align:left;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .act-preset-card:hover { border-color: var(--eq-red); background: rgba(255,18,67,.03); }
+  .act-preset-card.selected { border-color: var(--eq-red); background: rgba(255,18,67,.05); box-shadow: 0 0 0 2px rgba(255,18,67,.15); }
+  .act-preset-card .ap-label { font-size:13px; font-weight:700; color:var(--eq-charcoal); }
+  .act-preset-card .ap-desc  { font-size:11px; color:var(--eq-grey); margin-top:1px; }
+
+  /* Help popup */
+  .help-popup-bg {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+    z-index:1050; align-items:center; justify-content:center;
+  }
+  .help-popup-bg.active { display:flex; }
+  .help-popup {
+    background:var(--eq-white); border-radius:8px; padding:28px 32px;
+    max-width:640px; width:90vw; max-height:80vh; overflow-y:auto;
+    box-shadow:0 8px 32px rgba(0,0,0,.25);
+  }
+  .help-popup h3 { margin-top:0; }
+  .help-popup .help-close { float:right; font-size:20px; background:none; border:none; cursor:pointer; color:var(--eq-slate); }
+  .help-diagram { display:flex; gap:12px; align-items:center; margin:16px 0; flex-wrap:wrap; }
+  .help-box { padding:10px 16px; border-radius:var(--radius); text-align:center; font-size:13px; }
+  .help-box-tpl { background:rgba(255,18,67,.06); border:1px solid var(--eq-red); color:var(--eq-charcoal); }
+  .help-box-act { background:rgba(0,112,121,.06); border:1px solid var(--eq-link); color:var(--eq-charcoal); }
+  .help-arrow { font-size:22px; color:var(--eq-red); }
 </style>
 {% endblock %}
 
@@ -140,6 +209,7 @@
     <button class="mode-tab active" data-mode="bd" onclick="switchMode('bd')">Decision Gate</button>
     <button class="mode-tab" data-mode="cp" onclick="switchMode('cp')">Collab. Project</button>
     <button class="mode-tab" data-mode="pc" onclick="switchMode('pc')">Persisted Collection</button>
+    <button class="mode-tab" data-mode="act" onclick="switchMode('act')">Activity</button>
     <button class="mode-tab" data-mode="generic" onclick="switchMode('generic')">Generic Record</button>
   </div>
 
@@ -500,67 +570,268 @@
   </div><!-- /mode-pc -->
 
   <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Activity (Template + Activity)                                -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div class="mode-panel" id="mode-act" style="display:none;">
+  <h2>Activity &amp; Template
+    <button class="btn" type="button" onclick="showActHelp()" style="font-size:12px;padding:3px 10px;margin-left:8px;vertical-align:middle;">? Guide</button>
+  </h2>
+  <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
+    Activities record <strong>provenance</strong>: who ran what workflow, with which inputs &amp; outputs.
+    A <em>Template</em> defines the reusable parameter structure; an <em>Activity</em> fills that template with actual values.
+  </p>
+
+  <!-- Sub-tab toggle -->
+  <div class="act-subtabs">
+    <button class="act-subtab active" data-act="tpl" onclick="switchActSub('tpl')">Create Template</button>
+    <button class="act-subtab" data-act="run" onclick="switchActSub('run')">Create Activity</button>
+  </div>
+
+  <!-- ═══ Sub-tab: Create Template ═══ -->
+  <div class="act-subpanel active" id="act-sub-tpl">
+  <div class="addgate-panel">
+    <h3>1. Template Basics</h3>
+    <p class="muted" style="margin-top:-.4rem;font-size:.82rem;">Start from a preset or build from scratch.</p>
+
+    <div class="param-preset-cards">
+      <button class="act-preset-card" onclick="selectTplPreset('custom')" id="apc-custom">
+        <span class="ap-label">Custom</span>
+        <span class="ap-desc">Build from scratch</span>
+      </button>
+      <button class="act-preset-card" onclick="selectTplPreset('reservoir_sim')" id="apc-reservoir_sim">
+        <span class="ap-label">Reservoir Simulation</span>
+        <span class="ap-desc">Multi-realisation reservoir modelling</span>
+      </button>
+      <button class="act-preset-card" onclick="selectTplPreset('interpretation')" id="apc-interpretation">
+        <span class="ap-label">Interpretation</span>
+        <span class="ap-desc">Seismic / geo interpretation session</span>
+      </button>
+      <button class="act-preset-card" onclick="selectTplPreset('qc')" id="apc-qc">
+        <span class="ap-label">QC / Validation</span>
+        <span class="ap-desc">Quality check workflow</span>
+      </button>
+    </div>
+
+    <div class="form-grid">
+      <label for="tpl-name">Template Name *</label>
+      <input type="text" id="tpl-name" placeholder="e.g. Reservoir Simulation - Drogon" />
+
+      <label for="tpl-desc">Description</label>
+      <textarea id="tpl-desc" rows="2" placeholder="What this workflow template covers"></textarea>
+
+      <label for="tpl-originator">Originator</label>
+      <input type="text" id="tpl-originator" placeholder="Email or name" />
+    </div>
+  </div>
+
+  <div class="addgate-panel">
+    <h3>2. Parameter Slots</h3>
+    <p class="muted" style="margin-top:-.4rem;font-size:.82rem;">
+      Define input/output parameter slots. Activities will fill these slots with actual values.
+    </p>
+    <div id="tpl-param-list"></div>
+    <div style="margin-top:6px;display:flex;gap:6px;">
+      <button class="btn" type="button" onclick="addTplParam('input')" style="font-size:12px;">+ Input Slot</button>
+      <button class="btn" type="button" onclick="addTplParam('output')" style="font-size:12px;">+ Output Slot</button>
+    </div>
+  </div>
+
+  <div class="addgate-panel">
+    <h3>3. Review &amp; Ingest</h3>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn" type="button" onclick="previewTplRecord()">Preview JSON</button>
+      <button class="btn btn-primary" type="button" onclick="submitTplRecord()">Create Template</button>
+    </div>
+    <div class="preview-wrap" id="tpl-preview-wrap" style="display:none;"><pre id="tpl-preview-json"></pre></div>
+    <div id="tpl-result-area"></div>
+  </div>
+  </div><!-- /act-sub-tpl -->
+
+  <!-- ═══ Sub-tab: Create Activity ═══ -->
+  <div class="act-subpanel" id="act-sub-run">
+  <div class="addgate-panel">
+    <h3>1. Activity Basics</h3>
+    <div class="form-grid">
+      <label for="act-name">Activity Name *</label>
+      <input type="text" id="act-name" placeholder="e.g. Drogon ResSim Run 2024-Q3" />
+
+      <label for="act-desc">Description</label>
+      <textarea id="act-desc" rows="2" placeholder="Describe what was executed"></textarea>
+
+      <label for="act-originator">Originator</label>
+      <input type="text" id="act-originator" placeholder="Email or name" />
+
+      <label for="act-template-id">Activity Template ID</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="act-template-id" placeholder="dev:work-product-component--ActivityTemplate:..." style="flex:1" />
+        <button class="btn" type="button" onclick="loadTemplateSlots()" style="font-size:12px;">Load Slots</button>
+      </div>
+      <span class="hint">Paste a template ID and click <b>Load Slots</b> to auto-populate parameter rows from the template. Or add parameters manually below.</span>
+
+      <label for="act-status">Workflow Status</label>
+      <select id="act-status">
+        <option value="Completed">Completed</option>
+        <option value="InProgress">In Progress</option>
+        <option value="Planned">Planned</option>
+        <option value="Failed">Failed</option>
+      </select>
+
+      <label for="act-datetime">Execution Date/Time</label>
+      <input type="datetime-local" id="act-datetime" />
+
+      <label for="act-parent">Parent Object ID</label>
+      <input type="text" id="act-parent" placeholder="Optional: parent master-data record ID" />
+    </div>
+  </div>
+
+  <div class="addgate-panel">
+    <h3>2. Parameters</h3>
+    <p class="muted" style="margin-top:-.4rem;font-size:.82rem;">
+      Fill parameter values. If you loaded a template, slots appear pre-populated. You can also add extra parameters.
+    </p>
+    <div id="act-param-list"></div>
+    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn" type="button" onclick="addActParam('input','string')" style="font-size:12px;">+ String Input</button>
+      <button class="btn" type="button" onclick="addActParam('input','integer')" style="font-size:12px;">+ Integer Input</button>
+      <button class="btn" type="button" onclick="addActParam('input','DataObject')" style="font-size:12px;">+ DataObject Input</button>
+      <button class="btn" type="button" onclick="addActParam('output','DataObject')" style="font-size:12px;">+ DataObject Output</button>
+    </div>
+  </div>
+
+  <div class="addgate-panel">
+    <h3>3. Review &amp; Ingest</h3>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn" type="button" onclick="previewActRecord()">Preview JSON</button>
+      <button class="btn btn-primary" type="button" onclick="submitActRecord()">Create Activity</button>
+    </div>
+    <div class="preview-wrap" id="act-preview-wrap" style="display:none;"><pre id="act-preview-json"></pre></div>
+    <div id="act-result-area"></div>
+  </div>
+  </div><!-- /act-sub-run -->
+  </div><!-- /mode-act -->
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
   <!-- TAB: Generic Record                                                -->
   <!-- ════════════════════════════════════════════════════════════════════ -->
   <div class="mode-panel" id="mode-generic" style="display:none;">
   <h2>Create Generic Record</h2>
   <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
-    Create any OSDU record (WPC, master-data, or reference-data) by specifying the <code>kind</code>
-    and building the <code>data</code> block from key&ndash;value fields.
-    ACL, legal, and partition are applied automatically from the active instance.
+    Create an OSDU record by choosing a type and filling in the data fields.
+    Focused on <strong>SME-authored metadata</strong> &mdash; governance objects, assessments, and entity definitions
+    that subject-matter experts create manually rather than application pipelines.
   </p>
 
-  <!-- ═══ GEN 1. Record identity ═══ -->
+  <!-- ═══ GEN 1. Type selector ═══ -->
   <div class="addgate-panel">
-    <h3>1. Record Identity</h3>
-    <div class="form-grid">
-      <label for="gen-kind">Kind *</label>
-      <div style="display:flex;gap:.5rem;">
-        <input type="text" id="gen-kind" list="gen-kind-list" placeholder="e.g. osdu:wks:master-data--Risk:1.2.0" style="flex:1;" />
-      </div>
-      <span class="hint">Full OSDU kind string. Type to filter suggestions.</span>
+    <h3>1. Record Type</h3>
 
+    <!-- Type preset cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-bottom:12px;">
+      <button class="gen-type-card" onclick="selectGenType('risk')" id="gtc-risk">
+        <span class="gtc-icon">⚠</span>
+        <span class="gtc-label">Risk</span>
+        <span class="gtc-desc">Probability, severity, mitigations</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('document')" id="gtc-document">
+        <span class="gtc-icon">📄</span>
+        <span class="gtc-label">Document</span>
+        <span class="gtc-desc">SRA, CRA, PDO, report metadata</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('field')" id="gtc-field">
+        <span class="gtc-icon">🗺</span>
+        <span class="gtc-label">Field</span>
+        <span class="gtc-desc">Oil/gas field entity</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('organisation')" id="gtc-organisation">
+        <span class="gtc-icon">🏢</span>
+        <span class="gtc-label">Organisation</span>
+        <span class="gtc-desc">Company or team</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('reservoir')" id="gtc-reservoir">
+        <span class="gtc-icon">🪨</span>
+        <span class="gtc-label">Reservoir</span>
+        <span class="gtc-desc">Reservoir entity definition</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('reservoirsegment')" id="gtc-reservoirsegment">
+        <span class="gtc-icon">🧩</span>
+        <span class="gtc-label">Reservoir Segment</span>
+        <span class="gtc-desc">Fault-bounded compartment</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('well')" id="gtc-well">
+        <span class="gtc-icon">🛢</span>
+        <span class="gtc-label">Well</span>
+        <span class="gtc-desc">Well header metadata</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('wellbore')" id="gtc-wellbore">
+        <span class="gtc-icon">⬇</span>
+        <span class="gtc-label">Wellbore</span>
+        <span class="gtc-desc">Wellbore in a well</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('horizoninterp')" id="gtc-horizoninterp">
+        <span class="gtc-icon">〰</span>
+        <span class="gtc-label">Horizon Interpretation</span>
+        <span class="gtc-desc">Geologic meaning of a horizon</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('devconcept')" id="gtc-devconcept">
+        <span class="gtc-icon">🏗</span>
+        <span class="gtc-label">Development Concept</span>
+        <span class="gtc-desc">Facility, wells, drainage strategy</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('refdata')" id="gtc-refdata">
+        <span class="gtc-icon">📚</span>
+        <span class="gtc-label">Reference Data</span>
+        <span class="gtc-desc">Custom taxonomy / classification</span>
+      </button>
+      <button class="gen-type-card" onclick="selectGenType('custom')" id="gtc-custom">
+        <span class="gtc-icon">✏</span>
+        <span class="gtc-label">Custom Kind</span>
+        <span class="gtc-desc">Enter any OSDU kind manually</span>
+      </button>
+    </div>
+
+    <div class="form-grid" id="gen-kind-row" style="display:none;">
+      <label for="gen-kind">Kind *</label>
+      <input type="text" id="gen-kind" list="gen-kind-list" placeholder="e.g. osdu:wks:master-data--Risk:1.2.0" />
+      <span class="hint">Full OSDU kind string. Edit to adjust version or use a custom schema.</span>
       <datalist id="gen-kind-list">
-        <!-- WPC types -->
-        <option value="osdu:wks:work-product-component--Activity:1.0.0">
-        <option value="osdu:wks:work-product-component--ActivityTemplate:1.0.0">
-        <option value="osdu:wks:work-product-component--ColumnBasedTable:1.4.0">
-        <option value="osdu:wks:work-product-component--DevelopmentConcept:3.0.0">
-        <option value="osdu:wks:work-product-component--Document:1.2.0">
-        <option value="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
-        <option value="osdu:wks:work-product-component--GeoLabelSet:1.0.0">
-        <option value="osdu:wks:work-product-component--PersistedCollection:1.0.0">
-        <option value="osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0">
-        <option value="osdu:wks:work-product-component--StructureMap:1.0.0">
-        <!-- Master data types -->
-        <option value="osdu:wks:master-data--BusinessDecision:1.0.0">
-        <option value="osdu:wks:master-data--CollaborationProject:1.0.0">
+        <option value="osdu:wks:master-data--Risk:1.2.0">
         <option value="osdu:wks:master-data--Field:1.1.0">
         <option value="osdu:wks:master-data--Organisation:1.1.0">
         <option value="osdu:wks:master-data--Reservoir:2.0.0">
         <option value="osdu:wks:master-data--ReservoirSegment:2.0.0">
-        <option value="osdu:wks:master-data--Risk:1.2.0">
         <option value="osdu:wks:master-data--Well:1.1.0">
         <option value="osdu:wks:master-data--Wellbore:1.2.0">
-        <!-- Reference data types -->
+        <option value="osdu:wks:work-product-component--Activity:1.0.0">
+        <option value="osdu:wks:work-product-component--ActivityTemplate:1.0.0">
+        <option value="osdu:wks:work-product-component--Document:1.2.0">
+        <option value="osdu:wks:work-product-component--DevelopmentConcept:3.0.0">
+        <option value="osdu:wks:work-product-component--HorizonInterpretation:1.2.0">
         <option value="osdu:wks:reference-data--DecisionLevel:1.0.0">
         <option value="osdu:wks:reference-data--DecisionApprovalStatus:1.0.0">
         <option value="osdu:wks:reference-data--RiskCategory:1.0.0">
+        <option value="osdu:wks:reference-data--RiskProbabilityScale:1.0.0">
+        <option value="osdu:wks:reference-data--RiskSeverityScale:1.0.0">
         <option value="osdu:wks:reference-data--ParameterType:1.0.0">
         <option value="osdu:wks:reference-data--UnitOfMeasure:1.0.0">
+        <option value="osdu:wks:reference-data--DocumentType:1.0.0">
+        <option value="osdu:wks:reference-data--FacilityType:1.0.0">
+        <option value="osdu:wks:reference-data--FieldDevelopmentPhaseType:1.0.0">
       </datalist>
 
       <label for="gen-record-id">Record ID</label>
       <input type="text" id="gen-record-id" placeholder="Auto-generated if blank" />
-      <span class="hint">Leave blank for UUID-based auto ID, or enter a full ID like <code>dev:master-data--Risk:MyRisk:1</code>.</span>
+      <span class="hint">Leave blank for UUID-based auto ID, or enter like <code>dev:master-data--Risk:MyRisk:1</code>.</span>
     </div>
+
+    <div id="gen-type-desc" style="display:none;margin-top:8px;padding:10px 14px;background:var(--eq-light);border-radius:var(--radius);font-size:13px;"></div>
   </div>
 
   <!-- ═══ GEN 2. Data fields ═══ -->
   <div class="addgate-panel">
     <h3>2. Data Fields</h3>
     <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
-      Build the <code>data</code> block. Common fields: <code>Name</code>, <code>Description</code>.
+      Build the <code>data</code> block. Fields are pre-populated for the selected type &mdash;
+      fill in values, remove what you don&rsquo;t need, and add extras.
       Use dot-notation for nested objects (e.g. <code>ext.custom.value</code>).
     </p>
 
@@ -578,19 +849,9 @@
       <button class="btn" type="button" onclick="addGenField()">+ Add</button>
     </div>
     <div style="margin-bottom:.3rem;font-size:11px;color:var(--eq-grey);">
-      Type <b>array</b>: comma-separated values or JSON array. <b>json</b>: raw JSON. <b>auto</b>: best-guess (number, bool, or string).
+      Type <b>array</b>: comma-separated or JSON array. <b>json</b>: raw JSON object. <b>auto</b>: best-guess.
     </div>
     <div class="risk-list" id="gen-field-list"></div>
-
-    <!-- Quick-add common fields -->
-    <div style="margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--eq-border);">
-      <span style="font-size:12px;font-weight:600;color:var(--eq-grey);">Quick-add:</span>
-      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('Name','')">Name</button>
-      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('Description','')">Description</button>
-      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('Tags','','array')">Tags</button>
-      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('DataReferences','','array')">DataReferences</button>
-      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('RiskIDs','','array')">RiskIDs</button>
-    </div>
   </div>
 
   <!-- ═══ GEN 3. Preview & submit ═══ -->
@@ -606,6 +867,52 @@
     <div id="gen-result-area"></div>
   </div>
   </div><!-- /mode-generic -->
+</div>
+
+<!-- ═══ Activity help popup ═══ -->
+<div class="help-popup-bg" id="act-help-bg" onclick="if(event.target===this)hideActHelp()">
+  <div class="help-popup">
+    <button class="help-close" onclick="hideActHelp()">&times;</button>
+    <h3>Activity &amp; Template Model</h3>
+
+    <div class="help-diagram">
+      <div class="help-box help-box-tpl"><strong>ActivityTemplate</strong><br>defines parameter slots</div>
+      <span class="help-arrow">&rarr;</span>
+      <div class="help-box help-box-act"><strong>Activity</strong><br>fills slots with values</div>
+    </div>
+
+    <h4 style="margin-bottom:4px;">How it works</h4>
+    <ol style="font-size:13px;line-height:1.6;">
+      <li><strong>Create a Template</strong> &mdash; define the reusable <em>shape</em> of a workflow: what inputs it needs (e.g. &ldquo;Process&rdquo;, &ldquo;NumberOfRealizations&rdquo;), what outputs it produces (e.g. &ldquo;OutputVolumes&rdquo;). Each slot has a title, role (input/output), and expected kind (string, integer, or DataObject reference).</li>
+      <li><strong>Run the workflow</strong> in your tool (RMS, ERT, custom script).</li>
+      <li><strong>Create an Activity</strong> &mdash; record the execution by referencing the template ID and filling each parameter slot with the actual value used (a string, a number, or an OSDU record ID for DataObject parameters).</li>
+    </ol>
+
+    <h4 style="margin-bottom:4px;">Template parameter slots</h4>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
+      <tr style="background:var(--eq-light);"><th style="text-align:left;padding:4px 8px;">Field</th><th style="text-align:left;padding:4px 8px;">Meaning</th></tr>
+      <tr><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);"><code>Title</code></td><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);">Slot name &mdash; Activities must use the same title</td></tr>
+      <tr><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);"><code>IsInput / IsOutput</code></td><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);">Marks the slot&rsquo;s role</td></tr>
+      <tr><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);"><code>DefaultParameterKind</code></td><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);">Expected value type: <code>string</code>, <code>integer</code>, <code>DataObject</code></td></tr>
+      <tr><td style="padding:4px 8px;"><code>MinOccurs / MaxOccurs</code></td><td style="padding:4px 8px;">Cardinality (0=optional, 1=required)</td></tr>
+    </table>
+
+    <h4 style="margin-bottom:4px;">Activity parameter values</h4>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
+      <tr style="background:var(--eq-light);"><th style="text-align:left;padding:4px 8px;">Field</th><th style="text-align:left;padding:4px 8px;">Meaning</th></tr>
+      <tr><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);"><code>Title</code></td><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);">Must match a template slot title</td></tr>
+      <tr><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);"><code>ParameterKindID</code></td><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);">Ref-data link: <code>ParameterKind:String</code>, <code>:Integer</code>, <code>:DataObject</code></td></tr>
+      <tr><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);"><code>ParameterRoleID</code></td><td style="padding:4px 8px;border-bottom:1px solid var(--eq-border);">Ref-data link: <code>ParameterRole:Input</code> or <code>:Output</code></td></tr>
+      <tr><td style="padding:4px 8px;"><code>StringParameter / IntegerParameter / DataObjectParameter</code></td><td style="padding:4px 8px;">The actual value in the typed field</td></tr>
+    </table>
+
+    <h4 style="margin-bottom:4px;">Quick tips</h4>
+    <ul style="font-size:13px;line-height:1.6;margin-bottom:0;">
+      <li>Use the <b>Template presets</b> (Reservoir Simulation, Interpretation, QC) to scaffold common workflows instantly.</li>
+      <li>After creating a template, copy the returned ID into the Activity form&rsquo;s <em>Template ID</em> field and click <b>Load Slots</b> to auto-populate parameters.</li>
+      <li>The Activity tab is for <em>SME-authored provenance</em>. Pipeline-generated activities (e.g. from ERT/FMU automation) can also be created here for testing.</li>
+    </ul>
+  </div>
 </div>
 
 <!-- ═══ WPC browse modal ═══ -->
@@ -666,7 +973,7 @@
     var el = document.getElementById('custom-rec-list');
     if (!customRecords.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No custom records added yet.</span>'; return; }
     el.innerHTML = customRecords.map(function(rec, i) {
-      return '<div class="risk-item"><strong style="min-width:120px;font-size:12px;">' + escHtml(rec.label) + '</strong>' +
+      return '<div class="risk-item"><strong style="min-width:120px;font-size:12px;color:var(--eq-charcoal);">' + escHtml(rec.label) + '</strong>' +
              '<span class="risk-id">' + escHtml(rec.id) + '</span>' +
              '<button class="remove-btn" onclick="removeCustomRecord(' + i + ')" title="Remove">&times;</button></div>';
     }).join('');
@@ -871,7 +1178,7 @@
     var el = document.getElementById('cp-custom-rec-list');
     if (!cpCustomRecords.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No custom records added yet.</span>'; return; }
     el.innerHTML = cpCustomRecords.map(function(rec, i) {
-      return '<div class="risk-item"><strong style="min-width:120px;font-size:12px;">' + escHtml(rec.label) + '</strong>' +
+      return '<div class="risk-item"><strong style="min-width:120px;font-size:12px;color:var(--eq-charcoal);">' + escHtml(rec.label) + '</strong>' +
              '<span class="risk-id">' + escHtml(rec.id) + '</span>' +
              '<button class="remove-btn" onclick="removeCpCustomRecord(' + i + ')" title="Remove">&times;</button></div>';
     }).join('');
@@ -1028,9 +1335,571 @@
   };
 
   // ══════════════════════════════════════════════════════════════════════
+  // Activity & Template form logic
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Sub-tab toggle ──
+  window.switchActSub = function(sub) {
+    document.querySelectorAll('.act-subtab').forEach(function(t) {
+      t.classList.toggle('active', t.getAttribute('data-act') === sub);
+    });
+    document.querySelectorAll('.act-subpanel').forEach(function(p) {
+      p.classList.toggle('active', p.id === 'act-sub-' + sub);
+    });
+  };
+
+  // ── Help popup ──
+  window.showActHelp = function() { document.getElementById('act-help-bg').classList.add('active'); };
+  window.hideActHelp = function() { document.getElementById('act-help-bg').classList.remove('active'); };
+
+  // ────────────────────────────────────────────────────────────────────
+  // TEMPLATE sub-tab
+  // ────────────────────────────────────────────────────────────────────
+
+  var TPL_PRESETS = {
+    reservoir_sim: {
+      name: 'Reservoir Simulation',
+      desc: 'Multi-realisation reservoir modelling with ERT/RMS',
+      params: [
+        {title:'InputParameters', desc:'Per-realisation input table',  isInput:true,  isOutput:false, kind:'DataObject', min:0, max:1},
+        {title:'Process',         desc:'RMS workflow name',            isInput:true,  isOutput:false, kind:'string',     min:1, max:1},
+        {title:'NumberOfRealizations', desc:'Realisations executed',   isInput:true,  isOutput:false, kind:'integer',    min:1, max:1},
+        {title:'Workflow',        desc:'ERT workflow identifier',      isInput:true,  isOutput:false, kind:'string',     min:0, max:1},
+        {title:'Method',          desc:'Simulation method',            isInput:true,  isOutput:false, kind:'string',     min:0, max:1},
+        {title:'Variables',       desc:'Serialised variable set (JSON)', isInput:true, isOutput:false, kind:'string',   min:0, max:1},
+        {title:'DesignMatrix',    desc:'Serialised design matrix (JSON)',isInput:true, isOutput:false, kind:'string',   min:0, max:1},
+        {title:'OutputParameters',desc:'Per-realisation output table', isInput:false, isOutput:true,  kind:'DataObject', min:0, max:1},
+        {title:'OutputVolumes',   desc:'Aggregated volume results',    isInput:false, isOutput:true,  kind:'DataObject', min:1, max:1},
+        {title:'ReportTable',     desc:'Summary report table',         isInput:false, isOutput:true,  kind:'DataObject', min:1, max:1},
+      ]
+    },
+    interpretation: {
+      name: 'Interpretation Session',
+      desc: 'Seismic or geological interpretation',
+      params: [
+        {title:'InputSurvey',     desc:'Seismic survey input',         isInput:true,  isOutput:false, kind:'DataObject', min:1, max:1},
+        {title:'Interpreter',     desc:'Person who interpreted',       isInput:true,  isOutput:false, kind:'string',     min:1, max:1},
+        {title:'Method',          desc:'Interpretation method/software', isInput:true, isOutput:false, kind:'string',    min:0, max:1},
+        {title:'OutputHorizons',  desc:'Interpreted horizon surfaces',  isInput:false, isOutput:true, kind:'DataObject', min:0, max:1},
+        {title:'OutputFaults',    desc:'Interpreted fault surfaces',    isInput:false, isOutput:true, kind:'DataObject', min:0, max:1},
+      ]
+    },
+    qc: {
+      name: 'QC / Validation',
+      desc: 'Quality control check workflow',
+      params: [
+        {title:'InputData',       desc:'Data under QC',                isInput:true,  isOutput:false, kind:'DataObject', min:1, max:1},
+        {title:'QCMethod',        desc:'Validation method used',       isInput:true,  isOutput:false, kind:'string',     min:1, max:1},
+        {title:'Threshold',       desc:'Pass/fail threshold',          isInput:true,  isOutput:false, kind:'string',     min:0, max:1},
+        {title:'QCResult',        desc:'Pass/Fail/Warning',            isInput:false, isOutput:true,  kind:'string',     min:1, max:1},
+        {title:'Report',          desc:'QC report DataObject',         isInput:false, isOutput:true,  kind:'DataObject', min:0, max:1},
+      ]
+    },
+    custom: {
+      name: '', desc: 'Build parameter slots from scratch',
+      params: []
+    },
+  };
+
+  var tplParams = [];
+
+  window.selectTplPreset = function(presetName) {
+    var preset = TPL_PRESETS[presetName];
+    if (!preset) return;
+    // Highlight card
+    document.querySelectorAll('.act-preset-card').forEach(function(c) {
+      c.classList.toggle('selected', c.id === 'apc-' + presetName);
+    });
+    // Fill name/desc
+    if (preset.name) document.getElementById('tpl-name').value = preset.name;
+    if (preset.desc && presetName !== 'custom')
+      document.getElementById('tpl-desc').value = preset.desc;
+    // Copy preset params
+    tplParams = preset.params.map(function(p) {
+      return {title:p.title, desc:p.desc, isInput:p.isInput, isOutput:p.isOutput, kind:p.kind, min:p.min, max:p.max};
+    });
+    renderTplParams();
+  };
+
+  window.addTplParam = function(role) {
+    tplParams.push({
+      title: '', desc: '',
+      isInput: role === 'input', isOutput: role === 'output',
+      kind: 'string', min: 0, max: 1,
+    });
+    renderTplParams();
+  };
+
+  window.removeTplParam = function(i) { tplParams.splice(i, 1); renderTplParams(); };
+
+  function renderTplParams() {
+    var el = document.getElementById('tpl-param-list');
+    if (!tplParams.length) {
+      el.innerHTML = '<span class="muted" style="font-size:13px;">No parameter slots yet. Choose a preset above or add slots manually.</span>';
+      return;
+    }
+    el.innerHTML = tplParams.map(function(p, i) {
+      var roleTag = p.isInput ? '<span style="color:var(--eq-red);font-weight:700;min-width:28px;font-size:11px;">IN</span>' :
+                                '<span style="color:var(--eq-slate);font-weight:700;min-width:28px;font-size:11px;">OUT</span>';
+      return '<div class="param-row">' +
+        roleTag +
+        '<input class="pk" placeholder="Title" value="' + escAttr(p.title) + '" oninput="tplParams['+i+'].title=this.value" />' +
+        '<input class="pv" placeholder="Description" value="' + escAttr(p.desc) + '" oninput="tplParams['+i+'].desc=this.value" />' +
+        '<select style="width:100px" onchange="tplParams['+i+'].kind=this.value">' +
+          '<option value="string"' + (p.kind==='string'?' selected':'') + '>string</option>' +
+          '<option value="integer"' + (p.kind==='integer'?' selected':'') + '>integer</option>' +
+          '<option value="DataObject"' + (p.kind==='DataObject'?' selected':'') + '>DataObject</option>' +
+        '</select>' +
+        '<select style="width:65px;font-size:11px;" onchange="tplParams['+i+'].min=parseInt(this.value)" title="MinOccurs">' +
+          '<option value="0"' + (p.min===0?' selected':'') + '>opt</option>' +
+          '<option value="1"' + (p.min===1?' selected':'') + '>req</option>' +
+        '</select>' +
+        '<button class="remove-btn" onclick="removeTplParam('+i+')" title="Remove">&times;</button>' +
+        '</div>';
+    }).join('');
+  }
+  renderTplParams();
+
+  function buildTplPayload() {
+    return {
+      name:        document.getElementById('tpl-name').value.trim(),
+      description: document.getElementById('tpl-desc').value.trim(),
+      originator:  document.getElementById('tpl-originator').value.trim(),
+      parameter_templates: tplParams.map(function(p) {
+        return {
+          Title:                p.title,
+          Description:          p.desc,
+          IsInput:              p.isInput,
+          IsOutput:             p.isOutput,
+          MinOccurs:            p.min,
+          MaxOccurs:            p.max,
+          DefaultParameterKind: p.kind,
+        };
+      }),
+    };
+  }
+
+  window.previewTplRecord = function() {
+    var payload = buildTplPayload();
+    var pre = document.getElementById('tpl-preview-json');
+    pre.textContent = JSON.stringify(payload, null, 2);
+    document.getElementById('tpl-preview-wrap').style.display = 'block';
+  };
+
+  window.submitTplRecord = function() {
+    var payload = buildTplPayload();
+    if (!payload.name) { alert('Template name is required.'); return; }
+
+    document.getElementById('submit-overlay').classList.add('active');
+    document.getElementById('tpl-result-area').innerHTML = '';
+
+    fetch('/add-dg/create-activity-template', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json().then(function(d) { return {status: r.status, data: d}; }); })
+    .then(function(res) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      var area = document.getElementById('tpl-result-area');
+      if (res.data.ok) {
+        area.innerHTML = '<div class="result-ok">' +
+          '<strong>&#10003; ActivityTemplate created</strong><br>' +
+          '<span class="bd-id">' + escHtml(res.data.record_id) + '</span><br>' +
+          '<span class="muted">' + res.data.param_count + ' parameter slots &middot; Status: ' + res.status + '</span><br>' +
+          '<button class="btn" style="margin-top:6px;font-size:12px;" onclick="copyTplId(\'' + escAttr(res.data.record_id) + '\')">Copy ID &amp; switch to Activity tab</button></div>';
+      } else {
+        area.innerHTML = '<div class="result-err"><strong>Ingest failed (HTTP ' + res.status + ')</strong><br>' +
+          '<pre style="margin:.4rem 0 0;font-size:12px;white-space:pre-wrap;">' +
+          escHtml(res.data.response || res.data.error || JSON.stringify(res.data)) + '</pre></div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      document.getElementById('tpl-result-area').innerHTML =
+        '<div class="result-err"><strong>Network error:</strong> ' + escHtml(err.message) + '</div>';
+    });
+  };
+
+  window.copyTplId = function(id) {
+    document.getElementById('act-template-id').value = id;
+    // Pre-populate template validation slots from the just-created template
+    loadedTemplateSlots = tplParams.map(function(p) {
+      return {
+        title: p.title,
+        isInput: p.isInput,
+        isOutput: p.isOutput,
+        kind: p.kind,
+        minOccurs: p.min,
+      };
+    });
+    // Pre-populate activity params from template slots
+    actParams = tplParams.map(function(p) {
+      var role = p.isInput ? 'input' : 'output';
+      var kind = p.kind.toLowerCase() === 'dataobject' ? 'DataObject' : p.kind;
+      return {title: p.title, desc: p.desc, role: role, kind: kind, value: '', required: (p.min || 0) >= 1};
+    });
+    renderActParams();
+    switchActSub('run');
+  };
+
+  // ────────────────────────────────────────────────────────────────────
+  // ACTIVITY sub-tab
+  // ────────────────────────────────────────────────────────────────────
+
+  var actParams = [];
+  var loadedTemplateSlots = null;  // template slots for validation
+
+  window.loadTemplateSlots = function() {
+    var tplId = document.getElementById('act-template-id').value.trim();
+    if (!tplId) { alert('Enter an ActivityTemplate ID first.'); return; }
+
+    // Fetch the template record via Storage API
+    fetch('/add-dg/fetch-record?id=' + encodeURIComponent(tplId))
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!res.ok) { alert('Could not fetch template: ' + (res.error || 'unknown error')); return; }
+      var data = res.data || {};
+      var slots = data.ParameterTemplates || data.parameterTemplates || [];
+      if (!slots.length) { alert('Template has no parameter slots.'); return; }
+      // Store template slots for validation
+      loadedTemplateSlots = slots.map(function(s) {
+        return {
+          title: s.Title || '',
+          isInput: !!s.IsInput,
+          isOutput: !!s.IsOutput,
+          kind: (s.DefaultParameterKind || 'string'),
+          minOccurs: s.MinOccurs || 0,
+        };
+      });
+      actParams = slots.map(function(s) {
+        var role = s.IsInput ? 'input' : 'output';
+        var kind = (s.DefaultParameterKind || 'string').toLowerCase();
+        if (kind === 'dataobject') kind = 'DataObject';
+        return {title: s.Title||'', desc: s.Description||'', role: role, kind: kind, value: '', required: (s.MinOccurs||0) >= 1};
+      });
+      renderActParams();
+    })
+    .catch(function(err) { alert('Error fetching template: ' + err.message); });
+  };
+
+  window.addActParam = function(role, kind) {
+    actParams.push({title:'', desc:'', role:role, kind:kind||'string', value:''});
+    renderActParams();
+  };
+
+  window.removeActParam = function(i) { actParams.splice(i, 1); renderActParams(); };
+
+  function renderActParams() {
+    var el = document.getElementById('act-param-list');
+    if (!actParams.length) {
+      el.innerHTML = '<span class="muted" style="font-size:13px;">No parameters yet. Load from a template or add manually.</span>';
+      return;
+    }
+    el.innerHTML = actParams.map(function(p, i) {
+      var roleTag = p.role === 'input'
+        ? '<span style="color:var(--eq-red);font-weight:700;min-width:28px;font-size:11px;">IN</span>'
+        : '<span style="color:var(--eq-slate);font-weight:700;min-width:28px;font-size:11px;">OUT</span>';
+      var kindBadge = '<span style="font-size:10px;color:var(--eq-grey);min-width:60px;">['+p.kind+']</span>';
+      var reqBadge = p.required ? '<span style="font-size:9px;color:var(--eq-red);font-weight:700;">REQ</span>' : '';
+      var placeholder = p.kind === 'DataObject' ? 'OSDU record ID' :
+                        p.kind === 'integer' ? 'Integer value' : 'String value';
+      var borderStyle = (p.required && !p.value) ? 'border-color:var(--eq-red);' : '';
+      return '<div class="param-row">' +
+        roleTag + kindBadge + reqBadge +
+        '<input class="pk" placeholder="Title" value="' + escAttr(p.title) + '" oninput="actParams['+i+'].title=this.value" />' +
+        '<input class="pv" placeholder="' + placeholder + '" value="' + escAttr(p.value) + '" oninput="actParams['+i+'].value=this.value" style="' + borderStyle + '" />' +
+        '<button class="remove-btn" onclick="removeActParam('+i+')" title="Remove">&times;</button>' +
+        '</div>';
+    }).join('');
+  }
+  renderActParams();
+
+  // Set default datetime to now
+  (function() {
+    var dt = document.getElementById('act-datetime');
+    if (dt) { var now = new Date(); dt.value = now.toISOString().slice(0,16); }
+  })();
+
+  function buildActPayload() {
+    var idPrefix = '';  // auto
+    return {
+      name:            document.getElementById('act-name').value.trim(),
+      description:     document.getElementById('act-desc').value.trim(),
+      originator:      document.getElementById('act-originator').value.trim(),
+      template_id:     document.getElementById('act-template-id').value.trim(),
+      workflow_status: document.getElementById('act-status').value,
+      creation_datetime: document.getElementById('act-datetime').value,
+      parent_object_id: document.getElementById('act-parent').value.trim(),
+      parameters: actParams.map(function(p) {
+        return {title: p.title, role: p.role, kind: p.kind, value: p.value, desc: p.desc};
+      }),
+    };
+  }
+
+  window.previewActRecord = function() {
+    var payload = buildActPayload();
+    var pre = document.getElementById('act-preview-json');
+    pre.textContent = JSON.stringify(payload, null, 2);
+    document.getElementById('act-preview-wrap').style.display = 'block';
+  };
+
+  // Validate activity params against loaded template
+  function validateActAgainstTemplate() {
+    if (!loadedTemplateSlots) return null; // no template loaded, skip validation
+    var issues = [];
+    // Check required template slots have matching params with values
+    loadedTemplateSlots.forEach(function(slot) {
+      if (slot.minOccurs >= 1) {
+        var match = actParams.filter(function(p) { return p.title === slot.title; });
+        if (!match.length) {
+          issues.push('Missing required slot: "' + slot.title + '"');
+        } else if (!match[0].value && match[0].value !== 0) {
+          issues.push('Required slot "' + slot.title + '" has no value');
+        }
+      }
+    });
+    // Check all params with titles have matching template slots (warn on extras)
+    var slotTitles = loadedTemplateSlots.map(function(s) { return s.title; });
+    actParams.forEach(function(p) {
+      if (p.title && slotTitles.indexOf(p.title) < 0) {
+        issues.push('Parameter "' + p.title + '" not in template (will be added as extra)');
+      }
+    });
+    // Check kind matches
+    loadedTemplateSlots.forEach(function(slot) {
+      var match = actParams.filter(function(p) { return p.title === slot.title; });
+      if (match.length) {
+        var expected = slot.kind.toLowerCase() === 'dataobject' ? 'DataObject' : slot.kind.toLowerCase();
+        if (match[0].kind !== expected) {
+          issues.push('"' + slot.title + '" kind mismatch: template expects ' + expected + ', got ' + match[0].kind);
+        }
+      }
+    });
+    return issues.length ? issues : null;
+  }
+
+  window.submitActRecord = function() {
+    var payload = buildActPayload();
+    if (!payload.name) { alert('Activity name is required.'); return; }
+
+    // Validate against template if one was loaded
+    var issues = validateActAgainstTemplate();
+    if (issues) {
+      var msg = 'Template validation:\n\n' + issues.join('\n');
+      var hasErrors = issues.some(function(i) { return i.indexOf('Missing required') === 0 || i.indexOf('Required slot') === 0; });
+      if (hasErrors) {
+        alert(msg + '\n\nPlease fix required fields before submitting.');
+        return;
+      }
+      // Warnings only (extras, kind mismatches) — let user decide
+      if (!confirm(msg + '\n\nProceed anyway?')) return;
+    }
+
+    document.getElementById('submit-overlay').classList.add('active');
+    document.getElementById('act-result-area').innerHTML = '';
+
+    fetch('/add-dg/create-activity', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json().then(function(d) { return {status: r.status, data: d}; }); })
+    .then(function(res) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      var area = document.getElementById('act-result-area');
+      if (res.data.ok) {
+        area.innerHTML = '<div class="result-ok">' +
+          '<strong>&#10003; Activity created</strong><br>' +
+          '<span class="bd-id">' + escHtml(res.data.record_id) + '</span><br>' +
+          '<span class="muted">' + res.data.param_count + ' parameters &middot; Status: ' + res.status + '</span></div>';
+      } else {
+        area.innerHTML = '<div class="result-err"><strong>Ingest failed (HTTP ' + res.status + ')</strong><br>' +
+          '<pre style="margin:.4rem 0 0;font-size:12px;white-space:pre-wrap;">' +
+          escHtml(res.data.response || res.data.error || JSON.stringify(res.data)) + '</pre></div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      document.getElementById('act-result-area').innerHTML =
+        '<div class="result-err"><strong>Network error:</strong> ' + escHtml(err.message) + '</div>';
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
   // Generic Record form logic
   // ══════════════════════════════════════════════════════════════════════
+
+  // ── Type presets: kind + scaffold fields for each SME type ──
+  var GEN_PRESETS = {
+    risk: {
+      kind: 'osdu:wks:master-data--Risk:1.2.0',
+      desc: '<b>Risk</b> &mdash; subsurface or project risk with probability, severity, and mitigation strategy. Linked to BusinessDecisions via <code>RiskIDs[]</code>.',
+      fields: [
+        {key: 'Name',             value: '', type: 'string'},
+        {key: 'Description',      value: '', type: 'string'},
+        {key: 'RiskCategoryID',   value: '', type: 'string'},
+        {key: 'RiskDisciplineID', value: '', type: 'string'},
+        {key: 'InherentRiskProbabilityID', value: '', type: 'string'},
+        {key: 'InherentRiskSeverityID',    value: '', type: 'string'},
+        {key: 'ResidualRiskProbabilityID', value: '', type: 'string'},
+        {key: 'ResidualRiskSeverityID',    value: '', type: 'string'},
+        {key: 'MitigationPlan',   value: '', type: 'string'},
+        {key: 'RiskOwner',        value: '', type: 'string'},
+      ]
+    },
+    document: {
+      kind: 'osdu:wks:work-product-component--Document:1.2.0',
+      desc: '<b>Document</b> &mdash; metadata for a governance document (SRA, CRA, PDO, PTR, technical report). The document itself is stored externally; this record is the OSDU catalog entry.',
+      fields: [
+        {key: 'Name',            value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'DocumentTypeID',  value: '', type: 'string'},
+        {key: 'DocumentDate',    value: '', type: 'string'},
+        {key: 'Authors',         value: '', type: 'array'},
+        {key: 'Tags',            value: '', type: 'array'},
+      ]
+    },
+    field: {
+      kind: 'osdu:wks:master-data--Field:1.1.0',
+      desc: '<b>Field</b> &mdash; an oil/gas field entity. Contains geographic and geological context. Parent for reservoirs and wells.',
+      fields: [
+        {key: 'FieldName',       value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'OperatingEnvironmentID', value: '', type: 'string'},
+        {key: 'DiscoveryDate',   value: '', type: 'string'},
+        {key: 'CurrentFieldDevelopmentPhaseTypeID', value: '', type: 'string'},
+      ]
+    },
+    organisation: {
+      kind: 'osdu:wks:master-data--Organisation:1.1.0',
+      desc: '<b>Organisation</b> &mdash; a company, team, or organizational unit. Referenced by other records for operator, partner, and contributor roles.',
+      fields: [
+        {key: 'OrganisationName',    value: '', type: 'string'},
+        {key: 'Description',         value: '', type: 'string'},
+        {key: 'OrganisationTypeID',  value: '', type: 'string'},
+      ]
+    },
+    reservoir: {
+      kind: 'osdu:wks:master-data--Reservoir:2.0.0',
+      desc: '<b>Reservoir</b> &mdash; a reservoir entity containing geological context. Parent for ReservoirSegments and linked to volumes, risks, and decisions.',
+      fields: [
+        {key: 'Name',            value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'FieldID',         value: '', type: 'string'},
+        {key: 'FluidTypeID',     value: '', type: 'string'},
+      ]
+    },
+    reservoirsegment: {
+      kind: 'osdu:wks:master-data--ReservoirSegment:2.0.0',
+      desc: '<b>Reservoir Segment</b> &mdash; a fault-bounded compartment within a reservoir. Carries segment-level properties and volume allocations.',
+      fields: [
+        {key: 'Name',            value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'ReservoirID',     value: '', type: 'string'},
+        {key: 'SegmentIndex',    value: '', type: 'number'},
+      ]
+    },
+    well: {
+      kind: 'osdu:wks:master-data--Well:1.1.0',
+      desc: '<b>Well</b> &mdash; a well header record. Parent for wellbores. Contains surface location, operator, spud date, and regulatory status.',
+      fields: [
+        {key: 'FacilityName',    value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'FacilityOperator',value: '', type: 'string'},
+        {key: 'FieldID',         value: '', type: 'string'},
+        {key: 'SpudDate',        value: '', type: 'string'},
+        {key: 'WellTypeID',      value: '', type: 'string'},
+        {key: 'CurrentStatusID', value: '', type: 'string'},
+      ]
+    },
+    wellbore: {
+      kind: 'osdu:wks:master-data--Wellbore:1.2.0',
+      desc: '<b>Wellbore</b> &mdash; a wellbore within a well. Carries trajectory reference, target depth, and drilling status.',
+      fields: [
+        {key: 'FacilityName',    value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'WellID',          value: '', type: 'string'},
+        {key: 'TargetFormation', value: '', type: 'string'},
+        {key: 'TotalMeasuredDepth', value: '', type: 'number'},
+        {key: 'StatusID',        value: '', type: 'string'},
+      ]
+    },
+    horizoninterp: {
+      kind: 'osdu:wks:work-product-component--HorizonInterpretation:1.2.0',
+      desc: '<b>Horizon Interpretation</b> &mdash; the geological meaning of a mapped horizon surface. SMEs assign conformability, sequence-stratigraphic role, and chronostratigraphic age.',
+      fields: [
+        {key: 'Name',                  value: '', type: 'string'},
+        {key: 'Description',           value: '', type: 'string'},
+        {key: 'StratigraphicUnitInterpretationAboveID', value: '', type: 'string'},
+        {key: 'StratigraphicUnitInterpretationBelowID', value: '', type: 'string'},
+        {key: 'HorizonTypeID',         value: '', type: 'string'},
+        {key: 'SequenceStratigraphicSurfaceTypeID', value: '', type: 'string'},
+      ]
+    },
+    devconcept: {
+      kind: 'osdu:wks:work-product-component--DevelopmentConcept:3.0.0',
+      desc: '<b>Development Concept</b> &mdash; describes how a field will be developed: facility type, well plan, drainage strategy, production technology. Links to Field, Reservoir, and decision gates.',
+      fields: [
+        {key: 'Name',                 value: '', type: 'string'},
+        {key: 'Description',          value: '', type: 'string'},
+        {key: 'FieldID',              value: '', type: 'string'},
+        {key: 'ProjectName',          value: '', type: 'string'},
+        {key: 'FacilityConcept',      value: '', type: 'json'},
+        {key: 'WellPlan',             value: '', type: 'json'},
+        {key: 'DrainageStrategy',     value: '', type: 'json'},
+      ]
+    },
+    refdata: {
+      kind: 'osdu:wks:reference-data--',
+      desc: '<b>Reference Data</b> &mdash; a classification / taxonomy entry (DecisionLevel, RiskCategory, ParameterType, UnitOfMeasure, etc.). These are organization-specific seed records. Edit the <i>Kind</i> field to set the specific type.',
+      fields: [
+        {key: 'Name',            value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+        {key: 'Code',            value: '', type: 'string'},
+      ]
+    },
+    custom: {
+      kind: '',
+      desc: '<b>Custom Kind</b> &mdash; enter any OSDU kind manually and build the data block from scratch. For types not listed above or custom/local schemas.',
+      fields: [
+        {key: 'Name',            value: '', type: 'string'},
+        {key: 'Description',     value: '', type: 'string'},
+      ]
+    },
+  };
+
   var genFields = [];
+  var selectedGenType = '';
+
+  window.selectGenType = function(typeName) {
+    selectedGenType = typeName;
+    var preset = GEN_PRESETS[typeName];
+    if (!preset) return;
+
+    // Highlight selected card
+    document.querySelectorAll('.gen-type-card').forEach(function(c) {
+      c.classList.toggle('selected', c.id === 'gtc-' + typeName);
+    });
+
+    // Set kind
+    document.getElementById('gen-kind').value = preset.kind;
+    document.getElementById('gen-kind-row').style.display = '';
+
+    // Show description
+    var descEl = document.getElementById('gen-type-desc');
+    descEl.innerHTML = preset.desc;
+    descEl.style.display = '';
+
+    // Pre-populate fields (replace existing)
+    genFields = preset.fields.map(function(f) { return {key: f.key, value: f.value, type: f.type}; });
+    renderGenFields();
+
+    // Focus kind for refdata/custom so user can complete it
+    if (typeName === 'refdata' || typeName === 'custom') {
+      document.getElementById('gen-kind').focus();
+    }
+  };
 
   window.addGenField = function() {
     var keyInp = document.getElementById('gen-field-key');
@@ -1045,13 +1914,6 @@
     renderGenFields();
   };
 
-  window.quickAddField = function(key, defaultVal, type) {
-    document.getElementById('gen-field-key').value = key;
-    document.getElementById('gen-field-value').value = defaultVal || '';
-    document.getElementById('gen-field-type').value = type || 'auto';
-    document.getElementById('gen-field-value').focus();
-  };
-
   window.removeGenField = function(idx) {
     genFields.splice(idx, 1);
     renderGenFields();
@@ -1059,13 +1921,16 @@
 
   function renderGenFields() {
     var el = document.getElementById('gen-field-list');
-    if (!genFields.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No fields added yet. Use the form above or quick-add buttons.</span>'; return; }
+    if (!genFields.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">Select a record type above to pre-populate fields.</span>'; return; }
     el.innerHTML = genFields.map(function(f, i) {
-      var valDisplay = f.value.length > 80 ? f.value.substring(0, 77) + '…' : f.value;
-      return '<div class="risk-item">' +
-             '<strong style="min-width:140px;font-size:12px;">' + escHtml(f.key) + '</strong>' +
-             '<span style="font-size:11px;color:var(--eq-link);min-width:50px;">[' + f.type + ']</span>' +
-             '<span class="risk-id">' + escHtml(valDisplay) + '</span>' +
+      var valDisplay = f.value.length > 60 ? f.value.substring(0, 57) + '…' : (f.value || '<em class="muted">empty</em>');
+      var valHtml = f.value ? escHtml(valDisplay) : valDisplay;
+      return '<div class="risk-item" style="gap:4px;">' +
+             '<strong style="min-width:160px;font-size:12px;color:var(--eq-charcoal);">' + escHtml(f.key) + '</strong>' +
+             '<span style="font-size:10px;color:var(--eq-grey);min-width:40px;">[' + f.type + ']</span>' +
+             '<input type="text" value="' + escAttr(f.value) + '" ' +
+             'oninput="genFields[' + i + '].value=this.value" ' +
+             'style="flex:1;font-size:12px;padding:2px 6px;border:1px solid var(--eq-border);border-radius:3px;" />' +
              '<button class="remove-btn" onclick="removeGenField(' + i + ')" title="Remove">&times;</button></div>';
     }).join('');
   }

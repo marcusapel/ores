@@ -2,19 +2,23 @@
 Create Record page - Create and ingest OSDU records.
 
 Tabs:
-  1. Decision Gate   → BusinessDecision (master-data)
+  1. Decision Gate       → BusinessDecision (master-data)
   2. Collaboration Project → CollaborationProject (master-data)
   3. Persisted Collection → PersistedCollection (work-product-component)
-  4. Generic Record   → any kind (WPC / master-data / reference-data)
+  4. Activity            → ActivityTemplate + Activity (work-product-component)
+  5. Generic Record      → any kind (WPC / master-data / reference-data)
 
 Provides:
-  GET  /add-dg               → render the addgate.html template
-  GET  /add-dg/reservoirs    → JSON: list of Reservoir master-data records
-  GET  /add-dg/wpc-search    → JSON: search for WPC records to link
-  POST /add-dg/create        → JSON: build BD record, PUT to Storage API
-  POST /add-dg/create-cp     → JSON: build CP record, PUT to Storage API
-  POST /add-dg/create-pc     → JSON: build PersistedCollection, PUT to Storage API
-  POST /add-dg/create-generic → JSON: build any record, PUT to Storage API
+  GET  /add-dg                      → render the addgate.html template
+  GET  /add-dg/reservoirs           → JSON: list of Reservoir master-data records
+  GET  /add-dg/wpc-search           → JSON: search for WPC records to link
+  GET  /add-dg/fetch-record         → JSON: fetch a single record by ID
+  POST /add-dg/create               → JSON: build BD record, PUT to Storage API
+  POST /add-dg/create-cp            → JSON: build CP record, PUT to Storage API
+  POST /add-dg/create-pc            → JSON: build PersistedCollection, PUT to Storage API
+  POST /add-dg/create-activity-template → JSON: build ActivityTemplate, PUT to Storage API
+  POST /add-dg/create-activity      → JSON: build Activity record, PUT to Storage API
+  POST /add-dg/create-generic       → JSON: build any record, PUT to Storage API
 """
 from __future__ import annotations
 
@@ -704,6 +708,251 @@ async def create_pc(request: Request):
         log.warning("PC ingest failed (%d): %s", status, resp_body)
         return JSONResponse(
             {"ok": False, "pc_id": pc_id, "status": status, "response": resp_body},
+            status_code=status,
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Fetch a single record (used by Activity tab to load template slots)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get("/add-dg/fetch-record", summary="Fetch a single OSDU record by ID")
+async def fetch_record(request: Request, id: str = Query(...)):
+    """Return the data portion of a single record from Storage API."""
+    at = _access_token(request)
+    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records/{id}"
+    hdr = osdu.headers(at)
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(storage_url, headers=hdr)
+    except Exception as e:
+        log.error("Fetch record %s failed: %s", id, e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
+
+    if r.status_code == 200:
+        rec = r.json()
+        return JSONResponse({"ok": True, "data": rec.get("data", {}), "kind": rec.get("kind", "")})
+    else:
+        return JSONResponse(
+            {"ok": False, "error": r.text[:800], "status": r.status_code},
+            status_code=r.status_code,
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Create ActivityTemplate
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/add-dg/create-activity-template", summary="Create ActivityTemplate record")
+async def create_activity_template(request: Request):
+    """Build and ingest an ActivityTemplate WPC record.
+
+    Expects JSON body:
+      name                 — template name
+      description          — optional description
+      originator           — optional originator
+      parameter_templates  — list of slot dicts with Title, Description,
+                             IsInput, IsOutput, MinOccurs, MaxOccurs,
+                             DefaultParameterKind
+    """
+    at = _access_token(request)
+    body = await request.json()
+
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+
+    kind = "osdu:wks:work-product-component--ActivityTemplate:1.0.0"
+    id_prefix = osdu.DATA_PARTITION_ID or "dev"
+    rec_uuid = str(uuid.uuid4())[:12]
+    record_id = f"{id_prefix}:work-product-component--ActivityTemplate:{rec_uuid}:1"
+
+    param_templates = body.get("parameter_templates", [])
+
+    data: Dict[str, Any] = {
+        "Name": name,
+    }
+    if body.get("description"):
+        data["Description"] = body["description"]
+    if body.get("originator"):
+        data["Originator"] = body["originator"]
+    if param_templates:
+        data["ParameterTemplates"] = param_templates
+
+    acl = {"owners": osdu.DEFAULT_OWNERS, "viewers": osdu.DEFAULT_VIEWERS}
+    legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    record = {
+        "id": record_id,
+        "kind": kind,
+        "acl": acl,
+        "legal": legal,
+        "data": data,
+    }
+
+    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
+    hdr = osdu.headers(at)
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.put(storage_url, json=[record], headers=hdr)
+            status = r.status_code
+            resp_body = r.text[:2000]
+    except Exception as e:
+        log.error("Storage API PUT (ActivityTemplate) failed: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
+
+    if status in (200, 201):
+        log.info("ActivityTemplate created: %s (%d params, status=%d)", record_id, len(param_templates), status)
+        return JSONResponse({
+            "ok": True,
+            "record_id": record_id,
+            "kind": kind,
+            "status": status,
+            "param_count": len(param_templates),
+            "response": resp_body,
+        })
+    else:
+        log.warning("ActivityTemplate ingest failed (%d): %s", status, resp_body)
+        return JSONResponse(
+            {"ok": False, "record_id": record_id, "kind": kind,
+             "status": status, "response": resp_body},
+            status_code=status,
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Create Activity
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/add-dg/create-activity", summary="Create Activity record")
+async def create_activity(request: Request):
+    """Build and ingest an Activity WPC record.
+
+    Expects JSON body:
+      name              — activity name
+      description       — optional description
+      originator        — optional originator
+      template_id       — ActivityTemplate record ID
+      workflow_status   — e.g. "Completed"
+      creation_datetime — ISO date/time string
+      parent_object_id  — optional parent master-data ID
+      parameters        — list of {title, role, kind, value, desc}
+    """
+    at = _access_token(request)
+    body = await request.json()
+
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+
+    kind = "osdu:wks:work-product-component--Activity:1.0.0"
+    id_prefix = osdu.DATA_PARTITION_ID or "dev"
+    rec_uuid = str(uuid.uuid4())[:12]
+    record_id = f"{id_prefix}:work-product-component--Activity:{rec_uuid}:1"
+
+    data: Dict[str, Any] = {
+        "Name": name,
+    }
+    if body.get("description"):
+        data["Description"] = body["description"]
+    if body.get("originator"):
+        data["Originator"] = body["originator"]
+    if body.get("template_id"):
+        data["ActivityTemplateID"] = body["template_id"]
+    if body.get("workflow_status"):
+        data["WorkflowStatus"] = body["workflow_status"]
+    if body.get("creation_datetime"):
+        data["CreationDateTime"] = body["creation_datetime"]
+    if body.get("parent_object_id"):
+        data["ParentObjectID"] = body["parent_object_id"]
+
+    # Build Parameters array from front-end param entries
+    raw_params = body.get("parameters", [])
+    parameters: List[Dict[str, Any]] = []
+    for p in raw_params:
+        title = p.get("title", "").strip()
+        if not title:
+            continue
+        role = p.get("role", "input")
+        pk = p.get("kind", "string")
+        value = p.get("value", "")
+        desc = p.get("desc", "")
+
+        # Build the ParameterKindID and ParameterRoleID ref-data URIs
+        kind_map = {"string": "String", "integer": "Integer", "DataObject": "DataObject"}
+        role_map = {"input": "Input", "output": "Output"}
+        pk_label = kind_map.get(pk, "String")
+        role_label = role_map.get(role, "Input")
+
+        entry: Dict[str, Any] = {
+            "Title": title,
+            "Description": desc,
+            "ParameterKindID": f"{id_prefix}:reference-data--ParameterKind:{pk_label}:",
+            "ParameterRoleID": f"{id_prefix}:reference-data--ParameterRole:{role_label}:",
+        }
+
+        # Set the typed value field
+        if pk == "integer":
+            try:
+                entry["IntegerParameter"] = int(value)
+            except (ValueError, TypeError):
+                entry["StringParameter"] = value
+        elif pk == "DataObject":
+            entry["DataObjectParameter"] = value
+        else:
+            entry["StringParameter"] = value
+
+        parameters.append(entry)
+
+    if parameters:
+        data["Parameters"] = parameters
+
+    acl = {"owners": osdu.DEFAULT_OWNERS, "viewers": osdu.DEFAULT_VIEWERS}
+    legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    record = {
+        "id": record_id,
+        "kind": kind,
+        "acl": acl,
+        "legal": legal,
+        "data": data,
+    }
+
+    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
+    hdr = osdu.headers(at)
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.put(storage_url, json=[record], headers=hdr)
+            status = r.status_code
+            resp_body = r.text[:2000]
+    except Exception as e:
+        log.error("Storage API PUT (Activity) failed: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
+
+    if status in (200, 201):
+        log.info("Activity created: %s (template=%s, %d params, status=%d)",
+                 record_id, body.get("template_id", "none"), len(parameters), status)
+        return JSONResponse({
+            "ok": True,
+            "record_id": record_id,
+            "kind": kind,
+            "status": status,
+            "param_count": len(parameters),
+            "response": resp_body,
+        })
+    else:
+        log.warning("Activity ingest failed (%d): %s", status, resp_body)
+        return JSONResponse(
+            {"ok": False, "record_id": record_id, "kind": kind,
+             "status": status, "response": resp_body},
             status_code=status,
         )
 

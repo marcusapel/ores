@@ -347,13 +347,18 @@ async function buildManifest() {
   if (mfDsF1) mfDsF1.addEventListener('input', _applyDsSelectFilter);
   if (mfDsF2) mfDsF2.addEventListener('input', _applyDsSelectFilter);
 
-  // Init: dataspaces -> types -> objects
+  // Init: dataspaces only — types/objects load on user selection
   async function initManifestUI() {
     if (!dsSel || !objSel) return; // not on index page
     await loadDataspaces(); // respects prefilled options
+    // Insert a blank prompt as first option so nothing auto-loads
+    const prompt = document.createElement('option');
+    prompt.value = '';
+    prompt.textContent = '— select a dataspace —';
+    dsSel.insertBefore(prompt, dsSel.firstChild);
+    dsSel.selectedIndex = 0;
     _captureDsOptions();    // snapshot all options for filtering
-    await loadTypes();
-    await loadObjects();
+    // Don't auto-load types/objects — wait for user to pick a dataspace
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initManifestUI);
   else initManifestUI();
