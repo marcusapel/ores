@@ -117,28 +117,48 @@
   document.addEventListener('DOMContentLoaded', function () {
     // ----- Async dataspace loading (replaces server-side blocking fetch) -----
     const dsList = document.getElementById('ds-list');
+
+    function _populateAdminDs(items) {
+      if (!items.length) {
+        dsList.innerHTML = '<li class="muted">No dataspaces found.</li>';
+        return;
+      }
+      dsList.innerHTML = '';
+      items.forEach(function(x) {
+        const li = document.createElement('li');
+        li.setAttribute('data-path', x.path);
+        const code = document.createElement('code');
+        code.textContent = x.path;
+        li.appendChild(code);
+        dsList.appendChild(li);
+      });
+      rebuildDsRows();
+    }
+
     async function loadAdminDataspaces() {
+      // Check for prefetched cache from howto page
+      const cached = sessionStorage.getItem('_ds_admin');
+      if (cached) {
+        sessionStorage.removeItem('_ds_admin');
+        try {
+          const items = JSON.parse(cached);
+          if (items.length) {
+            _populateAdminDs(items);
+            // Still refresh in background
+            fetch('/admin/dataspaces.json', { credentials: 'same-origin' })
+              .then(r => r.ok ? r.json() : null)
+              .then(js => { if (js && js.items && js.items.length) _populateAdminDs(js.items); })
+              .catch(() => {});
+            return;
+          }
+        } catch (_) {}
+      }
       if (window.showLoading) window.showLoading('Loading dataspaces…');
       try {
         const r = await fetch('/admin/dataspaces.json', { credentials: 'same-origin' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const js = await r.json();
-        const items = js.items || [];
-        if (!items.length) {
-          dsList.innerHTML = '<li class="muted">No dataspaces found.</li>';
-          return;
-        }
-        dsList.innerHTML = '';
-        items.forEach(function(x) {
-          const li = document.createElement('li');
-          li.setAttribute('data-path', x.path);
-          const code = document.createElement('code');
-          code.textContent = x.path;
-          li.appendChild(code);
-          dsList.appendChild(li);
-        });
-        // Re-run filtering + button setup after populating
-        rebuildDsRows();
+        _populateAdminDs(js.items || []);
       } catch (e) {
         console.error('[Admin] dataspaces load failed', e);
         dsList.innerHTML = '<li class="muted">Failed to load dataspaces.</li>';
