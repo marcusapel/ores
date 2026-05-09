@@ -48,9 +48,9 @@ def _jinja_pretty_val(val):
 
 templates.env.filters["pretty_val"] = _jinja_pretty_val
 
-# Expose auth_mode for base.html nav rendering
-from .auth import AUTH_MODE as _AUTH_MODE
-templates.env.globals["auth_mode"] = _AUTH_MODE
+# NOTE: auth_mode is set in templates.env.globals by main.py after instance
+# init.  We no longer duplicate it here to avoid capturing a stale value
+# (the import would snapshot AUTH_MODE before instances are loaded).
 
 
 # ──────────────────────────────────────────────────────────────────────────────

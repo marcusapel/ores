@@ -71,12 +71,29 @@ Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars split across both 
 
 ## Authentication & sessions
 
-The app supports two authentication modes tried in order:
+The auth middleware resolves an access token for every request using a **fallback chain**. Each step is tried in order; the first to succeed wins:
 
-| Priority | Mode | When used |
-|----------|------|-----------|
-| 1 | **Instance token** | `INSTANCE_<NAME>_REFRESH_TOKEN` or `_CLIENT_SECRET` set in `k8s/secret.yaml` - zero-click, shared across all users |
-| 2 | **Per-user PKCE** | No shared token - each browser user is redirected to Azure AD login once |
+| Priority | Strategy | Source | When it kicks in |
+|----------|----------|--------|------------------|
+| 0 | **Instance token** | `INSTANCE_<NAME>_REFRESH_TOKEN` or `_CLIENT_SECRET` | Always tried first — zero-click, shared across all browser sessions |
+| 1 | **Env token** | Top-level `REFRESH_TOKEN` env var | Legacy single-instance setups (migration aid) |
+| 2 | **Per-user PKCE** | User's own Azure AD sign-in | Fallback when steps 0 & 1 fail — user clicks "Sign in with Microsoft" |
+| 3 | **Redirect** | — | No token at all — browser gets `/login-page`, API gets `401` |
+
+### Per-instance flexibility
+
+Different instances can use different credentials. The middleware doesn't care — it calls `inst.get_access_token()` which tries `refresh_token` first, then `client_credentials`.
+
+| Instance | Secrets configured | `auth_mode` | Behaviour |
+|----------|-------------------|-------------|----------|
+| `eqndev` | `_REFRESH_TOKEN` | `refresh_token` | Auto-token via shared RT; PKCE fallback if RT expires |
+| `eqndev` | `_CLIENT_SECRET` | `client_credentials` | Auto-token via service principal; PKCE fallback if secret expires |
+| `eqndev` | Both | `refresh_token+client_credentials` | Tries RT first, then SP, then PKCE |
+| `preship` | `_CLIENT_SECRET` | `client_credentials` | Service principal only; PKCE fallback if secret expires |
+
+> **Key point:** PKCE login is **always available** regardless of the instance's primary auth mode.
+> The "Sign in with Microsoft" button appears on every page and on the login page.
+> This means an expired client secret doesn't lock users out — they can still sign in with their own Equinor account.
 
 ### Per-user PKCE login (remote/multi-user deployments)
 

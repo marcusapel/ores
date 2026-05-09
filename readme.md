@@ -41,10 +41,24 @@ Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars across both files.
 
 ### Auth modes
 
-| Mode | Config needed |
-|------|---------------|
-| Shared token (zero-click) | Set `INSTANCE_<NAME>_REFRESH_TOKEN` or `_CLIENT_SECRET` in secret.yaml |
-| Per-user PKCE | No shared token - users log in via Azure AD redirect (sessions persisted in SQLite) |
+Each instance can use a different token strategy. The middleware tries them in order and uses the first one that succeeds:
+
+| Priority | Strategy | Config needed | Typical use |
+|----------|----------|---------------|-------------|
+| 0 | **Instance token** | `_REFRESH_TOKEN` and/or `_CLIENT_SECRET` | Zero-click — shared across all users |
+| 1 | **Env token** | Top-level `REFRESH_TOKEN` (legacy) | Single-instance setups |
+| 2 | **Per-user PKCE** | Nothing — always available | Users sign in via Azure AD |
+
+PKCE login is **always available as a fallback**, even when the instance is configured with `client_credentials`. If the service principal secret expires, users can still sign in with their own Microsoft account.
+
+**Example — two instances with different strategies:**
+
+| Instance | Secret vars | Behaviour |
+|----------|-------------|----------|
+| `eqndev` | `_REFRESH_TOKEN` | Auto-authenticated via shared token; PKCE fallback if token expires |
+| `preship` | `_CLIENT_SECRET` | Auto-authenticated via service principal; PKCE fallback if secret expires |
+
+See [md/Readme.md](md/Readme.md#authentication--sessions) for the full auth & session guide.
 
 ## Pages
 
