@@ -54,7 +54,7 @@ Each OSDU instance is defined by `INSTANCE_<NAME>_*` env vars across both files.
 | `/keys` | Browse record types and objects + GraphQL deep search |
 | `/search` | Query OSDU Search API |
 | `/analyse` | Compare BDs across decision gates |
-| `/add-dg` | Create new BusinessDecision records |
+| `/add-dg` | Create new BusinessDecision, Activity & Template records |
 | `/strat` | Stratigraphic column viewer |
 | `/howto` | Documentation articles |
 | `/graphql` | GraphiQL IDE for RESQML queries |
@@ -98,6 +98,7 @@ python demo/epc/test_graphql.py        # Verify all queries
 ```
 
 See [md/Query.md](md/Query.md) for the full query guide.
+See [md/Activity.md](md/Activity.md) for the Activity & ActivityTemplate guide.
 
 ## Docker
 

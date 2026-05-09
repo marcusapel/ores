@@ -1302,7 +1302,14 @@ _HOWTO_SECTIONS: list[dict] = [
                     {"slug": "geolabelset",  "file": "GeoLabelSet.md",  "title": "GeoLabelSet",   "desc": "Reservoir volumes & statistics manifests"},
                     {"slug": "risk",         "file": "Risk.md",         "title": "Risk",           "desc": "Subsurface risk data management"},
                     {"slug": "uncertainty",  "file": "Uncertainty.md",  "title": "Uncertainty",    "desc": "FMU ensemble / Monte Carlo in OSDU"},
+                    {"slug": "activity-bd",  "file": "Activity.md",     "title": "Activity & Provenance", "desc": "Linking workflow provenance to decision gates"},
                 ],
+            },
+            {
+                "slug": "activity",
+                "file": "Activity.md",
+                "title": "Activity & Provenance",
+                "desc": "ActivityTemplate + Activity records for workflow provenance",
             },
             {
                 "slug": "seismic-interp",
