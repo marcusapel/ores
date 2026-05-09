@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Add DG - Create Business Decision{% endblock %}
+{% block title %}Create Record{% endblock %}
 
 {% block head %}
 <style>
@@ -137,8 +137,10 @@
 <div class="addgate-wrap">
   <!-- ═══ Mode selector tabs ═══ -->
   <div class="mode-tabs">
-    <button class="mode-tab active" data-mode="bd" onclick="switchMode('bd')">Add Decision Gate</button>
-    <button class="mode-tab" data-mode="cp" onclick="switchMode('cp')">Add Collaboration Project</button>
+    <button class="mode-tab active" data-mode="bd" onclick="switchMode('bd')">Decision Gate</button>
+    <button class="mode-tab" data-mode="cp" onclick="switchMode('cp')">Collab. Project</button>
+    <button class="mode-tab" data-mode="pc" onclick="switchMode('pc')">Persisted Collection</button>
+    <button class="mode-tab" data-mode="generic" onclick="switchMode('generic')">Generic Record</button>
   </div>
 
   <!-- ════════════════════════════════════════════════════════════════════ -->
@@ -434,6 +436,176 @@
     <div id="cp-result-area"></div>
   </div>
   </div><!-- /mode-cp -->
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Persisted Collection                                          -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div class="mode-panel" id="mode-pc" style="display:none;">
+  <h2>Create Persisted Collection</h2>
+  <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
+    Create a <code>PersistedCollection</code> WPC &mdash; a curated bundle of OSDU record references
+    (evidence package, data set, artifact collection).
+  </p>
+
+  <!-- ═══ PC 1. Metadata ═══ -->
+  <div class="addgate-panel">
+    <h3>1. Collection Metadata</h3>
+    <div class="form-grid">
+      <label for="pc-name">Name *</label>
+      <input type="text" id="pc-name" placeholder="e.g. Drogon DG2 - Evidence Package" />
+
+      <label for="pc-description">Description</label>
+      <textarea id="pc-description" rows="3" placeholder="Describe what this collection bundles and its purpose…"></textarea>
+
+      <label for="pc-tags">Tags</label>
+      <input type="text" id="pc-tags" placeholder="Comma-separated, e.g. DG2, Drogon, EvidencePackage" />
+      <span class="hint">Free-form labels for discovery &amp; filtering.</span>
+
+      <label for="pc-custom-id">Custom ID</label>
+      <input type="text" id="pc-custom-id" placeholder="Leave blank for auto-generated ID" />
+      <span class="hint">Optional. Short slug like <code>Drogon-DG2-EvidencePackage</code> (partition prefix added automatically).</span>
+    </div>
+  </div>
+
+  <!-- ═══ PC 2. Data References ═══ -->
+  <div class="addgate-panel">
+    <h3>2. Data References</h3>
+    <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
+      Add OSDU record IDs to include in this collection. Order matters &ndash;
+      records are stored in the order listed.
+    </p>
+    <div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;">
+      <input type="text" id="pc-ref-input" placeholder="Paste record ID or use Browse" style="flex:1;" />
+      <button class="btn" type="button" onclick="openBrowse('pc-ref-input','osdu:wks:*:*')">Browse</button>
+      <button class="btn" type="button" onclick="addPcRef()">+ Add</button>
+    </div>
+    <div style="margin-bottom:.5rem;font-size:12px;color:var(--eq-grey);">
+      <span id="pc-ref-count">0</span> references
+    </div>
+    <div class="risk-list" id="pc-ref-list"></div>
+  </div>
+
+  <!-- ═══ PC 3. Preview & submit ═══ -->
+  <div class="addgate-panel">
+    <h3>3. Review &amp; Ingest</h3>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn" type="button" onclick="previewPcRecord()">Preview JSON</button>
+      <button class="btn btn-primary" type="button" onclick="submitPcRecord()">Create &amp; Ingest to OSDU</button>
+    </div>
+    <div class="preview-wrap" id="pc-preview-wrap" style="display:none;">
+      <pre id="pc-preview-json"></pre>
+    </div>
+    <div id="pc-result-area"></div>
+  </div>
+  </div><!-- /mode-pc -->
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Generic Record                                                -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div class="mode-panel" id="mode-generic" style="display:none;">
+  <h2>Create Generic Record</h2>
+  <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
+    Create any OSDU record (WPC, master-data, or reference-data) by specifying the <code>kind</code>
+    and building the <code>data</code> block from key&ndash;value fields.
+    ACL, legal, and partition are applied automatically from the active instance.
+  </p>
+
+  <!-- ═══ GEN 1. Record identity ═══ -->
+  <div class="addgate-panel">
+    <h3>1. Record Identity</h3>
+    <div class="form-grid">
+      <label for="gen-kind">Kind *</label>
+      <div style="display:flex;gap:.5rem;">
+        <input type="text" id="gen-kind" list="gen-kind-list" placeholder="e.g. osdu:wks:master-data--Risk:1.2.0" style="flex:1;" />
+      </div>
+      <span class="hint">Full OSDU kind string. Type to filter suggestions.</span>
+
+      <datalist id="gen-kind-list">
+        <!-- WPC types -->
+        <option value="osdu:wks:work-product-component--Activity:1.0.0">
+        <option value="osdu:wks:work-product-component--ActivityTemplate:1.0.0">
+        <option value="osdu:wks:work-product-component--ColumnBasedTable:1.4.0">
+        <option value="osdu:wks:work-product-component--DevelopmentConcept:3.0.0">
+        <option value="osdu:wks:work-product-component--Document:1.2.0">
+        <option value="osdu:wks:work-product-component--GenericRepresentation:1.2.0">
+        <option value="osdu:wks:work-product-component--GeoLabelSet:1.0.0">
+        <option value="osdu:wks:work-product-component--PersistedCollection:1.0.0">
+        <option value="osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0">
+        <option value="osdu:wks:work-product-component--StructureMap:1.0.0">
+        <!-- Master data types -->
+        <option value="osdu:wks:master-data--BusinessDecision:1.0.0">
+        <option value="osdu:wks:master-data--CollaborationProject:1.0.0">
+        <option value="osdu:wks:master-data--Field:1.1.0">
+        <option value="osdu:wks:master-data--Organisation:1.1.0">
+        <option value="osdu:wks:master-data--Reservoir:2.0.0">
+        <option value="osdu:wks:master-data--ReservoirSegment:2.0.0">
+        <option value="osdu:wks:master-data--Risk:1.2.0">
+        <option value="osdu:wks:master-data--Well:1.1.0">
+        <option value="osdu:wks:master-data--Wellbore:1.2.0">
+        <!-- Reference data types -->
+        <option value="osdu:wks:reference-data--DecisionLevel:1.0.0">
+        <option value="osdu:wks:reference-data--DecisionApprovalStatus:1.0.0">
+        <option value="osdu:wks:reference-data--RiskCategory:1.0.0">
+        <option value="osdu:wks:reference-data--ParameterType:1.0.0">
+        <option value="osdu:wks:reference-data--UnitOfMeasure:1.0.0">
+      </datalist>
+
+      <label for="gen-record-id">Record ID</label>
+      <input type="text" id="gen-record-id" placeholder="Auto-generated if blank" />
+      <span class="hint">Leave blank for UUID-based auto ID, or enter a full ID like <code>dev:master-data--Risk:MyRisk:1</code>.</span>
+    </div>
+  </div>
+
+  <!-- ═══ GEN 2. Data fields ═══ -->
+  <div class="addgate-panel">
+    <h3>2. Data Fields</h3>
+    <p class="muted" style="margin-top:-.4rem; font-size:.82rem;">
+      Build the <code>data</code> block. Common fields: <code>Name</code>, <code>Description</code>.
+      Use dot-notation for nested objects (e.g. <code>ext.custom.value</code>).
+    </p>
+
+    <div style="display:flex;gap:.4rem;margin-bottom:.6rem;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="gen-field-key" placeholder="Key (e.g. Name)" style="width:180px;" />
+      <input type="text" id="gen-field-value" placeholder="Value" style="flex:1;min-width:180px;" />
+      <select id="gen-field-type" style="width:90px;font-size:13px;">
+        <option value="auto">auto</option>
+        <option value="string">string</option>
+        <option value="number">number</option>
+        <option value="boolean">boolean</option>
+        <option value="array">array</option>
+        <option value="json">JSON</option>
+      </select>
+      <button class="btn" type="button" onclick="addGenField()">+ Add</button>
+    </div>
+    <div style="margin-bottom:.3rem;font-size:11px;color:var(--eq-grey);">
+      Type <b>array</b>: comma-separated values or JSON array. <b>json</b>: raw JSON. <b>auto</b>: best-guess (number, bool, or string).
+    </div>
+    <div class="risk-list" id="gen-field-list"></div>
+
+    <!-- Quick-add common fields -->
+    <div style="margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--eq-border);">
+      <span style="font-size:12px;font-weight:600;color:var(--eq-grey);">Quick-add:</span>
+      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('Name','')">Name</button>
+      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('Description','')">Description</button>
+      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('Tags','','array')">Tags</button>
+      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('DataReferences','','array')">DataReferences</button>
+      <button class="btn" type="button" style="font-size:12px;padding:2px 8px;" onclick="quickAddField('RiskIDs','','array')">RiskIDs</button>
+    </div>
+  </div>
+
+  <!-- ═══ GEN 3. Preview & submit ═══ -->
+  <div class="addgate-panel">
+    <h3>3. Review &amp; Ingest</h3>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn" type="button" onclick="previewGenRecord()">Preview JSON</button>
+      <button class="btn btn-primary" type="button" onclick="submitGenRecord()">Create &amp; Ingest to OSDU</button>
+    </div>
+    <div class="preview-wrap" id="gen-preview-wrap" style="display:none;">
+      <pre id="gen-preview-json"></pre>
+    </div>
+    <div id="gen-result-area"></div>
+  </div>
+  </div><!-- /mode-generic -->
 </div>
 
 <!-- ═══ WPC browse modal ═══ -->
@@ -569,6 +741,9 @@
     if (browseTarget === 'risk-input') {
       document.getElementById('risk-input').value = id;
       addRisk();
+    } else if (browseTarget === 'pc-ref-input') {
+      document.getElementById('pc-ref-input').value = id;
+      addPcRef();
     } else if (browseTarget) {
       document.getElementById(browseTarget).value = id;
     }
@@ -766,6 +941,189 @@
         '<div class="result-err"><strong>Network error:</strong> ' + escHtml(err.message) + '</div>';
     });
   };
+  // ══════════════════════════════════════════════════════════════════════
+  // Persisted Collection form logic
+  // ══════════════════════════════════════════════════════════════════════
+  var pcRefs = [];
+
+  window.addPcRef = function() {
+    var inp = document.getElementById('pc-ref-input');
+    var val = inp.value.trim();
+    if (!val) return;
+    if (pcRefs.indexOf(val) < 0) pcRefs.push(val);
+    inp.value = '';
+    renderPcRefs();
+  };
+
+  window.removePcRef = function(idx) {
+    pcRefs.splice(idx, 1);
+    renderPcRefs();
+  };
+
+  function renderPcRefs() {
+    var el = document.getElementById('pc-ref-list');
+    document.getElementById('pc-ref-count').textContent = pcRefs.length;
+    if (!pcRefs.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No references added yet.</span>'; return; }
+    el.innerHTML = pcRefs.map(function(ref, i) {
+      return '<div class="risk-item"><span style="min-width:28px;font-size:11px;color:var(--eq-grey);">' + (i+1) + '.</span>' +
+             '<span class="risk-id">' + escHtml(ref) + '</span>' +
+             '<button class="remove-btn" onclick="removePcRef(' + i + ')" title="Remove">&times;</button></div>';
+    }).join('');
+  }
+  renderPcRefs();
+
+  function buildPcPayload() {
+    return {
+      name:            document.getElementById('pc-name').value.trim(),
+      description:     document.getElementById('pc-description').value.trim(),
+      tags:            document.getElementById('pc-tags').value.trim(),
+      custom_id:       document.getElementById('pc-custom-id').value.trim(),
+      data_references: pcRefs.slice(),
+    };
+  }
+
+  window.previewPcRecord = function() {
+    var payload = buildPcPayload();
+    var wrap = document.getElementById('pc-preview-wrap');
+    var pre = document.getElementById('pc-preview-json');
+    pre.textContent = JSON.stringify(payload, null, 2);
+    wrap.style.display = 'block';
+  };
+
+  window.submitPcRecord = function() {
+    var payload = buildPcPayload();
+    if (!payload.name) { alert('Please enter a collection name.'); return; }
+    if (!payload.data_references.length) { alert('Please add at least one data reference.'); return; }
+
+    document.getElementById('submit-overlay').classList.add('active');
+    document.getElementById('pc-result-area').innerHTML = '';
+
+    fetch('/add-dg/create-pc', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json().then(function(d) { return {status: r.status, data: d}; }); })
+    .then(function(res) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      var area = document.getElementById('pc-result-area');
+      if (res.data.ok) {
+        area.innerHTML = '<div class="result-ok">' +
+          '<strong>&#10003; PersistedCollection created successfully</strong><br>' +
+          '<span class="bd-id">' + escHtml(res.data.pc_id) + '</span><br>' +
+          '<span class="muted">Status: ' + res.status + ' &middot; ' +
+          res.data.data_references_count + ' data references</span></div>';
+      } else {
+        area.innerHTML = '<div class="result-err">' +
+          '<strong>Ingest failed (HTTP ' + res.status + ')</strong><br>' +
+          '<pre style="margin:.4rem 0 0;font-size:12px;white-space:pre-wrap;">' +
+          escHtml(res.data.response || res.data.error || JSON.stringify(res.data)) + '</pre></div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      document.getElementById('pc-result-area').innerHTML =
+        '<div class="result-err"><strong>Network error:</strong> ' + escHtml(err.message) + '</div>';
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Generic Record form logic
+  // ══════════════════════════════════════════════════════════════════════
+  var genFields = [];
+
+  window.addGenField = function() {
+    var keyInp = document.getElementById('gen-field-key');
+    var valInp = document.getElementById('gen-field-value');
+    var typeInp = document.getElementById('gen-field-type');
+    var k = keyInp.value.trim();
+    var v = valInp.value;
+    var t = typeInp.value;
+    if (!k) { alert('Field key is required.'); return; }
+    genFields.push({key: k, value: v, type: t});
+    keyInp.value = ''; valInp.value = ''; typeInp.value = 'auto';
+    renderGenFields();
+  };
+
+  window.quickAddField = function(key, defaultVal, type) {
+    document.getElementById('gen-field-key').value = key;
+    document.getElementById('gen-field-value').value = defaultVal || '';
+    document.getElementById('gen-field-type').value = type || 'auto';
+    document.getElementById('gen-field-value').focus();
+  };
+
+  window.removeGenField = function(idx) {
+    genFields.splice(idx, 1);
+    renderGenFields();
+  };
+
+  function renderGenFields() {
+    var el = document.getElementById('gen-field-list');
+    if (!genFields.length) { el.innerHTML = '<span class="muted" style="font-size:13px;">No fields added yet. Use the form above or quick-add buttons.</span>'; return; }
+    el.innerHTML = genFields.map(function(f, i) {
+      var valDisplay = f.value.length > 80 ? f.value.substring(0, 77) + '…' : f.value;
+      return '<div class="risk-item">' +
+             '<strong style="min-width:140px;font-size:12px;">' + escHtml(f.key) + '</strong>' +
+             '<span style="font-size:11px;color:var(--eq-link);min-width:50px;">[' + f.type + ']</span>' +
+             '<span class="risk-id">' + escHtml(valDisplay) + '</span>' +
+             '<button class="remove-btn" onclick="removeGenField(' + i + ')" title="Remove">&times;</button></div>';
+    }).join('');
+  }
+  renderGenFields();
+
+  function buildGenPayload() {
+    return {
+      kind:      document.getElementById('gen-kind').value.trim(),
+      record_id: document.getElementById('gen-record-id').value.trim(),
+      fields:    genFields.slice(),
+    };
+  }
+
+  window.previewGenRecord = function() {
+    var payload = buildGenPayload();
+    var wrap = document.getElementById('gen-preview-wrap');
+    var pre = document.getElementById('gen-preview-json');
+    pre.textContent = JSON.stringify(payload, null, 2);
+    wrap.style.display = 'block';
+  };
+
+  window.submitGenRecord = function() {
+    var payload = buildGenPayload();
+    if (!payload.kind) { alert('Please enter a kind.'); return; }
+    if (!payload.fields.length) { alert('Please add at least one data field.'); return; }
+
+    document.getElementById('submit-overlay').classList.add('active');
+    document.getElementById('gen-result-area').innerHTML = '';
+
+    fetch('/add-dg/create-generic', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json().then(function(d) { return {status: r.status, data: d}; }); })
+    .then(function(res) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      var area = document.getElementById('gen-result-area');
+      if (res.data.ok) {
+        area.innerHTML = '<div class="result-ok">' +
+          '<strong>&#10003; Record created successfully</strong><br>' +
+          '<span class="bd-id">' + escHtml(res.data.record_id) + '</span><br>' +
+          '<span class="muted">Kind: ' + escHtml(res.data.kind) + ' &middot; Status: ' + res.status +
+          ' &middot; ' + res.data.field_count + ' fields</span></div>';
+      } else {
+        area.innerHTML = '<div class="result-err">' +
+          '<strong>Ingest failed (HTTP ' + res.status + ')</strong><br>' +
+          '<pre style="margin:.4rem 0 0;font-size:12px;white-space:pre-wrap;">' +
+          escHtml(res.data.response || res.data.error || JSON.stringify(res.data)) + '</pre></div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('submit-overlay').classList.remove('active');
+      document.getElementById('gen-result-area').innerHTML =
+        '<div class="result-err"><strong>Network error:</strong> ' + escHtml(err.message) + '</div>';
+    });
+  };
+
 })();
 </script>
 {% endblock %}

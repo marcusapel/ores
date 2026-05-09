@@ -1,11 +1,20 @@
 """
-Add DG page - Create and ingest a new BusinessDecision for an existing Reservoir.
+Create Record page - Create and ingest OSDU records.
+
+Tabs:
+  1. Decision Gate   → BusinessDecision (master-data)
+  2. Collaboration Project → CollaborationProject (master-data)
+  3. Persisted Collection → PersistedCollection (work-product-component)
+  4. Generic Record   → any kind (WPC / master-data / reference-data)
 
 Provides:
   GET  /add-dg               → render the addgate.html template
   GET  /add-dg/reservoirs    → JSON: list of Reservoir master-data records
   GET  /add-dg/wpc-search    → JSON: search for WPC records to link
   POST /add-dg/create        → JSON: build BD record, PUT to Storage API
+  POST /add-dg/create-cp     → JSON: build CP record, PUT to Storage API
+  POST /add-dg/create-pc     → JSON: build PersistedCollection, PUT to Storage API
+  POST /add-dg/create-generic → JSON: build any record, PUT to Storage API
 """
 from __future__ import annotations
 
@@ -587,3 +596,273 @@ async def create_cp(request: Request):
             {"ok": False, "cp_id": cp_id, "status": status, "response": resp_body},
             status_code=status,
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Create Persisted Collection
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/add-dg/create-pc", summary="Create and ingest a new PersistedCollection")
+async def create_pc(request: Request):
+    """
+    Build a PersistedCollection WPC from form data, PUT to Storage API.
+
+    Schema: osdu:wks:work-product-component--PersistedCollection:1.0.0
+
+    PersistedCollection is a simple WPC that bundles multiple data object
+    references under a single curated collection. Primary fields:
+      - Name, Description (mandatory)
+      - DataReferences[] — ordered list of OSDU record IDs
+      - Tags[] — freeform string tags
+
+    Expects JSON body with:
+      name, description, tags (comma-separated string),
+      data_references (array of record-ID strings),
+      id_prefix (optional, default derived from first DataReference or "dev"),
+      custom_id (optional, override the generated ID slug)
+    """
+    at = _access_token(request)
+    body = await request.json()
+
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+
+    description = body.get("description", "").strip()
+    data_refs: List[str] = [r.strip() for r in body.get("data_references", []) if r.strip()]
+    tags_raw = body.get("tags", "").strip()
+    tags: List[str] = [t.strip() for t in tags_raw.split(",") if t.strip()] if tags_raw else []
+
+    # Derive ID prefix
+    id_prefix = body.get("id_prefix", "").strip()
+    if not id_prefix:
+        for ref in data_refs:
+            if ":" in ref:
+                id_prefix = ref.split(":")[0]
+                break
+    if not id_prefix:
+        id_prefix = osdu.DATA_PARTITION_ID or "dev"
+
+    # Generate ID
+    custom_id = body.get("custom_id", "").strip()
+    if custom_id:
+        pc_id = custom_id if ":" in custom_id else (
+            f"{id_prefix}:work-product-component--PersistedCollection:{custom_id}:1"
+        )
+    else:
+        slug = name.replace(" ", "-")[:60]
+        pc_uuid = str(uuid.uuid4())[:8]
+        pc_id = f"{id_prefix}:work-product-component--PersistedCollection:{slug}-{pc_uuid}:1"
+
+    # ACL and legal from OSDU defaults
+    acl = {"owners": osdu.DEFAULT_OWNERS, "viewers": osdu.DEFAULT_VIEWERS}
+    legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    pc_data: Dict[str, Any] = {
+        "Name": name,
+        "Description": description or f"PersistedCollection: {name}",
+        "DataReferences": data_refs,
+    }
+    if tags:
+        pc_data["Tags"] = tags
+
+    pc_record = {
+        "id": pc_id,
+        "kind": "osdu:wks:work-product-component--PersistedCollection:1.0.0",
+        "acl": acl,
+        "legal": legal,
+        "data": pc_data,
+    }
+
+    # PUT to Storage API
+    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
+    hdr = osdu.headers(at)
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.put(storage_url, json=[pc_record], headers=hdr)
+            status = r.status_code
+            resp_body = r.text[:2000]
+    except Exception as e:
+        log.error("Storage API PUT (PC) failed: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
+
+    if status in (200, 201):
+        log.info("PC created: %s (status=%d, refs=%d)", pc_id, status, len(data_refs))
+        return JSONResponse({
+            "ok": True,
+            "pc_id": pc_id,
+            "status": status,
+            "data_references_count": len(data_refs),
+            "tags": tags,
+            "response": resp_body,
+        })
+    else:
+        log.warning("PC ingest failed (%d): %s", status, resp_body)
+        return JSONResponse(
+            {"ok": False, "pc_id": pc_id, "status": status, "response": resp_body},
+            status_code=status,
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Create Generic Record (WPC / master-data / reference-data)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/add-dg/create-generic", summary="Create and ingest an arbitrary OSDU record")
+async def create_generic(request: Request):
+    """
+    Build a generic OSDU record from user-supplied kind + data fields.
+
+    The data block is assembled from a list of field entries, each with:
+      key    - dot-separated path  (e.g. "Name", "Description", "Tags[0]")
+      value  - string value (auto-converted to number/bool/null if possible)
+      type   - "string" | "number" | "boolean" | "json" | "array" | "auto"
+
+    Array and nested-object fields use dot-notation for keys:
+      "Tags"       type=array  value="DG2, Drogon, EvidencePackage"
+      "RiskIDs"    type=array  value="dev:master-data--Risk:foo:1, dev:..."
+      "ext.custom" type=string value="hello"
+
+    Expects JSON body with:
+      kind  — full OSDU kind string (e.g. "osdu:wks:master-data--Risk:1.2.0")
+      record_id — optional explicit record ID; auto-generated if empty
+      fields — [{key, value, type}] list building the data block
+    """
+    at = _access_token(request)
+    body = await request.json()
+
+    kind = body.get("kind", "").strip()
+    if not kind:
+        raise HTTPException(400, "kind is required")
+
+    record_id = body.get("record_id", "").strip()
+    fields: List[Dict[str, str]] = body.get("fields", [])
+
+    # Derive ID prefix and type fragment from kind
+    # kind = "osdu:wks:master-data--Risk:1.2.0"
+    # → type_frag = "master-data--Risk"
+    kind_parts = kind.split(":")
+    type_frag = kind_parts[2] if len(kind_parts) > 2 else "record"
+    id_prefix = body.get("id_prefix", "").strip() or osdu.DATA_PARTITION_ID or "dev"
+
+    if not record_id:
+        rec_uuid = str(uuid.uuid4())[:12]
+        record_id = f"{id_prefix}:{type_frag}:{rec_uuid}:1"
+
+    # Build the data block from fields
+    data: Dict[str, Any] = {}
+    for f in fields:
+        key = f.get("key", "").strip()
+        raw_val = f.get("value", "")
+        ftype = f.get("type", "auto").strip().lower()
+        if not key:
+            continue
+
+        val: Any = raw_val
+        if ftype == "number":
+            try:
+                val = float(raw_val) if "." in str(raw_val) else int(raw_val)
+            except (ValueError, TypeError):
+                val = raw_val
+        elif ftype == "boolean":
+            val = raw_val.lower() in ("true", "1", "yes")
+        elif ftype == "json":
+            import json as _json
+            try:
+                val = _json.loads(raw_val)
+            except _json.JSONDecodeError:
+                val = raw_val
+        elif ftype == "array":
+            # Comma-separated → list; try JSON parse first
+            import json as _json
+            try:
+                val = _json.loads(raw_val)
+                if not isinstance(val, list):
+                    val = [val]
+            except _json.JSONDecodeError:
+                val = [v.strip() for v in raw_val.split(",") if v.strip()]
+        elif ftype == "auto":
+            val = _auto_type(raw_val)
+
+        # Support dot-notation for nested keys (e.g. "ext.custom" → {ext: {custom: val}})
+        _set_nested(data, key, val)
+
+    # ACL and legal from OSDU defaults
+    acl = {"owners": osdu.DEFAULT_OWNERS, "viewers": osdu.DEFAULT_VIEWERS}
+    legal = {
+        "legaltags": [osdu.DEFAULT_LEGAL_TAG],
+        "otherRelevantDataCountries": osdu.DEFAULT_COUNTRIES,
+    }
+
+    record = {
+        "id": record_id,
+        "kind": kind,
+        "acl": acl,
+        "legal": legal,
+        "data": data,
+    }
+
+    # PUT to Storage API
+    storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
+    hdr = osdu.headers(at)
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.put(storage_url, json=[record], headers=hdr)
+            status = r.status_code
+            resp_body = r.text[:2000]
+    except Exception as e:
+        log.error("Storage API PUT (generic) failed: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
+
+    if status in (200, 201):
+        log.info("Generic record created: %s kind=%s (status=%d)", record_id, kind, status)
+        return JSONResponse({
+            "ok": True,
+            "record_id": record_id,
+            "kind": kind,
+            "status": status,
+            "field_count": len(fields),
+            "response": resp_body,
+        })
+    else:
+        log.warning("Generic ingest failed (%d): %s", status, resp_body)
+        return JSONResponse(
+            {"ok": False, "record_id": record_id, "kind": kind,
+             "status": status, "response": resp_body},
+            status_code=status,
+        )
+
+
+def _auto_type(val: str) -> Any:
+    """Best-effort auto-type conversion for generic field values."""
+    if val == "":
+        return ""
+    low = val.lower()
+    if low in ("true", "false"):
+        return low == "true"
+    if low == "null":
+        return None
+    try:
+        return int(val)
+    except ValueError:
+        pass
+    try:
+        return float(val)
+    except ValueError:
+        pass
+    return val
+
+
+def _set_nested(d: Dict[str, Any], dotkey: str, val: Any) -> None:
+    """Set a value in a nested dict using dot-notation. E.g. 'ext.custom' → d[ext][custom]."""
+    parts = dotkey.split(".")
+    for part in parts[:-1]:
+        if part not in d or not isinstance(d[part], dict):
+            d[part] = {}
+        d = d[part]
+    d[parts[-1]] = val
