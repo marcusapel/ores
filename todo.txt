@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════════════════════════════════
 OSDU ↔ Remote RDDMS: Pitfalls, TODOs & Admin Requests
-Updated: 2026-05-10  (removed historic demo pitfalls §1.6-1.8)
+Updated: 2026-05-10  (added local stack §1.7, manifest_ingest §2.1/§2.5)
 ═══════════════════════════════════════════════════════════════════════
 
 This doc captures lessons learned from the RDDMS ↔ OSDU catalog
@@ -49,20 +49,58 @@ roundtrip, plus improvements and admin items needed for production.
      Problem:  POST /manifests/build produces WPC records without the
                DatasetIDs field — no link from WPC to ETPDataspace.
      Fix:      Post-ingest PATCH: set DatasetIDs on each WPC.
-               Should be automated in the ingest CLI (see §2.1).
+               Now automated in manifest_ingest.py (see §2.1 ✅).
+
+1.7  Local RDDMS stack — architecture & auth findings
+     ──────────────────────────────────────────────────
+     The open-etp-client Docker image (840 MB) is a full NestJS REST
+     API service — NOT a CLI tool.  It includes:
+       - All RDDMS REST endpoints (dataspaces, resources, arrays, …)
+       - Manifest builder at POST /manifests/build
+       - Swagger/OpenAPI at the root path
+     The image name "open-etp-client" is misleading: it is the RDDMS
+     REST API layer that connects to the C++ ETP server over WebSocket.
+
+     Environment variables for the REST API container:
+       RDMS_ETP_PROTOCOL   ws | wss
+       RDMS_ETP_HOST        hostname of the ETP server
+       RDMS_ETP_PORT        9002 (default)
+       RDMS_REST_ROOT_PATH  /api/reservoir-ddms/v2/
+       RDMS_REST_PORT       3000
+       RDMS_DATA_PARTITION_MODE  single | multi
+       RDMS_JWT_SECRET      (optional — unused when authN=none)
+
+     Local stack (docker-compose.yaml, demo/epc/):
+       postgres    port 5433  — ETP persistence (PG)
+       etp-server  port 9002  — C++ ETP WebSocket, authN=none
+       etp-client  port 3000  — NestJS REST API + manifest builder
+
+     Auth behaviour:
+       - The REST API requires a Bearer token in the header, but the
+         local ETP server has authN=none, so any non-empty string
+         (e.g. "Bearer local") is accepted.
+       - The manifest builder returns HTTP 201 (not 200) on success.
+       - POST /manifests/build accepts:
+           uris: ["eml:///dataspace('name')"]   (whole dataspace)
+           typePatterns: ["resqml20.obj_*Representation"]  (filter)
+           createMissingReferences: true
+       - Generates correct OSDU kinds (work-product-component--*),
+         DDMSDatasets links, PropertyType mappings, etc.
 
 
 ───────────────────────────────────────────────────────────────────────
 2. TODO / IMPROVEMENTS (code)
 ───────────────────────────────────────────────────────────────────────
 
-2.1  Automate DatasetIDs patch in manifest ingest
+2.1  Automate DatasetIDs patch in manifest ingest       ✅
      ───────────────────────────────────────────────
-     The RDDMS manifest builder + admin GUI already handles manifest
-     build → catalog PUT.  The one remaining gap: the builder never
-     populates WPC DatasetIDs (link to ETPDataspace).
-     TODO: After ingest, auto-PATCH DatasetIDs on each WPC record
-     in the existing GUI ingest flow (no separate CLI needed).
+     DONE: demo/epc/manifest_ingest.py patches DatasetIDs on every
+     WPC record after manifest build.  The ETPDataspace record id is
+     extracted from the Datasets section and set as DatasetIDs[0]
+     on all work-product-component records.
+     Also automated: ACL (owners/viewers) and legal tags injection.
+     Remaining: wire the same patch into the GUI ingest flow
+     (keys_router.py /api/manifest/ingest route).
 
 2.2  Incremental / delta sync
      ────────────────────────
@@ -86,6 +124,18 @@ roundtrip, plus improvements and admin items needed for production.
      TODO: Add a server-side "typeSearch" or "bulkGet" endpoint request
      to RDDMS team (see §3.4), or implement broader cross-call caching.
 
+2.5  Local RDDMS stack + manifest_ingest pipeline      ✅
+     ──────────────────────────────────────────────
+     DONE: docker-compose.yaml now includes three services:
+       postgres (5433), etp-server (9002), etp-client (3000).
+     New script: demo/epc/manifest_ingest.py
+       - Builds OSDU manifest via local REST API POST /manifests/build
+       - Patches ACLs, legal tags, DatasetIDs
+       - Pushes to remote OSDU catalog (Workflow or Storage API)
+       - Supports --save-only, --dry-run, --type-patterns, --storage
+     This removes the dependency on the remote RDDMS manifest builder
+     and allows generating manifests even when remote ETP write
+     permissions are denied (see §1.7).
 
 
 ───────────────────────────────────────────────────────────────────────
@@ -147,9 +197,19 @@ roundtrip, plus improvements and admin items needed for production.
        │    ETP --export-epc       │     search / PG query        │
        └───────────────────────────┘     ◄────────────────────────┘
 
+  Local stack (demo/epc/docker-compose.yaml):
+  ┌─────────┐   ETP import    ┌──────────┐  manifest/build  ┌──────────┐
+  │  .epc   │ ──────────────► │  local   │ ───────────────► │ manifest │
+  │  file   │     ingest.sh   │  RDDMS   │  manifest_ingest │  .json   │
+  └─────────┘                 │ :9002    │  (port 3000)     └────┬─────┘
+                              └──────────┘                      │
+                                                    push to     │
+                                                    remote  ────┘
+                                                    OSDU catalog
+
   Remaining gaps:
   - manifest/build underscore bug (§3.2)
-  - DatasetIDs patch after each ingest (§1.9 — automate in §2.1)
+  - DatasetIDs patch in GUI ingest flow (§2.1 — done in CLI)
 
 
 ───────────────────────────────────────────────────────────────────────
