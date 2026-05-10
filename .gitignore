@@ -6,8 +6,6 @@ __pycache__/
 *.pyd
 .python-version
 .venv/
-*.epc
-*.h5
 
 # Temp / lock files
 ~$*
@@ -22,9 +20,15 @@ k8s/secret-backup/
 demo/eqn/
 tmp/
 *.pptx
+*.epc
+*.h5
+*.xml 
 todo.txt
-
+test/_pg_vs_rest_output
 demo/drogon_dg2/records
 demo/drogon/records
 demo/seisint/records
 demo/preship
+demo/epc/drogon
+demo/epc/drogon_osdu
+

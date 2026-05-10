@@ -60,9 +60,28 @@ log = logging.getLogger("rddms-admin.graphql")
 _PG_CONN_STRING = os.getenv("GRAPHQL_PG_CONN_STRING") or os.getenv("POSTGRESQL_CONN_STRING", "")
 _pool = None  # asyncpg.Pool or None
 
+# Remote RDDMS PostgreSQL (direct access to the cloud-hosted RDDMS database).
+# Not yet available on ADME, but prepared for when it becomes accessible.
+_RDDMS_PG_CONN_STRING = os.getenv("RDDMS_PG_CONN_STRING", "")
+_rddms_pool = None  # asyncpg.Pool or None – remote RDDMS PG
+
+
+def _parse_dsn(conn_str: str) -> str:
+    """Normalise a connection string to a DSN URI if needed."""
+    if "=" in conn_str and "://" not in conn_str:
+        parts = dict(p.split("=", 1) for p in conn_str.split() if "=" in p)
+        return "postgresql://{user}:{password}@{host}:{port}/{dbname}".format(
+            user=parts.get("user", "postgres"),
+            password=parts.get("password", ""),
+            host=parts.get("host", "localhost"),
+            port=parts.get("port", "5432"),
+            dbname=parts.get("dbname", "postkv"),
+        )
+    return conn_str
+
 
 async def _get_pool():
-    """Return asyncpg pool (or None if PG not configured/available)."""
+    """Return asyncpg pool for the *local* PG (or None if not configured)."""
     global _pool
     if _pool is not None:
         return _pool
@@ -70,29 +89,46 @@ async def _get_pool():
         return None
     try:
         import asyncpg
-        dsn = _PG_CONN_STRING
-        if "=" in dsn and "://" not in dsn:
-            parts = dict(p.split("=", 1) for p in dsn.split() if "=" in p)
-            dsn = "postgresql://{user}:{password}@{host}:{port}/{dbname}".format(
-                user=parts.get("user", "postgres"),
-                password=parts.get("password", ""),
-                host=parts.get("host", "localhost"),
-                port=parts.get("port", "5432"),
-                dbname=parts.get("dbname", "postkv"),
-            )
+        dsn = _parse_dsn(_PG_CONN_STRING)
         _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=10, command_timeout=60)
-        log.info("GraphQL PG pool created")
+        log.info("GraphQL PG pool created (local)")
     except Exception as e:
         log.warning("PG pool failed (will use REST fallback): %s", e)
         _pool = None
     return _pool
 
 
+async def _get_rddms_pool():
+    """Return asyncpg pool for the *remote* RDDMS PG (or None).
+
+    This connects directly to the PostgreSQL database backing a
+    cloud-hosted RDDMS instance, bypassing the REST API.  Set the
+    ``RDDMS_PG_CONN_STRING`` env var to enable.
+    """
+    global _rddms_pool
+    if _rddms_pool is not None:
+        return _rddms_pool
+    if not _RDDMS_PG_CONN_STRING:
+        return None
+    try:
+        import asyncpg
+        dsn = _parse_dsn(_RDDMS_PG_CONN_STRING)
+        _rddms_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, command_timeout=120)
+        log.info("Remote RDDMS PG pool created")
+    except Exception as e:
+        log.warning("Remote RDDMS PG pool failed (will use REST fallback): %s", e)
+        _rddms_pool = None
+    return _rddms_pool
+
+
 async def close_pool():
-    global _pool
+    global _pool, _rddms_pool
     if _pool:
         await _pool.close()
         _pool = None
+    if _rddms_pool:
+        await _rddms_pool.close()
+        _rddms_pool = None
 
 
 def _get_token_from_info(info: Info) -> str:
@@ -1762,23 +1798,46 @@ async def graphql_query_api(request: Request):
 @router.get("/api/graphql/info")
 async def graphql_info():
     """Return GraphQL backend configuration info (no auth required)."""
+    import re
+
     pool = await _get_pool()
     pg_configured = bool(_PG_CONN_STRING)
     pg_connected = pool is not None
     # Mask password in connection string for display
     display_conn = ""
     if _PG_CONN_STRING:
-        import re
         display_conn = re.sub(r"password=\S+", "password=***", _PG_CONN_STRING)
         display_conn = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", display_conn)
+
+    # Remote RDDMS PG info
+    rddms_pool = await _get_rddms_pool()
+    rddms_pg_configured = bool(_RDDMS_PG_CONN_STRING)
+    rddms_pg_connected = rddms_pool is not None
+    display_rddms_conn = ""
+    if _RDDMS_PG_CONN_STRING:
+        display_rddms_conn = re.sub(r"password=\S+", "password=***", _RDDMS_PG_CONN_STRING)
+        display_rddms_conn = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", display_rddms_conn)
+
+    # Determine backend description
+    backends = []
+    if pg_connected:
+        backends.append("Local PostgreSQL")
+    if rddms_pg_connected:
+        backends.append("Remote RDDMS PostgreSQL")
+    if not backends:
+        backends.append("REST API")
+    backend_str = " + ".join(backends) + (" + REST fallback" if backends != ["REST API"] else "")
 
     return JSONResponse({
         "pg_configured": pg_configured,
         "pg_connected": pg_connected,
         "pg_connection": display_conn or None,
-        "backend": "PostgreSQL" if pg_connected else ("REST API" if not pg_configured else "PG configured but not connected"),
-        "hint": "Set GRAPHQL_PG_CONN_STRING env var on the server to enable direct PostgreSQL access. "
-                "Example: host=localhost port=5433 dbname=openetp user=tester password=tester",
+        "rddms_pg_configured": rddms_pg_configured,
+        "rddms_pg_connected": rddms_pg_connected,
+        "rddms_pg_connection": display_rddms_conn or None,
+        "backend": backend_str,
+        "hint": "Set GRAPHQL_PG_CONN_STRING for local PG, RDDMS_PG_CONN_STRING for remote RDDMS PG. "
+                "REST API is always available as fallback.",
     })
 
 

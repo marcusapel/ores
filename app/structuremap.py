@@ -5,8 +5,8 @@ Discovers depth-domain Grid2dRepresentations in a Reservoir DDMS dataspace
 and converts them to OSDU M27 StructureMap:1.0.0 records.
 
 Reuses:
-  - osdu.fetch_grid2d_surface()  - fetch object + z-values + CRS in one call
-  - osdu._parse_lattice()        - RESQML 2.0.1 lattice geometry parsing
+  - resqml_viz.fetch_grid2d_surface()  - fetch object + z-values + CRS
+  - resqml_viz._parse_lattice()        - RESQML 2.0.1 lattice geometry parsing
   - osdu.list_resources()        - enumerate objects by type
   - Conversion logic adapted from demo/seisint/gen_structuremap_from_resqml.py
 
@@ -24,6 +24,7 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import osdu
+from . import resqml_viz
 
 log = logging.getLogger("rddms-admin.structuremap")
 
@@ -138,7 +139,7 @@ def surface_to_structuremap(
     """Convert a fetched Grid2d surface to an OSDU StructureMap:1.0.0 record.
 
     Args:
-        surface: Output of osdu.fetch_grid2d_surface().
+        surface: Output of resqml_viz.fetch_grid2d_surface().
         ds_path: Dataspace path (e.g. 'maap/drogon').
         prefix: OSDU namespace prefix.
 
@@ -508,7 +509,7 @@ async def generate_structuremaps(
     for info in depth_surfaces:
         uid = info["uuid"]
         try:
-            full_surface = await osdu.fetch_grid2d_surface(
+            full_surface = await resqml_viz.fetch_grid2d_surface(
                 access_token, ds_path, uid
             )
             smap = surface_to_structuremap(full_surface, ds_path, prefix=prefix)
