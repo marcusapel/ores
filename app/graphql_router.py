@@ -1152,14 +1152,14 @@ class Query:
                 # Fall back to REST if this dataspace isn't in PG
                 if result.total_scanned == 0 and "not found in PG" in result.query_description:
                     token = _get_token_from_info(info)
-                    return await self._deep_search_rest(
+                    return await _deep_search_rest(
                         token, ds_list[0], type_name, title_contains,
                         property_filter, include_statistics, include_sample_values,
                         sample_size, limit,
                     )
                 return result
             token = _get_token_from_info(info)
-            return await self._deep_search_rest(
+            return await _deep_search_rest(
                 token, ds_list[0], type_name, title_contains,
                 property_filter, include_statistics, include_sample_values,
                 sample_size, limit,
@@ -1181,14 +1181,14 @@ class Query:
                 if pg_result.total_scanned > 0 or "not found in PG" not in pg_result.query_description:
                     return pg_result
                 # Dataspace not in PG → try REST
-            return await self._deep_search_rest(
+            return await _deep_search_rest(
                 token, ds, type_name, title_contains,
                 property_filter, include_statistics, include_sample_values,
                 sample_size, limit,
             )
 
         results = await asyncio.gather(*[_search_one_ds(ds) for ds in ds_list])
-        return self._merge_deep_results(results, ds_list, limit)
+        return _merge_deep_results(results, ds_list, limit)
 
     @strawberry.field(
         description=(
@@ -1624,31 +1624,32 @@ class Query:
             return m.group(1)
         return kind_type if kind_type else None
 
-    @staticmethod
-    def _merge_deep_results(results: list, ds_list: List[str], limit: int) -> DeepSearchResult:
-        """Merge DeepSearchResult from multiple dataspaces."""
-        all_objects: List[ResqmlObject] = []
-        total_scanned = 0
-        total_matched = 0
-        backends = set()
-        for r in results:
-            total_scanned += r.total_scanned
-            total_matched += r.total_matched
-            all_objects.extend(r.objects)
-            backends.add(r.backend)
-        all_objects = all_objects[:limit]
-        backend = " + ".join(sorted(backends))
-        desc = f"Searched {len(ds_list)} dataspaces: {', '.join(ds_list)}"
-        return DeepSearchResult(
-            objects=all_objects,
-            total_scanned=total_scanned,
-            total_matched=total_matched,
-            query_description=desc,
-            backend=backend,
-        )
 
-    async def _deep_search_rest(
-        self,
+
+def _merge_deep_results(results: list, ds_list: List[str], limit: int) -> DeepSearchResult:
+    """Merge DeepSearchResult from multiple dataspaces."""
+    all_objects: List[ResqmlObject] = []
+    total_scanned = 0
+    total_matched = 0
+    backends = set()
+    for r in results:
+        total_scanned += r.total_scanned
+        total_matched += r.total_matched
+        all_objects.extend(r.objects)
+        backends.add(r.backend)
+    all_objects = all_objects[:limit]
+    backend = " + ".join(sorted(backends))
+    desc = f"Searched {len(ds_list)} dataspaces: {', '.join(ds_list)}"
+    return DeepSearchResult(
+        objects=all_objects,
+        total_scanned=total_scanned,
+        total_matched=total_matched,
+        query_description=desc,
+        backend=backend,
+    )
+
+
+async def _deep_search_rest(
         token: str,
         dataspace: str,
         type_name: str,
@@ -1658,175 +1659,175 @@ class Query:
         include_sample_values: bool,
         sample_size: int,
         limit: int,
-    ) -> DeepSearchResult:
-        """REST-based deep search for a single dataspace."""
-        backend = "REST"
+) -> DeepSearchResult:
+    """REST-based deep search for a single dataspace."""
+    backend = "REST"
 
-        # Step 1: List target objects
+    # Step 1: List target objects
+    try:
+        resources = await _rest_list_resources(token, dataspace, type_name, limit * 3)
+    except Exception as e:
+        return DeepSearchResult(
+            objects=[], total_scanned=0, total_matched=0,
+            query_description=f"ERROR listing {type_name}: {e}", backend=backend,
+        )
+
+    total_scanned = len(resources)
+    matched: List[ResqmlObject] = []
+
+    for r in resources:
+        if len(matched) >= limit:
+            break
+
+        title = r["title"]
+        if title_contains and title_contains.lower() not in title.lower():
+            continue
+
+        uuid = r["uuid"]
+        if not uuid:
+            continue
+
+        # Step 2: find attached properties (sources that point to this object)
         try:
-            resources = await _rest_list_resources(token, dataspace, type_name, limit * 3)
-        except Exception as e:
-            return DeepSearchResult(
-                objects=[], total_scanned=0, total_matched=0,
-                query_description=f"ERROR listing {type_name}: {e}", backend=backend,
+            sources = await _rest_list_sources(token, dataspace, type_name, uuid)
+        except Exception:
+            sources = []
+
+        # Parse each source to extract uuid/type from URI
+        parsed_sources = [_parse_eml_entry(s) for s in sources]
+
+        # Filter to property types
+        prop_sources = [
+            ps for ps in parsed_sources
+            if any(k in ps["contentType"]
+                   for k in ("ContinuousProperty", "DiscreteProperty", "CategoricalProperty"))
+        ]
+
+        if property_filter and property_filter.kind and not prop_sources:
+            continue
+
+        # Step 3: fetch property details and filter by kind
+        property_results: List[PropertyInfo] = []
+        passes_filter = not (property_filter and property_filter.array_filter)
+
+        for ps in prop_sources:
+            p_ct = ps["contentType"]
+            p_uuid = ps["uuid"]
+            p_name = ps["name"]
+            if not p_uuid:
+                continue
+
+            # Determine property type for API call
+            # p_ct is the full qualified name from URI, e.g. "resqml20.obj_ContinuousProperty"
+            if "ContinuousProperty" in p_ct:
+                p_type = "resqml20.obj_ContinuousProperty"
+            elif "DiscreteProperty" in p_ct:
+                p_type = "resqml20.obj_DiscreteProperty"
+            elif "CategoricalProperty" in p_ct:
+                p_type = "resqml20.obj_CategoricalProperty"
+            else:
+                continue
+
+            # Fetch property object to get kind
+            try:
+                p_obj = await _rest_get_resource(token, dataspace, p_type, p_uuid)
+            except Exception:
+                continue
+
+            kind = _extract_property_kind(p_obj)
+            uom = p_obj.get("UOM") or p_obj.get("Uom") or None
+
+            # Kind filter
+            if property_filter and property_filter.kind:
+                if property_filter.kind.lower() not in kind.lower():
+                    continue
+
+            # Title filter on property
+            if property_filter and property_filter.title_contains:
+                p_title = (p_obj.get("Citation") or {}).get("Title", "") or p_name
+                if property_filter.title_contains.lower() not in p_title.lower():
+                    continue
+
+            prop_info = PropertyInfo(
+                uuid=p_uuid,
+                title=(p_obj.get("Citation") or {}).get("Title", "") or p_name,
+                type_name=p_type,
+                kind=kind,
+                uom=uom,
             )
 
-        total_scanned = len(resources)
-        matched: List[ResqmlObject] = []
-
-        for r in resources:
-            if len(matched) >= limit:
-                break
-
-            title = r["title"]
-            if title_contains and title_contains.lower() not in title.lower():
-                continue
-
-            uuid = r["uuid"]
-            if not uuid:
-                continue
-
-            # Step 2: find attached properties (sources that point to this object)
-            try:
-                sources = await _rest_list_sources(token, dataspace, type_name, uuid)
-            except Exception:
-                sources = []
-
-            # Parse each source to extract uuid/type from URI
-            parsed_sources = [_parse_eml_entry(s) for s in sources]
-
-            # Filter to property types
-            prop_sources = [
-                ps for ps in parsed_sources
-                if any(k in ps["contentType"]
-                       for k in ("ContinuousProperty", "DiscreteProperty", "CategoricalProperty"))
-            ]
-
-            if property_filter and property_filter.kind and not prop_sources:
-                continue
-
-            # Step 3: fetch property details and filter by kind
-            property_results: List[PropertyInfo] = []
-            passes_filter = not (property_filter and property_filter.array_filter)
-
-            for ps in prop_sources:
-                p_ct = ps["contentType"]
-                p_uuid = ps["uuid"]
-                p_name = ps["name"]
-                if not p_uuid:
-                    continue
-
-                # Determine property type for API call
-                # p_ct is the full qualified name from URI, e.g. "resqml20.obj_ContinuousProperty"
-                if "ContinuousProperty" in p_ct:
-                    p_type = "resqml20.obj_ContinuousProperty"
-                elif "DiscreteProperty" in p_ct:
-                    p_type = "resqml20.obj_DiscreteProperty"
-                elif "CategoricalProperty" in p_ct:
-                    p_type = "resqml20.obj_CategoricalProperty"
-                else:
-                    continue
-
-                # Fetch property object to get kind
+            # Step 4: optionally load array data for statistics/filtering
+            if include_statistics or include_sample_values or (property_filter and property_filter.array_filter):
                 try:
-                    p_obj = await _rest_get_resource(token, dataspace, p_type, p_uuid)
+                    p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
                 except Exception:
-                    continue
+                    p_arrays = []
 
-                kind = _extract_property_kind(p_obj)
-                uom = p_obj.get("UOM") or p_obj.get("Uom") or None
-
-                # Kind filter
-                if property_filter and property_filter.kind:
-                    if property_filter.kind.lower() not in kind.lower():
+                array_infos: List[ArrayInfo] = []
+                for pa in p_arrays:
+                    pa_uid = pa.get("uid") or {}
+                    pa_path = pa_uid.get("pathInResource", "") if isinstance(pa_uid, dict) else ""
+                    if not pa_path:
                         continue
 
-                # Title filter on property
-                if property_filter and property_filter.title_contains:
-                    p_title = (p_obj.get("Citation") or {}).get("Title", "") or p_name
-                    if property_filter.title_contains.lower() not in p_title.lower():
-                        continue
-
-                prop_info = PropertyInfo(
-                    uuid=p_uuid,
-                    title=(p_obj.get("Citation") or {}).get("Title", "") or p_name,
-                    type_name=p_type,
-                    kind=kind,
-                    uom=uom,
-                )
-
-                # Step 4: optionally load array data for statistics/filtering
-                if include_statistics or include_sample_values or (property_filter and property_filter.array_filter):
+                    ai = ArrayInfo(path=pa_path)
                     try:
-                        p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
+                        values = await _rest_read_array(token, dataspace, p_type, p_uuid, pa_path)
                     except Exception:
-                        p_arrays = []
+                        values = []
 
-                    array_infos: List[ArrayInfo] = []
-                    for pa in p_arrays:
-                        pa_uid = pa.get("uid") or {}
-                        pa_path = pa_uid.get("pathInResource", "") if isinstance(pa_uid, dict) else ""
-                        if not pa_path:
-                            continue
+                    if values:
+                        ai.total_elements = len(values)
+                        if include_statistics:
+                            ai.statistics = _compute_statistics(values)
+                            prop_info.statistics = ai.statistics
+                        if include_sample_values:
+                            ai.sample_values = values[:sample_size]
 
-                        ai = ArrayInfo(path=pa_path)
-                        try:
-                            values = await _rest_read_array(token, dataspace, p_type, p_uuid, pa_path)
-                        except Exception:
-                            values = []
+                        # Array threshold filter
+                        if property_filter and property_filter.array_filter:
+                            af = property_filter.array_filter
+                            match = _check_threshold(values, af.threshold, af.operator)
+                            prop_info.matching_cells = match
+                            if match.count > 0:
+                                passes_filter = True
 
-                        if values:
-                            ai.total_elements = len(values)
-                            if include_statistics:
-                                ai.statistics = _compute_statistics(values)
-                                prop_info.statistics = ai.statistics
-                            if include_sample_values:
-                                ai.sample_values = values[:sample_size]
+                    array_infos.append(ai)
 
-                            # Array threshold filter
-                            if property_filter and property_filter.array_filter:
-                                af = property_filter.array_filter
-                                match = _check_threshold(values, af.threshold, af.operator)
-                                prop_info.matching_cells = match
-                                if match.count > 0:
-                                    passes_filter = True
+                prop_info.arrays = array_infos if array_infos else None
 
-                        array_infos.append(ai)
+            property_results.append(prop_info)
 
-                    prop_info.arrays = array_infos if array_infos else None
+        # If we had a property kind filter and no properties matched, skip
+        if property_filter and property_filter.kind and not property_results:
+            continue
+        # If array filter active but nothing passed, skip
+        if property_filter and property_filter.array_filter and not passes_filter:
+            continue
 
-                property_results.append(prop_info)
+        matched.append(ResqmlObject(
+            uuid=uuid, title=title, type_name=type_name,
+            properties=property_results if property_results else None,
+        ))
 
-            # If we had a property kind filter and no properties matched, skip
-            if property_filter and property_filter.kind and not property_results:
-                continue
-            # If array filter active but nothing passed, skip
-            if property_filter and property_filter.array_filter and not passes_filter:
-                continue
+    # Build description
+    desc_parts = [f"type={type_name}"]
+    if title_contains:
+        desc_parts.append(f"title~'{title_contains}'")
+    if property_filter:
+        if property_filter.kind:
+            desc_parts.append(f"property.kind='{property_filter.kind}'")
+        if property_filter.array_filter:
+            af = property_filter.array_filter
+            desc_parts.append(f"cellValue {af.operator.value} {af.threshold}")
 
-            matched.append(ResqmlObject(
-                uuid=uuid, title=title, type_name=type_name,
-                properties=property_results if property_results else None,
-            ))
-
-        # Build description
-        desc_parts = [f"type={type_name}"]
-        if title_contains:
-            desc_parts.append(f"title~'{title_contains}'")
-        if property_filter:
-            if property_filter.kind:
-                desc_parts.append(f"property.kind='{property_filter.kind}'")
-            if property_filter.array_filter:
-                af = property_filter.array_filter
-                desc_parts.append(f"cellValue {af.operator.value} {af.threshold}")
-
-        return DeepSearchResult(
-            objects=matched,
-            total_scanned=total_scanned,
-            total_matched=len(matched),
-            query_description=" AND ".join(desc_parts),
-            backend=backend,
-        )
+    return DeepSearchResult(
+        objects=matched,
+        total_scanned=total_scanned,
+        total_matched=len(matched),
+        query_description=" AND ".join(desc_parts),
+        backend=backend,
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
