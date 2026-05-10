@@ -533,6 +533,7 @@ class DeepSearchResult:
     total_matched: int
     query_description: str
     backend: str  # "REST" or "PostgreSQL"
+    warnings: Optional[List[str]] = None  # surfaced errors / hints
 
 
 @strawberry.type
@@ -570,6 +571,7 @@ class FederatedSearchResult:
     total_merged: int
     query_description: str
     sources: List[str]  # e.g. ["OSDU catalog", "PostgreSQL", "Remote RDDMS"]
+    warnings: Optional[List[str]] = None  # surfaced errors / hints
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1632,11 +1634,14 @@ def _merge_deep_results(results: list, ds_list: List[str], limit: int) -> DeepSe
     total_scanned = 0
     total_matched = 0
     backends = set()
+    all_warnings: List[str] = []
     for r in results:
         total_scanned += r.total_scanned
         total_matched += r.total_matched
         all_objects.extend(r.objects)
         backends.add(r.backend)
+        if r.warnings:
+            all_warnings.extend(r.warnings)
     all_objects = all_objects[:limit]
     backend = " + ".join(sorted(backends))
     desc = f"Searched {len(ds_list)} dataspaces: {', '.join(ds_list)}"
@@ -1646,6 +1651,7 @@ def _merge_deep_results(results: list, ds_list: List[str], limit: int) -> DeepSe
         total_matched=total_matched,
         query_description=desc,
         backend=backend,
+        warnings=all_warnings or None,
     )
 
 
@@ -1662,6 +1668,10 @@ async def _deep_search_rest(
 ) -> DeepSearchResult:
     """REST-based deep search for a single dataspace."""
     backend = "REST"
+    warnings: List[str] = []
+
+    # Property kind cache: uuid → kind string (avoids re-fetching same property)
+    _kind_cache: Dict[str, str] = {}
 
     # Step 1: List target objects
     try:
@@ -1670,6 +1680,7 @@ async def _deep_search_rest(
         return DeepSearchResult(
             objects=[], total_scanned=0, total_matched=0,
             query_description=f"ERROR listing {type_name}: {e}", backend=backend,
+            warnings=[f"Failed to list {type_name} in {dataspace}: {e}"],
         )
 
     total_scanned = len(resources)
@@ -1690,8 +1701,9 @@ async def _deep_search_rest(
         # Step 2: find attached properties (sources that point to this object)
         try:
             sources = await _rest_list_sources(token, dataspace, type_name, uuid)
-        except Exception:
+        except Exception as e:
             sources = []
+            warnings.append(f"{title}: failed to list sources: {e}")
 
         # Parse each source to extract uuid/type from URI
         parsed_sources = [_parse_eml_entry(s) for s in sources]
@@ -1728,14 +1740,21 @@ async def _deep_search_rest(
             else:
                 continue
 
-            # Fetch property object to get kind
-            try:
-                p_obj = await _rest_get_resource(token, dataspace, p_type, p_uuid)
-            except Exception:
-                continue
+            # Fetch property object to get kind (with cache)
+            if p_uuid in _kind_cache:
+                kind = _kind_cache[p_uuid]
+                p_obj: Dict[str, Any] = {}  # won't need full object for cached kind
+                uom = None
+            else:
+                try:
+                    p_obj = await _rest_get_resource(token, dataspace, p_type, p_uuid)
+                except Exception as e:
+                    warnings.append(f"Failed to fetch property {p_uuid[:8]}…: {e}")
+                    continue
 
-            kind = _extract_property_kind(p_obj)
-            uom = p_obj.get("UOM") or p_obj.get("Uom") or None
+                kind = _extract_property_kind(p_obj)
+                _kind_cache[p_uuid] = kind
+                uom = p_obj.get("UOM") or p_obj.get("Uom") or None
 
             # Kind filter
             if property_filter and property_filter.kind:
@@ -1762,6 +1781,12 @@ async def _deep_search_rest(
                     p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
                 except Exception:
                     p_arrays = []
+
+                if not p_arrays and (include_statistics or (property_filter and property_filter.array_filter)):
+                    # Only warn once per search, not per property
+                    _no_array_msg = "REST backend: array values not available (statistics/threshold need PG or ETP)"
+                    if _no_array_msg not in warnings:
+                        warnings.append(_no_array_msg)
 
                 array_infos: List[ArrayInfo] = []
                 for pa in p_arrays:
@@ -1821,12 +1846,21 @@ async def _deep_search_rest(
             af = property_filter.array_filter
             desc_parts.append(f"cellValue {af.operator.value} {af.threshold}")
 
+    # Add summary warning when objects were scanned & kind-matched but array filter rejected all
+    if property_filter and property_filter.array_filter and total_scanned > 0 and len(matched) == 0:
+        warnings.append(
+            f"All {total_scanned} objects skipped by arrayFilter "
+            f"(threshold {property_filter.array_filter.operator.value} {property_filter.array_filter.threshold}) — "
+            f"remove arrayFilter to see kind-matched results on REST backend"
+        )
+
     return DeepSearchResult(
         objects=matched,
         total_scanned=total_scanned,
         total_matched=len(matched),
         query_description=" AND ".join(desc_parts),
         backend=backend,
+        warnings=warnings or None,
     )
 
 
