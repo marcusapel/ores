@@ -328,6 +328,39 @@ async def _pg_read_array(pool, dataspace: str, uuid: str, path: str) -> List[flo
 # REST-based resolvers (work without direct PG access)
 # ──────────────────────────────────────────────────────────────────────────────
 
+import re as _re
+
+_EML_URI_RE = _re.compile(
+    r"(?:eml:///)?(?:dataspace\(['\"]?[^)]+['\"]?\)/)?"
+    r"(?P<type>[\w.]+)\((?P<uuid>[0-9a-fA-F-]{36})\)"
+)
+
+
+def _parse_eml_entry(r: Dict[str, Any]) -> Dict[str, str]:
+    """Extract uuid, name, and contentType from an RDDMS REST listing entry.
+
+    The RDDMS REST API returns entries like::
+
+        {"uri": "eml:///dataspace('ds')/resqml20.obj_Foo(uuid)", "name": "..."}
+
+    There is **no** top-level ``UUID``, ``ContentType``, or ``Title`` key.
+    This helper parses ``uri`` to fill those gaps.
+    """
+    uid = r.get("UUID") or r.get("Uuid") or r.get("uuid") or ""
+    ct = r.get("ContentType") or r.get("contentType") or ""
+    name = r.get("Title") or r.get("title") or r.get("name") or ""
+    uri = r.get("uri") or ""
+
+    if uri and (not uid or not ct):
+        m = _EML_URI_RE.search(uri)
+        if m:
+            if not uid:
+                uid = m.group("uuid")
+            if not ct:
+                ct = m.group("type")  # e.g. "resqml20.obj_ContinuousProperty"
+    return {"uuid": uid, "contentType": ct, "name": name, "uri": uri}
+
+
 async def _rest_list_dataspaces(token: str) -> List[Dict[str, Any]]:
     rows = await osdu.list_dataspaces(token)
     return [
@@ -353,15 +386,24 @@ async def _rest_list_resources(token: str, ds: str, typ: str, limit: int = 100) 
     resources = await osdu.list_resources(token, enc, typ)
     items = []
     for r in (resources or [])[:limit]:
-        uid = r.get("UUID") or r.get("Uuid") or r.get("uuid") or ""
-        title = r.get("Title") or (r.get("Citation") or {}).get("Title", "") or r.get("name", "")
+        parsed = _parse_eml_entry(r)
+        uid = parsed["uuid"]
+        title = parsed["name"] or (r.get("Citation") or {}).get("Title", "")
+        if not uid:
+            continue  # skip entries we can't identify
         items.append({"uuid": str(uid), "title": title, "type_name": typ, "raw": r})
     return items
 
 
 async def _rest_get_resource(token: str, ds: str, typ: str, uuid: str) -> Dict[str, Any]:
     enc = urllib.parse.quote(ds, safe="")
-    return await osdu.get_resource(token, enc, typ, uuid)
+    result = await osdu.get_resource(token, enc, typ, uuid)
+    # RDDMS returns [{ … }] for single objects; unwrap the list.
+    if isinstance(result, list) and len(result) == 1:
+        return result[0]
+    if isinstance(result, list) and len(result) > 1:
+        return result[0]
+    return result if isinstance(result, dict) else {}
 
 
 async def _rest_list_targets(token: str, ds: str, typ: str, uuid: str) -> List[Dict[str, Any]]:
@@ -587,20 +629,32 @@ def _check_threshold(values: List[float], threshold: float, op: ComparisonOperat
 
 
 def _extract_property_kind(obj: Dict[str, Any]) -> str:
-    """Extract property kind from a RESQML property object JSON."""
-    # Try various RESQML property kind paths
+    """Extract property kind from a RESQML property object JSON.
+
+    RDDMS REST returns two flavours:
+      StandardPropertyKind:  {"PropertyKind": {"$type": "resqml20.StandardPropertyKind", "Kind": "porosity"}}
+      LocalPropertyKind:     {"PropertyKind": {"$type": "resqml20.LocalPropertyKind",
+                               "LocalPropertyKind": {"$type": "eml20.DataObjectReference", "Title": "General discrete", ...}}}
+    """
     pk = obj.get("PropertyKind") or {}
-    kind = pk.get("LocalPropertyKind") or pk.get("Kind") or ""
-    if not kind:
-        # Nested reference
-        kind = (pk.get("LocalPropertyKind") or {}).get("Title", "") if isinstance(pk.get("LocalPropertyKind"), dict) else ""
-    if not kind:
-        kind = obj.get("StandardPropertyKind") or ""
-    if not kind:
-        # Try Citation title of the PropertyKind reference
-        pk_ref = pk.get("Title") or ""
-        if pk_ref:
-            kind = pk_ref
+    # StandardPropertyKind → {"Kind": "porosity"}
+    kind = pk.get("Kind") or ""
+    if kind:
+        return kind
+    # LocalPropertyKind → DataObjectReference with Title
+    lpk = pk.get("LocalPropertyKind")
+    if isinstance(lpk, dict):
+        kind = lpk.get("Title") or ""
+        if kind:
+            return kind
+    elif isinstance(lpk, str):
+        return lpk
+    # Fallback: StandardPropertyKind string
+    kind = obj.get("StandardPropertyKind") or ""
+    if kind:
+        return kind
+    # Last resort: Citation title of the PropertyKind reference
+    kind = pk.get("Title") or ""
     return kind or "Unknown"
 
 
@@ -932,9 +986,12 @@ class Query:
             try:
                 targets = await _rest_list_targets(token, dataspace, type_name, uuid)
                 for t in targets:
-                    ct = t.get("ContentType") or t.get("contentType") or ""
-                    uid = t.get("UUID") or t.get("Uuid") or t.get("uuid") or ""
-                    name = t.get("Title") or t.get("title") or t.get("name") or ""
+                    parsed = _parse_eml_entry(t)
+                    ct = parsed["contentType"]
+                    uid = parsed["uuid"]
+                    name = parsed["name"]
+                    if not uid:
+                        continue
                     results.append(RelationInfo(
                         uuid=str(uid), name=name, type_name=ct,
                         direction="target", content_type=ct,
@@ -946,9 +1003,12 @@ class Query:
             try:
                 sources = await _rest_list_sources(token, dataspace, type_name, uuid)
                 for s in sources:
-                    ct = s.get("ContentType") or s.get("contentType") or ""
-                    uid = s.get("UUID") or s.get("Uuid") or s.get("uuid") or ""
-                    name = s.get("Title") or s.get("title") or s.get("name") or ""
+                    parsed = _parse_eml_entry(s)
+                    ct = parsed["contentType"]
+                    uid = parsed["uuid"]
+                    name = parsed["name"]
+                    if not uid:
+                        continue
                     results.append(RelationInfo(
                         uuid=str(uid), name=name, type_name=ct,
                         direction="source", content_type=ct,
@@ -1632,10 +1692,13 @@ class Query:
             except Exception:
                 sources = []
 
+            # Parse each source to extract uuid/type from URI
+            parsed_sources = [_parse_eml_entry(s) for s in sources]
+
             # Filter to property types
             prop_sources = [
-                s for s in sources
-                if any(k in (s.get("ContentType") or s.get("contentType") or "")
+                ps for ps in parsed_sources
+                if any(k in ps["contentType"]
                        for k in ("ContinuousProperty", "DiscreteProperty", "CategoricalProperty"))
             ]
 
@@ -1647,13 +1710,14 @@ class Query:
             passes_filter = not (property_filter and property_filter.array_filter)
 
             for ps in prop_sources:
-                p_ct = ps.get("ContentType") or ps.get("contentType") or ""
-                p_uuid = ps.get("UUID") or ps.get("Uuid") or ps.get("uuid") or ""
-                p_name = ps.get("Title") or ps.get("title") or ps.get("name") or ""
+                p_ct = ps["contentType"]
+                p_uuid = ps["uuid"]
+                p_name = ps["name"]
                 if not p_uuid:
                     continue
 
                 # Determine property type for API call
+                # p_ct is the full qualified name from URI, e.g. "resqml20.obj_ContinuousProperty"
                 if "ContinuousProperty" in p_ct:
                     p_type = "resqml20.obj_ContinuousProperty"
                 elif "DiscreteProperty" in p_ct:
@@ -1861,11 +1925,9 @@ async def graphql_info():
 # RESQML Standard Property Kinds (Energistics RESQML 2.0.1 spec)
 _STANDARD_PROPERTY_KINDS = [
     {"name": "porosity", "aliases": ["poro", "phit", "phi", "nphi"], "description": "Fraction of void space in rock", "uom": "v/v"},
-    {"name": "permeability", "aliases": ["perm", "permx", "permy", "permz", "klogh", "kh"], "description": "Ability of rock to transmit fluids", "uom": "mD"},
-    {"name": "water saturation", "aliases": ["sw", "swat", "swatinit", "swl", "swcr"], "description": "Fraction of pore space filled with water", "uom": "v/v"},
-    {"name": "oil saturation", "aliases": ["so", "soil"], "description": "Fraction of pore space filled with oil", "uom": "v/v"},
-    {"name": "gas saturation", "aliases": ["sg", "sgas"], "description": "Fraction of pore space filled with gas", "uom": "v/v"},
-    {"name": "net-to-gross", "aliases": ["ntg", "net_fraction", "netfrac"], "description": "Net-to-gross ratio", "uom": "v/v"},
+    {"name": "rock permeability", "aliases": ["perm", "permx", "permy", "permz", "klogh", "kh", "permeability"], "description": "Ability of rock to transmit fluids", "uom": "mD"},
+    {"name": "saturation", "aliases": ["sw", "so", "sg", "swat", "swatinit", "swl", "swcr", "sgas", "soil", "water saturation", "oil saturation", "gas saturation"], "description": "Fraction of pore space filled with fluid", "uom": "v/v"},
+    {"name": "net-to-gross", "aliases": ["ntg", "net_fraction", "netfrac", "ntg_pem", "netfrac_pem"], "description": "Net-to-gross ratio", "uom": "v/v"},
     {"name": "depth", "aliases": ["tvd", "tvdss", "z", "cell_z", "md"], "description": "Vertical depth (TVD or TVDSS)", "uom": "m"},
     {"name": "pressure", "aliases": ["pres", "pressure", "bhp", "pp"], "description": "Formation or fluid pressure", "uom": "bar"},
     {"name": "temperature", "aliases": ["temp", "temperature"], "description": "Formation temperature", "uom": "degC"},

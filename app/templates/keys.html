@@ -230,7 +230,7 @@
               <select id="ez-prop-pick" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;min-width:140px;">
                 <option value="">(pick or type below)</option>
               </select>
-              <input id="ez-prop" type="text" placeholder="or type alias: poro, perm, sw…"
+              <input id="ez-prop" type="text" placeholder="kind: porosity, rock permeability, saturation…"
                      autocomplete="off"
                      style="flex:1;min-width:140px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
               <span id="ez-prop-resolved" style="font-size:11px;color:#107c10;white-space:nowrap;"></span>
@@ -287,9 +287,9 @@
               <option value="rel_well_chain">Well chain: Feature → Interp → Trajectory</option>
             </optgroup>
             <optgroup label="Deep Search (IjkGrid)">
-              <option value="deep_poro">Porosity &gt; 0.25 (IjkGrid)</option>
-              <option value="deep_perm">Permeability &gt; 500 mD (IjkGrid)</option>
-              <option value="deep_sw">Water saturation &lt; 0.3 (IjkGrid)</option>
+              <option value="deep_poro">Porosity &gt; 0.25 (kind: porosity)</option>
+              <option value="deep_perm">Permeability &gt; 500 mD (kind: rock permeability)</option>
+              <option value="deep_sw">Water saturation &lt; 0.3 (kind: saturation)</option>
               <option value="deep_all_props">All properties on IjkGrids</option>
             </optgroup>
             <optgroup label="Deep Search (Surfaces)">
@@ -301,8 +301,8 @@
               <option value="deep_horizon_wells">Horizon → well markers</option>
             </optgroup>
             <optgroup label="Deep Search (Well Logs)">
-              <option value="deep_well_phit">Wells with porosity &gt; 0.25</option>
-              <option value="deep_well_perm">Wells with permeability &gt; 100</option>
+              <option value="deep_well_phit">Wells with porosity &gt; 0.25 (kind: porosity)</option>
+              <option value="deep_well_perm">Wells with permeability &gt; 100 (kind: rock permeability)</option>
               <option value="deep_well_all">All log properties on wells</option>
             </optgroup>
             <optgroup label="Numerical Data">
@@ -2481,14 +2481,17 @@
 
       // ─── Deep Search (IjkGrid) ───────────────────────────────────────
       deep_poro: `# Deep search: find IjkGrids with Porosity cells > 0.25
+# Uses OSDU canonical kind "porosity" (matches PORO, PHIT, etc.)
 # Drogon PORO ranges 0–0.36; this finds the high-porosity reservoir cells
 # Tip: select multiple dataspaces above to search across all of them
+#
+# Alternative: use titleContains: "PORO" to match by raw property name
 {
   deepSearch(
     $DS_ARG
     typeName: "resqml20.obj_IjkGridRepresentation"
     propertyFilter: {
-      titleContains: "PORO"
+      kind: "porosity"
       arrayFilter: { threshold: 0.25, operator: GT }
     }
     includeStatistics: true
@@ -2510,13 +2513,16 @@
   }
 }`,
       deep_perm: `# Deep search: IjkGrids with Permeability > 500 mD (high-perm zones)
+# Uses OSDU canonical kind "rock permeability" (matches PERMX, PERMY, PERMZ)
 # PERMX ranges 0–4278 mD on Simgrid, 0–3830 on Geogrid
+#
+# Alternative: use titleContains: "PERMX" to match only X-direction perm
 {
   deepSearch(
     $DS_ARG
     typeName: "resqml20.obj_IjkGridRepresentation"
     propertyFilter: {
-      titleContains: "PERMX"
+      kind: "rock permeability"
       arrayFilter: { threshold: 500.0, operator: GT }
     }
     includeStatistics: true
@@ -2533,14 +2539,17 @@
     }
   }
 }`,
-      deep_sw: `# Deep search: IjkGrids where initial water saturation < 0.3
-# Low SWATINIT = oil/gas zone; high = water zone
+      deep_sw: `# Deep search: IjkGrids where water saturation < 0.3
+# Uses OSDU canonical kind "saturation" (matches SW, SO)
+# Low saturation = oil/gas zone; high = water zone
+#
+# Alternative: use titleContains: "SW" to match by raw property name
 {
   deepSearch(
     $DS_ARG
     typeName: "resqml20.obj_IjkGridRepresentation"
     propertyFilter: {
-      titleContains: "SWATINIT"
+      kind: "saturation"
       arrayFilter: { threshold: 0.3, operator: LT }
     }
     includeStatistics: true
@@ -2657,15 +2666,17 @@
 # are the wells that have picks at this horizon (TopVolantis)`,
 
       // ─── Deep Search (Well Logs) ──────────────────────────────────────
-      deep_well_phit: `# Wells with Total Porosity (PHIT) > 0.25
-# Searches WellboreFrameRepresentations for attached log curves
-# containing "PHIT" with sample values exceeding 0.25
+      deep_well_phit: `# Wells with Porosity > 0.25
+# Uses OSDU canonical kind "porosity" (matches PORO, PHIT log curves)
+# Searches WellboreFrameRepresentations for attached log properties
+#
+# Alternative: use titleContains: "PHIT" to match only total porosity
 {
   deepSearch(
     $DS_ARG
     typeName: "resqml20.obj_WellboreFrameRepresentation"
     propertyFilter: {
-      titleContains: "PHIT"
+      kind: "porosity"
       arrayFilter: { threshold: 0.25, operator: GT }
     }
     includeStatistics: true
@@ -2682,14 +2693,17 @@
     }
   }
 }`,
-      deep_well_perm: `# Wells with Permeability (KLOGH) > 100 mD
+      deep_well_perm: `# Wells with Permeability > 100 mD
+# Uses OSDU canonical kind "rock permeability" (matches KLOGH, PERM*)
 # KLOGH is the log-derived horizontal permeability
+#
+# Alternative: use titleContains: "KLOGH" to match only log permeability
 {
   deepSearch(
     $DS_ARG
     typeName: "resqml20.obj_WellboreFrameRepresentation"
     propertyFilter: {
-      titleContains: "KLOGH"
+      kind: "rock permeability"
       arrayFilter: { threshold: 100.0, operator: GT }
     }
     includeStatistics: true
