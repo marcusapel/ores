@@ -2485,6 +2485,8 @@
 # Drogon PORO ranges 0–0.36; this finds the high-porosity reservoir cells
 # Tip: select multiple dataspaces above to search across all of them
 #
+# Note: arrayFilter requires PG or ETP backend for cell-value access.
+# On REST-only backends, remove arrayFilter to get kind-matched results.
 # Alternative: use titleContains: "PORO" to match by raw property name
 {
   deepSearch(
@@ -2516,6 +2518,7 @@
 # Uses OSDU canonical kind "rock permeability" (matches PERMX, PERMY, PERMZ)
 # PERMX ranges 0–4278 mD on Simgrid, 0–3830 on Geogrid
 #
+# Note: arrayFilter requires PG or ETP backend for cell-value access.
 # Alternative: use titleContains: "PERMX" to match only X-direction perm
 {
   deepSearch(
@@ -2543,6 +2546,7 @@
 # Uses OSDU canonical kind "saturation" (matches SW, SO)
 # Low saturation = oil/gas zone; high = water zone
 #
+# Note: arrayFilter requires PG or ETP backend for cell-value access.
 # Alternative: use titleContains: "SW" to match by raw property name
 {
   deepSearch(
