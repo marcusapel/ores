@@ -888,3 +888,263 @@ def render_grid2d_png(
     plt.close(fig)
     buf.seek(0)
     return buf.read()
+
+
+# ── 3-D geometry helpers ──────────────────────────────────────────────────────
+
+async def fetch_geometry_3d(
+    access_token: str,
+    ds: str,
+    typ: str,
+    uuid: str,
+) -> dict[str, Any]:
+    """
+    Generic geometry fetcher for 3-D viewer.
+
+    Supports:
+      - Grid2dRepresentation          → vertices + triangle indices
+      - TriangulatedSetRepresentation → vertices + triangle indices
+      - PointSetRepresentation        → XYZ points
+      - WellboreTrajectoryRepresentation → XYZ polyline
+      - WellboreMarkerFrameRepresentation → XYZ markers with MD/labels
+
+    Returns a dict with 'kind' and geometry arrays suitable for Three.js.
+    """
+    import numpy as np
+
+    enc = urllib.parse.quote(ds, safe="")
+    hdr = headers(access_token)
+
+    async with _http(timeout=120) as client:
+        # 1. Fetch the object metadata
+        obj_url = _rddms_url(f"/dataspaces/{enc}/resources/{typ}/{uuid}")
+        r1 = await client.get(obj_url, headers=hdr, params={"$format": "json"})
+        r1.raise_for_status()
+        obj = _normalize_obj(r1.json(), uuid)
+
+        title = (obj.get("Citation") or {}).get("Title") or uuid
+
+        # 2. Fetch all arrays
+        r_al = await client.get(f"{obj_url}/arrays", headers=hdr)
+        r_al.raise_for_status()
+        arr_list = r_al.json() or []
+
+        async def _read_arr(path: str) -> list:
+            arr_enc = urllib.parse.quote(path, safe="")
+            r = await client.get(f"{obj_url}/arrays/{arr_enc}", headers=hdr)
+            r.raise_for_status()
+            body = r.json() or {}
+            inner = body.get("data") or body
+            if isinstance(inner, dict):
+                return inner.get("data") or inner.get("values") or []
+            return inner if isinstance(inner, list) else []
+
+        # Classify arrays by path
+        arr_paths = {}
+        for a in arr_list:
+            uid = a.get("uid") or {}
+            p = uid.get("pathInResource", "")
+            arr_paths[p.lower()] = p
+
+        tl = typ.lower()
+
+        # ─── Grid2dRepresentation ─────────────────────────────────────
+        if "grid2d" in tl:
+            surface = await fetch_grid2d_surface(access_token, ds, uuid)
+            geo = _apply_crs_rotation(surface["geometry"], surface["crs"])
+            zvals = surface["zvalues"]
+            dims = surface["dims"]
+            n_slow, n_fast = dims
+
+            X, Y = build_xy_mesh(surface["geometry"], surface["crs"])
+            total = n_slow * n_fast
+            if len(zvals) < total:
+                zvals = list(zvals) + [float("nan")] * (total - len(zvals))
+            Z = np.array(zvals[:total], dtype=np.float64).reshape(n_slow, n_fast)
+            Z[np.abs(Z) > 1e30] = np.nan
+
+            # Downsample very large grids for WebGL
+            max_dim = 300
+            step_i = max(1, n_slow // max_dim)
+            step_j = max(1, n_fast // max_dim)
+            if step_i > 1 or step_j > 1:
+                X = X[::step_i, ::step_j]
+                Y = Y[::step_i, ::step_j]
+                Z = Z[::step_i, ::step_j]
+                n_slow, n_fast = Z.shape
+
+            # Flatten to interleaved [x,y,z, x,y,z, ...]
+            positions = []
+            for j in range(n_slow):
+                for i in range(n_fast):
+                    z = float(Z[j, i])
+                    positions.extend([float(X[j, i]), float(Y[j, i]),
+                                      z if not np.isnan(z) else 0.0])
+
+            # Triangle indices
+            indices = []
+            for j in range(n_slow - 1):
+                for i in range(n_fast - 1):
+                    a = j * n_fast + i
+                    b = a + 1
+                    c = a + n_fast
+                    d = c + 1
+                    # Skip triangles with NaN vertices
+                    za, zb, zc, zd = Z[j, i], Z[j, i+1], Z[j+1, i], Z[j+1, i+1]
+                    if np.isfinite(za) and np.isfinite(zb) and np.isfinite(zc):
+                        indices.extend([a, b, c])
+                    if np.isfinite(zb) and np.isfinite(zd) and np.isfinite(zc):
+                        indices.extend([b, d, c])
+
+            # Property colors (z-depth)
+            z_arr = Z.flatten()
+            valid = z_arr[np.isfinite(z_arr)]
+            zmin = float(np.min(valid)) if len(valid) else 0
+            zmax = float(np.max(valid)) if len(valid) else 1
+
+            return {
+                "kind": "surface",
+                "title": title,
+                "positions": positions,
+                "indices": indices,
+                "zmin": zmin,
+                "zmax": zmax,
+                "dims": [n_slow, n_fast],
+            }
+
+        # ─── TriangulatedSetRepresentation ────────────────────────────
+        if "triangulated" in tl:
+            positions = []
+            indices = []
+
+            for lk, rp in arr_paths.items():
+                data = await _read_arr(rp)
+                if "points" in lk or "node" in lk or "coordinates" in lk:
+                    positions = [float(v) for v in data]
+                elif "triangle" in lk or "indices" in lk:
+                    indices = [int(v) for v in data]
+
+            # If not found by keyword, try positional: first = points, second = triangles
+            if not positions and len(arr_list) >= 1:
+                positions = [float(v) for v in await _read_arr(
+                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
+            if not indices and len(arr_list) >= 2:
+                indices = [int(v) for v in await _read_arr(
+                    (arr_list[1].get("uid") or {}).get("pathInResource", ""))]
+
+            n_verts = len(positions) // 3
+            z_arr = [positions[i*3+2] for i in range(n_verts)] if positions else []
+            zmin = min(z_arr) if z_arr else 0
+            zmax = max(z_arr) if z_arr else 1
+
+            return {
+                "kind": "surface",
+                "title": title,
+                "positions": positions,
+                "indices": indices,
+                "zmin": zmin,
+                "zmax": zmax,
+            }
+
+        # ─── PointSetRepresentation ───────────────────────────────────
+        if "pointset" in tl:
+            positions = []
+            for lk, rp in arr_paths.items():
+                if "points" in lk or "node" in lk or "coordinates" in lk:
+                    data = await _read_arr(rp)
+                    positions = [float(v) for v in data]
+                    break
+            if not positions and arr_list:
+                positions = [float(v) for v in await _read_arr(
+                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
+
+            n_pts = len(positions) // 3
+            z_arr = [positions[i*3+2] for i in range(n_pts)] if positions else []
+            zmin = min(z_arr) if z_arr else 0
+            zmax = max(z_arr) if z_arr else 1
+
+            return {
+                "kind": "points",
+                "title": title,
+                "positions": positions,
+                "zmin": zmin,
+                "zmax": zmax,
+            }
+
+        # ─── WellboreTrajectoryRepresentation ─────────────────────────
+        if "trajectory" in tl:
+            positions = []
+            for lk, rp in arr_paths.items():
+                if "controlpoints" in lk or "points" in lk or "xyz" in lk:
+                    data = await _read_arr(rp)
+                    positions = [float(v) for v in data]
+                    break
+            if not positions and arr_list:
+                positions = [float(v) for v in await _read_arr(
+                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
+
+            n_pts = len(positions) // 3
+            z_arr = [positions[i*3+2] for i in range(n_pts)] if positions else []
+            zmin = min(z_arr) if z_arr else 0
+            zmax = max(z_arr) if z_arr else 1
+
+            # Extract MD values if available
+            md_values = []
+            for lk, rp in arr_paths.items():
+                if "md" in lk or "measureddepth" in lk:
+                    data = await _read_arr(rp)
+                    md_values = [float(v) for v in data]
+                    break
+
+            return {
+                "kind": "trajectory",
+                "title": title,
+                "positions": positions,
+                "md": md_values,
+                "zmin": zmin,
+                "zmax": zmax,
+            }
+
+        # ─── WellboreMarkerFrameRepresentation ────────────────────────
+        if "marker" in tl:
+            # Markers are typically stored as MD values along a trajectory
+            md_values = []
+            positions = []
+            labels = []
+
+            # Try to get marker MD values
+            for lk, rp in arr_paths.items():
+                if "md" in lk or "nodemd" in lk or "measureddepth" in lk:
+                    data = await _read_arr(rp)
+                    md_values = [float(v) for v in data]
+                    break
+
+            # Try to get XYZ positions (some RDDMS versions provide these)
+            for lk, rp in arr_paths.items():
+                if "points" in lk or "xyz" in lk or "coordinates" in lk:
+                    data = await _read_arr(rp)
+                    positions = [float(v) for v in data]
+                    break
+
+            # Extract marker labels from the object metadata
+            markers = obj.get("WellboreMarker") or []
+            for m in markers:
+                label = (m.get("MarkerName") or
+                         (m.get("Interpretation") or {}).get("Title") or
+                         (m.get("Citation") or {}).get("Title") or "")
+                labels.append(label)
+
+            zmin = min(md_values) if md_values else 0
+            zmax = max(md_values) if md_values else 1
+
+            return {
+                "kind": "markers",
+                "title": title,
+                "positions": positions,
+                "md": md_values,
+                "labels": labels,
+                "zmin": zmin,
+                "zmax": zmax,
+            }
+
+    raise ValueError(f"Unsupported type for 3D: {typ}")
