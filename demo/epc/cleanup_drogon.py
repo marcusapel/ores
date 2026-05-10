@@ -6,16 +6,21 @@ Reads all XML files from demo/epc/drogon/, applies OSDU-compliant
 transformations, and writes cleaned files to demo/epc/drogon_osdu/.
 
 Transformations:
-  1. Fix PropertyKind: map "absorbed dose" / "General continuous/discrete"
-     to correct RESQML standard kinds
-  2. Fix UOM: replace blanket "Euc" with correct physical units
-  3. Remove FMU temporary objects (RFT/MLW wells, rescaling props, etc.)
-  4. Remove intermediate surfaces (keep final interpreted/extracted)
-  5. Remove vendor ExtraMetadata (pdgm/*, roxar/*)
-  6. Fix well names: 55_33-X → 55/33-X (OSDU/NPD convention)
-  7. Remove duplicate strat columns (keep Geogrid version)
-  8. Clean CRS (add EPSG reference via ExtraMetadata)
-  9. Remove UuidAuthority="pdgm" attributes
+  1.  Fix PropertyKind: map "absorbed dose" / "General continuous/discrete"
+      to correct RESQML standard kinds
+  2.  Fix UOM: replace blanket "Euc" with correct physical units
+  3.  Remove FMU temporary objects (RFT/MLW wells, rescaling props, etc.)
+  4.  Remove intermediate surfaces (keep final interpreted/extracted)
+  5.  Remove vendor ExtraMetadata (pdgm/*, roxar/*)
+  6.  Fix well names: 55_33-X → 55/33-X (OSDU/NPD convention)
+  7.  Remove duplicate strat columns (keep Geogrid version)
+  8.  Clean CRS (add EPSG reference via ExtraMetadata)
+  9.  Remove UuidAuthority="pdgm" attributes
+  10. Canonicalize property titles (RMS mnemonics → human-readable OSDU names)
+  11. Add Description to every Citation element
+  12. Add OSDU ExtraMetadata (osdu:PropertyName, osdu:UnitOfMeasure, osdu:Field, etc.)
+  13. Fix Originator/Format to meaningful values
+  14. Canonicalize non-property titles (surfaces, strat units, etc.)
 
 Usage:
     python demo/epc/cleanup_drogon.py              # dry-run (report only)
@@ -127,6 +132,188 @@ PROPERTY_KIND_MAP: dict[str, tuple[str, str]] = {
     "PVTNUM":           ("index",  "Euc"),
     "MULTNUM":          ("index",  "Euc"),
     "Satnum_rescaled":  ("index",  "Euc"),
+}
+
+# ── Canonical OSDU property title map: RMS mnemonic → canonical name ──────────
+# These map short RMS abbreviations to human-readable, OSDU-searchable titles.
+# The canonical name should be self-describing, include domain context,
+# and follow OSDU naming conventions (Title Case, physics-based).
+
+CANONICAL_TITLE_MAP: dict[str, str] = {
+    # === Well log continuous ===
+    "VSH":          "Shale Volume",
+    "VPHYL":        "Phyllosilicate Volume Fraction",
+    "Vphyl":        "Phyllosilicate Volume Fraction",
+    "PHIT":         "Total Porosity",
+    "PHIT_orig":    "Total Porosity (Original Log)",
+    "KLOGH":        "Horizontal Permeability",
+    "KLOGH_orig":   "Horizontal Permeability (Original Log)",
+    "KV":           "Vertical Permeability",
+    "DENS":         "Bulk Density",
+    "VP":           "P-Wave Velocity",
+    "VS":           "S-Wave Velocity",
+    "VPVS":         "Vp/Vs Ratio",
+    "AI":           "Acoustic Impedance",
+    "AI_ed":        "Acoustic Impedance (Edited)",
+    "SI":           "Shear Impedance",
+    "Sw":           "Water Saturation",
+    "Sw_orig":      "Water Saturation (Original Log)",
+    "SW":           "Water Saturation",
+    "SO":           "Oil Saturation",
+    "SG":           "Gas Saturation",
+    "SGU":          "Gas Saturation (Irreducible)",
+    "SWL":          "Water Saturation (Lower Limit)",
+    "SWCR":         "Water Saturation (Critical)",
+    "SWATINIT":     "Water Saturation (Initial)",
+    "Swl":          "Water Saturation (Lower Limit)",
+    "MDepth":       "Measured Depth",
+
+    # === Grid continuous ===
+    "PORO":         "Porosity",
+    "PERMX":        "Permeability I-Direction",
+    "PERMY":        "Permeability J-Direction",
+    "PERMZ":        "Permeability K-Direction",
+    "Cell_Z":       "Cell Centre Depth",
+    "temp":         "Temperature",
+    "coalfraction": "Coal Volume Fraction",
+    "carbfraction": "Carbonate Volume Fraction",
+    "net_fraction": "Net Sand Fraction",
+    "netfrac_pem":  "Net-to-Gross Ratio (PEM)",
+    "poro_pem":     "Porosity (PEM)",
+    "ntg_pem":      "Net-to-Gross Ratio (PEM)",
+    "sw_oil":       "Water Saturation (Oil Zone)",
+    "sw_oil_H":     "Water Saturation (Oil Zone, History)",
+    "sw_gas":       "Water Saturation (Gas Zone)",
+    "sw_gas_H":     "Water Saturation (Gas Zone, History)",
+    "GOC":          "Gas-Oil Contact Depth",
+    "FWL":          "Free Water Level",
+    "FWL_WG":       "Free Water Level (Water-Gas)",
+    "Total_bulk":   "Total Bulk Volume",
+    "Total_pore":   "Total Pore Volume",
+    "Oil_bulk":     "Oil Bulk Volume",
+    "Oil_pore":     "Oil Pore Volume",
+    "Gas_bulk":     "Gas Bulk Volume",
+    "Gas_pore":     "Gas Pore Volume",
+
+    # === Seismic attributes ===
+    "seismic--amplitude_near_depth--20180101": "Seismic Near Amplitude (Depth, 2018)",
+    "seismic--relai_near_depth--20180101":     "Relative AI Near (Depth, 2018)",
+
+    # === Discrete properties ===
+    "Zone":             "Zone Index",
+    "Geogrid_FACIES":   "Facies (Geogrid)",
+    "FaultDistance_HUM": "Fault Distance",
+    "Facies_Coal":      "Coal Facies Indicator",
+    "Facies_Calcite":   "Calcite Facies Indicator",
+    "Facies":           "Facies",
+    "FACIES":           "Facies",
+    "PERF":             "Perforation Interval",
+    "gridzones":        "Grid Zone Index",
+    "Region":           "Region Index",
+    "FaultBlock":       "Fault Block Index",
+    "SATNUM":           "Saturation Region (SATNUM)",
+    "Satnum":           "Saturation Region (SATNUM)",
+    "FIPNUM":           "Flow-in-Place Region (FIPNUM)",
+    "FIPZON":           "Flow-in-Place Zone (FIPZON)",
+    "EQLNUM":           "Equilibration Region (EQLNUM)",
+    "PVTNUM":           "PVT Region (PVTNUM)",
+    "MULTNUM":          "Transmissibility Multiplier Region (MULTNUM)",
+    "Satnum_rescaled":  "Saturation Region (Rescaled)",
+}
+
+# ── Canonical titles for non-property objects ─────────────────────────────────
+
+CANONICAL_NONPROP_TITLE_MAP: dict[str, dict[str, str]] = {
+    "Grid2dRepresentation": {
+        "DS_extract_geogrid":  "Depth Surface - Geogrid Extract",
+        "DS_interp":           "Depth Surface - Interpreted",
+        "DS_velmod":           "Depth Surface - Velocity Model",
+        "TS_interp":           "Time Surface - Interpreted",
+    },
+    "StratigraphicColumn": {
+        "Strati column for Geogrid": "Stratigraphic Column (Geogrid)",
+    },
+    "StratigraphicColumnRankInterpretation": {
+        "Structural model for Geogrid": "Stratigraphic Column Rank (Geogrid)",
+    },
+    "StratigraphicUnitFeature": {
+        "above_TopVolantis": "Above Top Volantis",
+        "below_BaseVolantis": "Below Base Volantis",
+    },
+    "StratigraphicUnitInterpretation": {
+        "above_TopVolantis": "Above Top Volantis",
+        "below_BaseVolantis": "Below Base Volantis",
+    },
+    "WellboreFrameRepresentation": {
+        "log": "Well Log Frame",
+    },
+    "WellboreMarkerFrameRepresentation": {
+        "set1": "Stratigraphic Marker Set",
+    },
+    "PolylineSetRepresentation": {
+        "TL_faultsticks": "Fault Sticks (Time)",
+    },
+    "PointSetRepresentation": {
+        "DP_faultpoints_extra_from_truth":  "Fault Points (Truth Model)",
+        "DP_filter":                        "Depth Points (Filtered)",
+        "DP_gf_hum_extracted":              "Depth Points (HUM Geophysics)",
+        "DP_hum_postiterate_extracted":     "Depth Points (HUM Post-Iterate)",
+        "DP_interp":                        "Depth Points (Interpreted)",
+        "ExtractedFaultPoints":             "Extracted Fault Points",
+        "TP_filter":                        "Time Points (Filtered)",
+        "TP_interp":                        "Time Points (Interpreted)",
+    },
+}
+
+# ── OSDU Description templates by type ────────────────────────────────────────
+# {title} is replaced with the canonical title, {well} with the well name,
+# {horizon} with the horizon surface name.
+
+DESCRIPTION_TEMPLATES: dict[str, str] = {
+    # Properties
+    "ContinuousProperty":  "Continuous property: {title}. Drogon field, Norwegian Continental Shelf.",
+    "DiscreteProperty":    "Discrete property: {title}. Drogon field, Norwegian Continental Shelf.",
+
+    # Representations
+    "IjkGridRepresentation":  "3D corner-point grid representation of the Drogon reservoir model (Geogrid). "
+                              "Covers the Therys, Valysar and Volon formations, Norwegian Continental Shelf.",
+    "Grid2dRepresentation":   "2D regular grid (surface map) representation: {title}. "
+                              "Drogon field, Norwegian Continental Shelf.",
+    "PointSetRepresentation": "Point set representation: {title}. "
+                              "Drogon field, Norwegian Continental Shelf.",
+    "PolylineSetRepresentation": "Polyline set: {title}. "
+                                  "Drogon field, Norwegian Continental Shelf.",
+
+    # Well objects
+    "WellboreFeature":              "Wellbore: {title}. Drogon field, Norwegian Continental Shelf.",
+    "WellboreInterpretation":       "Wellbore interpretation for {title}. Drogon field.",
+    "WellboreTrajectoryRepresentation": "Wellbore trajectory ({title}). Drogon field.",
+    "DeviationSurveyRepresentation":    "Deviation survey ({title}). Drogon field.",
+    "MdDatum":                      "Measured depth datum for {title}.",
+    "WellboreFrameRepresentation":  "Well log frame for sampled log data. Drogon field.",
+    "WellboreMarkerFrameRepresentation": "Stratigraphic marker picks along the wellbore. Drogon field.",
+
+    # Geologic features and interpretations
+    "GeneticBoundaryFeature":       "Horizon feature: {title}. Drogon field, Norwegian Continental Shelf.",
+    "HorizonInterpretation":        "Horizon interpretation: {title}. Drogon field.",
+    "TectonicBoundaryFeature":      "Fault feature: {title}. Drogon field, Norwegian Continental Shelf.",
+    "FaultInterpretation":          "Fault interpretation: {title}. Drogon field.",
+    "StratigraphicUnitFeature":     "Stratigraphic unit: {title}. Drogon reservoir model.",
+    "StratigraphicUnitInterpretation": "Stratigraphic unit interpretation: {title}. Drogon reservoir model.",
+    "OrganizationFeature":          "Structural organisation feature for the Drogon reservoir model.",
+    "StratigraphicColumn":          "Stratigraphic column for the Drogon reservoir model. "
+                                    "Defines the vertical succession of formations.",
+    "StratigraphicColumnRankInterpretation": "Stratigraphic column rank interpretation for the "
+                                             "Drogon reservoir model.",
+
+    # CRS
+    "LocalDepth3dCrs":    "Local depth coordinate reference system. "
+                          "Projected CRS: ED50 / UTM zone 37S (EPSG:23037). Vertical: MSL.",
+    "LocalTime3dCrs":     "Local time coordinate reference system. "
+                          "Projected CRS: ED50 / UTM zone 37S (EPSG:23037). Vertical: Two-way time.",
+
+    # HDF5
+    "EpcExternalPartReference": "HDF5 external data file containing array data for the Drogon EPC dataset.",
 }
 
 # ── Well name correction: RMS underscores → OSDU/NPD slashes ─────────────────
@@ -521,6 +708,172 @@ def add_crs_epsg_metadata(root, stats: Counter) -> bool:
     return True
 
 
+def canonicalize_title(root, title: str, otype: str, stats: Counter) -> bool:
+    """
+    Rename property titles from RMS mnemonics to canonical OSDU names.
+    Also canonicalizes non-property object titles.
+    """
+    # Check property titles first
+    new_title = CANONICAL_TITLE_MAP.get(title)
+
+    # Then non-property titles
+    if new_title is None:
+        type_map = CANONICAL_NONPROP_TITLE_MAP.get(otype, {})
+        new_title = type_map.get(title)
+
+    if new_title is None or new_title == title:
+        return False
+
+    title_elem = _find(root, "Citation", "Title")
+    if title_elem is not None:
+        title_elem.text = new_title
+        stats[f"title: {title} → {new_title}"] += 1
+        return True
+    return False
+
+
+def add_description(root, title: str, otype: str, stats: Counter) -> bool:
+    """Add an eml:Description element to Citation if missing."""
+    citation = _find(root, "Citation")
+    if citation is None:
+        return False
+
+    # Check if Description already exists
+    desc_elem = _find(citation, "Description")
+    if desc_elem is not None and desc_elem.text:
+        return False
+
+    # title is already canonical at this point (post-canonicalize_title)
+    template = DESCRIPTION_TEMPLATES.get(otype)
+    if template is None:
+        return False
+
+    description = template.format(title=title, well=title)
+
+    if desc_elem is None:
+        # Insert Description after Format (RESQML Citation order:
+        # Title, Originator, Creation, Format, Description)
+        desc_elem = ET.SubElement(citation, f"{{{NS['eml']}}}Description")
+        desc_elem.set(f"{{{NS['xsi']}}}type", "eml:DescriptionString")
+
+        # Move it to correct position (after Format)
+        children = list(citation)
+        citation.remove(desc_elem)
+        insert_idx = len(children) - 1  # default: before last
+        for i, c in enumerate(children):
+            if _strip_ns(c.tag) == "Format":
+                insert_idx = i + 1
+                break
+        citation.insert(insert_idx, desc_elem)
+
+    desc_elem.text = description
+    stats["description_added"] += 1
+    return True
+
+
+def add_osdu_metadata(root, title: str, otype: str, stats: Counter) -> bool:
+    """
+    Add OSDU-specific ExtraMetadata for manifest generation and search.
+    Keys:
+      - osdu:FieldName         → "Drogon"
+      - osdu:Basin              → "Norwegian Continental Shelf"
+      - osdu:PropertyName       → canonical property name (properties only)
+      - osdu:UnitOfMeasure      → UOM string (properties only)
+      - osdu:PropertyKind       → RESQML standard kind (properties only)
+      - osdu:WellName           → well name (well objects only)
+      - osdu:SurfaceDomain      → depth/time (surfaces only)
+      - osdu:DataSource         → "Drogon Demo (Equinor)"
+    """
+    changed = False
+
+    def _has_meta(name: str) -> bool:
+        for em in _findall(root, "ExtraMetadata"):
+            if _text(em, "Name") == name:
+                return True
+        return False
+
+    def _add_meta(name: str, value: str):
+        nonlocal changed
+        if _has_meta(name):
+            return
+        em = ET.SubElement(root, f"{{{NS['resqml2']}}}ExtraMetadata")
+        em.set(f"{{{NS['xsi']}}}type", "resqml2:NameValuePair")
+        nm = ET.SubElement(em, f"{{{NS['resqml2']}}}Name")
+        nm.set(f"{{{NS['xsi']}}}type", "xsd:string")
+        nm.text = name
+        vl = ET.SubElement(em, f"{{{NS['resqml2']}}}Value")
+        vl.set(f"{{{NS['xsi']}}}type", "xsd:string")
+        vl.text = value
+        changed = True
+
+    # Common metadata for all objects
+    _add_meta("osdu:FieldName", "Drogon")
+    _add_meta("osdu:Basin", "Norwegian Continental Shelf")
+    _add_meta("osdu:DataSource", "Drogon Demo (Equinor)")
+
+    # Property-specific metadata
+    if otype in ("ContinuousProperty", "DiscreteProperty"):
+        # title is already canonical at this point
+        _add_meta("osdu:PropertyName", title)
+        # Look up PropertyKind/UOM from the XML (already corrected)
+        pk = _find(root, "PropertyKind")
+        if pk is not None:
+            kind_elem = _find(pk, "Kind")
+            if kind_elem is not None and kind_elem.text:
+                _add_meta("osdu:PropertyKind", kind_elem.text)
+        uom_elem = _find(root, "UOM")
+        if uom_elem is not None and uom_elem.text:
+            _add_meta("osdu:UnitOfMeasure", uom_elem.text)
+        # Determine if this is a well log or grid property
+        supp = _find(root, "SupportingRepresentation")
+        if supp is not None:
+            ct = _text(supp, "ContentType")
+            if "WellboreFrame" in ct:
+                _add_meta("osdu:PropertyDomain", "well log")
+            elif "IjkGrid" in ct:
+                _add_meta("osdu:PropertyDomain", "grid property")
+
+    # Well objects
+    if otype in ("WellboreFeature", "WellboreInterpretation"):
+        _add_meta("osdu:WellName", title)
+
+    # Surface domain
+    if otype == "Grid2dRepresentation":
+        if title.startswith("TS_") or title.startswith("Time"):
+            _add_meta("osdu:SurfaceDomain", "time")
+        else:
+            _add_meta("osdu:SurfaceDomain", "depth")
+
+    # Horizon / fault names
+    if otype in ("GeneticBoundaryFeature", "HorizonInterpretation"):
+        _add_meta("osdu:HorizonName", title)
+    if otype in ("TectonicBoundaryFeature", "FaultInterpretation"):
+        _add_meta("osdu:FaultName", title)
+
+    if changed:
+        stats["osdu_metadata_added"] += 1
+    return changed
+
+
+def fix_originator_format(root, stats: Counter) -> bool:
+    """Update Originator and Format to OSDU-meaningful values."""
+    changed = False
+
+    originator = _find(root, "Citation", "Originator")
+    if originator is not None and originator.text == "pjv":
+        originator.text = "Drogon Demo (Equinor)"
+        stats["originator_fixed"] += 1
+        changed = True
+
+    fmt = _find(root, "Citation", "Format")
+    if fmt is not None and fmt.text == "Aspen RMS":
+        fmt.text = "RESQML v2.0 (Drogon Demo)"
+        stats["format_fixed"] += 1
+        changed = True
+
+    return changed
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main processing
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -628,7 +981,7 @@ def process(src_dir: Path, dst_dir: Path, dry_run: bool = True, gen_manifest: bo
         if otype == "ContinuousProperty":
             changed |= fix_uom(root, title, stats)
 
-        # 3c. Fix well names
+        # 3c. Fix well names (before title canonicalization)
         changed |= fix_well_names(root, stats)
 
         # 3d. Remove vendor ExtraMetadata
@@ -642,6 +995,22 @@ def process(src_dir: Path, dst_dir: Path, dry_run: bool = True, gen_manifest: bo
 
         # 3g. Add EPSG to CRS
         changed |= add_crs_epsg_metadata(root, stats)
+
+        # 3h. Canonicalize titles (RMS mnemonics → OSDU names)
+        changed |= canonicalize_title(root, title, otype, stats)
+
+        # Re-read the title from XML after well-name fix + canonicalization
+        # so that descriptions and metadata use the corrected title.
+        current_title = _get_title(root)
+
+        # 3i. Add Description to Citation (uses current canonical title)
+        changed |= add_description(root, current_title, otype, stats)
+
+        # 3j. Add OSDU ExtraMetadata for search/manifest (uses current title)
+        changed |= add_osdu_metadata(root, current_title, otype, stats)
+
+        # 3k. Fix Originator/Format
+        changed |= fix_originator_format(root, stats)
 
         if changed:
             modified_files.append(obj["file"].name)
@@ -765,7 +1134,7 @@ def process(src_dir: Path, dst_dir: Path, dry_run: bool = True, gen_manifest: bo
 
 
 def generate_manifest(kept_objects: list[dict[str, Any]]) -> dict[str, Any]:
-    """Generate a minimal OSDU-style ingest manifest for the cleaned dataset."""
+    """Generate a rich OSDU-style ingest manifest for the cleaned dataset."""
     resources = []
     for obj in kept_objects:
         otype = obj["type"]
@@ -774,30 +1143,81 @@ def generate_manifest(kept_objects: list[dict[str, Any]]) -> dict[str, Any]:
 
         typ_path = f"resqml20.obj_{otype}"
 
-        resource = {
+        # Use canonical title from the XML (already transformed)
+        root = obj["root"]
+        xml_title = _text(root, "Citation", "Title") or title
+        xml_desc = _text(root, "Citation", "Description")
+        xml_orig = _text(root, "Citation", "Originator")
+        xml_fmt = _text(root, "Citation", "Format")
+
+        resource: dict[str, Any] = {
             "uuid": uuid,
             "type": typ_path,
-            "title": title,
+            "title": xml_title,
+            "originalTitle": title,
         }
 
+        if xml_desc:
+            resource["description"] = xml_desc
+        if xml_orig:
+            resource["originator"] = xml_orig
+        if xml_fmt:
+            resource["format"] = xml_fmt
+
+        # Add property-specific fields
+        if otype in ("ContinuousProperty", "DiscreteProperty"):
+            mapping = PROPERTY_KIND_MAP.get(title)
+            if mapping:
+                kind, uom = mapping
+                resource["propertyKind"] = kind
+                resource["unitOfMeasure"] = uom
+
         # Add supporting representation reference if present
-        root = obj["root"]
         support = _find(root, "SupportingRepresentation")
         if support is not None:
             ref_uuid = _text(support, "UUID") or _text(support, "Uuid")
             ref_ct = _text(support, "ContentType")
+            ref_title = _text(support, "Title")
             if ref_uuid:
                 resource["supportingRepresentation"] = {
                     "uuid": ref_uuid,
                     "contentType": ref_ct,
+                    "title": ref_title,
                 }
+
+        # Add interpretation reference if present
+        interp = _find(root, "RepresentedInterpretation")
+        if interp is not None:
+            ref_uuid = _text(interp, "UUID") or _text(interp, "Uuid")
+            ref_ct = _text(interp, "ContentType")
+            ref_title = _text(interp, "Title")
+            if ref_uuid:
+                resource["representedInterpretation"] = {
+                    "uuid": ref_uuid,
+                    "contentType": ref_ct,
+                    "title": ref_title,
+                }
+
+        # Collect OSDU ExtraMetadata
+        osdu_meta = {}
+        for em in _findall(root, "ExtraMetadata"):
+            name = _text(em, "Name")
+            value = _text(em, "Value")
+            if name.startswith("osdu:") or name == "EPSG":
+                osdu_meta[name] = value
+        if osdu_meta:
+            resource["metadata"] = osdu_meta
 
         resources.append(resource)
 
     return {
-        "_comment": "OSDU-compliant Drogon demo dataset manifest",
+        "_comment": "OSDU-compliant Drogon demo dataset manifest — canonical names and rich metadata",
         "dataspace": "maap/drogon",
         "schemaVersion": "2.0",
+        "field": "Drogon",
+        "basin": "Norwegian Continental Shelf",
+        "crs": "EPSG:23037 (ED50 / UTM zone 37S)",
+        "resourceCount": len(resources),
         "resources": resources,
     }
 

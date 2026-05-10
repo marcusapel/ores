@@ -851,7 +851,9 @@ class Query:
         pool = await _get_pool()
         if pool:
             types = await _pg_list_types(pool, dataspace)
-            return [TypeSummary(name=t["name"], count=t["count"]) for t in types]
+            if types:
+                return [TypeSummary(name=t["name"], count=t["count"]) for t in types]
+            # Dataspace not in PG → fall through to REST
         token = _get_token_from_info(info)
         types = await _rest_list_types(token, dataspace)
         return [TypeSummary(name=t["name"], count=t["count"]) for t in types]
@@ -866,9 +868,11 @@ class Query:
         limit: int = 50,
     ) -> List[ResqmlObject]:
         pool = await _get_pool()
+        resources = []
         if pool:
             resources = await _pg_list_resources(pool, dataspace, type_name, limit)
-        else:
+        if not resources:
+            # PG returned nothing (or no pool) → try REST
             token = _get_token_from_info(info)
             resources = await _rest_list_resources(token, dataspace, type_name, limit)
         results = []
@@ -910,13 +914,15 @@ class Query:
         pool = await _get_pool()
         if pool:
             rels = await _pg_list_relations(pool, dataspace, type_name, uuid, direction)
-            return [
-                RelationInfo(
-                    uuid=r["uuid"], name=r["name"], type_name=r["type_name"],
-                    direction=r["direction"], content_type=r["content_type"],
-                )
-                for r in rels
-            ]
+            if rels:
+                return [
+                    RelationInfo(
+                        uuid=r["uuid"], name=r["name"], type_name=r["type_name"],
+                        direction=r["direction"], content_type=r["content_type"],
+                    )
+                    for r in rels
+                ]
+            # PG returned nothing → fall through to REST
 
         # REST fallback
         token = _get_token_from_info(info)
@@ -968,27 +974,29 @@ class Query:
         pool = await _get_pool()
         if pool:
             arrays = await _pg_list_arrays(pool, dataspace, uuid)
-            results = []
-            for a in arrays:
-                ai = ArrayInfo(
-                    path=a["path"],
-                    data_type=_ARY_TYPE_FMT.get(a["type"], "?"),
-                    dimensions=a["dimensions"],
-                    total_elements=a["total_elements"],
-                )
-                if (include_statistics or include_sample_values) and a["path"]:
-                    try:
-                        values = await _pg_read_array(pool, dataspace, uuid, a["path"])
-                        if values:
-                            ai.total_elements = len(values)
-                            if include_statistics:
-                                ai.statistics = _compute_statistics(values)
-                            if include_sample_values:
-                                ai.sample_values = values[:sample_size]
-                    except Exception as e:
-                        log.debug("pg read_array %s failed: %s", a["path"], e)
-                results.append(ai)
-            return results
+            if arrays:
+                results = []
+                for a in arrays:
+                    ai = ArrayInfo(
+                        path=a["path"],
+                        data_type=_ARY_TYPE_FMT.get(a["type"], "?"),
+                        dimensions=a["dimensions"],
+                        total_elements=a["total_elements"],
+                    )
+                    if (include_statistics or include_sample_values) and a["path"]:
+                        try:
+                            values = await _pg_read_array(pool, dataspace, uuid, a["path"])
+                            if values:
+                                ai.total_elements = len(values)
+                                if include_statistics:
+                                    ai.statistics = _compute_statistics(values)
+                                if include_sample_values:
+                                    ai.sample_values = values[:sample_size]
+                        except Exception as e:
+                            log.debug("pg read_array %s failed: %s", a["path"], e)
+                    results.append(ai)
+                return results
+            # PG returned nothing → fall through to REST
 
         # REST fallback
         token = _get_token_from_info(info)
@@ -1076,11 +1084,20 @@ class Query:
         if len(ds_list) == 1:
             pool = await _get_pool()
             if pool:
-                return await _deep_search_pg(
+                result = await _deep_search_pg(
                     pool, ds_list[0], type_name, title_contains,
                     property_filter, include_statistics, include_sample_values,
                     sample_size, limit,
                 )
+                # Fall back to REST if this dataspace isn't in PG
+                if result.total_scanned == 0 and "not found in PG" in result.query_description:
+                    token = _get_token_from_info(info)
+                    return await self._deep_search_rest(
+                        token, ds_list[0], type_name, title_contains,
+                        property_filter, include_statistics, include_sample_values,
+                        sample_size, limit,
+                    )
+                return result
             token = _get_token_from_info(info)
             return await self._deep_search_rest(
                 token, ds_list[0], type_name, title_contains,
@@ -1088,33 +1105,29 @@ class Query:
                 sample_size, limit,
             )
 
-        # Multiple dataspaces: run in parallel and merge
+        # Multiple dataspaces: try PG first for each, fall back to REST per-ds
         pool = await _get_pool()
-        if pool:
-            import asyncio
-            tasks = [
-                _deep_search_pg(
+        token = _get_token_from_info(info)
+        import asyncio
+
+        async def _search_one_ds(ds: str) -> DeepSearchResult:
+            """Search a single dataspace: PG first, REST fallback."""
+            if pool:
+                pg_result = await _deep_search_pg(
                     pool, ds, type_name, title_contains,
                     property_filter, include_statistics, include_sample_values,
                     sample_size, limit,
                 )
-                for ds in ds_list
-            ]
-            results = await asyncio.gather(*tasks)
-            return self._merge_deep_results(results, ds_list, limit)
-
-        # REST multi-dataspace
-        token = _get_token_from_info(info)
-        import asyncio
-        tasks = [
-            self._deep_search_rest(
+                if pg_result.total_scanned > 0 or "not found in PG" not in pg_result.query_description:
+                    return pg_result
+                # Dataspace not in PG → try REST
+            return await self._deep_search_rest(
                 token, ds, type_name, title_contains,
                 property_filter, include_statistics, include_sample_values,
                 sample_size, limit,
             )
-            for ds in ds_list
-        ]
-        results = await asyncio.gather(*tasks)
+
+        results = await asyncio.gather(*[_search_one_ds(ds) for ds in ds_list])
         return self._merge_deep_results(results, ds_list, limit)
 
     @strawberry.field(

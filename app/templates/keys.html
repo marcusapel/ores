@@ -37,6 +37,54 @@
   .btn-3d { background: #107c10; color: #fff; border-color: #107c10; }
   .btn-3d:hover { background: #0e6b0e !important; border-color: #0e6b0e !important; }
   .btn-3d.active { background: #004578; border-color: #004578; }
+
+  /* ── 3D Results Popup Modal ── */
+  .gql3d-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9000;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+    align-items: center; justify-content: center;
+  }
+  .gql3d-overlay.open { display: flex; }
+  .gql3d-modal {
+    width: 92vw; height: 85vh; background: #1a1a2e; border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .gql3d-header {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    background: #16213e; color: #e0e0e0; font-size: 14px; flex-shrink: 0;
+  }
+  .gql3d-header h3 { margin: 0; font-size: 15px; flex: 1; }
+  .gql3d-close {
+    background: none; border: 1px solid #555; color: #ccc; border-radius: 4px;
+    padding: 4px 12px; cursor: pointer; font-size: 13px;
+  }
+  .gql3d-close:hover { background: #a4262c; color: #fff; border-color: #a4262c; }
+  .gql3d-body { flex: 1; position: relative; overflow: hidden; }
+  .gql3d-body canvas { display: block; width: 100% !important; height: 100% !important; }
+  .gql3d-hud {
+    position: absolute; bottom: 10px; left: 14px; color: #bbb; font-size: 11px;
+    pointer-events: none; text-shadow: 0 1px 3px #000; line-height: 1.5;
+  }
+  .gql3d-legend {
+    position: absolute; top: 12px; right: 14px; background: rgba(0,0,0,0.55);
+    border-radius: 5px; padding: 8px 10px; max-height: 50%; overflow-y: auto;
+  }
+  .gql3d-legend-item {
+    display: flex; align-items: center; gap: 6px; font-size: 11px; color: #ccc; padding: 2px 0;
+  }
+  .gql3d-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .gql3d-status {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #8a8886; font-size: 14px; text-align: center; pointer-events: none;
+  }
+  .btn-show3d-results {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #107c10; color: #fff; border: none; border-radius: 5px;
+    padding: 7px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(16,124,16,0.35); transition: background 0.15s;
+  }
+  .btn-show3d-results:hover { background: #0e6b0e; box-shadow: 0 3px 8px rgba(16,124,16,0.45); }
+  .btn-show3d-results svg { width: 16px; height: 16px; fill: currentColor; }
 </style>
 {% endblock %}
 
@@ -294,6 +342,22 @@
         </div>
         </div><!-- /advanced-panel -->
       </div>
+  </div>
+
+  <!-- ── 3D Results Popup Modal ──────────────────────────────────────────── -->
+  <div id="gql3d-overlay" class="gql3d-overlay">
+    <div class="gql3d-modal">
+      <div class="gql3d-header">
+        <h3 id="gql3d-title">3D Results</h3>
+        <span id="gql3d-status-hdr" style="font-size:12px;color:#8a8886;"></span>
+        <button class="gql3d-close" id="gql3d-close">&times; Close</button>
+      </div>
+      <div class="gql3d-body" id="gql3d-viewport">
+        <div class="gql3d-status" id="gql3d-loading">Select renderable objects and click Show 3D Results</div>
+        <div class="gql3d-hud" id="gql3d-hud" style="display:none;"></div>
+        <div class="gql3d-legend" id="gql3d-legend" style="display:none;"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -618,6 +682,12 @@
       }
 
       container.innerHTML = html || '<p class="muted">Query returned no renderable results. Check JSON tab for raw output.</p>';
+
+      // Check for 3D-renderable objects and show "Show 3D Results" button
+      const renderableObjs = extractRenderableObjects(data);
+      if (renderableObjs.length > 0) {
+        insertShow3DButton(container, renderableObjs);
+      }
     }
 
     function renderObjectCard(obj) {
@@ -893,6 +963,449 @@
       const t = (typ || '').toLowerCase();
       return _3D_TYPE_KEYS.some(k => t.includes(k));
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 3D Results Popup – show all renderable GraphQL results in a Three.js viewer
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let _gql3dViewer = null;      // { renderer, scene, camera, animId }
+    let _gql3dObjects = {};       // uuid → { mesh, geo, color, title, kind }
+    let _gql3dAutoRotate = true;
+    let _gql3dRotX = 0.55, _gql3dRotY = -0.6, _gql3dZoomDist = 3, _gql3dPanX = 0, _gql3dPanY = 0;
+    let _gql3dTarget = null;
+    let _gql3dGlobalMin = { x: Infinity, y: Infinity, z: Infinity };
+    let _gql3dGlobalMax = { x: -Infinity, y: -Infinity, z: -Infinity };
+
+    const _GQL3D_PALETTE = [
+      '#4caf50', '#2196f3', '#ff9800', '#e91e63', '#9c27b0',
+      '#00bcd4', '#ff5722', '#8bc34a', '#3f51b5', '#ffc107',
+      '#795548', '#607d8b', '#cddc39', '#f44336', '#009688',
+    ];
+
+    function _gql3dColorZ(z, zmin, zmax) {
+      const t = zmax > zmin ? Math.max(0, Math.min(1, (z - zmin) / (zmax - zmin))) : 0.5;
+      let r, g, b;
+      if (t < 0.25) { const s = t/0.25; r = 0.28*(1-s)+0.13*s; g = 0.0*(1-s)+0.57*s; b = 0.33*(1-s)+0.55*s; }
+      else if (t < 0.5) { const s = (t-0.25)/0.25; r = 0.13*(1-s)+0.15*s; g = 0.57*(1-s)+0.73*s; b = 0.55*(1-s)+0.34*s; }
+      else if (t < 0.75) { const s = (t-0.5)/0.25; r = 0.15*(1-s)+0.63*s; g = 0.73*(1-s)+0.85*s; b = 0.34*(1-s)+0.17*s; }
+      else { const s = (t-0.75)/0.25; r = 0.63*(1-s)+0.99*s; g = 0.85*(1-s)+0.91*s; b = 0.17*(1-s)+0.14*s; }
+      return [r, g, b];
+    }
+
+    function _gql3dUpdateCam() {
+      if (!_gql3dViewer || !_gql3dTarget) return;
+      const cam = _gql3dViewer.camera;
+      cam.position.set(
+        _gql3dTarget.x + _gql3dZoomDist * Math.sin(_gql3dRotY) * Math.cos(_gql3dRotX),
+        _gql3dTarget.y + _gql3dZoomDist * Math.sin(_gql3dRotX),
+        _gql3dTarget.z + _gql3dZoomDist * Math.cos(_gql3dRotY) * Math.cos(_gql3dRotX)
+      );
+      cam.lookAt(_gql3dTarget);
+    }
+
+    function _gql3dDispose() {
+      if (_gql3dViewer) {
+        cancelAnimationFrame(_gql3dViewer.animId);
+        _gql3dViewer.renderer.dispose();
+        _gql3dViewer.renderer.domElement.remove();
+        _gql3dViewer = null;
+      }
+      _gql3dObjects = {};
+      _gql3dGlobalMin = { x: Infinity, y: Infinity, z: Infinity };
+      _gql3dGlobalMax = { x: -Infinity, y: -Infinity, z: -Infinity };
+      _gql3dAutoRotate = true;
+      _gql3dRotX = 0.55; _gql3dRotY = -0.6; _gql3dZoomDist = 3;
+    }
+
+    function _gql3dEnsureScene() {
+      if (_gql3dViewer) return;
+      const vp = $('gql3d-viewport');
+      const W = vp.clientWidth, H = vp.clientHeight;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a1a2e);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+      dl.position.set(2, 5, 3);
+      scene.add(dl);
+
+      // Ground grid
+      const grid = new THREE.GridHelper(4, 20, 0x444466, 0x333355);
+      grid.name = '__grid';
+      scene.add(grid);
+
+      const camera = new THREE.PerspectiveCamera(50, W / H, 0.01, 1e6);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(W, H);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      vp.insertBefore(renderer.domElement, vp.firstChild);
+
+      _gql3dTarget = new THREE.Vector3(0, 0, 0);
+
+      // Orbit controls
+      let drag = false, btn = -1, px = 0, py = 0;
+      const el = renderer.domElement;
+      el.addEventListener('contextmenu', e => e.preventDefault());
+      el.addEventListener('mousedown', e => { drag = true; btn = e.button; px = e.clientX; py = e.clientY; _gql3dAutoRotate = false; });
+      window.addEventListener('mouseup', () => { drag = false; btn = -1; });
+      el.addEventListener('mousemove', e => {
+        if (!drag) return;
+        const dx = e.clientX - px, dy = e.clientY - py;
+        px = e.clientX; py = e.clientY;
+        if (btn === 0) {
+          _gql3dRotY += dx * 0.008; _gql3dRotX += dy * 0.008;
+          _gql3dRotX = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, _gql3dRotX));
+        } else if (btn === 2) {
+          const ps = _gql3dZoomDist * 0.002;
+          const right = new THREE.Vector3();
+          right.crossVectors(camera.up, new THREE.Vector3().subVectors(_gql3dTarget, camera.position)).normalize();
+          _gql3dTarget.addScaledVector(right, -dx * ps);
+          _gql3dTarget.y += dy * ps;
+        }
+        _gql3dUpdateCam();
+      });
+      el.addEventListener('wheel', e => {
+        e.preventDefault(); _gql3dAutoRotate = false;
+        _gql3dZoomDist *= e.deltaY > 0 ? 1.1 : 0.9;
+        _gql3dZoomDist = Math.max(0.3, Math.min(50, _gql3dZoomDist));
+        _gql3dUpdateCam();
+      }, { passive: false });
+
+      // Touch support
+      let lastPinch = 0;
+      el.addEventListener('touchstart', e => {
+        _gql3dAutoRotate = false;
+        if (e.touches.length === 1) { drag = true; btn = 0; px = e.touches[0].clientX; py = e.touches[0].clientY; }
+        else if (e.touches.length === 2) {
+          drag = false;
+          const dx = e.touches[1].clientX - e.touches[0].clientX, dy = e.touches[1].clientY - e.touches[0].clientY;
+          lastPinch = Math.sqrt(dx*dx+dy*dy);
+        }
+      });
+      el.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (e.touches.length === 1 && drag) {
+          const dx = e.touches[0].clientX - px, dy = e.touches[0].clientY - py;
+          _gql3dRotY += dx * 0.008; _gql3dRotX += dy * 0.008;
+          _gql3dRotX = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, _gql3dRotX));
+          px = e.touches[0].clientX; py = e.touches[0].clientY;
+          _gql3dUpdateCam();
+        } else if (e.touches.length === 2) {
+          const dx = e.touches[1].clientX - e.touches[0].clientX, dy = e.touches[1].clientY - e.touches[0].clientY;
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          if (lastPinch > 0) { _gql3dZoomDist *= lastPinch/dist; _gql3dZoomDist = Math.max(0.3, Math.min(50, _gql3dZoomDist)); _gql3dUpdateCam(); }
+          lastPinch = dist;
+        }
+      }, { passive: false });
+      el.addEventListener('touchend', () => { drag = false; lastPinch = 0; });
+
+      // Resize observer
+      new ResizeObserver(() => {
+        const w = vp.clientWidth, h = vp.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }).observe(vp);
+
+      _gql3dUpdateCam();
+
+      // Animate
+      function animate() {
+        const id = requestAnimationFrame(animate);
+        _gql3dViewer.animId = id;
+        if (_gql3dAutoRotate) { _gql3dRotY += 0.002; _gql3dUpdateCam(); }
+        renderer.render(scene, camera);
+      }
+      _gql3dViewer = { renderer, scene, camera, animId: 0 };
+      animate();
+    }
+
+    function _gql3dAddToScene(uuid, geo, hexColor, title) {
+      _gql3dEnsureScene();
+      const scene = _gql3dViewer.scene;
+      const kind = geo.kind;
+      const positions = geo.positions || [];
+      const indices = geo.indices || [];
+      const zmin = geo.zmin || 0, zmax = geo.zmax || 1;
+      const nVerts = positions.length / 3;
+      if (nVerts === 0) return;
+
+      // Update global bounds
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i], y = positions[i+1], z = positions[i+2];
+        if (!isFinite(x) || !isFinite(y) || !isFinite(z)) continue;
+        _gql3dGlobalMin.x = Math.min(_gql3dGlobalMin.x, x); _gql3dGlobalMax.x = Math.max(_gql3dGlobalMax.x, x);
+        _gql3dGlobalMin.y = Math.min(_gql3dGlobalMin.y, y); _gql3dGlobalMax.y = Math.max(_gql3dGlobalMax.y, y);
+        _gql3dGlobalMin.z = Math.min(_gql3dGlobalMin.z, z); _gql3dGlobalMax.z = Math.max(_gql3dGlobalMax.z, z);
+      }
+
+      const cx = (_gql3dGlobalMin.x + _gql3dGlobalMax.x) / 2;
+      const cy = (_gql3dGlobalMin.y + _gql3dGlobalMax.y) / 2;
+      const cz = (_gql3dGlobalMin.z + _gql3dGlobalMax.z) / 2;
+      const extLateral = Math.max(_gql3dGlobalMax.x - _gql3dGlobalMin.x, _gql3dGlobalMax.y - _gql3dGlobalMin.y) || 1;
+      const extZ = _gql3dGlobalMax.z - _gql3dGlobalMin.z;
+      let zExag = 1;
+      if (extZ > 0) {
+        const ratio = extZ / extLateral;
+        if (ratio < 0.4) zExag = Math.max(2, Math.min(15, 0.4 / ratio));
+      }
+
+      const baseColor = new THREE.Color(hexColor);
+      const normPos = new Float32Array(positions.length);
+      const colors = new Float32Array(positions.length);
+      for (let i = 0; i < nVerts; i++) {
+        normPos[i*3]     = (positions[i*3]     - cx) / extLateral * 2;
+        normPos[i*3 + 1] = (positions[i*3 + 2] - cz) / extLateral * 2 * zExag;
+        normPos[i*3 + 2] = (positions[i*3 + 1] - cy) / extLateral * 2;
+        if (kind === 'surface' || kind === 'points') {
+          const z = positions[i*3+2];
+          const [cr, cg, cb] = _gql3dColorZ(isFinite(z) ? z : cz, zmin, zmax);
+          colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
+        } else {
+          colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
+        }
+      }
+
+      const geom3 = new THREE.BufferGeometry();
+      geom3.setAttribute('position', new THREE.BufferAttribute(normPos, 3));
+      geom3.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      let mesh;
+      if (kind === 'surface') {
+        if (indices.length) geom3.setIndex(indices);
+        geom3.computeVertexNormals();
+        mesh = new THREE.Mesh(geom3, new THREE.MeshPhongMaterial({
+          vertexColors: true, side: THREE.DoubleSide, shininess: 30, flatShading: false,
+        }));
+      } else if (kind === 'points' || kind === 'markers') {
+        mesh = new THREE.Points(geom3, new THREE.PointsMaterial({
+          vertexColors: true, size: kind === 'markers' ? 0.04 : 0.015, sizeAttenuation: true,
+        }));
+      } else if (kind === 'trajectory') {
+        mesh = new THREE.Line(geom3, new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 }));
+        const sg = new THREE.SphereGeometry(0.012, 6, 6);
+        const s1 = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: hexColor }));
+        s1.position.set(normPos[0], normPos[1], normPos[2]);
+        scene.add(s1);
+        if (nVerts > 1) {
+          const s2 = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: 0xff4444 }));
+          s2.position.set(normPos[(nVerts-1)*3], normPos[(nVerts-1)*3+1], normPos[(nVerts-1)*3+2]);
+          scene.add(s2);
+        }
+      } else if (kind === 'polylines') {
+        const counts = geo.counts || [];
+        mesh = new THREE.Group();
+        if (counts.length > 0) {
+          let offset = 0;
+          for (const cnt of counts) {
+            const lp = new Float32Array(cnt*3), lc = new Float32Array(cnt*3);
+            for (let j = 0; j < cnt && (offset+j) < nVerts; j++) {
+              const idx = offset+j;
+              lp[j*3]=normPos[idx*3]; lp[j*3+1]=normPos[idx*3+1]; lp[j*3+2]=normPos[idx*3+2];
+              lc[j*3]=colors[idx*3]; lc[j*3+1]=colors[idx*3+1]; lc[j*3+2]=colors[idx*3+2];
+            }
+            offset += cnt;
+            const lg = new THREE.BufferGeometry();
+            lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+            lg.setAttribute('color', new THREE.BufferAttribute(lc, 3));
+            mesh.add(new THREE.Line(lg, new THREE.LineBasicMaterial({ vertexColors: true })));
+          }
+        } else {
+          mesh = new THREE.Line(geom3, new THREE.LineBasicMaterial({ vertexColors: true }));
+        }
+      }
+
+      if (mesh) {
+        mesh.userData.vizUuid = uuid;
+        scene.add(mesh);
+        _gql3dObjects[uuid] = { mesh, geo, color: hexColor, visible: true, title: title || uuid, kind };
+      }
+    }
+
+    function _gql3dFitCamera() {
+      if (!_gql3dViewer || Object.keys(_gql3dObjects).length === 0) return;
+      const box = new THREE.Box3();
+      _gql3dViewer.scene.traverse(obj => {
+        if (obj.isMesh || obj.isLine || obj.isPoints) {
+          const b = new THREE.Box3().setFromBufferAttribute(obj.geometry?.attributes?.position);
+          if (!b.isEmpty()) box.union(b);
+        }
+      });
+      if (box.isEmpty()) return;
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      _gql3dTarget.copy(center);
+      _gql3dZoomDist = Math.max(size.x, size.y, size.z) * 1.8;
+      _gql3dUpdateCam();
+
+      const gridObj = _gql3dViewer.scene.getObjectByName('__grid');
+      if (gridObj) {
+        gridObj.position.y = box.min.y - 0.05;
+        const gs = Math.max(size.x, size.z) * 1.3;
+        gridObj.scale.set(gs/4, 1, gs/4);
+      }
+    }
+
+    function _gql3dUpdateHud() {
+      const hud = $('gql3d-hud');
+      const count = Object.keys(_gql3dObjects).length;
+      let totalVerts = 0;
+      for (const o of Object.values(_gql3dObjects)) totalVerts += (o.geo.positions || []).length / 3;
+      hud.innerHTML = `${count} objects · ${totalVerts.toLocaleString()} vertices<br>Drag: orbit · Right-drag: pan · Scroll: zoom`;
+      hud.style.display = count > 0 ? '' : 'none';
+    }
+
+    function _gql3dUpdateLegend() {
+      const legend = $('gql3d-legend');
+      const entries = Object.values(_gql3dObjects);
+      if (entries.length === 0) { legend.style.display = 'none'; return; }
+      legend.style.display = '';
+      const kindLabels = { surface:'Surface', points:'Points', trajectory:'Well', markers:'Markers', polylines:'Polylines' };
+      legend.innerHTML = entries.map(o =>
+        `<div class="gql3d-legend-item"><span class="gql3d-legend-dot" style="background:${o.color}"></span>${esc(o.title)} <span style="opacity:0.6;font-size:10px;">(${kindLabels[o.kind]||o.kind})</span></div>`
+      ).join('');
+    }
+
+    /**
+     * Extract renderable objects from GraphQL query result data.
+     * Returns array of { uuid, title, typeName } for 3D-capable types.
+     */
+    function extractRenderableObjects(data) {
+      if (!data || !data.data) return [];
+      const d = data.data;
+      const objs = [];
+
+      if (d.deepSearch && d.deepSearch.objects) {
+        d.deepSearch.objects.forEach(o => {
+          if (is3dType(o.typeName)) objs.push({ uuid: o.uuid, title: o.title, typeName: o.typeName });
+        });
+      }
+      if (d.federatedSearch && d.federatedSearch.hits) {
+        d.federatedSearch.hits.forEach(h => {
+          if (is3dType(h.typeName)) objs.push({ uuid: h.uuid, title: h.title, typeName: h.typeName });
+        });
+      }
+      if (d.resqmlObjects) {
+        d.resqmlObjects.forEach(o => {
+          if (is3dType(o.typeName)) objs.push({ uuid: o.uuid, title: o.title, typeName: o.typeName });
+        });
+      }
+      return objs;
+    }
+
+    /**
+     * Build and insert the "Show 3D Results" button into a container element.
+     * @param {HTMLElement} container – element to append button into
+     * @param {Array} renderableObjs – [{uuid, title, typeName}]
+     */
+    function insertShow3DButton(container, renderableObjs) {
+      if (!renderableObjs.length) return;
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'margin:10px 0 4px;display:flex;align-items:center;gap:10px;';
+      wrapper.innerHTML = `<button class="btn-show3d-results" id="gql3d-trigger">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Show 3D Results (${renderableObjs.length})
+      </button>
+      <span style="font-size:12px;color:#605e5c;">${renderableObjs.length} renderable object${renderableObjs.length > 1 ? 's' : ''} found</span>`;
+      container.appendChild(wrapper);
+
+      wrapper.querySelector('#gql3d-trigger').addEventListener('click', () => {
+        openGql3DPopup(renderableObjs);
+      });
+    }
+
+    /**
+     * Open the 3D popup and load geometry for the given objects.
+     */
+    async function openGql3DPopup(renderableObjs) {
+      const overlay = $('gql3d-overlay');
+      overlay.classList.add('open');
+      $('gql3d-loading').style.display = '';
+      $('gql3d-loading').textContent = `Loading 3D geometry for ${renderableObjs.length} objects…`;
+      _gql3dDispose();
+
+      $('gql3d-title').textContent = `3D Results (${renderableObjs.length} objects)`;
+      $('gql3d-status-hdr').textContent = 'Loading…';
+
+      // Determine dataspaces to try
+      const dsList = Array.from(dsSel.selectedOptions).map(o => o.value);
+      if (!dsList.length) dsList.push('maap/drogon');  // fallback
+
+      // Build batch requests: try each DS until we get geometry
+      const batch = renderableObjs.map((o, i) => ({
+        typ: o.typeName, uuid: o.uuid, title: o.title,
+        color: _GQL3D_PALETTE[i % _GQL3D_PALETTE.length],
+      }));
+
+      let loaded = 0, failed = 0;
+
+      for (const ds of dsList) {
+        // Filter to objects not yet loaded
+        const toLoad = batch.filter(b => !_gql3dObjects[b.uuid]);
+        if (toLoad.length === 0) break;
+
+        try {
+          const r = await fetch('/keys/viz/batch.json', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ds, objects: toLoad.map(b => ({ typ: b.typ, uuid: b.uuid })) }),
+          });
+          const data = await r.json();
+          const results = data.results || [];
+          for (let j = 0; j < toLoad.length && j < results.length; j++) {
+            const item = toLoad[j];
+            const geo = results[j];
+            if (geo && !geo.error && (geo.positions || []).length > 0) {
+              _gql3dAddToScene(item.uuid, geo, item.color, item.title);
+              loaded++;
+            }
+          }
+        } catch (e) {
+          console.error('3D batch fetch failed for ds=' + ds, e);
+        }
+        $('gql3d-loading').textContent = `Loading… ${loaded} loaded so far`;
+      }
+
+      // Count failures
+      failed = renderableObjs.length - loaded;
+
+      $('gql3d-loading').style.display = 'none';
+      $('gql3d-status-hdr').textContent = loaded > 0
+        ? `${loaded} loaded${failed > 0 ? ', ' + failed + ' failed' : ''}`
+        : 'No geometry data available';
+
+      if (loaded > 0) {
+        _gql3dFitCamera();
+        _gql3dUpdateHud();
+        _gql3dUpdateLegend();
+      } else {
+        $('gql3d-loading').style.display = '';
+        $('gql3d-loading').textContent = 'No 3D geometry data available for these objects. They may not have spatial data in the current dataspaces.';
+      }
+    }
+
+    // Close popup
+    $('gql3d-close').addEventListener('click', () => {
+      $('gql3d-overlay').classList.remove('open');
+      _gql3dDispose();
+      $('gql3d-hud').style.display = 'none';
+      $('gql3d-legend').style.display = 'none';
+    });
+
+    // Close on overlay click (outside modal)
+    $('gql3d-overlay').addEventListener('click', (e) => {
+      if (e.target === $('gql3d-overlay')) {
+        $('gql3d-close').click();
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('gql3d-overlay').classList.contains('open')) {
+        $('gql3d-close').click();
+      }
+    });
 
     /**
      * Classify a Grid2dRepresentation as 'map', 'table', or 'both'.
@@ -2483,6 +2996,23 @@
         }
         // Try to render graph visualisation
         renderMermaidFromResponse(data);
+
+        // Check for 3D-renderable objects and show button in result area
+        const renderableObjs = extractRenderableObjects(data);
+        const existing3dBtn = document.getElementById('gql3d-advanced-trigger-wrap');
+        if (existing3dBtn) existing3dBtn.remove();
+        if (renderableObjs.length > 0) {
+          const wrap = document.createElement('div');
+          wrap.id = 'gql3d-advanced-trigger-wrap';
+          wrap.style.cssText = 'margin:8px 0;display:flex;align-items:center;gap:10px;';
+          wrap.innerHTML = `<button class="btn-show3d-results" id="gql3d-adv-trigger">
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Show 3D Results (${renderableObjs.length})
+          </button>
+          <span style="font-size:12px;color:#605e5c;">${renderableObjs.length} renderable object${renderableObjs.length > 1 ? 's' : ''}</span>`;
+          $('gql-result').parentNode.insertBefore(wrap, $('gql-result'));
+          wrap.querySelector('#gql3d-adv-trigger').addEventListener('click', () => openGql3DPopup(renderableObjs));
+        }
       } catch (e) {
         gqlStatus.textContent = 'Request failed';
         gqlOutput.textContent = e.message;
