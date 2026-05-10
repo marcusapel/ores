@@ -34,6 +34,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import osdu
+from . import resqml_viz
 from . import structuremap as smap_mod
 from .schemahandler import extract_metadata_generic
 
@@ -393,9 +394,33 @@ async def keys_object_json(
     typ_s = _sanitize_type(typ)
     uuid_s = _sanitize_uuid(uuid)
 
-    # Fetch object and normalize list/dict shape
-    obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-    obj = _normalize_resource_obj(obj_raw, uuid_s)
+    obj = None
+    arrays: list = []
+
+    # ── Try local PG first (fast, no network) ─────────────────────────
+    try:
+        from .graphql_router import _get_pool
+        pool = await _get_pool()
+        if pool:
+            pg_obj, pg_arrays = await resqml_viz.pg_get_object_and_arrays(
+                pool, ds, typ_s, uuid_s,
+            )
+            if pg_obj is not None:
+                obj = pg_obj
+                arrays = pg_arrays or []
+                log.info("keys_object_json: served from PG ds=%s uuid=%s", ds, uuid_s)
+    except Exception as e:
+        log.debug("keys_object_json: PG failed, falling back to REST: %s", e)
+
+    # ── REST fallback ─────────────────────────────────────────────────
+    if obj is None:
+        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+        obj = _normalize_resource_obj(obj_raw, uuid_s)
+        try:
+            arrays = await osdu.list_arrays(at, enc, typ_s, uuid_s)
+        except Exception as e:
+            log.warning("keys_object_json: list_arrays failed: %s", e)
+            arrays = []
 
     primary = {
         "uuid": uuid_s,
@@ -404,14 +429,6 @@ async def keys_object_json(
         "uri": obj.get("uri") or osdu._eml_uri_from_parts(ds, typ_s, uuid_s),
         "contentType": obj.get("$type") or obj.get("contentType") or "",
     }
-
-    # Arrays metadata (optional)
-    arrays = []
-    try:
-        arrays = await osdu.list_arrays(at, enc, typ_s, uuid_s)
-    except Exception as e:
-        log.warning("keys_object_json: list_arrays failed: %s", e)
-        arrays = []
 
     # Generic metadata from schemahandler
     metadata = None
@@ -1339,7 +1356,7 @@ async def keys_object_map_png(
     try:
         import time as _time
         _t0 = _time.monotonic()
-        surface = await osdu.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+        surface = await resqml_viz.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
         _t1 = _time.monotonic()
         log.info("map.png: fetch ds=%s uuid=%s took %.1fs", ds, uuid, _t1 - _t0)
     except Exception as e:
@@ -1372,7 +1389,7 @@ async def keys_object_map_png(
 
     try:
         _t2 = _time.monotonic()
-        png_bytes = osdu.render_grid2d_png(
+        png_bytes = resqml_viz.render_grid2d_png(
             zvalues, dims, geometry, crs,
             title=title,
             cmap=cmap,
@@ -1403,7 +1420,7 @@ async def keys_object_map_json(
     at = _access_token(request)
 
     try:
-        surface = await osdu.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+        surface = await resqml_viz.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
     except Exception as e:
         raise HTTPException(502, f"Failed to fetch surface: {e}")
 
@@ -1468,7 +1485,8 @@ async def keys_object_map_json(
 _3D_TYPES = {
     "grid2drepresentation", "triangulatedsetrepresentation",
     "pointsetrepresentation", "wellboretrajectoryrepresentation",
-    "wellboremarkerframerepresentation",
+    "wellboremarkerframerepresentation", "polylinesetrepresentation",
+    "deviationsurveyrepresentation",
 }
 
 def _is_3d_type(typ: str) -> bool:
@@ -1488,6 +1506,8 @@ async def keys_object_geometry3d(
     """
     Return vertex/index/point arrays for client-side 3D rendering.
 
+    Tries local PostgreSQL first (fast), falls back to remote RDDMS REST API.
+
     Supported types:
       - Grid2dRepresentation → triangulated surface mesh
       - TriangulatedSetRepresentation → triangle mesh
@@ -1502,20 +1522,22 @@ async def keys_object_geometry3d(
     if not _is_3d_type(typ_s):
         raise HTTPException(400, f"Type {typ_s} is not supported for 3D viewing")
 
+    import time as _time
+    _t0 = _time.monotonic()
+
     try:
-        import time as _time
-        _t0 = _time.monotonic()
-        result = await osdu.fetch_geometry_3d(at, ds, typ_s, uuid_s)
-        _t1 = _time.monotonic()
-        n_verts = len(result.get("positions", [])) // 3
-        n_idx = len(result.get("indices", [])) // 3
-        log.info("geometry3d: %s uuid=%s kind=%s verts=%d tris=%d took %.1fs",
-                 typ_s, uuid_s, result.get("kind"), n_verts, n_idx, _t1 - _t0)
+        result = await resqml_viz.fetch_geometry_3d(at, ds, typ_s, uuid_s)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:
         log.exception("geometry3d: fetch failed for %s/%s: %s", typ_s, uuid_s, e)
         raise HTTPException(502, f"Failed to fetch 3D geometry: {e}")
+
+    _t1 = _time.monotonic()
+    n_verts = len(result.get("positions", [])) // 3
+    n_idx = len(result.get("indices", [])) // 3
+    log.info("geometry3d: %s uuid=%s kind=%s verts=%d tris=%d took %.1fs",
+             typ_s, uuid_s, result.get("kind"), n_verts, n_idx, _t1 - _t0)
 
     return JSONResponse(result)
 
@@ -1544,9 +1566,29 @@ async def keys_object_graph(
     typ_s = _sanitize_type(typ)
     uuid_s = _sanitize_uuid(uuid)
 
-    # Primary resource (defensive against list-shaped responses)
-    obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-    obj = _normalize_resource_obj(obj_raw, uuid_s)
+    obj = None
+
+    # ── Try PG first ──────────────────────────────────────────────────
+    try:
+        from .graphql_router import _get_pool
+        pool = await _get_pool()
+        if pool:
+            pg_obj, _ = await resqml_viz.pg_get_object_and_arrays(
+                pool, ds, typ_s, uuid_s,
+            )
+            if pg_obj is not None:
+                obj = pg_obj
+    except Exception as e:
+        log.debug("graph.json: PG content fetch failed: %s", e)
+
+    # ── REST fallback ─────────────────────────────────────────────────
+    if obj is None:
+        # Primary resource (defensive against list-shaped responses)
+        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+        obj = _normalize_resource_obj(obj_raw, uuid_s)
+    else:
+        obj_raw = obj
+
     primary = {
         "uuid": uuid_s,
         "typePath": typ_s,
@@ -1560,17 +1602,41 @@ async def keys_object_graph(
     crs_items = []
 
     if include_refs:
-        # RDDMS graph endpoints (official API)
+        pg_graph_done = False
+        # ── Try PG graph first ────────────────────────────────────────
         try:
-            sources = await osdu.list_sources(at, enc, typ_s, uuid_s)
+            from .graphql_router import _get_pool, _pg_list_relations
+            pool = await _get_pool()
+            if pool:
+                pg_rels = await _pg_list_relations(pool, ds, typ_s, uuid_s, "both")
+                if pg_rels:
+                    for rel in pg_rels:
+                        item = {
+                            "$type": rel.get("type_name", ""),
+                            "contentType": rel.get("content_type", ""),
+                            "UUID": rel.get("uuid", ""),
+                            "Citation": {"Title": rel.get("name", "")},
+                        }
+                        if rel.get("direction") == "source":
+                            sources.append(item)
+                        else:
+                            targets.append(item)
+                    pg_graph_done = True
         except Exception as e:
-            log.warning("graph: list_sources failed: %s", e)
-            sources = []
-        try:
-            targets = await osdu.list_targets(at, enc, typ_s, uuid_s)
-        except Exception as e:
-            log.warning("graph: list_targets failed: %s", e)
-            targets = []
+            log.debug("graph: PG relations failed: %s", e)
+
+        if not pg_graph_done:
+            # RDDMS graph endpoints (official API)
+            try:
+                sources = await osdu.list_sources(at, enc, typ_s, uuid_s)
+            except Exception as e:
+                log.warning("graph: list_sources failed: %s", e)
+                sources = []
+            try:
+                targets = await osdu.list_targets(at, enc, typ_s, uuid_s)
+            except Exception as e:
+                log.warning("graph: list_targets failed: %s", e)
+                targets = []
 
         # CRS: scan for DataObjectReference-like entries mentioning CRS
         for edge in _extract_refs_any(obj_raw):
@@ -1616,3 +1682,132 @@ async def keys_object_graph(
         "refs": refs,
         "summary": summary,
     })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 3D Viz – multi-object / dataspace viewer
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/viz", response_class=HTMLResponse)
+async def viz_page(request: Request):
+    """Render the dedicated 3D dataspace viewer page."""
+    return templates.TemplateResponse("viz.html", {"request": request})
+
+
+@router.get("/keys/viz/objects.json",
+            summary="List 3D-renderable objects in a dataspace")
+async def viz_list_objects(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path"),
+):
+    """
+    Return all objects in *ds* whose type supports 3D rendering,
+    grouped by RESQML type.  Used by the viz layer panel.
+
+    Response: ``{ types: [ {name, objects: [{uuid,title},...] }, ... ] }``
+    """
+    at = _access_token(request)
+    enc = urllib.parse.quote(ds, safe="")
+
+    # Gather types
+    try:
+        from .graphql_router import _get_pool, _pg_list_types, _pg_list_resources
+        pool = await _get_pool()
+    except Exception:
+        pool = None
+
+    all_types: List[Dict[str, Any]] = []
+    if pool:
+        try:
+            all_types = await _pg_list_types(pool, ds)
+        except Exception:
+            all_types = []
+    if not all_types:
+        try:
+            all_types = await osdu.list_types(at, enc)
+            all_types = [
+                {"name": t.get("name") or t if isinstance(t, dict) else t,
+                 "count": int(t.get("count", 0)) if isinstance(t, dict) else 0}
+                for t in (all_types or [])
+            ]
+        except Exception:
+            all_types = []
+
+    # Filter to 3D-renderable types
+    viz_types = [t for t in all_types if _is_3d_type(t.get("name", ""))]
+
+    # For each viz type, list objects
+    result = []
+    for t in viz_types:
+        type_name = t["name"]
+        objects: List[Dict[str, Any]] = []
+        if pool:
+            try:
+                objects = await _pg_list_resources(pool, ds, type_name, limit=500)
+            except Exception:
+                objects = []
+        if not objects:
+            try:
+                raw = await osdu.list_resources(at, enc, type_name)
+                objects = [
+                    {"uuid": _node_uuid(r), "title": (r.get("Citation") or {}).get("Title", "")}
+                    for r in (raw or []) if isinstance(r, dict)
+                ]
+            except Exception:
+                objects = []
+
+        if objects:
+            result.append({
+                "name": type_name,
+                "count": len(objects),
+                "objects": [{"uuid": o.get("uuid", ""), "title": o.get("title", "")} for o in objects],
+            })
+
+    return JSONResponse({"types": result})
+
+
+@router.post("/keys/viz/batch.json",
+             summary="Fetch 3D geometry for multiple objects")
+async def viz_batch_geometry(
+    request: Request,
+    body: dict = Body(...),
+):
+    """
+    Fetch geometry for multiple objects in a single request.
+
+    Body: ``{ "ds": "...", "objects": [ {"typ": "...", "uuid": "..."}, ... ] }``
+    Response: ``{ "results": [ {<geometry>} | {"error": "..."}, ... ] }``
+
+    Each result matches the corresponding request entry by index.
+    Max 50 objects per batch to keep response times reasonable.
+    """
+    at = _access_token(request)
+    ds = body.get("ds", "")
+    objects = body.get("objects", [])
+
+    if not ds or not objects:
+        raise HTTPException(400, "Missing 'ds' or 'objects' in request body")
+    if len(objects) > 50:
+        raise HTTPException(400, f"Max 50 objects per batch, got {len(objects)}")
+
+    import time as _time
+    t0 = _time.monotonic()
+
+    async def _fetch_one(item: dict) -> dict:
+        typ_s = _sanitize_type(item.get("typ", ""))
+        uuid_s = _sanitize_uuid(item.get("uuid", ""))
+        if not _is_3d_type(typ_s):
+            return {"error": f"Type {typ_s} is not supported for 3D viewing"}
+        try:
+            return await resqml_viz.fetch_geometry_3d(at, ds, typ_s, uuid_s)
+        except Exception as e:
+            log.warning("viz batch: %s/%s failed: %s", typ_s, uuid_s, e)
+            return {"error": str(e)}
+
+    results = await asyncio.gather(*[_fetch_one(o) for o in objects])
+
+    t1 = _time.monotonic()
+    ok = sum(1 for r in results if "error" not in r)
+    log.info("viz batch: ds=%s objects=%d ok=%d took=%.1fs", ds, len(objects), ok, t1 - t0)
+
+    return JSONResponse({"results": list(results)})

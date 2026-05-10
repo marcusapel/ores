@@ -28,6 +28,7 @@
 |------|---------|
 | **RddmsAdmin** (`/`) | List and manage OSDU Dataspaces - create, lock, unlock, delete, build manifests |
 | **RddmsQuery** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
+| **Resqml3D** (`/viz`) | Multi-object 3D viewer – render entire dataspaces or selected RESQML objects in Three.js |
 | **OsduSearch** (`/search`) | Query OSDU Search API with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet) |
 | **Analyse** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
 | **Add DG** (`/add-dg`) | Create and ingest BusinessDecision, Activity, ActivityTemplate, CollaborationProject, PersistedCollection and generic records. See [Activity guide](Activity.md) |
@@ -194,6 +195,7 @@ app/
   instances.py         # OsduInstance dataclass & instance resolution
   ingest_router.py     # Manifest ingestion endpoints
   keys_router.py       # /keys page: browse dataspaces, types, objects
+  resqml_viz.py        # RESQML 3D: PG SQL → XML/array → geometry JSON
   graphql_router.py    # GraphQL deep-search: PG-native + REST fallback
   analyse.py           # Analyse page: reservoir comparison across DGs
   addgate.py           # Add DG page: create new BusinessDecision records
@@ -296,7 +298,115 @@ OSDU's `BusinessDecision` schema drops custom `ext.equinor` keys during workflow
 
 ---
 
-## Tests
+## RESQML 3D Viewer (`/viz`)
+
+The Resqml3D page renders RESQML objects from any dataspace in a shared
+Three.js scene.  The backend constructs geometry JSON entirely from SQL
+queries against the OpenETPServer PostgreSQL database — no REST calls in
+the base case.
+
+### Data flow: PostgreSQL → JSON
+
+The OpenETPServer stores RESQML data in a PostgreSQL database with a
+fixed schema per dataspace:
+
+```text
+admin.spaces   path, uid, dbfile  →  schema name (e.g. "ds_0001")
+<schema>.res   guid, name, obj_id, typ_id          →  resource index
+<schema>.obj   id, xml                              →  full RESQML XML
+<schema>.typ   id, xml, uri_id                       →  type registry
+<schema>.ary   obj_id, path, type, dim1..4, usize    →  array metadata
+<schema>.bin   ary_id, idx, value (bytea)             →  array binary chunks
+```
+
+For **every object** the flow is:
+
+```
+┌──────────────┐   asyncpg     ┌──────────────────┐
+│  Browser     │ ◄──── JSON ── │  resqml_viz.py   │
+│  (viz.html)  │               │                  │
+└──────────────┘               │  1. schema lookup│
+                               │  2. XML parse    │
+                               │  3. array decode │
+                               │  4. build JSON   │
+                               └────────┬─────────┘
+                                        │ SQL
+                               ┌────────▼─────────┐
+                               │   PostgreSQL      │
+                               │   (OpenETPServer) │
+                               └──────────────────┘
+```
+
+**Step by step (example: PointSetRepresentation):**
+
+1. **Schema lookup** — `admin.spaces` maps the dataspace path
+   (e.g. `demo/Drogon`) to a PG schema name (e.g. `ds_0001`).
+2. **Resource lookup** — `<schema>.res WHERE guid=$uuid` returns the
+   internal `obj_id` and the object title.
+3. **XML retrieval** — `<schema>.obj WHERE id=$obj_id` returns the full
+   RESQML XML.  For types that encode geometry in XML (Grid2d lattice
+   origin, offsets, CRS references) we parse it with `xml.etree`.
+4. **Array listing** — `<schema>.ary WHERE obj_id=$obj_id` returns the
+   paths and metadata for each HDF5-equivalent array
+   (e.g. `points_patch0/points`, `zValues`).
+5. **Binary decode** — `<schema>.bin WHERE ary_id=$id ORDER BY idx`
+   returns binary chunks.  We concatenate them and `struct.unpack` into
+   `float64`/`float32`/`int32` depending on `ary.type`.
+6. **JSON construction** — the decoded arrays become `{kind, title,
+   positions, indices, zmin, zmax, ...}` ready for Three.js.
+
+This means: **no REST API, no HTTP overhead, no JSON roundtrips through
+the RDDMS service**.  A single SQL connection reads XML metadata and raw
+binary array data directly.
+
+### Backend cascade (3 tiers)
+
+Each viz fetch cascades through up to three backends:
+
+| Priority | Backend | Env var | When used |
+|----------|---------|---------|----------|
+| 1 | Local PG | `GRAPHQL_PG_CONN_STRING` | Co-located with OpenETPServer (fastest, <50ms) |
+| 2 | Remote PG | `RDDMS_PG_CONN_STRING` | Direct SQL to cloud-hosted RDDMS DB (prepared, not yet on ADME) |
+| 3 | REST API | *(always available)* | Universal fallback via `/api/reservoir-ddms/v2/` |
+
+Both PG tiers use the **same SQL helpers** (`_pg_schema_for_dataspace`,
+`_pg_list_arrays`, `_pg_read_array`) — they just differ in which
+`asyncpg` pool is used (local vs remote).
+
+### Supported RESQML types
+
+| RESQML Type | `kind` | Geometry source | Rendering |
+|-------------|--------|----------------|-----------|
+| Grid2dRepresentation | `surface` | XML lattice + z-value array | Triangulated mesh |
+| TriangulatedSetRepresentation | `surface` | points + triangle-index arrays | Triangle mesh |
+| PointSetRepresentation | `points` | points array | 3D point cloud |
+| PolylineSetRepresentation | `polylines` | points + node-count arrays | Multi-polyline (faults, contours) |
+| WellboreTrajectoryRepresentation | `trajectory` | control-points array | 3D polyline |
+| DeviationSurveyRepresentation | `trajectory` | MD/incl/azimuth → min-curvature XYZ | 3D polyline |
+| WellboreMarkerFrameRepresentation | `markers` | MD array + XML marker labels | Labelled 3D points |
+
+### API endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/viz` | Dedicated multi-object 3D viewer page |
+| GET | `/keys/viz/objects.json?ds=...` | List 3D-renderable objects grouped by type |
+| POST | `/keys/viz/batch.json` | Batch-fetch geometry for up to 50 objects |
+| GET | `/keys/object/geometry3d.json` | Single-object geometry (used by `/keys` page) |
+| GET | `/keys/object/map.png` | Grid2d depth-map PNG rendering |
+
+### Frontend (`viz.html`)
+
+The viewer is a self-contained page with:
+- **Layer panel** — dataspace selector, objects grouped by type, per-object
+  checkboxes, select-all / deselect-all, load-selected / clear-scene.
+- **Three.js viewport** — shared scene for all loaded objects, orbit/pan/zoom
+  controls, auto-rotation, depth-coloured surfaces, palette-coloured lines.
+- **Batch loading** — objects are fetched in parallel chunks of 20 via the
+  batch API to keep load times reasonable.
+- **Legend + HUD** — live object count, vertex count, colour key.
+
+---
 
 ```bash
 python -m pytest test/ -v

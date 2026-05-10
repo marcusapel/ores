@@ -30,7 +30,7 @@
   .map-controls label { font-weight: 500; }
   .map-controls select, .map-controls input { font-size: 13px; }
   #viewer3d-container { position: relative; width: 100%; height: 550px; background: #1a1a2e; border-radius: 6px; overflow: hidden; margin-top: 8px; }
-  #viewer3d-container canvas { display: block; width: 100% !important; height: 100% !important; }
+  #viewer3d-container > canvas:first-child { display: block; width: 100% !important; height: 100% !important; }
   .viewer3d-hud { position: absolute; bottom: 8px; left: 10px; color: #ccc; font-size: 11px; pointer-events: none; text-shadow: 0 1px 3px #000; }
   .viewer3d-legend { position: absolute; top: 10px; right: 12px; width: 24px; height: 200px; border-radius: 3px; border: 1px solid #555; }
   .viewer3d-legend-labels { position: absolute; top: 10px; right: 42px; color: #ccc; font-size: 10px; text-shadow: 0 1px 2px #000; display: flex; flex-direction: column; justify-content: space-between; height: 200px; }
@@ -887,7 +887,8 @@
     // Detect if a type supports 3D viewing
     const _3D_TYPE_KEYS = ['grid2drepresentation', 'triangulatedsetrepresentation',
       'pointsetrepresentation', 'wellboretrajectoryrepresentation',
-      'wellboremarkerframerepresentation'];
+      'wellboremarkerframerepresentation', 'polylinesetrepresentation',
+      'deviationsurveyrepresentation'];
     function is3dType(typ) {
       const t = (typ || '').toLowerCase();
       return _3D_TYPE_KEYS.some(k => t.includes(k));
@@ -1547,6 +1548,30 @@
             endSphere.position.set(normPos[(nVerts-1)*3], normPos[(nVerts-1)*3+1], normPos[(nVerts-1)*3+2]);
             scene.add(endSphere);
           }
+        } else if (kind === 'polylines') {
+          // Multiple polylines – split by counts array
+          const counts = geo.counts || [];
+          if (counts.length > 0) {
+            let offset = 0;
+            for (const cnt of counts) {
+              const linePos = new Float32Array(cnt * 3);
+              const lineCol = new Float32Array(cnt * 3);
+              for (let j = 0; j < cnt && (offset + j) < nVerts; j++) {
+                const idx = offset + j;
+                linePos[j*3] = normPos[idx*3]; linePos[j*3+1] = normPos[idx*3+1]; linePos[j*3+2] = normPos[idx*3+2];
+                lineCol[j*3] = colors[idx*3]; lineCol[j*3+1] = colors[idx*3+1]; lineCol[j*3+2] = colors[idx*3+2];
+              }
+              offset += cnt;
+              const lg = new THREE.BufferGeometry();
+              lg.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+              lg.setAttribute('color', new THREE.BufferAttribute(lineCol, 3));
+              scene.add(new THREE.Line(lg, new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 1 })));
+            }
+            mesh = new THREE.Group(); // placeholder
+          } else {
+            const lineMat2 = new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 });
+            mesh = new THREE.Line(geom3, lineMat2);
+          }
         }
 
         scene.add(mesh);
@@ -1788,7 +1813,7 @@
 
         // HUD
         const hud = $('viewer3d-hud');
-        const kindLabel = { surface: 'Surface', points: 'Point Cloud', trajectory: 'Well Trajectory', markers: 'Well Markers' };
+        const kindLabel = { surface: 'Surface', points: 'Point Cloud', trajectory: 'Well Trajectory', markers: 'Well Markers', polylines: 'Polyline Set' };
         hud.innerHTML = `${esc(geo.title)} | ${kindLabel[kind] || kind} | ${nVerts.toLocaleString()} vertices`
           + (zExag > 1.01 ? ` | Z exag: ${zExag.toFixed(1)}×` : '')
           + `<br>Mouse: left-drag orbit · right-drag pan · scroll zoom`
