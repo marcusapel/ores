@@ -104,6 +104,9 @@ def main():
     ap.add_argument("--maps",        default=str(SCRIPT_DIR / "manifest_maps_dg2.json"))
     ap.add_argument("--simtables",   default=str(SCRIPT_DIR / "manifest_simtables_dg2.json"))
     ap.add_argument("--polygons",    default=str(SCRIPT_DIR / "manifest_polygons_dg2.json"))
+    ap.add_argument("--wells",       default=str(DG1_DIR / "manifest_wells_drogon.json"))
+    ap.add_argument("--strat",       default=str(DG1_DIR / "manifest_litho_strat_drogon.json"))
+    ap.add_argument("--markers",     default=str(DG1_DIR / "manifest_markers_drogon.json"))
     ap.add_argument("--geolabelset-id",
                     default="dev:work-product-component--GeoLabelSet:e4b7a1c3-5f28-4d9e-8a61-7c3d9e0f2b85:1")
     ap.add_argument("--manifest",    default=str(SCRIPT_DIR / "manifest_collection_dg2.json"))
@@ -154,6 +157,15 @@ def main():
     # Shared master data (Reservoir, ReservoirSegments)
     _add_all(args.masterwp, "master-data--Reservoir")
 
+    # Wells + Wellbores (DG1 shared master data)
+    _add_all(args.wells)
+
+    # Lithostratigraphic column + rank + unit interpretations
+    _add_all(args.strat)
+
+    # WellboreMarkerSets (formation tops per wellbore)
+    _add_all(args.markers)
+
     # GeoLabelSet (generated separately, added by ID)
     if args.geolabelset_id:
         components.append(args.geolabelset_id)
@@ -191,7 +203,9 @@ def main():
                 "production forecast, development concept, grid model (IjkGrid + 10 properties), "
                 "structure maps (49 surfaces), simulator tables (relperm, PVT, summary, "
                 "well completions, group tree), polygons (fault lines, outlines), "
-                "activity chain, risks, documents, GeoLabelSet, and RDDMS dataspace reference. "
+                "activity chain, risks, documents, wells + wellbores, "
+                "lithostratigraphic column, wellbore marker sets, "
+                "GeoLabelSet, and RDDMS dataspace reference. "
                 f"{len(components)} data references."
             ),
             "DataReferences": components,
@@ -199,6 +213,9 @@ def main():
                 "DG2",
                 "Drogon",
                 "EvidencePackage",
+                "Stratigraphy",
+                "WellboreMarkerSet",
+                "Wells",
             ],
         },
     }
