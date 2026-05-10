@@ -175,9 +175,13 @@ async def keys_types(
             "resqml20.obj_StringTableLookup",
             "resqml20.obj_LocalDepth3dCrs",
             "resqml20.obj_Grid2dRepresentation",
+            "resqml20.obj_TriangulatedSetRepresentation",
+            "resqml20.obj_PointSetRepresentation",
             "resqml20.obj_HorizonInterpretation",
             "resqml20.obj_GeneticBoundaryFeature",
             "resqml20.obj_IjkGridRepresentation",
+            "resqml20.obj_WellboreTrajectoryRepresentation",
+            "resqml20.obj_WellboreMarkerFrameRepresentation",
             "resqml20.obj_ContinuousProperty",
             "resqml20.obj_CategoricalProperty",
             "resqml20.obj_DiscreteProperty",
@@ -1456,6 +1460,64 @@ async def keys_object_map_json(
         "crs": crs_info,
         "stats": stats,
     })
+
+
+# ── 3-D geometry endpoint for Three.js viewer ────────────────────────────────
+
+# Types that support 3D viewing
+_3D_TYPES = {
+    "grid2drepresentation", "triangulatedsetrepresentation",
+    "pointsetrepresentation", "wellboretrajectoryrepresentation",
+    "wellboremarkerframerepresentation",
+}
+
+def _is_3d_type(typ: str) -> bool:
+    """Check if a RESQML type supports 3D viewing."""
+    t = (typ or "").lower()
+    return any(k in t for k in _3D_TYPES)
+
+
+@router.get("/keys/object/geometry3d.json",
+            summary="3D geometry for Three.js viewer")
+async def keys_object_geometry3d(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path"),
+    typ: str = Query(..., description="RESQML/EML type"),
+    uuid: str = Query(..., description="UUID of the object"),
+):
+    """
+    Return vertex/index/point arrays for client-side 3D rendering.
+
+    Supported types:
+      - Grid2dRepresentation → triangulated surface mesh
+      - TriangulatedSetRepresentation → triangle mesh
+      - PointSetRepresentation → 3D point cloud
+      - WellboreTrajectoryRepresentation → 3D polyline
+      - WellboreMarkerFrameRepresentation → 3D markers with labels
+    """
+    at = _access_token(request)
+    typ_s = _sanitize_type(typ)
+    uuid_s = _sanitize_uuid(uuid)
+
+    if not _is_3d_type(typ_s):
+        raise HTTPException(400, f"Type {typ_s} is not supported for 3D viewing")
+
+    try:
+        import time as _time
+        _t0 = _time.monotonic()
+        result = await osdu.fetch_geometry_3d(at, ds, typ_s, uuid_s)
+        _t1 = _time.monotonic()
+        n_verts = len(result.get("positions", [])) // 3
+        n_idx = len(result.get("indices", [])) // 3
+        log.info("geometry3d: %s uuid=%s kind=%s verts=%d tris=%d took %.1fs",
+                 typ_s, uuid_s, result.get("kind"), n_verts, n_idx, _t1 - _t0)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        log.exception("geometry3d: fetch failed for %s/%s: %s", typ_s, uuid_s, e)
+        raise HTTPException(502, f"Failed to fetch 3D geometry: {e}")
+
+    return JSONResponse(result)
 
 
 # ── Object graph ──────────────────────────────────────────────────────────────
