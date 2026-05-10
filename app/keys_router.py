@@ -243,6 +243,19 @@ async def dataspaces_unlock(request: Request, path: str = Form(...)):
         )
     return JSONResponse({"status": "ok"})
 
+@router.post("/dataspaces/import", summary="Import (copy) content from a locked dataspace into another")
+async def dataspaces_import(request: Request, src: str = Form(...), dst: str = Form(...)):
+    at = _access_token(request)
+    try:
+        result = await osdu.import_dataspace(at, src, dst)
+    except HTTPStatusError as e:
+        r = e.response
+        return JSONResponse(
+            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
+            status_code=r.status_code or 500,
+        )
+    return JSONResponse({"status": "ok", **result})
+
 @router.post("/dataspaces/manifest", summary="Build OSDU manifest for a dataspace")
 async def dataspaces_manifest(
     request: Request,
