@@ -1,4 +1,64 @@
-# General
+# ORES EPC / RDDMS Utilities
+
+Local RDDMS stack and ingestion tools for RESQML ↔ OSDU workflows.
+
+## Quick Start
+
+```bash
+# 1. Start local stack (PostgreSQL + ETP server + REST API with manifest builder)
+docker compose -f demo/epc/docker-compose.yaml up -d
+
+# 2. Import EPC into local dataspace
+./demo/epc/ingest.sh
+
+# 3. Build OSDU manifest from local RDDMS and save as JSON
+python -m demo.epc.manifest_ingest --save-only
+
+# 4. Build manifest and push to remote OSDU catalog
+python -m demo.epc.manifest_ingest
+```
+
+## Services
+
+| Service      | Port | Description                                    |
+|-------------|------|------------------------------------------------|
+| postgres    | 5433 | ETP persistence                                |
+| etp-server  | 9002 | ETP WebSocket server (no auth)                 |
+| etp-client  | 3000 | RDDMS REST API + manifest builder (NestJS)     |
+
+## Scripts
+
+| Script               | Description                                              |
+|---------------------|----------------------------------------------------------|
+| `ingest.sh`          | Import EPC into local ETP dataspace                     |
+| `manifest_ingest.py` | Build OSDU manifest locally → push to remote catalog    |
+| `ingest_remote.py`   | Import EPC via remote ETP + index in OSDU catalog       |
+| `ingest_rest.py`     | REST transactional import (XML→JSON conversion)         |
+| `deep_clone_epc.py`  | Clone EPC with UUID remapping (deep copy)               |
+
+### manifest_ingest.py options
+
+```
+--dataspace NAME       Local ETP dataspace (default: maap/drogon)
+--local-rddms URL      Local RDDMS REST API URL (default: http://localhost:3000/api/reservoir-ddms/v2)
+--type-patterns PAT    Restrict to matching Energistics types (e.g. resqml20.obj_*Representation)
+--save-only            Save manifest JSON, don't push to remote
+--dry-run              Build and patch, show summary, don't push
+--storage              Use Storage API instead of Workflow API
+-o FILE                Output filename
+```
+
+## GraphQL
+
+After loading data, connect the ORES GraphQL panel to the local database:
+
+```bash
+export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=rddms user=foo password=bar"
+```
+
+---
+
+# ETP Client Reference
 
 The code snippets from this file will require you to run the commands from inside the `02-ETP-OSDU-etp-client` directory in a PowerShell terminal:
   ```powershell

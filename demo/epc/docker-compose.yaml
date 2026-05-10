@@ -1,9 +1,14 @@
-# Docker Compose for local GraphQL deep-search testing
-# Starts PostgreSQL + OpenETPServer, then use the ingest script to load data.
+# Docker Compose for local RDDMS stack (ETP server + REST API + PostgreSQL)
+#
+# Services:
+#   postgres     – ETP persistence (port 5433)
+#   etp-server   – ETP WebSocket server (port 9002)
+#   etp-client   – RDDMS REST API + manifest builder (port 3000)
 #
 # Usage:
 #   docker compose -f demo/epc/docker-compose.yaml up -d
-#   ./demo/epc/ingest.sh        # create dataspace + import EPC
+#   ./demo/epc/ingest.sh                       # create dataspace + import EPC
+#   python -m demo.epc.manifest_ingest          # build manifest + push to catalog
 #
 # Then set in your shell or .env:
 #   export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=rddms user=foo password=bar"
@@ -35,3 +40,23 @@ services:
     ports:
       - "9002:9002"
     command: ["openETPServer", "server", "--start", "--overwrite", "--authN", "none", "--authZ", "none"]
+    healthcheck:
+      test: ["CMD-SHELL", "openETPServer probe -S ws://localhost:9002 --ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  etp-client:
+    image: community.opengroup.org:5555/osdu/platform/domain-data-mgmt-services/reservoir/open-etp-client/open-etp-client-main:latest
+    depends_on:
+      etp-server:
+        condition: service_healthy
+    environment:
+      RDMS_ETP_PROTOCOL: ws
+      RDMS_ETP_HOST: etp-server
+      RDMS_ETP_PORT: "9002"
+      RDMS_REST_ROOT_PATH: /api/reservoir-ddms/v2/
+      RDMS_REST_PORT: "3000"
+      RDMS_DATA_PARTITION_MODE: single
+    ports:
+      - "3000:3000"

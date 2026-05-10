@@ -33,7 +33,7 @@ from _auth import get_token, load_instance, _mint  # noqa: E402
 # ── Config ────────────────────────────────────────────────────────────────── #
 INSTANCE    = "swedev"
 DATASPACE   = "maap/drogon"
-EPC_FILE    = SCRIPT_DIR / "drogon_osdu.epc"
+EPC_FILE    = SCRIPT_DIR / "drogon.epc"
 MANIFEST    = SCRIPT_DIR / "manifest_drogon_osdu.json"
 IMAGE_SSL   = "osdu-etp-sslclient"
 
