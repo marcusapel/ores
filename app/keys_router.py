@@ -1685,86 +1685,8 @@ async def keys_object_graph(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 3D Viz – multi-object / dataspace viewer
+# 3D Viz – batch geometry endpoint (used by the 3D popup in keys.html)
 # ══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/viz", response_class=HTMLResponse)
-async def viz_page(request: Request):
-    """Render the dedicated 3D dataspace viewer page."""
-    return templates.TemplateResponse("viz.html", {"request": request})
-
-
-@router.get("/keys/viz/objects.json",
-            summary="List 3D-renderable objects in a dataspace")
-async def viz_list_objects(
-    request: Request,
-    ds: str = Query(..., description="Dataspace path"),
-):
-    """
-    Return all objects in *ds* whose type supports 3D rendering,
-    grouped by RESQML type.  Used by the viz layer panel.
-
-    Response: ``{ types: [ {name, objects: [{uuid,title},...] }, ... ] }``
-    """
-    at = _access_token(request)
-    enc = urllib.parse.quote(ds, safe="")
-
-    # Gather types
-    try:
-        from .graphql_router import _get_pool, _pg_list_types, _pg_list_resources
-        pool = await _get_pool()
-    except Exception:
-        pool = None
-
-    all_types: List[Dict[str, Any]] = []
-    if pool:
-        try:
-            all_types = await _pg_list_types(pool, ds)
-        except Exception:
-            all_types = []
-    if not all_types:
-        try:
-            all_types = await osdu.list_types(at, enc)
-            all_types = [
-                {"name": t.get("name") or t if isinstance(t, dict) else t,
-                 "count": int(t.get("count", 0)) if isinstance(t, dict) else 0}
-                for t in (all_types or [])
-            ]
-        except Exception:
-            all_types = []
-
-    # Filter to 3D-renderable types
-    viz_types = [t for t in all_types if _is_3d_type(t.get("name", ""))]
-
-    # For each viz type, list objects
-    result = []
-    for t in viz_types:
-        type_name = t["name"]
-        objects: List[Dict[str, Any]] = []
-        if pool:
-            try:
-                objects = await _pg_list_resources(pool, ds, type_name, limit=500)
-            except Exception:
-                objects = []
-        if not objects:
-            try:
-                raw = await osdu.list_resources(at, enc, type_name)
-                objects = [
-                    {"uuid": _node_uuid(r), "title": (r.get("Citation") or {}).get("Title", "")}
-                    for r in (raw or []) if isinstance(r, dict)
-                ]
-            except Exception:
-                objects = []
-
-        if objects:
-            result.append({
-                "name": type_name,
-                "count": len(objects),
-                "objects": [{"uuid": o.get("uuid", ""), "title": o.get("title", "")} for o in objects],
-            })
-
-    return JSONResponse({"types": result})
-
 
 @router.post("/keys/viz/batch.json",
              summary="Fetch 3D geometry for multiple objects")
