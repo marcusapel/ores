@@ -46,6 +46,21 @@ roundtrip, plus improvements and admin items needed for production.
      Auth: any non-empty Bearer token accepted (authN=none).
      Manifest builder returns HTTP 201 (not 200) on success.
 
+1.8  POST /dataspaces returns 400 with HTML body (M26?)
+     ───────────────────────────────────────────────────
+     Problem:  Create Dataspace (POST /api/reservoir-ddms/v2/dataspaces)
+               returns HTTP 400 with an HTML page body ("OsduUi - Home"
+               with Equinor design tokens) instead of JSON.
+     Observed: 2026-05-10 on swedev. Was working before.
+     Likely:   OSDU M26 API gateway change — the gateway intercepts
+               the POST and returns its own error page before the
+               request reaches the RDDMS service.
+     Payload sent (known-good format):
+               [{"DataspaceId":"maap/olympus","Path":"maap/olympus",
+                 "CustomData":{"legaltags":[...],"owners":[...],...}}]
+     Impact:   "Create a dataspace" form in /admin is broken.
+     See also: §3.7.
+
 
 ───────────────────────────────────────────────────────────────────────
 2. TODO / IMPROVEMENTS (code)
@@ -92,6 +107,11 @@ roundtrip, plus improvements and admin items needed for production.
 3.5  Dataspace metadata / description field
 
 3.6  CORS / WebSocket for browser-based ETP  (low priority)
+
+3.7  POST /dataspaces returns 400 HTML after M26 upgrade
+     Was working before. Now the OSDU API gateway returns an HTML
+     error page instead of forwarding to the RDDMS service.
+     Needs investigation: gateway routing change or payload format.
 
 
 ───────────────────────────────────────────────────────────────────────
