@@ -1,141 +1,74 @@
 ═══════════════════════════════════════════════════════════════════════
 OSDU ↔ Remote RDDMS: Pitfalls, TODOs & Admin Requests
-Updated: 2026-05-10  (added local stack §1.7, manifest_ingest §2.1/§2.5)
+Updated: 2026-05-10  (cleaned done items)
 ═══════════════════════════════════════════════════════════════════════
 
 This doc captures lessons learned from the RDDMS ↔ OSDU catalog
 roundtrip, plus improvements and admin items needed for production.
 
 ───────────────────────────────────────────────────────────────────────
-1. PITFALLS ENCOUNTERED
+1. PITFALLS & LESSONS LEARNED
 ───────────────────────────────────────────────────────────────────────
 
-1.1  RDDMS REST API response format mismatch
-     ─────────────────────────────────────────
-     Problem:  REST listing endpoint returns
-              {"uri": "eml:///dataspace('ds')/type(uuid)", "name": "..."}
-              — NO top-level "UUID", "ContentType", or "Title" keys.
-     Fix:      Added _parse_eml_entry() regex parser to extract uuid
-               and contentType from the EML URI field.
-     Lesson:   The RDDMS REST API is EML-URI-centric, not key-centric.
+1.1  RDDMS REST API is EML-URI-centric
+     ──────────────────────────────────
+     REST listing returns {"uri": "eml:///dataspace('ds')/type(uuid)"}
+     — no top-level UUID/ContentType keys.
+     Fix: _parse_eml_entry() regex parser.
 
-1.2  GET /resources returns a list-wrapped single object
-     ────────────────────────────────────────────────────
-     Problem:  get_resource() returns [{…}] not {…} for a single object.
-     Fix:      Unwrap [obj] → obj in _rest_get_resource().
+1.2  GET /resources wraps single object in a list
+     Fix: Unwrap [obj] → obj in _rest_get_resource().
 
-1.3  Underscore in dataspace name causes manifest/build 500
-     ───────────────────────────────────────────────────────
-     Problem:  POST /manifests/build with dataspace-level URI containing
-               an underscore returns HTTP 500.
-     Workaround: Use dataspace names without underscore.
-     Status:   Server-side bug (see §3.2).
+1.3  Underscore in dataspace name → manifest/build 500
+     Server-side bug. Use names without underscore. See §3.2.
 
 1.4  EPC XML ↔ RDDMS JSON schema divergence
-     ────────────────────────────────────────
-     Problem:  EPC XML and RDDMS REST JSON use different schemas
-               ($type annotations, different nesting, Citation vs Title).
-     Lesson:   ETP --import-epc is the safest path. REST transactional
-               PUT is fallback but needs hand-crafted JSON payloads.
+     ETP --import-epc is the safest path. REST PUT needs hand-crafted
+     JSON with $type annotations.
 
-1.5  PropertyKind extraction has two flavours
-     ────────────────────────────────────────
-     Problem:  StandardPropertyKind: {"Kind": "porosity"}
-               LocalPropertyKind:   {"LocalPropertyKind": {"Title": "..."}}
-     Fix:      _extract_property_kind() now handles both paths.
+1.5  PropertyKind: two flavours
+     StandardPropertyKind: {"Kind": "porosity"}
+     LocalPropertyKind: {"LocalPropertyKind": {"Title": "..."}}
+     Fix: _extract_property_kind() handles both.
 
-1.6  RDDMS manifest builder omits WPC DatasetIDs
-     ─────────────────────────────────────────────
-     Problem:  POST /manifests/build produces WPC records without the
-               DatasetIDs field — no link from WPC to ETPDataspace.
-     Fix:      Post-ingest PATCH: set DatasetIDs on each WPC.
-               Now automated in manifest_ingest.py (see §2.1 ✅).
+1.6  Manifest builder omits WPC DatasetIDs
+     POST /manifests/build produces WPCs without DatasetIDs.
+     Fix: manifest_ingest.py auto-patches DatasetIDs after build.
 
-1.7  Local RDDMS stack — architecture & auth findings
-     ──────────────────────────────────────────────────
-     The open-etp-client Docker image (840 MB) is a full NestJS REST
-     API service — NOT a CLI tool.  It includes:
-       - All RDDMS REST endpoints (dataspaces, resources, arrays, …)
-       - Manifest builder at POST /manifests/build
-       - Swagger/OpenAPI at the root path
-     The image name "open-etp-client" is misleading: it is the RDDMS
-     REST API layer that connects to the C++ ETP server over WebSocket.
-
-     Environment variables for the REST API container:
-       RDMS_ETP_PROTOCOL   ws | wss
-       RDMS_ETP_HOST        hostname of the ETP server
-       RDMS_ETP_PORT        9002 (default)
-       RDMS_REST_ROOT_PATH  /api/reservoir-ddms/v2/
-       RDMS_REST_PORT       3000
-       RDMS_DATA_PARTITION_MODE  single | multi
-       RDMS_JWT_SECRET      (optional — unused when authN=none)
-
-     Local stack (docker-compose.yaml, demo/epc/):
-       postgres    port 5433  — ETP persistence (PG)
-       etp-server  port 9002  — C++ ETP WebSocket, authN=none
-       etp-client  port 3000  — NestJS REST API + manifest builder
-
-     Auth behaviour:
-       - The REST API requires a Bearer token in the header, but the
-         local ETP server has authN=none, so any non-empty string
-         (e.g. "Bearer local") is accepted.
-       - The manifest builder returns HTTP 201 (not 200) on success.
-       - POST /manifests/build accepts:
-           uris: ["eml:///dataspace('name')"]   (whole dataspace)
-           typePatterns: ["resqml20.obj_*Representation"]  (filter)
-           createMissingReferences: true
-       - Generates correct OSDU kinds (work-product-component--*),
-         DDMSDatasets links, PropertyType mappings, etc.
+1.7  Local RDDMS stack — architecture
+     open-etp-client image (840 MB) = NestJS REST API, NOT a CLI.
+     Includes manifest builder at POST /manifests/build.
+     Env vars: RDMS_ETP_PROTOCOL, RDMS_ETP_HOST, RDMS_ETP_PORT,
+               RDMS_REST_ROOT_PATH, RDMS_REST_PORT,
+               RDMS_DATA_PARTITION_MODE, RDMS_JWT_SECRET.
+     Local stack (docker-compose.yaml):
+       postgres :5433  |  etp-server :9002  |  etp-client :3000
+     Auth: any non-empty Bearer token accepted (authN=none).
+     Manifest builder returns HTTP 201 (not 200) on success.
 
 
 ───────────────────────────────────────────────────────────────────────
 2. TODO / IMPROVEMENTS (code)
 ───────────────────────────────────────────────────────────────────────
 
-2.1  Automate DatasetIDs patch in manifest ingest       ✅
-     ───────────────────────────────────────────────
-     DONE: demo/epc/manifest_ingest.py patches DatasetIDs on every
-     WPC record after manifest build.  The ETPDataspace record id is
-     extracted from the Datasets section and set as DatasetIDs[0]
-     on all work-product-component records.
-     Also automated: ACL (owners/viewers) and legal tags injection.
-     Remaining: wire the same patch into the GUI ingest flow
-     (keys_router.py /api/manifest/ingest route).
+2.1  DatasetIDs patch in GUI ingest flow
+     ────────────────────────────────────
+     CLI done (manifest_ingest.py). Remaining: wire the same
+     DatasetIDs patch into keys_router.py /api/manifest/ingest.
 
 2.2  Incremental / delta sync
      ────────────────────────
-     Current: full reimport or full manifest rebuild.
-     TODO: Track lastChanged timestamps from RDDMS list response and
-     only re-ingest changed objects. The REST listing already returns
-     "lastChanged" and "storeLastWrite" per object.
+     Track lastChanged timestamps from RDDMS list response and
+     only re-ingest changed objects.
 
 2.3  Property kind → OSDU canonical mapping
      ──────────────────────────────────────
-     The _STANDARD_PROPERTY_KINDS table is manually curated. Some RDDMS
-     datasets use LocalPropertyKind with free-text Title ("General
-     continuous", "General discrete") which don't map to any standard.
-     TODO: Expose a UI widget to let users map Local→Standard kinds
-     per-dataspace. Persist mappings in OSDU or local config.
+     UI widget to map LocalPropertyKind → Standard kinds per-dataspace.
 
-2.4  Multi-dataspace deep_search performance          (partial ✅)
-     ───────────────────────────────────────
-     DONE (partial): Property kind cache (uuid → kind) added. Same
-     property UUID referenced by multiple grids is fetched only once.
-     TODO: Add a server-side "typeSearch" or "bulkGet" endpoint request
-     to RDDMS team (see §3.4), or implement broader cross-call caching.
-
-2.5  Local RDDMS stack + manifest_ingest pipeline      ✅
-     ──────────────────────────────────────────────
-     DONE: docker-compose.yaml now includes three services:
-       postgres (5433), etp-server (9002), etp-client (3000).
-     New script: demo/epc/manifest_ingest.py
-       - Builds OSDU manifest via local REST API POST /manifests/build
-       - Patches ACLs, legal tags, DatasetIDs
-       - Pushes to remote OSDU catalog (Workflow or Storage API)
-       - Supports --save-only, --dry-run, --type-patterns, --storage
-     This removes the dependency on the remote RDDMS manifest builder
-     and allows generating manifests even when remote ETP write
-     permissions are denied (see §1.7).
+2.4  deep_search performance — server-side bulk query
+     ─────────────────────────────────────────────────
+     Client-side property cache done. Need server-side "typeSearch"
+     or "bulkGet" endpoint (see §3.4).
 
 
 ───────────────────────────────────────────────────────────────────────
@@ -144,49 +77,25 @@ roundtrip, plus improvements and admin items needed for production.
 
 3.1  Delete stale dataspaces
      ───────────────────────
-     Request: Delete the following dataspaces from swedev RDDMS:
-       - maap/drogon_osdu  (incomplete ETP test import)
-       - maap/drogon2      (empty; REST copy failed — UUIDs are global)
-     Keep:
-       - maap/drogon       (1302 objects, manifest builds successfully
-                            from dataspace-level URI, 391 WPCs)
-       - maap/drogon_dg    (656 clean DG-export objects, but underscore
-                            prevents dataspace-level manifest build)
+     Delete: maap/drogon_osdu, maap/drogon2
+     Keep:   maap/drogon (1302 obj), maap/drogon_dg (656 obj)
 
 3.2  Fix manifest/build for underscored dataspace names
-     ──────────────────────────────────────────────────
-     Bug:     POST /manifests/build with
-              eml:///dataspace('maap/drogon_dg') → 500.
-     Root:    Server fails to parse URIs where the dataspace name
-              contains an underscore inside single quotes.
-     Tested:  2026-05-10 — confirmed still broken.
-     Workaround: Use non-underscore dataspace names.
+     Confirmed broken 2026-05-10. Workaround: avoid underscores.
 
 3.3  Consistent REST response format
-     ────────────────────────────────
-     Request: Standardize the REST listing response to include explicit
-              top-level keys (uuid, contentType, title) instead of
-              requiring consumers to regex-parse the EML URI.
+     Add explicit top-level keys (uuid, contentType, title).
 
 3.4  Bulk query / filtered listing API
-     ─────────────────────────────────
-     Request: Add a server-side filtered query endpoint to avoid N+1
-              HTTP roundtrips for deep_search (currently 400+ calls for
-              200 properties on a large dataspace).
+     Server-side filtering to avoid N+1 roundtrips in deep_search.
 
 3.5  Dataspace metadata / description field
-     ──────────────────────────────────────
-     Request: Allow setting description and tags on dataspaces.
 
-3.6  CORS / WebSocket support for browser-based ETP    (low priority)
-     ───────────────────────────────────────────────
-     Request: Enable CORS and WebSocket upgrade on the ETP endpoint.
-     Note:    With PG access solving array data needs, this is mainly
-              useful for browser-native ETP streaming / 3D viz.
+3.6  CORS / WebSocket for browser-based ETP  (low priority)
 
 
 ───────────────────────────────────────────────────────────────────────
-4. IDEAL LOSSLESS ROUNDTRIP FLOW (target state)
+4. ROUNDTRIP FLOW
 ───────────────────────────────────────────────────────────────────────
 
   ┌─────────┐   ETP import    ┌──────────┐  manifest/build  ┌──────────┐
@@ -209,50 +118,37 @@ roundtrip, plus improvements and admin items needed for production.
 
   Remaining gaps:
   - manifest/build underscore bug (§3.2)
-  - DatasetIDs patch in GUI ingest flow (§2.1 — done in CLI)
+  - DatasetIDs patch in GUI ingest flow (§2.1)
 
 
 ───────────────────────────────────────────────────────────────────────
 5. ORES ROUTE LIMITATIONS
 ───────────────────────────────────────────────────────────────────────
 
-Routes that are limited or not working as intended:
-
   /graphql — deep_search
-     Array threshold filtering (e.g. "porosity > 0.25") returns zero
-     results on REST-only backend. Needs PG access for cell values.
-     Surfaces a warning but effectively non-functional without PG.
+     Array threshold filtering needs PG access for cell values.
 
   /graphql — federated_search
-     Auto-discovers max 10 dataspaces when none specified. Only checks
-     5 hardcoded RESQML types when type_name omitted. OSDU catalog
-     full-text search can produce false positives (post-filtered).
+     Max 10 dataspaces auto-discovered; 5 hardcoded RESQML types.
+     OSDU full-text search may produce false positives.
 
   /analyse — compare
-     OSDU Search v2 cannot filter on nested array paths like
-     Parameters[].DataObjectParameter. Uses full-text search as
-     workaround → may miss BDs that don't contain the reservoir
-     UUID in indexed text fields.
+     OSDU Search v2 can't filter nested array paths. Uses full-text
+     workaround — may miss BDs.
 
   /keys — table view (STL resolution)
-     ColumnBasedTable column name / UOM lookup uses heuristic fallback
-     when ExtraMetadata is missing: matches StringTableLookups by entry
-     count + timestamp proximity. May pick wrong STL if multiples exist.
+     Heuristic STL matching may pick wrong lookup table.
 
   /keys — structuremaps
-     Only converts depth-domain Grid2d surfaces to StructureMap WPCs.
-     Time-domain surfaces are silently skipped.
+     Time-domain Grid2d surfaces silently skipped.
 
   /strat — SMDA import/push
-     Requires `az` CLI login or SMDA_API_KEY env var for SMDA token.
-     Completely non-functional without either.
+     Requires `az` CLI or SMDA_API_KEY. Non-functional without.
 
   /api/manifest/last
-     In-memory store only: max 50 manifests, 1-hour TTL, lost on
-     pod restart. No persistent backing.
+     In-memory only: max 50, 1h TTL, lost on pod restart.
 
   /search — wildcard kind queries
-     ADME rejects kind:* with leading-wildcard data queries. Code
-     auto-resolves to concrete versions but adds extra roundtrips.
+     ADME rejects kind:*. Auto-resolves but adds roundtrips.
 
 ───────────────────────────────────────────────────────────────────────
