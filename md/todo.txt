@@ -1,0 +1,210 @@
+═══════════════════════════════════════════════════════════════════════
+OSDU ↔ Remote RDDMS: Pitfalls, TODOs & Admin Requests
+Updated: 2026-05-10  (removed historic demo pitfalls §1.6-1.8)
+═══════════════════════════════════════════════════════════════════════
+
+This doc captures lessons learned from the RDDMS ↔ OSDU catalog
+roundtrip, plus improvements and admin items needed for production.
+
+───────────────────────────────────────────────────────────────────────
+1. PITFALLS ENCOUNTERED
+───────────────────────────────────────────────────────────────────────
+
+1.1  RDDMS REST API response format mismatch
+     ─────────────────────────────────────────
+     Problem:  REST listing endpoint returns
+              {"uri": "eml:///dataspace('ds')/type(uuid)", "name": "..."}
+              — NO top-level "UUID", "ContentType", or "Title" keys.
+     Fix:      Added _parse_eml_entry() regex parser to extract uuid
+               and contentType from the EML URI field.
+     Lesson:   The RDDMS REST API is EML-URI-centric, not key-centric.
+
+1.2  GET /resources returns a list-wrapped single object
+     ────────────────────────────────────────────────────
+     Problem:  get_resource() returns [{…}] not {…} for a single object.
+     Fix:      Unwrap [obj] → obj in _rest_get_resource().
+
+1.3  Underscore in dataspace name causes manifest/build 500
+     ───────────────────────────────────────────────────────
+     Problem:  POST /manifests/build with dataspace-level URI containing
+               an underscore returns HTTP 500.
+     Workaround: Use dataspace names without underscore.
+     Status:   Server-side bug (see §3.2).
+
+1.4  EPC XML ↔ RDDMS JSON schema divergence
+     ────────────────────────────────────────
+     Problem:  EPC XML and RDDMS REST JSON use different schemas
+               ($type annotations, different nesting, Citation vs Title).
+     Lesson:   ETP --import-epc is the safest path. REST transactional
+               PUT is fallback but needs hand-crafted JSON payloads.
+
+1.5  PropertyKind extraction has two flavours
+     ────────────────────────────────────────
+     Problem:  StandardPropertyKind: {"Kind": "porosity"}
+               LocalPropertyKind:   {"LocalPropertyKind": {"Title": "..."}}
+     Fix:      _extract_property_kind() now handles both paths.
+
+1.6  RDDMS manifest builder omits WPC DatasetIDs
+     ─────────────────────────────────────────────
+     Problem:  POST /manifests/build produces WPC records without the
+               DatasetIDs field — no link from WPC to ETPDataspace.
+     Fix:      Post-ingest PATCH: set DatasetIDs on each WPC.
+               Should be automated in the ingest CLI (see §2.1).
+
+
+───────────────────────────────────────────────────────────────────────
+2. TODO / IMPROVEMENTS (code)
+───────────────────────────────────────────────────────────────────────
+
+2.1  Manifest build automation
+     ─────────────────────────
+     Current: manual Python script that POSTs dataspace-level URI,
+     then PUTs records to Storage API.
+     Note:    The 3 previously broken types (Activity, ActivityTemplate,
+              Grid2dRepresentation) all work now via dataspace-level
+              build — all 391 WPCs including these types are in catalog.
+     TODO: Create a single CLI command:
+           python -m demo.epc.ingest_rest --dataspace DS --catalog
+     that does: manifest build → catalog PUT → DatasetIDs patch in one
+     pass. The DatasetIDs patch (§1.9) must be automatic since the
+     manifest builder never populates that field.
+     Should report gaps and verify record counts.
+
+2.2  Incremental / delta sync
+     ────────────────────────
+     Current: full reimport or full manifest rebuild.
+     TODO: Track lastChanged timestamps from RDDMS list response and
+     only re-ingest changed objects. The REST listing already returns
+     "lastChanged" and "storeLastWrite" per object.
+
+2.3  Property kind → OSDU canonical mapping
+     ──────────────────────────────────────
+     The _STANDARD_PROPERTY_KINDS table is manually curated. Some RDDMS
+     datasets use LocalPropertyKind with free-text Title ("General
+     continuous", "General discrete") which don't map to any standard.
+     TODO: Expose a UI widget to let users map Local→Standard kinds
+     per-dataspace. Persist mappings in OSDU or local config.
+
+2.4  Multi-dataspace deep_search performance          (partial ✅)
+     ───────────────────────────────────────
+     DONE (partial): Property kind cache (uuid → kind) added. Same
+     property UUID referenced by multiple grids is fetched only once.
+     TODO: Add a server-side "typeSearch" or "bulkGet" endpoint request
+     to RDDMS team (see §3.4), or implement broader cross-call caching.
+
+2.5  Consolidate ingest scripts
+     ─────────────────────────
+     demo/epc/ has ingest_rest.py (XML→JSON REST) and ingest_remote.py
+     (EPC→ETP+catalog). Lots of duplicated auth/config code.
+     TODO: Extract shared auth + config into demo/_auth.py (already
+     partially exists) and make each script a thin subcommand.
+
+
+───────────────────────────────────────────────────────────────────────
+3. RDDMS ADMIN REQUESTS
+───────────────────────────────────────────────────────────────────────
+
+3.1  Delete stale dataspaces
+     ───────────────────────
+     Request: Delete the following dataspaces from swedev RDDMS:
+       - maap/drogon_osdu  (incomplete ETP test import)
+       - maap/drogon2      (empty; REST copy failed — UUIDs are global)
+     Keep:
+       - maap/drogon       (1302 objects, manifest builds successfully
+                            from dataspace-level URI, 391 WPCs)
+       - maap/drogon_dg    (656 clean DG-export objects, but underscore
+                            prevents dataspace-level manifest build)
+
+3.2  Fix manifest/build for underscored dataspace names
+     ──────────────────────────────────────────────────
+     Bug:     POST /manifests/build with
+              eml:///dataspace('maap/drogon_dg') → 500.
+     Root:    Server fails to parse URIs where the dataspace name
+              contains an underscore inside single quotes.
+     Tested:  2026-05-10 — confirmed still broken.
+     Workaround: Use non-underscore dataspace names.
+
+3.3  Consistent REST response format
+     ────────────────────────────────
+     Request: Standardize the REST listing response to include explicit
+              top-level keys (uuid, contentType, title) instead of
+              requiring consumers to regex-parse the EML URI.
+
+3.4  Bulk query / filtered listing API
+     ─────────────────────────────────
+     Request: Add a server-side filtered query endpoint to avoid N+1
+              HTTP roundtrips for deep_search (currently 400+ calls for
+              200 properties on a large dataspace).
+
+3.5  Dataspace metadata / description field
+     ──────────────────────────────────────
+     Request: Allow setting description and tags on dataspaces.
+
+3.6  CORS / WebSocket support for browser-based ETP    (low priority)
+     ───────────────────────────────────────────────
+     Request: Enable CORS and WebSocket upgrade on the ETP endpoint.
+     Note:    With PG access solving array data needs, this is mainly
+              useful for browser-native ETP streaming / 3D viz.
+
+
+───────────────────────────────────────────────────────────────────────
+4. IDEAL LOSSLESS ROUNDTRIP FLOW (target state)
+───────────────────────────────────────────────────────────────────────
+
+  ┌─────────┐   ETP import    ┌──────────┐  manifest/build  ┌──────────┐
+  │  .epc   │ ──────────────► │  RDDMS   │ ───────────────► │  OSDU    │
+  │  file   │                 │ dataspace│                   │ catalog  │
+  └─────────┘                 └──────────┘                   └──────────┘
+       ▲                           │                              │
+       │    ETP --export-epc       │     search / PG query        │
+       └───────────────────────────┘     ◄────────────────────────┘
+
+  Remaining gaps:
+  - manifest/build underscore bug (§3.2)
+  - DatasetIDs patch after each ingest (§1.9 — automate in §2.1)
+
+
+───────────────────────────────────────────────────────────────────────
+5. ORES ROUTE LIMITATIONS
+───────────────────────────────────────────────────────────────────────
+
+Routes that are limited or not working as intended:
+
+  /graphql — deep_search
+     Array threshold filtering (e.g. "porosity > 0.25") returns zero
+     results on REST-only backend. Needs PG access for cell values.
+     Surfaces a warning but effectively non-functional without PG.
+
+  /graphql — federated_search
+     Auto-discovers max 10 dataspaces when none specified. Only checks
+     5 hardcoded RESQML types when type_name omitted. OSDU catalog
+     full-text search can produce false positives (post-filtered).
+
+  /analyse — compare
+     OSDU Search v2 cannot filter on nested array paths like
+     Parameters[].DataObjectParameter. Uses full-text search as
+     workaround → may miss BDs that don't contain the reservoir
+     UUID in indexed text fields.
+
+  /keys — table view (STL resolution)
+     ColumnBasedTable column name / UOM lookup uses heuristic fallback
+     when ExtraMetadata is missing: matches StringTableLookups by entry
+     count + timestamp proximity. May pick wrong STL if multiples exist.
+
+  /keys — structuremaps
+     Only converts depth-domain Grid2d surfaces to StructureMap WPCs.
+     Time-domain surfaces are silently skipped.
+
+  /strat — SMDA import/push
+     Requires `az` CLI login or SMDA_API_KEY env var for SMDA token.
+     Completely non-functional without either.
+
+  /api/manifest/last
+     In-memory store only: max 50 manifests, 1-hour TTL, lost on
+     pod restart. No persistent backing.
+
+  /search — wildcard kind queries
+     ADME rejects kind:* with leading-wildcard data queries. Code
+     auto-resolves to concrete versions but adds extra roundtrips.
+
+───────────────────────────────────────────────────────────────────────

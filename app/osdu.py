@@ -293,6 +293,37 @@ async def delete_dataspace(access_token: str, path: str) -> None:
         raise
 
 
+async def import_dataspace(access_token: str, src_path: str, dst_path: str) -> dict[str, Any]:
+    """Copy content from a locked source dataspace into destination.
+
+    Uses PUT /dataspaces/{dst}/copy with sourceDataspace in body.
+    Source must be locked; destination must exist and be unlocked.
+    Creates a reference copy (same UUIDs, resolved from source).
+    """
+    dst_enc = urllib.parse.quote(dst_path, safe="")
+    hdr = headers(access_token)
+    body = {"sourceDataspace": src_path}
+    async with _http(timeout=120) as client:
+        r = await client.put(
+            _rddms_url(f"/dataspaces/{dst_enc}/copy"),
+            headers=hdr,
+            json=body,
+        )
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError:
+        log.error(
+            "Import dataspace failed (%s) src=%s dst=%s body=%s",
+            r.status_code, src_path, dst_path, r.text,
+        )
+        raise
+    # Return whatever the server gives us (may be summary or empty)
+    try:
+        return r.json()
+    except Exception:
+        return {"status": "ok"}
+
+
 def _dataspace_uri(path: str) -> str:
     """Canonical EML dataspace URI."""
     return f"eml:///dataspace('{path}')"

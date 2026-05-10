@@ -6,26 +6,38 @@
 
 ## 1. Schemas Used - Kinds and Relationships
 
-A DG2 decision gate package typically spans **~25 records** across master-data, reference-data, work-product-components, datasets, and custom schemas.
+A DG1 package spans **~15 records**; a full DG2 decision gate package spans **~100+ records** (including geomodel artefacts) across master-data, reference-data, work-product-components, datasets, and custom schemas.
 
 ### 1.1 OSDU Canonical Schemas (WKS)
 
+#### Core (both DG1 and DG2)
+
 | # | Category | OSDU Kind | Purpose |
 |---|----------|-----------|---------|
-| 1 | Master-data | `osdu:wks:master-data--BusinessDecision:1.0.0` | Decision record - central hub linking all evidence |
+| 1 | Master-data | `osdu:wks:master-data--BusinessDecision:1.0.0` | Decision record — central hub linking all evidence |
 | 2 | Master-data | `osdu:wks:master-data--Reservoir:2.0.0` | Reservoir entity (shared across gates) |
 | 3 | Master-data | `osdu:wks:master-data--ReservoirSegment:2.0.0` | Fault-bounded segments |
 | 4 | Master-data | `osdu:wks:master-data--Risk:1.2.0` | Risk records with severity/probability ratings |
 | 5 | WPC | `osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0` | Raw per-realisation volumes |
 | 6 | WPC | `osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0` | Aggregated statistics (P10/P50/P90) |
 | 7 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Input parameters (design matrix) |
-| 8 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Production forecast |
-| 9 | WPC | `osdu:wks:work-product-component--Activity:1.0.0` | Workflow run record |
-| 10 | WPC | `osdu:wks:work-product-component--ActivityTemplate:1.0.0` | Workflow template (parameter slots) |
-| 11 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | Governance documents (SRA, CRA, PDO, PTR) |
-| 12 | WPC | `osdu:wks:work-product-component--GeoLabelSet:1.0.0` | Headline P10/P50/P90 volumes for dashboards |
-| 13 | Dataset | `osdu:wks:dataset--ETPDataspace:1.0.0` | RDDMS dataspace pointer for geomodel |
-| 14–20 | Reference-data | DecisionLevel, DecisionApprovalStatus, RiskCategory, RiskSeverityScale, RiskProbabilityScale, RiskAcceptanceCriteria, Facets/PropertyTypes/UoM | Decision catalogs and volume metadata |
+| 8 | WPC | `osdu:wks:work-product-component--Activity:1.0.0` | Workflow run record |
+| 9 | WPC | `osdu:wks:work-product-component--ActivityTemplate:1.0.0` | Workflow template (parameter slots) |
+| 10 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | Governance documents — DG1: SRA, CRA, PDO; DG2 adds PTR |
+| 11 | WPC | `osdu:wks:work-product-component--GeoLabelSet:1.0.0` | Headline P10/P50/P90 volumes for dashboards |
+| 12 | Dataset | `osdu:wks:dataset--ETPDataspace:1.0.0` | RDDMS dataspace pointer for geomodel |
+
+#### DG2 Additions
+
+| # | Category | OSDU Kind | Purpose |
+|---|----------|-----------|---------|
+| 13 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Production forecast (20-year) |
+| 14 | WPC | `osdu:wks:work-product-component--IjkGridRepresentation:1.0.0` | Static grid model + per-property child grids (11 WPCs) |
+| 15 | WPC | `osdu:wks:work-product-component--StructureMap:1.0.0` | Depth surfaces, amplitude maps, facies fraction maps (12 WPCs) |
+| 16 | WPC | `osdu:wks:work-product-component--GenericRepresentation:1.0.0` | Property averages, APS probability cubes, polygons (44 WPCs) |
+| 17 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Simulator tables — relperm, PVT, summary, completions, gruptree (5 WPCs) |
+| 18 | WPC | `osdu:wks:work-product-component--PersistedCollection:1.0.0` | Evidence-package bundling all DG2 artefacts (99 DataReferences) |
+| 19–25 | Reference-data | DecisionLevel, DecisionApprovalStatus, RiskCategory, RiskSeverityScale, RiskProbabilityScale, RiskAcceptanceCriteria, Facets/PropertyTypes/UoM | Decision catalogs and volume metadata |
 
 ### 1.2 Custom Schema - DevelopmentConcept WPC
 
@@ -55,6 +67,10 @@ graph TD
         ACT["Activity<br/><i>Workflow Run</i>"]
         TMPL["ActivityTemplate"]
         DOCS["Documents<br/><i>SRA, CRA, PDO, PTR</i>"]
+        GRID["IjkGridRepresentation<br/><i>static grid model</i>"]
+        MAPS["StructureMap + GenericRep<br/><i>surfaces, polygons</i>"]
+        SIM["ColumnBasedTable<br/><i>simulator tables ×5</i>"]
+        PC["PersistedCollection<br/><i>evidence package</i>"]
     end
 
     subgraph "Datasets"
@@ -77,6 +93,17 @@ graph TD
     BD -->|Parameters - Input| DEV
     BD -->|Parameters - InputRef| RES
     BD -->|Parameters - InputRef| BD_DG1
+    BD -->|Parameters - Input| GRID
+    BD -->|Parameters - Input| MAPS
+    BD -->|Parameters - Input| SIM
+    BD -->|Parameters - InputRef| PC
+
+    PC -.->|DataReferences| REV_RAW
+    PC -.->|DataReferences| GRID
+    PC -.->|DataReferences| MAPS
+    PC -.->|DataReferences| RISK
+    PC -.->|DataReferences| DOCS
+    PC -.->|DataReferences| ETP
 
     ACT -->|ActivityTemplateID| TMPL
     ACT -->|Input| PARAMS
@@ -97,7 +124,7 @@ graph TD
     class RES,SEG master
     class BD,BD_DG1 bd
     class RISK risk
-    class REV_RAW,REV_STAT,PARAMS,PP,GLS,ACT,TMPL,DOCS,DEV wpc
+    class REV_RAW,REV_STAT,PARAMS,PP,GLS,ACT,TMPL,DOCS,DEV,GRID,MAPS,SIM,PC wpc
     class ETP dataset
     class DL,AS,RC ref
 ```
@@ -133,8 +160,10 @@ graph TD
 
 | Role | Purpose | Example Referenced Records |
 |------|---------|---------------------------|
-| Input | Primary evidence artifacts | REV RAW/STAT, Input Parameters, Production Forecast, DevelopmentConcept, GeoLabelSet |
-| InputReference | Context/scope references | Reservoir, ETPDataspace, Prior gate BD, Documents |
+| Input | Primary evidence artifacts | REV RAW/STAT, Input Parameters, Production Forecast, DevelopmentConcept, GeoLabelSet, IjkGridRepresentation, StructureMap/GenericRepresentation (maps), ColumnBasedTable (sim-tables) |
+| InputReference | Context/scope references | Reservoir, ETPDataspace, Prior gate BD, Documents, PersistedCollection (evidence package), GenericRepresentation (polygons) |
+
+> **DG1 vs DG2 scope:** DG1 BD Parameters[] links only core evidence (REV, design matrix, reservoir, ETPDataspace). DG2 extends this to 18 parameters adding grid model, maps, simulator tables, polygons, documents, production forecast, DevelopmentConcept, and the PersistedCollection evidence package.
 
 ---
 
@@ -176,6 +205,8 @@ flowchart LR
 ```
 
 The BD references the dataspace via `Parameters[]` with role `InputReference`.
+
+> **DatasetIDs gap:** The RDDMS manifest builder does **not** populate `DatasetIDs` on WPCs — the field that links a WPC back to its parent Dataset (ETPDataspace). After ingesting RDDMS-sourced WPCs, a post-ingest patch is needed to set `DatasetIDs: ["<ETPDataspace-record-id>"]` on each WPC. Without this, WPCs are orphaned from their dataspace in OSDU search.
 
 ---
 
@@ -227,17 +258,42 @@ Each BD carries a volume uncertainty summary (STOIIP P90/P50/P10, Recoverable, R
 
 ---
 
-## 7. Design Principles
+## 7. PersistedCollection — Evidence Package
 
-1. **One BusinessDecision per gate** - links all evidence through `Parameters[]`
-2. **Lossless traceability** - every reference preserved with role semantics
-3. **Risk evolution is explicit** - canonical risk records tracked gate-to-gate
-4. **Volumes are authoritative** - `ReservoirEstimatedVolumes` is the domain WPC; `GeoLabelSet` for dashboards
-5. **Activity provides reproducibility** - captures full workflow configuration
+At DG2, all decision artefacts are bundled into a `PersistedCollection` WPC with `DataReferences[]` listing every record ID in the package. The Drogon DG2 collection ("Drogon DG2 — Evidence Package") contains **99 DataReferences** spanning:
+
+| Group | Count | Example Kinds |
+|-------|------:|---------------|
+| IjkGridRepresentation | 11 | Parent grid + 10 property grids |
+| StructureMap | 12 | 6 horizon depth surfaces + derived maps |
+| GenericRepresentation (maps) | 37 | Amplitude, facies fractions, property averages, APS probability cubes |
+| GenericRepresentation (polygons) | 7 | Fault lines (4 horizons), field outline, fluid-contact outlines |
+| ColumnBasedTable (sim-tables) | 5 | Relperm, PVT, summary, completions, gruptree |
+| REV, CBT (design matrix), DevelopmentConcept | 4 | Core evidence |
+| Activity + ActivityTemplate | 2 | Provenance chain |
+| ETPDataspace | 1 | RDDMS dataspace pointer |
+| Risk | 6 | DG2 risk records |
+| Documents | 4 | SRA, CRA, PDO, PTR |
+| Reservoir + 7 Segments | 8 | Master-data scope |
+| GeoLabelSet | 1 | Headline volumes |
+| Well/Wellbore/Strat | ~30 | Shared well + stratigraphy records |
+
+The BD references this collection via `Parameters[]` (`ParameterRole: InputReference`, key `PersistedCollection`).
 
 ---
 
-## 8. Related Guides
+## 8. Design Principles
+
+1. **One BusinessDecision per gate** — links all evidence through `Parameters[]`
+2. **Lossless traceability** — every reference preserved with role semantics
+3. **Risk evolution is explicit** — canonical risk records tracked gate-to-gate
+4. **Volumes are authoritative** — `ReservoirEstimatedVolumes` is the domain WPC; `GeoLabelSet` for dashboards
+5. **Activity provides reproducibility** — captures full workflow configuration
+6. **PersistedCollection bundles** — DG2+ packages all artefacts into a single searchable collection
+
+---
+
+## 9. Related Guides
 
 | Document | Focus |
 |----------|-------|

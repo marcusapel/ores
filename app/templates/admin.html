@@ -57,6 +57,29 @@
 {% endif %}
 
 <hr />
+<h2>Import DataSpace</h2>
+<p class="muted" style="margin-top:0;">
+  Copy content from a locked source dataspace into a destination (reference copy, same UUIDs).
+</p>
+<div id="import-ds" style="max-width:36rem;">
+  <div class="row">
+    <label for="import-src">Source</label>
+    <input id="import-src" type="text" placeholder="e.g. maap/drogon">
+  </div>
+  <div class="row">
+    <label for="import-dst">Destination</label>
+    <input id="import-dst" type="text" placeholder="e.g. maap/drogon_copy">
+  </div>
+  <div class="row">
+    <button id="import-ds-btn"
+      style="background:#6610f2;color:#fff;padding:2px 8px;border-radius:4px;border:0;cursor:pointer">
+      Import
+    </button>
+  </div>
+  <p id="import-msg" class="muted" style="display:none;"></p>
+</div>
+
+<hr />
 <h2>Create a dataspace</h2>
 
 <div id="create-ds">
@@ -327,6 +350,50 @@
     // Run on any server-side pre-populated rows, then async load
     rebuildDsRows();
     loadAdminDataspaces();
+
+    // ----- Import DataSpace handler -----
+    const importBtn = document.getElementById('import-ds-btn');
+    const importMsg = document.getElementById('import-msg');
+    if (importBtn) {
+      importBtn.addEventListener('click', async () => {
+        const src = document.getElementById('import-src').value.trim();
+        const dst = document.getElementById('import-dst').value.trim();
+        importMsg.style.display = 'none';
+        if (!src || !dst) {
+          importMsg.style.display = 'block';
+          importMsg.textContent = 'Both source and destination are required.';
+          return;
+        }
+        if (src === dst) {
+          importMsg.style.display = 'block';
+          importMsg.textContent = 'Source and destination must differ.';
+          return;
+        }
+        importBtn.disabled = true;
+        const oldLabel = importBtn.textContent;
+        importBtn.textContent = 'Importing…';
+        try {
+          const fd = new FormData();
+          fd.append('src', src);
+          fd.append('dst', dst);
+          const res = await fetch('/dataspaces/import', { method: 'POST', body: fd, credentials: 'same-origin' });
+          const js = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(js.detail || js.reason || ('HTTP ' + res.status));
+          importMsg.style.display = 'block';
+          importMsg.style.color = '#198754';
+          importMsg.textContent = `Imported "${src}" → "${dst}".`;
+          // Refresh dataspace list
+          loadAdminDataspaces();
+        } catch (e) {
+          importMsg.style.display = 'block';
+          importMsg.style.color = '#842029';
+          importMsg.textContent = `Import failed: ${e?.message || e}`;
+        } finally {
+          importBtn.disabled = false;
+          importBtn.textContent = oldLabel;
+        }
+      });
+    }
 
     // ----- Optional: lightweight JSON validation for custom_json -----
     const ta  = document.getElementById('custom_json');
