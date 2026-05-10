@@ -85,7 +85,7 @@ roundtrip, plus improvements and admin items needed for production.
      property UUID referenced by multiple grids is fetched only once.
      TODO: Add a server-side "typeSearch" or "bulkGet" endpoint request
      to RDDMS team (see §3.4), or implement broader cross-call caching.
-x
+
 
 
 ───────────────────────────────────────────────────────────────────────
