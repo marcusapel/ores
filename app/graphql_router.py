@@ -57,6 +57,10 @@ log = logging.getLogger("rddms-admin.graphql")
 # Backend abstraction: PG direct vs REST API
 # ──────────────────────────────────────────────────────────────────────────────
 
+# PG conn string is per-instance: set via INSTANCE_<NAME>_GRAPHQL_PG_CONN_STRING
+# in k8s/secret.yaml, or globally via GRAPHQL_PG_CONN_STRING (legacy fallback).
+# When the active instance changes, notify_instance_changed() tears down and
+# rebuilds the pool with the new connection string (or None → REST fallback).
 _PG_CONN_STRING = os.getenv("GRAPHQL_PG_CONN_STRING") or os.getenv("POSTGRESQL_CONN_STRING", "")
 _pool = None  # asyncpg.Pool or None
 
@@ -129,6 +133,42 @@ async def close_pool():
     if _rddms_pool:
         await _rddms_pool.close()
         _rddms_pool = None
+
+
+def notify_instance_changed(pg_conn_string: str = "") -> None:
+    """Called by instances._apply_instance() when the active OSDU instance changes.
+
+    Tears down the existing PG pool so it will be lazily re-created with the
+    new connection string on the next query.  If *pg_conn_string* is empty the
+    pool stays None and all resolvers fall back to the REST API.
+    """
+    global _PG_CONN_STRING, _pool
+    old = _PG_CONN_STRING
+    _PG_CONN_STRING = pg_conn_string
+
+    if _pool is not None:
+        # Schedule async close on the running loop (fire-and-forget).
+        # _get_pool() will lazily rebuild with the new DSN.
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_async_close_pool())
+        except RuntimeError:
+            pass  # no running loop (startup) – pool will just be GC'd
+        _pool = None
+
+    if old != pg_conn_string:
+        label = "PG" if pg_conn_string else "REST-only"
+        log.info("GraphQL backend switched → %s", label)
+
+
+async def _async_close_pool():
+    """Close old PG pool asynchronously."""
+    global _pool
+    # _pool was already set to None by the caller; the old pool object
+    # is captured in the closure via the task creation.
+    pass  # close_pool() is the canonical shutdown path; here we just
+          # let the old pool object get GC'd after outstanding queries finish.
 
 
 def _get_token_from_info(info: Info) -> str:

@@ -47,6 +47,7 @@ class OsduInstance:
     default_countries: str = "NO"
     refresh_token: str = ""                 # shared refresh token (if any)
     auth_mode: str = "refresh_token"        # refresh_token | client_credentials | az_cli
+    graphql_pg_conn_string: str = ""        # per-instance RDDMS PG conn (blank → REST fallback)
 
     # --- runtime token cache ---
     _cached_token: str = field(default="", repr=False)
@@ -200,6 +201,7 @@ def _load_instances():
             default_countries=_get("DEFAULT_COUNTRIES", "NO"),
             refresh_token=refresh,
             auth_mode=mode,
+            graphql_pg_conn_string=_get("GRAPHQL_PG_CONN_STRING"),
         )
         _instances[inst_name] = inst
         log.info("Registered OSDU instance '%s' → %s (partition=%s, auth=%s)",
@@ -290,6 +292,14 @@ def _apply_instance(inst: OsduInstance):
     osdu_mod.DEFAULT_OWNERS = [x.strip() for x in (inst.default_owners or f"data.default.owners@{pfx}").split(",") if x.strip()]
     osdu_mod.DEFAULT_VIEWERS = [x.strip() for x in (inst.default_viewers or f"data.default.viewers@{pfx}").split(",") if x.strip()]
     osdu_mod.DEFAULT_COUNTRIES = [x.strip() for x in (inst.default_countries or "NO").split(",") if x.strip()]
+
+    # ── cache: flush stale RDDMS / search results from previous instance ──
+    from .cache import cache_clear
+    cache_clear()
+
+    # ── graphql_router: switch PG pool to this instance's conn string ──
+    from . import graphql_router as gql_mod
+    gql_mod.notify_instance_changed(inst.graphql_pg_conn_string)
 
     # ── auth.py ──
     import app.auth as auth_mod

@@ -107,13 +107,15 @@ def headers(access_token: str) -> dict[str, str]:
 # ----------------------------------------------------------------------
 
 async def list_dataspaces(access_token: str) -> list[dict[str, Any]]:
-    """GET /api/reservoir-ddms/v2/dataspaces  (cached 600 s)"""
+    """GET /api/reservoir-ddms/v2/dataspaces  (cached 600 s, per instance)"""
     async def _fetch(at: str) -> list[dict[str, Any]]:
         async with _http() as client:
             r = await client.get(_rddms_url("/dataspaces"), headers=headers(at))
             r.raise_for_status()
             return r.json() or []
-    return await cached_call("list_dataspaces", 600, _fetch, access_token)
+    # Include hostname in cache key so instance switches don't serve stale data
+    cache_key = f"list_dataspaces:{OSDU_BASE_URL}"
+    return await cached_call(cache_key, 600, _fetch, access_token)
 
 async def create_dataspace(
     access_token: str,
