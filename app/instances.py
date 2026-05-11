@@ -297,9 +297,9 @@ def _apply_instance(inst: OsduInstance):
     from .cache import cache_clear
     cache_clear()
 
-    # ── graphql_router: switch PG pool to this instance's conn string ──
-    from . import graphql_router as gql_mod
-    gql_mod.notify_instance_changed(inst.graphql_pg_conn_string)
+    # ── pg_backend: switch PG pool to this instance's conn string ──
+    from .pg_backend import notify_instance_changed
+    notify_instance_changed(inst.graphql_pg_conn_string)
 
     # ── auth.py ──
     import app.auth as auth_mod

@@ -165,7 +165,7 @@ async def pg_get_object_and_arrays(
 
     Returns ``(content_dict, arrays_list)`` or ``(None, None)`` if not found.
     """
-    from .graphql_router import _pg_list_arrays
+    from .pg_backend import pg_list_arrays
 
     obj_id, xml_str = await _pg_get_obj_id_and_xml(pool, ds, uuid)
     if obj_id is None or not xml_str:
@@ -176,7 +176,7 @@ async def pg_get_object_and_arrays(
     except ET.ParseError:
         return None, None
 
-    arrays = await _pg_list_arrays(pool, ds, uuid)
+    arrays = await pg_list_arrays(pool, ds, uuid)
     return content, arrays
 
 
@@ -473,8 +473,8 @@ def render_grid2d_png(
 
 async def _pg_get_obj_id_and_xml(pool, ds: str, uuid: str):
     """Return ``(obj_id, xml_string)`` from PG, or ``(None, None)``."""
-    from .graphql_router import _pg_schema_for_dataspace
-    schema = await _pg_schema_for_dataspace(pool, ds)
+    from .pg_backend import pg_schema_for_dataspace
+    schema = await pg_schema_for_dataspace(pool, ds)
     if not schema:
         return None, None
     async with pool.acquire() as conn:
@@ -545,7 +545,7 @@ async def _pg_parse_crs(pool, ds: str, crs_uuid: str) -> dict[str, Any] | None:
 
 async def _pg_grid2d_surface(pool, ds: str, uuid: str) -> dict[str, Any] | None:
     """Fetch Grid2d surface data from PG (XML + arrays)."""
-    from .graphql_router import _pg_list_arrays, _pg_read_array
+    from .pg_backend import pg_list_arrays, pg_read_array
 
     _, xml_str = await _pg_get_obj_id_and_xml(pool, ds, uuid)
     if not xml_str:
@@ -611,15 +611,15 @@ async def _pg_grid2d_surface(pool, ds: str, uuid: str) -> dict[str, Any] | None:
             crs = await _pg_parse_crs(pool, ds, crs_uuid_text.strip())
 
     # Z-values
-    arrays = await _pg_list_arrays(pool, ds, uuid)
+    arrays = await pg_list_arrays(pool, ds, uuid)
     zvalues: list[float] = []
     for a in arrays:
         p = a["path"].lower()
         if "points_patch" in p or "zvalues" in p:
-            zvalues = await _pg_read_array(pool, ds, uuid, a["path"])
+            zvalues = await pg_read_array(pool, ds, uuid, a["path"])
             break
     if not zvalues and arrays:
-        zvalues = await _pg_read_array(pool, ds, uuid, arrays[0]["path"])
+        zvalues = await pg_read_array(pool, ds, uuid, arrays[0]["path"])
 
     # Build grid dict matching REST JSON shape
     title = _xtext(root, "Citation", "Title")
@@ -652,7 +652,7 @@ async def _pg_geometry3d(pool, ds: str, typ: str, uuid: str) -> dict[str, Any] |
     Returns ``None`` when the object / arrays are not found in PG.
     """
     import numpy as np
-    from .graphql_router import _pg_list_arrays, _pg_read_array, _pg_list_resources
+    from .pg_backend import pg_list_arrays, pg_read_array, pg_list_resources
 
     tl = typ.lower()
 
@@ -664,21 +664,21 @@ async def _pg_geometry3d(pool, ds: str, typ: str, uuid: str) -> dict[str, Any] |
         return _surface_to_3d(surface)
 
     # For non-Grid2d types, get title + arrays
-    resources = await _pg_list_resources(pool, ds, typ, limit=500)
+    resources = await pg_list_resources(pool, ds, typ, limit=500)
     title = uuid
     for r in resources:
         if r.get("uuid", "").lower() == uuid.lower():
             title = r.get("title") or uuid
             break
 
-    arrays = await _pg_list_arrays(pool, ds, uuid)
+    arrays = await pg_list_arrays(pool, ds, uuid)
     if not arrays:
         return None
 
     arr_paths = {a["path"].lower(): a["path"] for a in arrays}
 
     async def _read(path: str) -> list[float]:
-        return await _pg_read_array(pool, ds, uuid, path)
+        return await pg_read_array(pool, ds, uuid, path)
 
     # ── TriangulatedSetRepresentation ─────────────────────────────────
     if "triangulated" in tl:
@@ -1293,8 +1293,8 @@ async def fetch_grid2d_surface(
     """
     # ── 1. Local PG (co-located, fastest) ─────────────────────────────
     try:
-        from .graphql_router import _get_pool
-        pool = await _get_pool()
+        from .pg_backend import get_pool
+        pool = await get_pool()
         if pool:
             result = await _pg_grid2d_surface(pool, ds, uuid)
             if result:
@@ -1305,8 +1305,8 @@ async def fetch_grid2d_surface(
 
     # ── 2. Remote RDDMS PG (direct SQL to cloud DB) ───────────────────
     try:
-        from .graphql_router import _get_rddms_pool
-        rddms_pool = await _get_rddms_pool()
+        from .pg_backend import get_rddms_pool
+        rddms_pool = await get_rddms_pool()
         if rddms_pool:
             result = await _pg_grid2d_surface(rddms_pool, ds, uuid)
             if result:
@@ -1341,8 +1341,8 @@ async def fetch_geometry_3d(
     """
     # ── 1. Local PG (co-located, fastest) ─────────────────────────────
     try:
-        from .graphql_router import _get_pool
-        pool = await _get_pool()
+        from .pg_backend import get_pool
+        pool = await get_pool()
         if pool:
             result = await _pg_geometry3d(pool, ds, typ, uuid)
             if result:
@@ -1353,8 +1353,8 @@ async def fetch_geometry_3d(
 
     # ── 2. Remote RDDMS PG (direct SQL to cloud DB) ───────────────────
     try:
-        from .graphql_router import _get_rddms_pool
-        rddms_pool = await _get_rddms_pool()
+        from .pg_backend import get_rddms_pool
+        rddms_pool = await get_rddms_pool()
         if rddms_pool:
             result = await _pg_geometry3d(rddms_pool, ds, typ, uuid)
             if result:

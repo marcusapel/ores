@@ -27,6 +27,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import osdu
+from .common import access_token as _access_token, friendly_value as _friendly_value, friendly_list as _friendly_list, pretty_val as _jinja_pretty_val
 from .schemahandler import extract_osdu_links, extract_metadata_generic
 from .tokenstore import (
     save_query as _ts_save_query,
@@ -44,22 +45,6 @@ _KIND_CACHE: Dict[str, Tuple[List[str], float]] = {}
 _KIND_CACHE_TTL = 300  # 5 minutes
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
-
-def _jinja_pretty_val(val):
-    """Jinja filter: prettify metadata values that may contain JSON."""
-    import json
-    if val is None:
-        return "-"
-    s = str(val)
-    if s.startswith(("[", "{")):
-        try:
-            obj = json.loads(s)
-            return _friendly_value(obj, 600)
-        except (json.JSONDecodeError, ValueError):
-            pass
-    return s
-
-
 templates.env.filters["pretty_val"] = _jinja_pretty_val
 
 # NOTE: auth_mode is set in templates.env.globals by main.py after instance
@@ -70,10 +55,6 @@ templates.env.filters["pretty_val"] = _jinja_pretty_val
 # ──────────────────────────────────────────────────────────────────────────────
 # Utilities (private to this module)
 # ──────────────────────────────────────────────────────────────────────────────
-
-def _access_token(request: Request) -> str:
-    from .common import access_token as _at
-    return _at(request)
 
 
 def _parse_kind_inputs(kind: str, kinds_extra: str) -> List[str]:
@@ -219,42 +200,6 @@ _HEAVY_DATA_KEYS = frozenset({
     "SpatialPoint.Wgs84Coordinates",
     "VirtualProperties.DefaultLocation.Wgs84Coordinates",
 })
-
-
-def _friendly_value(v: Any, max_str: int = 400) -> str:
-    """Convert a single value to a human-friendly string."""
-    if v is None:
-        return ""
-    if isinstance(v, (str, int, float, bool)):
-        s = str(v)
-        return s if len(s) <= max_str else s[:max_str] + "…"
-    if isinstance(v, dict):
-        parts = []
-        for dk, dv in v.items():
-            sv = _friendly_value(dv, max_str=80)
-            parts.append(f"{dk}: {sv}")
-        s = "; ".join(parts)
-        return s if len(s) <= max_str else s[:max_str] + "…"
-    if isinstance(v, list):
-        return _friendly_list(v, max_str)
-    return str(v)[:max_str]
-
-
-def _friendly_list(lst: list, max_str: int = 400) -> str:
-    """Format a list for display."""
-    if not lst:
-        return ""
-    if all(isinstance(x, (str, int, float, bool, type(None))) for x in lst):
-        return ", ".join(str(x) for x in lst)
-    if all(isinstance(x, dict) for x in lst):
-        items = []
-        for d in lst:
-            parts = [f"{k}: {_friendly_value(dv, 80)}" for k, dv in d.items()]
-            items.append("; ".join(parts))
-        s = " │ ".join(items)
-        return s if len(s) <= max_str else s[:max_str] + "…"
-    s = ", ".join(_friendly_value(x, 80) for x in lst)
-    return s if len(s) <= max_str else s[:max_str] + "…"
 
 
 def _flatten_osdu_data(data: Dict[str, Any], max_str: int = 400) -> list:

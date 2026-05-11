@@ -35,8 +35,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-import os
-import struct
 import urllib.parse
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -49,326 +47,28 @@ from fastapi.responses import JSONResponse
 
 from . import osdu
 from .common import access_token as _access_token
+from .pg_backend import (
+    get_pool as _get_pool,
+    get_rddms_pool as _get_rddms_pool,
+    close_pool,
+    notify_instance_changed,
+    ARY_TYPE_FMT as _ARY_TYPE_FMT,
+    pg_schema_for_dataspace as _pg_schema_for_dataspace,
+    pg_list_dataspaces as _pg_list_dataspaces,
+    pg_list_types as _pg_list_types,
+    pg_list_resources as _pg_list_resources,
+    pg_list_relations as _pg_list_relations,
+    pg_list_arrays as _pg_list_arrays,
+    pg_read_array as _pg_read_array,
+)
 
 log = logging.getLogger("rddms-admin.graphql")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Backend abstraction: PG direct vs REST API
-# ──────────────────────────────────────────────────────────────────────────────
-
-# PG conn string is per-instance: set via INSTANCE_<NAME>_GRAPHQL_PG_CONN_STRING
-# in k8s/secret.yaml, or globally via GRAPHQL_PG_CONN_STRING (legacy fallback).
-# When the active instance changes, notify_instance_changed() tears down and
-# rebuilds the pool with the new connection string (or None → REST fallback).
-_PG_CONN_STRING = os.getenv("GRAPHQL_PG_CONN_STRING") or os.getenv("POSTGRESQL_CONN_STRING", "")
-_PG_CONN_STRING_GLOBAL = _PG_CONN_STRING  # remember the global fallback
-_pool = None  # asyncpg.Pool or None
-
-# Remote RDDMS PostgreSQL (direct access to the cloud-hosted RDDMS database).
-# Not yet available on ADME, but prepared for when it becomes accessible.
-_RDDMS_PG_CONN_STRING = os.getenv("RDDMS_PG_CONN_STRING", "")
-_rddms_pool = None  # asyncpg.Pool or None – remote RDDMS PG
-
-
-def _parse_dsn(conn_str: str) -> str:
-    """Normalise a connection string to a DSN URI if needed."""
-    if "=" in conn_str and "://" not in conn_str:
-        parts = dict(p.split("=", 1) for p in conn_str.split() if "=" in p)
-        return "postgresql://{user}:{password}@{host}:{port}/{dbname}".format(
-            user=parts.get("user", "postgres"),
-            password=parts.get("password", ""),
-            host=parts.get("host", "localhost"),
-            port=parts.get("port", "5432"),
-            dbname=parts.get("dbname", "postkv"),
-        )
-    return conn_str
-
-
-async def _get_pool():
-    """Return asyncpg pool for the *local* PG (or None if not configured)."""
-    global _pool
-    if _pool is not None:
-        return _pool
-    if not _PG_CONN_STRING:
-        return None
-    try:
-        import asyncpg
-        dsn = _parse_dsn(_PG_CONN_STRING)
-        _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=10, command_timeout=60)
-        log.info("GraphQL PG pool created (local)")
-    except Exception as e:
-        log.warning("PG pool failed (will use REST fallback): %s", e)
-        _pool = None
-    return _pool
-
-
-async def _get_rddms_pool():
-    """Return asyncpg pool for the *remote* RDDMS PG (or None).
-
-    This connects directly to the PostgreSQL database backing a
-    cloud-hosted RDDMS instance, bypassing the REST API.  Set the
-    ``RDDMS_PG_CONN_STRING`` env var to enable.
-    """
-    global _rddms_pool
-    if _rddms_pool is not None:
-        return _rddms_pool
-    if not _RDDMS_PG_CONN_STRING:
-        return None
-    try:
-        import asyncpg
-        dsn = _parse_dsn(_RDDMS_PG_CONN_STRING)
-        _rddms_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, command_timeout=120)
-        log.info("Remote RDDMS PG pool created")
-    except Exception as e:
-        log.warning("Remote RDDMS PG pool failed (will use REST fallback): %s", e)
-        _rddms_pool = None
-    return _rddms_pool
-
-
-async def close_pool():
-    global _pool, _rddms_pool
-    if _pool:
-        await _pool.close()
-        _pool = None
-    if _rddms_pool:
-        await _rddms_pool.close()
-        _rddms_pool = None
-
-
-def notify_instance_changed(pg_conn_string: str = "") -> None:
-    """Called by instances._apply_instance() when the active OSDU instance changes.
-
-    Tears down the existing PG pool so it will be lazily re-created with the
-    new connection string on the next query.
-
-    Precedence: the global ``GRAPHQL_PG_CONN_STRING`` env var (local Docker PG)
-    always wins when set — per-instance ``pg_conn_string`` is only used when the
-    global is absent (i.e. on Radix where there is no local Docker PG).
-    If neither is set, the pool stays None and resolvers use REST.
-    """
-    global _PG_CONN_STRING, _pool
-    old = _PG_CONN_STRING
-    # Local dev: GRAPHQL_PG_CONN_STRING is set → always use Docker PG.
-    # Radix:     GRAPHQL_PG_CONN_STRING absent → use per-instance PG.
-    _PG_CONN_STRING = _PG_CONN_STRING_GLOBAL or pg_conn_string
-
-    if _pool is not None:
-        # Schedule async close on the running loop (fire-and-forget).
-        # _get_pool() will lazily rebuild with the new DSN.
-        import asyncio
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(_async_close_pool())
-        except RuntimeError:
-            pass  # no running loop (startup) – pool will just be GC'd
-        _pool = None
-
-    if old != pg_conn_string:
-        label = "PG" if pg_conn_string else "REST-only"
-        log.info("GraphQL backend switched → %s", label)
-
-
-async def _async_close_pool():
-    """Close old PG pool asynchronously."""
-    global _pool
-    # _pool was already set to None by the caller; the old pool object
-    # is captured in the closure via the task creation.
-    pass  # close_pool() is the canonical shutdown path; here we just
-          # let the old pool object get GC'd after outstanding queries finish.
 
 
 def _get_token_from_info(info: Info) -> str:
     """Extract access token from Strawberry context."""
     request: Request = info.context["request"]
     return _access_token(request)
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# PostgreSQL-native resolvers (direct path - when PG is available)
-# ──────────────────────────────────────────────────────────────────────────────
-
-# Array element type → struct format
-_ARY_TYPE_FMT = {0: "i", 1: "d", 2: "f", 3: "q", 4: "i", 5: "h"}  # int32, float64, float32, int64, int32, int16
-
-
-async def _pg_schema_for_dataspace(pool, dataspace: str) -> Optional[str]:
-    """Resolve a dataspace path to the PostgreSQL schema name."""
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT dbfile FROM admin.spaces WHERE path=$1 OR uid=$1", dataspace
-        )
-        return row["dbfile"] if row else None
-
-
-async def _pg_list_dataspaces(pool) -> List[Dict[str, Any]]:
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT uid, path FROM admin.spaces ORDER BY path")
-        return [{"path": r["path"], "uri": f"eml:///dataspace('{r['path']}')"} for r in rows]
-
-
-async def _pg_list_types(pool, dataspace: str) -> List[Dict[str, Any]]:
-    schema = await _pg_schema_for_dataspace(pool, dataspace)
-    if not schema:
-        return []
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(f"""
-            SELECT t.xml as name, u.ml || '.' || t.xml as full_name, count(r.obj_id) as cnt
-            FROM {schema}.typ t
-            JOIN {schema}.uri u ON t.uri_id = u.id
-            LEFT JOIN {schema}.res r ON r.typ_id = t.id
-            GROUP BY t.xml, u.ml
-            ORDER BY cnt DESC
-        """)
-        return [{"name": f"{r['full_name']}", "count": int(r["cnt"])} for r in rows]
-
-
-async def _pg_list_resources(pool, dataspace: str, type_name: str, limit: int = 100) -> List[Dict[str, Any]]:
-    schema = await _pg_schema_for_dataspace(pool, dataspace)
-    if not schema:
-        return []
-    # type_name is like "resqml20.obj_Grid2dRepresentation" → split into ml and xml
-    parts = type_name.split(".", 1)
-    async with pool.acquire() as conn:
-        if len(parts) == 2:
-            rows = await conn.fetch(f"""
-                SELECT r.obj_id, r.guid, r.name, t.xml as typ_xml, u.ml
-                FROM {schema}.res r
-                JOIN {schema}.typ t ON r.typ_id = t.id
-                JOIN {schema}.uri u ON t.uri_id = u.id
-                WHERE u.ml = $1 AND t.xml = $2
-                ORDER BY r.obj_id
-                LIMIT $3
-            """, parts[0], parts[1], limit)
-        else:
-            rows = await conn.fetch(f"""
-                SELECT r.obj_id, r.guid, r.name, t.xml as typ_xml, u.ml
-                FROM {schema}.res r
-                JOIN {schema}.typ t ON r.typ_id = t.id
-                JOIN {schema}.uri u ON t.uri_id = u.id
-                WHERE t.xml ILIKE '%' || $1 || '%'
-                ORDER BY r.obj_id
-                LIMIT $2
-            """, type_name, limit)
-        return [
-            {"uuid": str(r["guid"]), "title": r["name"],
-             "type_name": f"{r['ml']}.{r['typ_xml']}", "obj_id": r["obj_id"]}
-            for r in rows
-        ]
-
-
-async def _pg_list_relations(pool, dataspace: str, type_name: str, uuid: str, direction: str = "both") -> List[Dict[str, Any]]:
-    """Get relationships from the rel table. direction: targets|sources|both."""
-    schema = await _pg_schema_for_dataspace(pool, dataspace)
-    if not schema:
-        return []
-    async with pool.acquire() as conn:
-        # Find obj_id for the given uuid
-        src = await conn.fetchrow(f"SELECT obj_id FROM {schema}.res WHERE guid=$1", uuid)
-        if not src:
-            return []
-        obj_id = src["obj_id"]
-        results = []
-
-        if direction in ("both", "targets"):
-            rows = await conn.fetch(f"""
-                SELECT r2.guid, r2.name, t.xml as typ_xml, u.ml, xpa.th as rel_path
-                FROM {schema}.rel rel
-                JOIN {schema}.res r2 ON rel.dst_id = r2.obj_id
-                JOIN {schema}.typ t ON r2.typ_id = t.id
-                JOIN {schema}.uri u ON t.uri_id = u.id
-                LEFT JOIN {schema}.xpa xpa ON rel.xpa_id = xpa.id
-                WHERE rel.obj_id = $1
-            """, obj_id)
-            for r in rows:
-                results.append({
-                    "uuid": str(r["guid"]), "name": r["name"],
-                    "type_name": f"{r['ml']}.{r['typ_xml']}",
-                    "direction": "target",
-                    "content_type": r["rel_path"] or "",
-                })
-
-        if direction in ("both", "sources"):
-            rows = await conn.fetch(f"""
-                SELECT r2.guid, r2.name, t.xml as typ_xml, u.ml, xpa.th as rel_path
-                FROM {schema}.rel rel
-                JOIN {schema}.res r2 ON rel.obj_id = r2.obj_id
-                JOIN {schema}.typ t ON r2.typ_id = t.id
-                JOIN {schema}.uri u ON t.uri_id = u.id
-                LEFT JOIN {schema}.xpa xpa ON rel.xpa_id = xpa.id
-                WHERE rel.dst_id = $1
-            """, obj_id)
-            for r in rows:
-                results.append({
-                    "uuid": str(r["guid"]), "name": r["name"],
-                    "type_name": f"{r['ml']}.{r['typ_xml']}",
-                    "direction": "source",
-                    "content_type": r["rel_path"] or "",
-                })
-
-        return results
-
-
-async def _pg_list_arrays(pool, dataspace: str, uuid: str) -> List[Dict[str, Any]]:
-    """List arrays for an object from the ary table."""
-    schema = await _pg_schema_for_dataspace(pool, dataspace)
-    if not schema:
-        return []
-    async with pool.acquire() as conn:
-        src = await conn.fetchrow(f"SELECT obj_id FROM {schema}.res WHERE guid=$1", uuid)
-        if not src:
-            return []
-        rows = await conn.fetch(f"""
-            SELECT id, path, type, rank1, dim1, dim2, dim3, dim4, usize
-            FROM {schema}.ary WHERE obj_id=$1
-        """, src["obj_id"])
-        results = []
-        for r in rows:
-            dims = [int(r[f"dim{i}"]) for i in range(1, 5) if r[f"dim{i}"] is not None and r[f"dim{i}"] > 0]
-            total = 1
-            for d in dims:
-                total *= d
-            results.append({
-                "ary_id": int(r["id"]),
-                "path": r["path"] or "",
-                "type": int(r["type"]) if r["type"] is not None else 1,
-                "rank": int(r["rank1"]) if r["rank1"] is not None else 0,
-                "dimensions": dims,
-                "total_elements": total,
-                "usize": int(r["usize"]) if r["usize"] is not None else 8,
-            })
-        return results
-
-
-async def _pg_read_array(pool, dataspace: str, uuid: str, path: str) -> List[float]:
-    """Read array binary data from bin table and decode to floats."""
-    schema = await _pg_schema_for_dataspace(pool, dataspace)
-    if not schema:
-        return []
-    async with pool.acquire() as conn:
-        src = await conn.fetchrow(f"SELECT obj_id FROM {schema}.res WHERE guid=$1", uuid)
-        if not src:
-            return []
-        ary = await conn.fetchrow(f"""
-            SELECT id, type, dim1, dim2, dim3, dim4, usize
-            FROM {schema}.ary WHERE obj_id=$1 AND path=$2
-        """, src["obj_id"], path)
-        if not ary:
-            return []
-        # Read all binary chunks in order
-        bins = await conn.fetch(f"""
-            SELECT value FROM {schema}.bin WHERE ary_id=$1 ORDER BY idx
-        """, ary["id"])
-        raw = b"".join(b["value"] for b in bins)
-
-        # Determine element format
-        fmt_char = _ARY_TYPE_FMT.get(ary["type"] if ary["type"] is not None else 1, "d")
-        elem_size = struct.calcsize(fmt_char)
-        n_elements = len(raw) // elem_size if elem_size else 0
-        if n_elements == 0:
-            return []
-        values = list(struct.unpack_from(f"<{n_elements}{fmt_char}", raw))
-        return [float(v) for v in values]
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -495,7 +495,7 @@ async def put_resources(
 # Grid2dRepresentation - full surface fetch + CRS-aware PNG rendering
 # ======================================================================
 
-def _normalize_obj(raw: Any, uuid: str) -> dict[str, Any]:
+def normalize_obj(raw: Any, uuid: str) -> dict[str, Any]:
     """Pick the right dict when the RDDMS returns a list.
 
     Warns when the exact UUID isn't found and a fallback is used.
@@ -511,7 +511,10 @@ def _normalize_obj(raw: Any, uuid: str) -> dict[str, Any]:
         # Exact match failed - fall back to first dict (with warning)
         for it in raw:
             if isinstance(it, dict):
-                log.warning("_normalize_obj: UUID %s not found, using first dict", uuid)
+                log.warning("normalize_obj: UUID %s not found, using first dict", uuid)
                 return it
     return {}
+
+# Backward-compat alias (used by structuremap, resqml_viz, bd_enrichment)
+_normalize_obj = normalize_obj
 
