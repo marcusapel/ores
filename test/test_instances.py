@@ -61,3 +61,11 @@ class TestNoInstancesFallback:
         assert inst.hostname == ""
         assert inst.data_partition_id == ""
         assert inst.tenant_id == ""
+        assert inst.graphql_pg_conn_string == ""
+
+    def test_per_instance_pg_conn_string(self):
+        """graphql_pg_conn_string field is stored per-instance."""
+        eqndev = OsduInstance(name="eqndev", graphql_pg_conn_string="host=pg.eqn dbname=rddms")
+        preship = OsduInstance(name="preship")  # no PG configured
+        assert eqndev.graphql_pg_conn_string == "host=pg.eqn dbname=rddms"
+        assert preship.graphql_pg_conn_string == ""
