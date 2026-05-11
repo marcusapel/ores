@@ -81,20 +81,6 @@ Updated: 2026-05-11
 
 2.0  Code review / refactoring  (branch: refactor/code-review)
      ──────────────────────────────────────────────────────────
-     Done:
-       ✓ P1  Extract pg_backend.py from graphql_router (~310 lines)
-       ✓ P2  Consolidate helpers into common.py (friendly_value, etc.)
-       ✓ P3  Fix _async_close_pool no-op (pool now actually closed)
-       ✓ P4  PG schema name validation (_SAFE_SCHEMA_RE)
-       ✓ P5  Fix NameError in /api/graphql/info (get_connection_info)
-       ✓ P6  Extract graphql_refdata.py (ref data + 2 endpoints, ~140 lines)
-       ✓ P7  http_error_response() helper (replaced 10 blocks)
-       ✓ P8  Remove dead encode_dataspace()
-       ✓ P10 Remove 11 redundant inner imports
-       ✓ P11 Cache static kind lists (30+ calls → module-level constants)
-       ✓ P15 Migrate @app.on_event to lifespan handler
-
-     Remaining (lower priority / larger effort):
        □ P6b graphql_router still ~1700 lines
              → extract deep_search + federated_search (~600 lines)
        □ P9  PG/REST geometry duplication in resqml_viz (~400 lines)
