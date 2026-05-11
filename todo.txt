@@ -1,10 +1,7 @@
 ═══════════════════════════════════════════════════════════════════════
-OSDU ↔ Remote RDDMS: Pitfalls, TODOs & Admin Requests
-Updated: 2026-05-11  (cleaned done items)
+OSDU RDDMS: Pitfalls, TODOs & Admin Requests
+Updated: 2026-05-11  
 ═══════════════════════════════════════════════════════════════════════
-
-This doc captures lessons learned from the RDDMS ↔ OSDU catalog
-roundtrip, plus improvements and admin items needed for production.
 
 ───────────────────────────────────────────────────────────────────────
 1. PITFALLS & LESSONS LEARNED
