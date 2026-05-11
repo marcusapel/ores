@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from . import osdu
 from . import resqml_viz
 from . import structuremap as smap_mod
-from .common import access_token as _access_token, normalize_obj as _normalize_resource_obj
+from .common import access_token as _access_token, normalize_obj, http_error_response as _normalize_resource_obj
 from .schemahandler import extract_metadata_generic
 
 router = APIRouter()
@@ -67,7 +67,6 @@ async def keys_dataspaces(request: Request):
       ?source=remote → only remote RDDMS
       (default)      → both merged
     """
-    import asyncio
     at = _access_token(request)
     items: List[Dict[str, Any]] = []
     seen_paths: set = set()
@@ -197,16 +196,7 @@ async def dataspaces_delete(request: Request, path: str = Form(...)):
     try:
         await osdu.delete_dataspace(at, path)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {
-                "status": "error",
-                "code": r.status_code,
-                "reason": r.reason_phrase,
-                "detail": (r.text[:2000] if r.text else ""),
-            },
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok"})
 
 @router.post("/dataspaces/lock", summary="Lock a dataspace")
@@ -215,11 +205,7 @@ async def dataspaces_lock(request: Request, path: str = Form(...)):
     try:
         await osdu.lock_dataspace(at, path)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok"})
 
 @router.post("/dataspaces/unlock", summary="Unlock a dataspace")
@@ -228,11 +214,7 @@ async def dataspaces_unlock(request: Request, path: str = Form(...)):
     try:
         await osdu.unlock_dataspace(at, path)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok"})
 
 @router.post("/dataspaces/import", summary="Import (copy) content from a locked dataspace into another")
@@ -241,11 +223,7 @@ async def dataspaces_import(request: Request, src: str = Form(...), dst: str = F
     try:
         result = await osdu.import_dataspace(at, src, dst)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok", **result})
 
 @router.post("/dataspaces/manifest", summary="Build OSDU manifest for a dataspace")
@@ -270,11 +248,7 @@ async def dataspaces_manifest(
             create_missing_refs=create_missing,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok", "manifest": manifest})
 
 
@@ -468,7 +442,6 @@ async def keys_objects(
                 # Get all types then aggregate
                 pg_types = await pg_list_types(pool, ds)
                 if pg_types:
-                    import asyncio
                     parts = await asyncio.gather(
                         *[pg_list_resources(pool, ds, t["name"], limit=500) for t in pg_types if t.get("name")]
                     )
@@ -509,7 +482,6 @@ async def keys_objects(
                                 log.warning("keys_objects: list_resources(%s) failed: %s", name, e_type)
                                 return []
 
-                        import asyncio
                         parts = await asyncio.gather(*[_fetch_type(n) for n in names])
                         agg: List[Dict[str, Any]] = []
                         for part in parts:
@@ -665,16 +637,7 @@ async def dataspaces_manifest_build_uris(
             create_missing_refs=bool(create_missing),
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {
-                "status": "error",
-                "code": r.status_code,
-                "reason": r.reason_phrase,
-                "detail": (r.text[:2000] if r.text else ""),
-            },
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     log.info("build-uris: manifest built in %.1fs (uris=%d, total=%.1fs)",
              time.monotonic() - t1, len(safe_uris), time.monotonic() - t0)
     request.app.state.last_manifest = manifest
@@ -797,16 +760,7 @@ async def dataspaces_manifest_build_from_selection(
             create_missing_refs=create_missing,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {
-                "status": "error",
-                "code": r.status_code,
-                "reason": r.reason_phrase,
-                "detail": (r.text[:2000] if r.text else ""),
-            },
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
 
     request.app.state.last_manifest = manifest
     log.info("Manifest build: ds_paths=%d items=%d raw_uris=%d → safe=%d skipped=%d",
@@ -835,11 +789,7 @@ async def keys_structuremap_surfaces(
     try:
         surfaces = await smap_mod.discover_surfaces(at, ds)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     except Exception as e:
         log.exception("structuremap_surfaces failed: %s", e)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -889,11 +839,7 @@ async def keys_structuremaps(
             at, ds, prefix=prefix, uuids=uuid_list,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     except Exception as e:
         log.exception("structuremaps generation failed: %s", e)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -937,11 +883,7 @@ async def dataspaces_manifest_structuremaps(
             at, ds, prefix=prefix, uuids=uuids,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     except Exception as e:
         log.exception("structuremap manifest failed: %s", e)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -1342,10 +1284,9 @@ async def keys_object_map_png(
     at = _access_token(request)
 
     try:
-        import time as _time
-        _t0 = _time.monotonic()
+        _t0 = time.monotonic()
         surface = await resqml_viz.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
-        _t1 = _time.monotonic()
+        _t1 = time.monotonic()
         log.info("map.png: fetch ds=%s uuid=%s took %.1fs", ds, uuid, _t1 - _t0)
     except Exception as e:
         log.exception("map.png: fetch_grid2d_surface failed for ds=%s uuid=%s: %s", ds, uuid, e)
@@ -1376,7 +1317,7 @@ async def keys_object_map_png(
         unit = crs.get("VerticalUom") or crs.get("ProjectedUom") or "m"
 
     try:
-        _t2 = _time.monotonic()
+        _t2 = time.monotonic()
         png_bytes = resqml_viz.render_grid2d_png(
             zvalues, dims, geometry, crs,
             title=title,
@@ -1385,7 +1326,7 @@ async def keys_object_map_png(
             dpi=dpi,
             unit=unit,
         )
-        _t3 = _time.monotonic()
+        _t3 = time.monotonic()
         log.info("map.png: render %dx%d took %.1fs (%d bytes)", dims[0], dims[1], _t3 - _t2, len(png_bytes))
     except Exception as e:
         log.exception("map.png: render failed for %dx%d grid: %s", dims[0], dims[1], e)
@@ -1510,8 +1451,7 @@ async def keys_object_geometry3d(
     if not _is_3d_type(typ_s):
         raise HTTPException(400, f"Type {typ_s} is not supported for 3D viewing")
 
-    import time as _time
-    _t0 = _time.monotonic()
+    _t0 = time.monotonic()
 
     try:
         result = await resqml_viz.fetch_geometry_3d(at, ds, typ_s, uuid_s)
@@ -1521,7 +1461,7 @@ async def keys_object_geometry3d(
         log.exception("geometry3d: fetch failed for %s/%s: %s", typ_s, uuid_s, e)
         raise HTTPException(502, f"Failed to fetch 3D geometry: {e}")
 
-    _t1 = _time.monotonic()
+    _t1 = time.monotonic()
     n_verts = len(result.get("positions", [])) // 3
     n_idx = len(result.get("indices", [])) // 3
     log.info("geometry3d: %s uuid=%s kind=%s verts=%d tris=%d took %.1fs",
@@ -1700,8 +1640,7 @@ async def viz_batch_geometry(
     if len(objects) > 50:
         raise HTTPException(400, f"Max 50 objects per batch, got {len(objects)}")
 
-    import time as _time
-    t0 = _time.monotonic()
+    t0 = time.monotonic()
 
     async def _fetch_one(item: dict) -> dict:
         typ_s = _sanitize_type(item.get("typ", ""))
@@ -1716,7 +1655,7 @@ async def viz_batch_geometry(
 
     results = await asyncio.gather(*[_fetch_one(o) for o in objects])
 
-    t1 = _time.monotonic()
+    t1 = time.monotonic()
     ok = sum(1 for r in results if "error" not in r)
     log.info("viz batch: ds=%s objects=%d ok=%d took=%.1fs", ds, len(objects), ok, t1 - t0)
 

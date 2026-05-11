@@ -33,6 +33,7 @@ Dependencies:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import urllib.parse
@@ -929,7 +930,6 @@ class Query:
         # Multiple dataspaces: try PG first for each, fall back to REST per-ds
         pool = await _get_pool()
         token = _get_token_from_info(info)
-        import asyncio
 
         async def _search_one_ds(ds: str) -> DeepSearchResult:
             """Search a single dataspace: PG first, REST fallback."""
@@ -1003,8 +1003,6 @@ class Query:
           • "Check if OSDU records actually exist in RDDMS" → all three, compare flags
         """
         import httpx
-        import json as _json
-        import re as _re
 
         token = _get_token_from_info(info)
         hits_by_uuid: Dict[str, FederatedHit] = {}
@@ -1073,7 +1071,7 @@ class Query:
                             found_in_catalog=True,
                             osdu_id=rid,
                             osdu_kind=rkind,
-                            data_json=_json.dumps(data) if data else None,
+                            data_json=json.dumps(data) if data else None,
                         )
                         key = uuid or rid
                         hits_by_uuid[key] = fh
@@ -1331,7 +1329,6 @@ class Query:
     @staticmethod
     def _extract_uuid(data: Dict[str, Any], rid: str) -> Optional[str]:
         """Extract a RESQML UUID from OSDU record data or ID."""
-        import re as _re
         # From data.ResourceURI: eml:///dataspace('x/y')/resqml20.obj_Type('uuid')
         uri = data.get("ResourceURI") or data.get("DataObjectURI") or ""
         m = _re.search(r"\(([0-9a-f-]{36})\)", uri)
@@ -1352,7 +1349,6 @@ class Query:
     @staticmethod
     def _extract_dataspace(data: Dict[str, Any], rid: str) -> Optional[str]:
         """Extract dataspace from OSDU record ResourceURI."""
-        import re as _re
         # eml:///dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation(...)
         uri = data.get("ResourceURI") or data.get("DataObjectURI") or ""
         m = _re.search(r"dataspace\(['\"]?([^'\")\s]+)['\"]?\)", uri)
@@ -1363,7 +1359,6 @@ class Query:
     @staticmethod
     def _extract_resqml_type(kind: str, data: Dict[str, Any]) -> Optional[str]:
         """Infer RESQML type from ResourceURI or OSDU kind."""
-        import re as _re
         # From ResourceURI: eml:///dataspace('x')/resqml20.obj_Grid2dRepresentation('uuid')
         uri = data.get("ResourceURI") or data.get("DataObjectURI") or ""
         m = _re.search(r"(resqml\d+\.obj_\w+)", uri)
@@ -1679,25 +1674,14 @@ async def graphql_query_api(request: Request):
 @router.get("/api/graphql/info")
 async def graphql_info():
     """Return GraphQL backend configuration info (no auth required)."""
-    import re
+    from .pg_backend import get_connection_info
 
+    ci = get_connection_info()
     pool = await _get_pool()
-    pg_configured = bool(_PG_CONN_STRING)
-    pg_connected = pool is not None
-    # Mask password in connection string for display
-    display_conn = ""
-    if _PG_CONN_STRING:
-        display_conn = re.sub(r"password=\S+", "password=***", _PG_CONN_STRING)
-        display_conn = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", display_conn)
-
-    # Remote RDDMS PG info
     rddms_pool = await _get_rddms_pool()
-    rddms_pg_configured = bool(_RDDMS_PG_CONN_STRING)
+
+    pg_connected = pool is not None
     rddms_pg_connected = rddms_pool is not None
-    display_rddms_conn = ""
-    if _RDDMS_PG_CONN_STRING:
-        display_rddms_conn = re.sub(r"password=\S+", "password=***", _RDDMS_PG_CONN_STRING)
-        display_rddms_conn = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", display_rddms_conn)
 
     # Determine backend description
     backends = []
@@ -1710,12 +1694,12 @@ async def graphql_info():
     backend_str = " + ".join(backends) + (" + REST fallback" if backends != ["REST API"] else "")
 
     return JSONResponse({
-        "pg_configured": pg_configured,
+        "pg_configured": ci["pg_configured"],
         "pg_connected": pg_connected,
-        "pg_connection": display_conn or None,
-        "rddms_pg_configured": rddms_pg_configured,
+        "pg_connection": ci["pg_conn_string"],
+        "rddms_pg_configured": ci["rddms_pg_configured"],
         "rddms_pg_connected": rddms_pg_connected,
-        "rddms_pg_connection": display_rddms_conn or None,
+        "rddms_pg_connection": ci["rddms_pg_conn_string"],
         "backend": backend_str,
         "hint": "Set GRAPHQL_PG_CONN_STRING for local PG, RDDMS_PG_CONN_STRING for remote RDDMS PG. "
                 "REST API is always available as fallback.",

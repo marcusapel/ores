@@ -16,6 +16,8 @@ from typing import Any, Dict, List
 import httpx
 from fastapi import HTTPException, Request
 
+from fastapi.responses import JSONResponse as _JSONResponse
+
 from . import osdu
 from .cache import cached_call
 
@@ -116,9 +118,22 @@ def normalize_obj(raw: Any, uuid: str) -> Dict[str, Any]:
     return {}
 
 
-def encode_dataspace(path: str) -> str:
-    """URL-encode a dataspace path for RDDMS REST API calls."""
-    return urllib.parse.quote(path, safe="")
+def http_error_response(e) -> _JSONResponse:
+    """Build a standard JSON error response from an ``httpx.HTTPStatusError``.
+
+    Used by route handlers to avoid repeating the same 5-line
+    ``except HTTPStatusError`` block.
+    """
+    r = e.response
+    return _JSONResponse(
+        {
+            "status": "error",
+            "code": r.status_code,
+            "reason": r.reason_phrase,
+            "detail": (r.text[:2000] if r.text else ""),
+        },
+        status_code=r.status_code or 500,
+    )
 
 
 async def search_reservoirs(
