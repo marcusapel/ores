@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from . import osdu
 from . import resqml_viz
 from . import structuremap as smap_mod
-from .common import access_token as _access_token, normalize_obj, http_error_response as _normalize_resource_obj
+from .common import access_token as _access_token, normalize_obj as _normalize_resource_obj, http_error_response
 from .schemahandler import extract_metadata_generic
 
 router = APIRouter()
@@ -374,8 +374,11 @@ async def keys_object_json(
 
     # ── REST fallback ─────────────────────────────────────────────────
     if obj is None:
-        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-        obj = _normalize_resource_obj(obj_raw, uuid_s)
+        try:
+            obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+            obj = _normalize_resource_obj(obj_raw, uuid_s)
+        except HTTPStatusError as exc:
+            return http_error_response(exc)
         try:
             arrays = await osdu.list_arrays(at, enc, typ_s, uuid_s)
         except Exception as e:
@@ -975,8 +978,11 @@ async def keys_object_table(
     uuid_s = _sanitize_uuid(uuid)
 
     # 1. Get the Grid2d object to extract shape
-    obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-    obj = _normalize_resource_obj(obj_raw, uuid_s)
+    try:
+        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+        obj = _normalize_resource_obj(obj_raw, uuid_s)
+    except HTTPStatusError as exc:
+        return http_error_response(exc)
 
     ctype = obj.get("$type") or obj.get("contentType") or ""
     if "Grid2dRepresentation" not in ctype and "Grid2dRepresentation" not in typ_s:
@@ -1511,9 +1517,11 @@ async def keys_object_graph(
 
     # ── REST fallback ─────────────────────────────────────────────────
     if obj is None:
-        # Primary resource (defensive against list-shaped responses)
-        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-        obj = _normalize_resource_obj(obj_raw, uuid_s)
+        try:
+            obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+            obj = _normalize_resource_obj(obj_raw, uuid_s)
+        except HTTPStatusError as exc:
+            return http_error_response(exc)
     else:
         obj_raw = obj
 
