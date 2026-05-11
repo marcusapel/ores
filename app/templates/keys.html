@@ -313,18 +313,16 @@
               <option value="array_sample">Array sample values</option>
             </optgroup>
             <optgroup label="Federated (Catalog + RDDMS)">
-              <option value="fed_local">Federated: local RDDMS only</option>
-              <option value="fed_catalog">Federated: OSDU catalog only</option>
-              <option value="fed_both">Federated: all three sources</option>
-              <option value="fed_enrich">Federated: all + enrichment</option>
-            </optgroup>
-            <optgroup label="Cross-System (only via GraphQL)">
+              <option value="fed_local">Local RDDMS only (un-indexed PG data)</option>
+              <option value="fed_catalog">OSDU catalog only (metadata)</option>
+              <option value="fed_both">All three sources (merged by UUID)</option>
+              <option value="fed_enrich">All + relations + property stats</option>
               <option value="xref_grid_props">Grid in catalog → properties in RDDMS</option>
               <option value="xref_horizon_reps">Horizon in catalog → RDDMS representations</option>
               <option value="xref_orphan_rddms">RDDMS objects NOT in catalog (orphans)</option>
               <option value="xref_catalog_only">Catalog records missing from RDDMS</option>
-              <option value="xref_well_chain">Well chain: catalog WPC → RDDMS graph traversal</option>
-              <option value="xref_grid_full">Full grid lineage: catalog → RDDMS → properties + stats</option>
+              <option value="xref_well_chain">Well chain: catalog → RDDMS graph traversal</option>
+              <option value="xref_grid_full">Full lineage: catalog → RDDMS → props + filter</option>
             </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>
