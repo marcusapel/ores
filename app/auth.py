@@ -68,7 +68,13 @@ async def tokens_from_env() -> Optional[Dict[str, Any]]:
     if _cached_env_token and time.time() < _cached_env_token_exp:
         return _cached_env_token
 
-    async with AsyncOAuth2Client(client_id=CLIENT_ID, scope=SCOPES) as cli:
+    # Confidential clients require client_secret in every token request
+    client_secret = _get_client_secret()
+    oauth_kwargs: Dict[str, Any] = dict(client_id=CLIENT_ID, scope=SCOPES)
+    if client_secret:
+        oauth_kwargs["client_secret"] = client_secret
+
+    async with AsyncOAuth2Client(**oauth_kwargs) as cli:
         token = await cli.fetch_token(
             TOKEN_URL,
             grant_type="refresh_token",
