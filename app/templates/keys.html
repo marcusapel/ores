@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}RDDMS - Resources{% endblock %}
+{% block title %}Reservoir DDMS - Resources{% endblock %}
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
@@ -15,7 +15,7 @@
   .data-table .uom-row th { background: #f3f2f1; font-weight: normal; font-style: italic; color: #605e5c; }
   .data-table td { font-variant-numeric: tabular-nums; }
   .section { margin-top: 20px; }
-  .section h3 { margin-bottom: 6px; color: #004578; }
+  .section h3 { margin-bottom: 6px; }
   .badge { display: inline-block; background: #e1dfdd; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-left: 6px; }
   .tag { display: inline-block; background: #deecf9; color: #004578; border-radius: 3px; padding: 1px 6px; font-size: 12px; margin-right: 4px; }
   .truncation-notice { background: #fff4ce; padding: 6px 10px; border-left: 3px solid #ffb900; margin-bottom: 8px; font-size: 13px; }
@@ -23,7 +23,7 @@
   .btn-action:hover { background:#0b5ed7 !important; border-color:#0b5ed7 !important; box-shadow: 0 3px 8px rgba(13,110,253,.45) !important; }
   .grid2d-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .grid2d-btns .btn { min-width: 130px; text-align: center; }
-  .grid2d-btns .btn.active { background: #004578; color: #fff; }
+  .grid2d-btns .btn.active { background: var(--eq-red, #FF1243); color: #fff; border-color: var(--eq-red, #FF1243); }
   .map-wrap { text-align: center; margin-top: 8px; }
   .map-wrap img { max-width: 100%; border: 1px solid #e1dfdd; border-radius: 4px; }
   .map-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: 13px; }
@@ -36,7 +36,7 @@
   .viewer3d-legend-labels { position: absolute; top: 10px; right: 42px; color: #ccc; font-size: 10px; text-shadow: 0 1px 2px #000; display: flex; flex-direction: column; justify-content: space-between; height: 200px; }
   .btn-3d { background: #107c10; color: #fff; border-color: #107c10; }
   .btn-3d:hover { background: #0e6b0e !important; border-color: #0e6b0e !important; }
-  .btn-3d.active { background: #004578; border-color: #004578; }
+  .btn-3d.active { background: var(--eq-red, #FF1243); border-color: var(--eq-red, #FF1243); }
 
   /* ── 3D Results Popup Modal ── */
   .gql3d-overlay {
@@ -89,7 +89,7 @@
 {% endblock %}
 
 {% block content %}
-  <h2>Resources</h2>
+  <h2>Reservoir DDMS - Resources</h2>
 
   <div class="row">
     <label>Dataspace</label>
@@ -203,8 +203,8 @@
 
         <!-- ── Mode tabs: Easy | Advanced ──────────────────────────────────── -->
         <div style="display:flex;gap:2px;margin-bottom:10px;">
-          <button id="mode-easy" class="btn" style="font-size:12px;padding:4px 14px;border-radius:4px 4px 0 0;background:#004578;color:#fff;border-bottom:2px solid #004578;">Easy Mode</button>
-          <button id="mode-advanced" class="btn" style="font-size:12px;padding:4px 14px;border-radius:4px 4px 0 0;background:#f3f2f1;color:#323130;border-bottom:2px solid #e1dfdd;">GraphQL</button>
+          <button id="mode-easy" class="btn" style="font-size:12px;padding:4px 14px;border-radius:4px 4px 0 0;background:transparent;color:var(--eq-red, #FF1243);font-weight:600;border:none;border-bottom:2px solid var(--eq-red, #FF1243);">Easy Mode</button>
+          <button id="mode-advanced" class="btn" style="font-size:12px;padding:4px 14px;border-radius:4px 4px 0 0;background:transparent;color:#605e5c;font-weight:500;border:none;border-bottom:2px solid transparent;">GraphQL</button>
         </div>
 
         <!-- ── Easy Mode: Visual Query Builder ─────────────────────────────── -->
@@ -241,13 +241,16 @@
             </div>
 
             <label style="font-weight:600;color:#323130;">Filter</label>
-            <div style="display:flex;gap:6px;align-items:center;" id="ez-filter-row">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;" id="ez-filter-row">
               <select id="ez-op" style="width:80px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
                 <option value="">-</option>
               </select>
-              <input id="ez-threshold" type="number" step="any" placeholder="threshold value"
-                     style="flex:1;max-width:180px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
-              <span style="font-size:11px;color:#605e5c;">(e.g. 0.25, 500)</span>
+              <input id="ez-threshold" type="number" step="any" placeholder="low / threshold"
+                     style="flex:1;max-width:140px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
+              <span id="ez-range-sep" style="font-size:12px;color:#605e5c;display:none;">to</span>
+              <input id="ez-threshold-high" type="number" step="any" placeholder="high"
+                     style="flex:1;max-width:140px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;display:none;">
+              <span id="ez-filter-hint" style="font-size:11px;color:#605e5c;">(e.g. 0.25, 500)</span>
             </div>
 
             <label style="font-weight:600;color:#323130;">Options</label>
@@ -330,8 +333,8 @@
         </details>
 
         <div style="margin-top:10px;display:flex;gap:6px;align-items:center;">
-          <button id="gql-tab-json" class="btn" style="font-size:12px;padding:3px 10px;background:#004578;color:#fff;">JSON</button>
-          <button id="gql-tab-graph" class="btn" style="font-size:12px;padding:3px 10px;">Graph</button>
+          <button id="gql-tab-json" class="btn" style="font-size:12px;padding:3px 10px;background:transparent;color:var(--eq-red, #FF1243);font-weight:600;border:none;border-bottom:2px solid var(--eq-red, #FF1243);">JSON</button>
+          <button id="gql-tab-graph" class="btn" style="font-size:12px;padding:3px 10px;background:transparent;color:#605e5c;font-weight:500;border:none;border-bottom:2px solid transparent;">Graph</button>
           <span id="gql-graph-hint" class="muted" style="font-size:11px;display:none;">Auto-generated from object_relations / deep_search results</span>
         </div>
         <div id="gql-result" style="margin-top:6px;max-height:70vh;overflow:auto;border:1px solid #c8e6c9;border-radius:4px;background:#f6fdf6;">
@@ -450,6 +453,15 @@
         ezOp.appendChild(o);
       });
 
+      // Show/hide range inputs when BETWEEN is selected
+      ezOp.addEventListener('change', () => {
+        const isBetween = ezOp.value === 'BETWEEN';
+        $('ez-threshold-high').style.display = isBetween ? '' : 'none';
+        $('ez-range-sep').style.display = isBetween ? '' : 'none';
+        $('ez-filter-hint').textContent = isBetween ? '(e.g. 0.15 to 0.30)' : '(e.g. 0.25, 500)';
+        $('ez-threshold').placeholder = isBetween ? 'low' : 'threshold value';
+      });
+
       // Populate property picker dropdown
       const propPick = $('ez-prop-pick');
       propPick.innerHTML = '<option value="">(pick or type below)</option>';
@@ -513,6 +525,7 @@
       const prop = $('ez-prop').value.trim();
       const op = $('ez-op').value;
       const threshold = $('ez-threshold').value;
+      const thresholdHigh = $('ez-threshold-high').value;
       const stats = $('ez-stats').checked;
       const relations = $('ez-relations').checked;
       const sample = $('ez-sample').checked;
@@ -530,7 +543,11 @@
           const filterField = matchMode === 'strict' ? 'kind' : 'titleContains';
           propFilter = `propertyFilter: { ${filterField}: "${prop}"`;
           if (op && threshold) {
-            propFilter += `, arrayFilter: { threshold: ${parseFloat(threshold)}, operator: ${op} }`;
+            let af = `threshold: ${parseFloat(threshold)}, operator: ${op}`;
+            if (op === 'BETWEEN' && thresholdHigh) {
+              af += `, thresholdHigh: ${parseFloat(thresholdHigh)}`;
+            }
+            propFilter += `, arrayFilter: { ${af} }`;
           }
           propFilter += ' }';
         }
@@ -800,14 +817,14 @@
     $('mode-easy').addEventListener('click', () => {
       $('easy-panel').style.display = '';
       $('advanced-panel').style.display = 'none';
-      $('mode-easy').style.background = '#004578'; $('mode-easy').style.color = '#fff'; $('mode-easy').style.borderBottom = '2px solid #004578';
-      $('mode-advanced').style.background = '#f3f2f1'; $('mode-advanced').style.color = '#323130'; $('mode-advanced').style.borderBottom = '2px solid #e1dfdd';
+      $('mode-easy').style.background = 'transparent'; $('mode-easy').style.color = 'var(--eq-red, #FF1243)'; $('mode-easy').style.fontWeight = '600'; $('mode-easy').style.borderBottom = '2px solid var(--eq-red, #FF1243)';
+      $('mode-advanced').style.background = 'transparent'; $('mode-advanced').style.color = '#605e5c'; $('mode-advanced').style.fontWeight = '500'; $('mode-advanced').style.borderBottom = '2px solid transparent';
     });
     $('mode-advanced').addEventListener('click', () => {
       $('easy-panel').style.display = 'none';
       $('advanced-panel').style.display = '';
-      $('mode-advanced').style.background = '#004578'; $('mode-advanced').style.color = '#fff'; $('mode-advanced').style.borderBottom = '2px solid #004578';
-      $('mode-easy').style.background = '#f3f2f1'; $('mode-easy').style.color = '#323130'; $('mode-easy').style.borderBottom = '2px solid #e1dfdd';
+      $('mode-advanced').style.background = 'transparent'; $('mode-advanced').style.color = 'var(--eq-red, #FF1243)'; $('mode-advanced').style.fontWeight = '600'; $('mode-advanced').style.borderBottom = '2px solid var(--eq-red, #FF1243)';
+      $('mode-easy').style.background = 'transparent'; $('mode-easy').style.color = '#605e5c'; $('mode-easy').style.fontWeight = '500'; $('mode-easy').style.borderBottom = '2px solid transparent';
     });
 
     // ── Easy Mode event handlers ──────────────────────────────────────────────
@@ -3083,16 +3100,16 @@
     gqlTabJson.addEventListener('click', () => {
       gqlResultDiv.style.display = '';
       gqlGraphDiv.style.display = 'none';
-      gqlTabJson.style.background = '#004578'; gqlTabJson.style.color = '#fff';
-      gqlTabGraph.style.background = ''; gqlTabGraph.style.color = '';
+      gqlTabJson.style.background = 'transparent'; gqlTabJson.style.color = 'var(--eq-red, #FF1243)'; gqlTabJson.style.fontWeight = '600'; gqlTabJson.style.borderBottom = '2px solid var(--eq-red, #FF1243)';
+      gqlTabGraph.style.background = 'transparent'; gqlTabGraph.style.color = '#605e5c'; gqlTabGraph.style.fontWeight = '500'; gqlTabGraph.style.borderBottom = '2px solid transparent';
       gqlGraphHint.style.display = 'none';
     });
     gqlTabGraph.addEventListener('click', () => {
       if (!_lastMermaidCode) { gqlGraphHint.textContent = 'No graph data in last response'; gqlGraphHint.style.display = ''; return; }
       gqlResultDiv.style.display = 'none';
       gqlGraphDiv.style.display = '';
-      gqlTabGraph.style.background = '#004578'; gqlTabGraph.style.color = '#fff';
-      gqlTabJson.style.background = ''; gqlTabJson.style.color = '';
+      gqlTabGraph.style.background = 'transparent'; gqlTabGraph.style.color = 'var(--eq-red, #FF1243)'; gqlTabGraph.style.fontWeight = '600'; gqlTabGraph.style.borderBottom = '2px solid var(--eq-red, #FF1243)';
+      gqlTabJson.style.background = 'transparent'; gqlTabJson.style.color = '#605e5c'; gqlTabJson.style.fontWeight = '500'; gqlTabJson.style.borderBottom = '2px solid transparent';
       gqlGraphHint.style.display = '';
     });
 

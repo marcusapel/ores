@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════════════════════════════════
 OSDU ↔ Remote RDDMS: Pitfalls, TODOs & Admin Requests
-Updated: 2026-05-10  (cleaned done items)
+Updated: 2026-05-11  (cleaned done items)
 ═══════════════════════════════════════════════════════════════════════
 
 This doc captures lessons learned from the RDDMS ↔ OSDU catalog
@@ -61,6 +61,22 @@ roundtrip, plus improvements and admin items needed for production.
      Impact:   "Create a dataspace" form in /admin is broken.
      See also: §3.7.
 
+1.9  ETP Authorize timeout (M26?)
+     ─────────────────────────────
+     wss://equinorswedev.energy.azure.com/api/reservoir-ddms-etp/v2/
+     ETP Core(0).Authorize(6) times out. App registration ebd2bfee
+     had access before M26. Now the WebSocket connection opens but
+     the Authorize handshake never completes.
+     See also: §3.8.
+
+1.10 Radix ingress routes to wrong app
+     ──────────────────────────────────
+     https://web-ores-dev.c3.radix.equinor.com shows "OsduUi - Home"
+     in the browser tab instead of ORES. The Radix ingress is
+     routing to the OSDU UI container instead of the ORES pod.
+     Same root cause suspected as §1.8 — M26 gateway/routing change.
+     See also: §3.9.
+
 
 ───────────────────────────────────────────────────────────────────────
 2. TODO / IMPROVEMENTS (code)
@@ -113,6 +129,14 @@ roundtrip, plus improvements and admin items needed for production.
      error page instead of forwarding to the RDDMS service.
      Needs investigation: gateway routing change or payload format.
 
+3.8  ETP Authorize timeout (M26 regression)
+     wss endpoint opens but Core(0).Authorize(6) never completes.
+     App ebd2bfee had working access before M26.
+
+3.9  Radix ingress routes to OSDU UI instead of ORES
+     web-ores-dev.c3.radix shows OsduUi tab title. Likely the
+     ingress backend was inadvertently changed during M26 deploy.
+
 
 ───────────────────────────────────────────────────────────────────────
 4. ROUNDTRIP FLOW
@@ -147,9 +171,10 @@ roundtrip, plus improvements and admin items needed for production.
 
   /graphql — deep_search
      Array threshold filtering needs PG access for cell values.
+     (REST path implemented but RDDMS doesn't expose all arrays.)
 
   /graphql — federated_search
-     Max 10 dataspaces auto-discovered; 5 hardcoded RESQML types.
+     Auto-discovers up to 50 dataspaces; searches 12 RESQML types.
      OSDU full-text search may produce false positives.
 
   /analyse — compare
@@ -160,15 +185,17 @@ roundtrip, plus improvements and admin items needed for production.
      Heuristic STL matching may pick wrong lookup table.
 
   /keys — structuremaps
-     Time-domain Grid2d surfaces silently skipped.
+     Time-domain Grid2d surfaces skipped (count shown in response
+     as time_count / skipped_count).
 
   /strat — SMDA import/push
      Requires `az` CLI or SMDA_API_KEY. Non-functional without.
 
   /api/manifest/last
-     In-memory only: max 50, 1h TTL, lost on pod restart.
+     In-memory only: max 200, 4h TTL, lost on pod restart.
 
   /search — wildcard kind queries
-     ADME rejects kind:*. Auto-resolves but adds roundtrips.
+     ADME rejects kind:*. Auto-resolves via probe; results cached
+     5 min to avoid repeated round-trips.
 
 ───────────────────────────────────────────────────────────────────────

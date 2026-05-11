@@ -446,6 +446,7 @@ class ComparisonOperator(Enum):
     LT = "LT"
     LTE = "LTE"
     EQ = "EQ"
+    BETWEEN = "BETWEEN"
 
 
 @strawberry.type
@@ -581,9 +582,14 @@ class FederatedSearchResult:
 
 @strawberry.input
 class ArrayFilter:
-    """Filter on array values (deep search into numerical data)."""
+    """Filter on array values (deep search into numerical data).
+
+    For BETWEEN, supply both *threshold* (low) and *threshold_high* (high).
+    Matches values where  threshold <= v <= threshold_high.
+    """
     threshold: float
     operator: ComparisonOperator = ComparisonOperator.GT
+    threshold_high: Optional[float] = None
 
 
 @strawberry.input
@@ -614,7 +620,12 @@ def _compute_statistics(values: List[float]) -> ArrayStatistics:
     )
 
 
-def _check_threshold(values: List[float], threshold: float, op: ComparisonOperator) -> CellMatch:
+def _check_threshold(
+    values: List[float],
+    threshold: float,
+    op: ComparisonOperator,
+    threshold_high: Optional[float] = None,
+) -> CellMatch:
     total = len(values)
     if total == 0:
         return CellMatch(count=0, total=0, fraction=0.0)
@@ -624,6 +635,7 @@ def _check_threshold(values: List[float], threshold: float, op: ComparisonOperat
         ComparisonOperator.LT: lambda v: v < threshold,
         ComparisonOperator.LTE: lambda v: v <= threshold,
         ComparisonOperator.EQ: lambda v: abs(v - threshold) < 1e-9,
+        ComparisonOperator.BETWEEN: lambda v: threshold <= v <= (threshold_high if threshold_high is not None else threshold),
     }
     check = ops[op]
     count = sum(1 for v in values if math.isfinite(v) and check(v))
@@ -827,7 +839,7 @@ async def _deep_search_pg(
                                 ai.sample_values = values[:sample_size]
                             if property_filter and property_filter.array_filter:
                                 af = property_filter.array_filter
-                                match_result = _check_threshold(values, af.threshold, af.operator)
+                                match_result = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
                                 prop_info.matching_cells = match_result
                                 if match_result.count > 0:
                                     passes_filter = True
@@ -1334,6 +1346,13 @@ class Query:
                 "resqml20.obj_WellboreFrameRepresentation",
                 "resqml20.obj_WellboreFeature",
                 "resqml20.obj_HorizonInterpretation",
+                "resqml20.obj_TriangulatedSetRepresentation",
+                "resqml20.obj_PolylineSetRepresentation",
+                "resqml20.obj_ContinuousProperty",
+                "resqml20.obj_DiscreteProperty",
+                "resqml20.obj_StratigraphicColumn",
+                "resqml20.obj_FaultInterpretation",
+                "resqml20.obj_GeobodyBoundaryInterpretation",
             ]
 
         title_filter = text if text != "*" else None
@@ -1351,7 +1370,7 @@ class Query:
 
                 ds_list = list(dataspaces) if dataspaces else []
                 if not ds_list:
-                    ds_list = list(local_ds_set)[:10]
+                    ds_list = list(local_ds_set)[:50]
 
                 # Only search local dataspaces via PG
                 local_dataspaces = [d for d in ds_list if d in local_ds_set]
@@ -1409,7 +1428,7 @@ class Query:
                 try:
                     remote_rows = await _rest_list_dataspaces(token)
                     remote_dataspaces = [d["path"] for d in remote_rows
-                                        if d["path"] not in local_ds_set_c][:10]
+                                        if d["path"] not in local_ds_set_c][:50]
                 except Exception:
                     remote_dataspaces = []
 
@@ -1517,7 +1536,7 @@ class Query:
                                                 pi.statistics = _compute_statistics(values)
                                                 if property_filter and property_filter.array_filter:
                                                     af = property_filter.array_filter
-                                                    match = _check_threshold(values, af.threshold, af.operator)
+                                                    match = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
                                                     pi.matching_cells = match
                                                     if match.count > 0:
                                                         passes_filter = True
@@ -1812,7 +1831,7 @@ async def _deep_search_rest(
                         # Array threshold filter
                         if property_filter and property_filter.array_filter:
                             af = property_filter.array_filter
-                            match = _check_threshold(values, af.threshold, af.operator)
+                            match = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
                             prop_info.matching_cells = match
                             if match.count > 0:
                                 passes_filter = True
@@ -1844,7 +1863,10 @@ async def _deep_search_rest(
             desc_parts.append(f"property.kind='{property_filter.kind}'")
         if property_filter.array_filter:
             af = property_filter.array_filter
-            desc_parts.append(f"cellValue {af.operator.value} {af.threshold}")
+            if af.operator == ComparisonOperator.BETWEEN and af.threshold_high is not None:
+                desc_parts.append(f"cellValue BETWEEN {af.threshold} AND {af.threshold_high}")
+            else:
+                desc_parts.append(f"cellValue {af.operator.value} {af.threshold}")
 
     # Add summary warning when objects were scanned & kind-matched but array filter rejected all
     if property_filter and property_filter.array_filter and total_scanned > 0 and len(matched) == 0:
@@ -2020,6 +2042,7 @@ _OPERATORS = [
     {"value": "LT", "label": "< (less than)", "symbol": "<"},
     {"value": "LTE", "label": "≤ (less or equal)", "symbol": "≤"},
     {"value": "EQ", "label": "= (equal)", "symbol": "="},
+    {"value": "BETWEEN", "label": "between (range)", "symbol": "↔"},
 ]
 
 # Build alias → canonical lookup

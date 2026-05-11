@@ -37,10 +37,10 @@
 .imp-panel { background: #f9f9ff; border: 1px solid #d0d0e8; }
 .imp-tabs { display:flex; gap:0; border-bottom:2px solid #e1dfdd; margin-bottom:.75rem; }
 .imp-tab { padding:.45rem .9rem; cursor:pointer; font-weight:500; font-size:13.5px;
-  border:1px solid transparent; border-bottom:none; border-radius:6px 6px 0 0;
-  color:#605e5c; background:transparent; transition:background .15s; }
+  border:none; border-bottom:2px solid transparent;
+  color:#605e5c; background:transparent; transition:background .15s; margin-bottom:-2px; }
 .imp-tab:hover { background:#f3f2f1; }
-.imp-tab.active { color:#007079; background:#fff; border-color:#d0d0e8; border-bottom:2px solid #fff; margin-bottom:-2px; }
+.imp-tab.active { color:var(--eq-red, #FF1243); font-weight:600; border-bottom-color:var(--eq-red, #FF1243); background:transparent; }
 .imp-body { display:none; }
 .imp-body.active { display:block; }
 .imp-status { font-size:13px; margin-top:.5rem; padding:6px 10px; border-radius:4px; }
@@ -198,7 +198,7 @@
 
 <!-- Import / Ingest (always visible, lowermost section) -->
 <section class="sc-wrap sc-panel imp-panel" style="margin-top:.75rem;">
-    <h3 style="margin:0 0 .5rem 0; color:#007079;">Import &amp; Ingest Stratigraphic Columns</h3>
+    <h3 style="margin:0 0 .5rem 0;">Import &amp; Ingest Stratigraphic Columns</h3>
     <div class="imp-tabs">
       <span class="imp-tab active" data-tab="ow">OpenWorks JSON</span>
       <span class="imp-tab" data-tab="smda">SMDA API</span>
