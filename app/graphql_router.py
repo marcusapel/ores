@@ -2032,7 +2032,6 @@ _RESQML_TYPES = [
     {"name": "resqml20.obj_PropertyKind", "short": "PropertyKind", "category": "Property", "description": "Custom property kind definition"},
     {"name": "resqml20.obj_Activity", "short": "Activity", "category": "Provenance", "description": "Workflow activity that created/modified objects"},
     {"name": "resqml20.obj_ActivityTemplate", "short": "ActivityTemplate", "category": "Provenance", "description": "Template for activity parameterization"},
-    {"name": "eml20.obj_EpcExternalPartReference", "short": "EpcExtPart", "category": "Container", "description": "Reference to external array data (EPC packaging artefact)"},
 ]
 
 # Comparison operators
