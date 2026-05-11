@@ -306,3 +306,17 @@ class TestSavedQueries:
         q2 = list_queries(carol["oid"], "inst2")
         assert all(q["name"] != "Inst2 query" for q in q1)
         assert all(q["name"] != "Inst1 query" for q in q2)
+
+    def test_graphql_kind_marker(self):
+        """GraphQL queries use kind='__graphql__' and can be filtered."""
+        alice = USERS["alice"]
+        save_query(alice["oid"], "gql-test", "Search BD", "osdu:wks:BD:*", "q")
+        save_query(alice["oid"], "gql-test", "My GQL", "__graphql__", "{ status }")
+        all_q = list_queries(alice["oid"], "gql-test")
+        search_q = [q for q in all_q if q["kind"] != "__graphql__"]
+        graphql_q = [q for q in all_q if q["kind"] == "__graphql__"]
+        assert len(search_q) == 1
+        assert search_q[0]["name"] == "Search BD"
+        assert len(graphql_q) == 1
+        assert graphql_q[0]["name"] == "My GQL"
+        assert graphql_q[0]["query"] == "{ status }"

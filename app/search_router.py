@@ -1267,10 +1267,15 @@ def _user_ctx(request: Request) -> tuple[str, str]:
 
 
 @router.get("/api/queries")
-async def api_list_queries(request: Request):
-    """List saved queries for the current user."""
+async def api_list_queries(request: Request, source: str = ""):
+    """List saved queries for the current user.  ?source=search|graphql."""
     oid, inst = _user_ctx(request)
-    return _ts_list_queries(oid, inst)
+    all_q = _ts_list_queries(oid, inst)
+    if source == "search":
+        return [q for q in all_q if q["kind"] != "__graphql__"]
+    if source == "graphql":
+        return [q for q in all_q if q["kind"] == "__graphql__"]
+    return all_q
 
 
 @router.post("/api/queries")
