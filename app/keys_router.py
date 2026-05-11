@@ -643,7 +643,6 @@ async def dataspaces_manifest_build_uris(
         return http_error_response(e)
     log.info("build-uris: manifest built in %.1fs (uris=%d, total=%.1fs)",
              time.monotonic() - t1, len(safe_uris), time.monotonic() - t0)
-    request.app.state.last_manifest = manifest
     result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
     if skipped:
         result["skippedUris"] = len(skipped)
@@ -765,7 +764,6 @@ async def dataspaces_manifest_build_from_selection(
     except HTTPStatusError as e:
         return http_error_response(e)
 
-    request.app.state.last_manifest = manifest
     log.info("Manifest build: ds_paths=%d items=%d raw_uris=%d → safe=%d skipped=%d",
              len(ds_paths), len(items), len(raw_uris), len(safe_uris), len(skipped))
     result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
@@ -899,9 +897,6 @@ async def dataspaces_manifest_structuremaps(
         clean_smaps.append(rec)
 
     manifest = smap_mod.wrap_as_manifest(clean_smaps, dataspace=ds)
-
-    # Stash for the front-end
-    request.app.state.last_manifest = manifest
 
     return JSONResponse({
         "status": "ok",

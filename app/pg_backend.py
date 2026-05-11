@@ -27,6 +27,7 @@ Public API:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -53,6 +54,9 @@ _pool = None  # asyncpg.Pool or None
 _RDDMS_PG_CONN_STRING = os.getenv("RDDMS_PG_CONN_STRING", "")
 _rddms_pool = None  # asyncpg.Pool or None – remote RDDMS PG
 
+# Async lock to prevent double pool creation under concurrent requests.
+_pool_lock = asyncio.Lock()
+
 
 def _parse_dsn(conn_str: str) -> str:
     """Normalise a connection string to a DSN URI if needed."""
@@ -75,14 +79,18 @@ async def get_pool():
         return _pool
     if not _PG_CONN_STRING:
         return None
-    try:
-        import asyncpg
-        dsn = _parse_dsn(_PG_CONN_STRING)
-        _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=10, command_timeout=60)
-        log.info("GraphQL PG pool created (local)")
-    except Exception as e:
-        log.warning("PG pool failed (will use REST fallback): %s", e)
-        _pool = None
+    async with _pool_lock:
+        # Double-check after acquiring lock
+        if _pool is not None:
+            return _pool
+        try:
+            import asyncpg
+            dsn = _parse_dsn(_PG_CONN_STRING)
+            _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=10, command_timeout=60)
+            log.info("GraphQL PG pool created (local)")
+        except Exception as e:
+            log.warning("PG pool failed (will use REST fallback): %s", e)
+            _pool = None
     return _pool
 
 
@@ -98,14 +106,18 @@ async def get_rddms_pool():
         return _rddms_pool
     if not _RDDMS_PG_CONN_STRING:
         return None
-    try:
-        import asyncpg
-        dsn = _parse_dsn(_RDDMS_PG_CONN_STRING)
-        _rddms_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, command_timeout=120)
-        log.info("Remote RDDMS PG pool created")
-    except Exception as e:
-        log.warning("Remote RDDMS PG pool failed (will use REST fallback): %s", e)
-        _rddms_pool = None
+    async with _pool_lock:
+        # Double-check after acquiring lock
+        if _rddms_pool is not None:
+            return _rddms_pool
+        try:
+            import asyncpg
+            dsn = _parse_dsn(_RDDMS_PG_CONN_STRING)
+            _rddms_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, command_timeout=120)
+            log.info("Remote RDDMS PG pool created")
+        except Exception as e:
+            log.warning("Remote RDDMS PG pool failed (will use REST fallback): %s", e)
+            _rddms_pool = None
     return _rddms_pool
 
 
