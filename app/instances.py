@@ -167,7 +167,7 @@ def _load_instances():
 
     for inst_name in sorted(seen):
         prefix = f"INSTANCE_{inst_name.upper()}_"
-        _get = lambda field, default="": os.getenv(f"{prefix}{field}", default)
+        _get = lambda field, default="": os.getenv(f"{prefix}{field}", default).strip()
 
         hostname = _get("HOSTNAME")
         if not hostname:
