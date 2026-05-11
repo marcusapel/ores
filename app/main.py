@@ -237,6 +237,7 @@ templates.env.globals["auth_mode"] = _AUTH_MODE_AFTER_INIT
 # Add /api/instances/* to PUBLIC_PATHS so they work before auth
 # (switching / adding happens before a valid token exists for the new instance)
 PUBLIC_PATHS.add("/api/instances")
+PUBLIC_PATHS.add("/api/instances/probe")
 PUBLIC_PATHS.add("/api/instances/switch")
 PUBLIC_PATHS.add("/api/instances/add")
 
@@ -257,6 +258,17 @@ async def api_instances():
             for name, inst in insts.items()
         },
     }
+
+
+@app.get("/api/instances/probe")
+async def api_probe_instance():
+    """Test whether the active instance can mint a token right now."""
+    inst = get_active()
+    try:
+        token = await inst.get_access_token()
+        return {"ok": token is not None, "instance": inst.name, "auth_mode": inst.auth_mode}
+    except Exception as e:
+        return {"ok": False, "instance": inst.name, "auth_mode": inst.auth_mode, "error": str(e)}
 
 
 @app.post("/api/instances/switch")
