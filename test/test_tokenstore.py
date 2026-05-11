@@ -26,6 +26,9 @@ from app.tokenstore import (
     set_cached_at,
     clear_cached_at,
     decode_id_token_payload,
+    save_query,
+    list_queries,
+    delete_query,
     _encrypt,
     _decrypt,
     _get_conn,
@@ -244,3 +247,62 @@ class TestDecodeIdToken:
 
     def test_decode_empty_string(self):
         assert decode_id_token_payload("") == {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Saved queries
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestSavedQueries:
+    """CRUD for the saved_queries table."""
+
+    def test_save_and_list(self):
+        alice = USERS["alice"]
+        row_id = save_query(alice["oid"], "inst1", "My BD query",
+                            "osdu:wks:master-data--BusinessDecision:*",
+                            'data.Name:"*Drogon*"')
+        assert row_id is not None
+        queries = list_queries(alice["oid"], "inst1")
+        assert any(q["id"] == row_id for q in queries)
+        match = [q for q in queries if q["id"] == row_id][0]
+        assert match["name"] == "My BD query"
+        assert match["kind"] == "osdu:wks:master-data--BusinessDecision:*"
+        assert match["query"] == 'data.Name:"*Drogon*"'
+
+    def test_list_empty(self):
+        queries = list_queries("nonexistent-oid", "inst1")
+        assert queries == []
+
+    def test_list_ordered_newest_first(self):
+        bob = USERS["bob"]
+        id1 = save_query(bob["oid"], "inst1", "First", "kind1", "q1")
+        id2 = save_query(bob["oid"], "inst1", "Second", "kind2", "q2")
+        queries = list_queries(bob["oid"], "inst1")
+        names = [q["name"] for q in queries]
+        assert names.index("Second") < names.index("First")
+
+    def test_delete_query(self):
+        alice = USERS["alice"]
+        row_id = save_query(alice["oid"], "inst1", "To delete", "k", "q")
+        assert delete_query(row_id, oid=alice["oid"]) is True
+        queries = list_queries(alice["oid"], "inst1")
+        assert not any(q["id"] == row_id for q in queries)
+
+    def test_delete_enforces_ownership(self):
+        alice = USERS["alice"]
+        bob = USERS["bob"]
+        row_id = save_query(alice["oid"], "inst1", "Alice only", "k", "q")
+        # Bob tries to delete Alice's query
+        delete_query(row_id, oid=bob["oid"])
+        # Alice's query should still exist
+        queries = list_queries(alice["oid"], "inst1")
+        assert any(q["id"] == row_id for q in queries)
+
+    def test_isolation_by_instance(self):
+        carol = USERS["carol"]
+        save_query(carol["oid"], "inst1", "Inst1 query", "k", "q")
+        save_query(carol["oid"], "inst2", "Inst2 query", "k", "q")
+        q1 = list_queries(carol["oid"], "inst1")
+        q2 = list_queries(carol["oid"], "inst2")
+        assert all(q["name"] != "Inst2 query" for q in q1)
+        assert all(q["name"] != "Inst1 query" for q in q2)

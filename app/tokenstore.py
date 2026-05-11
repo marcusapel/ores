@@ -120,6 +120,17 @@ def _get_conn() -> sqlite3.Connection:
                PRIMARY KEY (oid, instance_name)
            )"""
     )
+    _conn.execute(
+        """CREATE TABLE IF NOT EXISTS saved_queries (
+               id              INTEGER PRIMARY KEY AUTOINCREMENT,
+               oid             TEXT NOT NULL DEFAULT '',
+               instance_name   TEXT NOT NULL DEFAULT '',
+               name            TEXT NOT NULL,
+               kind            TEXT NOT NULL DEFAULT '',
+               query           TEXT NOT NULL DEFAULT '*',
+               created_at      REAL NOT NULL
+           )"""
+    )
     _conn.commit()
     log.info("tokenstore: opened %s", _db_path)
     return _conn
@@ -209,6 +220,65 @@ def delete(oid: str, instance: str = "") -> None:
         log.debug("tokenstore: deleted for oid=%s inst=%s", oid[:8], instance)
     except Exception as exc:
         log.warning("tokenstore.delete failed: %s", exc)
+
+
+# ── Saved queries ─────────────────────────────────────────────────────────────
+
+def save_query(oid: str, instance: str, name: str, kind: str, query: str) -> Optional[int]:
+    """Save a search query. Returns the row id, or None on failure."""
+    try:
+        with _lock:
+            conn = _get_conn()
+            cur = conn.execute(
+                """INSERT INTO saved_queries (oid, instance_name, name, kind, query, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (oid or "", instance or "", name, kind or "", query or "*", time.time()),
+            )
+            conn.commit()
+            return cur.lastrowid
+    except Exception as exc:
+        log.warning("tokenstore.save_query failed: %s", exc)
+        return None
+
+
+def list_queries(oid: str, instance: str) -> list[dict]:
+    """Return all saved queries for (oid, instance), newest first."""
+    try:
+        with _lock:
+            conn = _get_conn()
+            rows = conn.execute(
+                """SELECT id, name, kind, query, created_at
+                   FROM saved_queries
+                   WHERE oid = ? AND instance_name = ?
+                   ORDER BY created_at DESC""",
+                (oid or "", instance or ""),
+            ).fetchall()
+        return [
+            {"id": r[0], "name": r[1], "kind": r[2], "query": r[3], "created_at": r[4]}
+            for r in rows
+        ]
+    except Exception as exc:
+        log.warning("tokenstore.list_queries failed: %s", exc)
+        return []
+
+
+def delete_query(query_id: int, oid: str = "") -> bool:
+    """Delete a saved query by id. If oid is given, enforce ownership."""
+    try:
+        with _lock:
+            conn = _get_conn()
+            if oid:
+                conn.execute(
+                    "DELETE FROM saved_queries WHERE id = ? AND oid = ?",
+                    (query_id, oid),
+                )
+            else:
+                conn.execute("DELETE FROM saved_queries WHERE id = ?", (query_id,))
+            conn.commit()
+            return True
+    except Exception as exc:
+        log.warning("tokenstore.delete_query failed: %s", exc)
+        return False
 
 
 # ── JWT payload helper ────────────────────────────────────────────────────────

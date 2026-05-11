@@ -241,6 +241,14 @@
     </select>
     <input type="text" id="kindInput" name="kind" value="{{ kind or '' }}" list="kindCatalog" placeholder="osdu:wks:... (edit version or leave :* for all)">
   </div>
+
+  <!-- ── Saved queries ── -->
+  <div id="saved-queries-bar" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-top:2px;">
+    <select id="savedQuerySelect" style="min-width:180px;font-size:13px;">
+      <option value="">Saved queries…</option>
+    </select>
+    <button type="button" class="btn-ex" id="btn-delete-query" style="background:#dc3545;border-color:#dc3545;display:none;" title="Delete selected query">✕</button>
+  </div>
   <datalist id="kindCatalog">
     {% for opt in kind_options or [] %}
       <option value="{{ opt.kind }}">{{ opt.label or '' }}</option>
@@ -309,7 +317,10 @@
   <label>returnedFields (comma separated)</label>
   <input type="text" name="returnedFields" value="{{ returnedFields or 'id,kind,version' }}" style="width: 100%;">
 
-  <button type="submit" id="searchBtn" class="btn">Search</button>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <button type="submit" id="searchBtn" class="btn">Search</button>
+    <button type="button" id="btn-save-query" class="btn-ex" title="Save current query">💾 Save</button>
+  </div>
 </form>
 
 <!-- ── Schema Search Form ── -->
@@ -494,6 +505,95 @@
 
 
   })();
+</script>
+
+<!-- ── Saved queries ── -->
+<script>
+(function() {
+  const sel = document.getElementById('savedQuerySelect');
+  const delBtn = document.getElementById('btn-delete-query');
+  const saveBtn = document.getElementById('btn-save-query');
+  const kindInput = document.getElementById('kindInput');
+  const queryInput = document.getElementById('searchQuery');
+  const kindPreset = document.getElementById('kindPreset');
+  if (!sel) return;
+
+  // Load saved queries via API on page load
+  fetch('/api/queries').then(r => r.json()).then(function(list) {
+    (list || []).forEach(function(sq) {
+      const opt = document.createElement('option');
+      opt.value = sq.id;
+      opt.dataset.kind = sq.kind;
+      opt.dataset.query = sq.query;
+      opt.textContent = sq.name;
+      sel.appendChild(opt);
+    });
+  }).catch(function() { /* not logged in or no queries */ });
+
+  // Apply saved query on select
+  sel.addEventListener('change', function() {
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) { delBtn.style.display = 'none'; return; }
+    const kind = opt.dataset.kind || '';
+    const query = opt.dataset.query || '*';
+    if (kindInput) kindInput.value = kind;
+    if (queryInput) queryInput.value = query;
+    if (kindPreset) { kindPreset.value = kind; }
+    delBtn.style.display = 'inline-block';
+  });
+
+  // Delete saved query
+  if (delBtn) {
+    delBtn.addEventListener('click', function() {
+      const qid = sel.value;
+      if (!qid) return;
+      if (!confirm('Delete this saved query?')) return;
+      fetch('/api/queries/' + qid, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+          // Remove from dropdown
+          for (let i = sel.options.length - 1; i >= 0; i--) {
+            if (sel.options[i].value === qid) sel.remove(i);
+          }
+          sel.value = '';
+          delBtn.style.display = 'none';
+        });
+    });
+  }
+
+  // Save current query
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      const kind = kindInput ? kindInput.value : '';
+      const query = queryInput ? queryInput.value : '*';
+      const name = prompt('Name for this query:', kind.split('--').pop()?.replace(':*','') + ': ' + query.substring(0, 40));
+      if (!name) return;
+      fetch('/api/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, kind: kind, query: query })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.id) {
+            const opt = document.createElement('option');
+            opt.value = data.id;
+            opt.dataset.kind = data.kind;
+            opt.dataset.query = data.query;
+            opt.textContent = data.name;
+            // Insert after the placeholder
+            if (sel.options.length > 1) {
+              sel.insertBefore(opt, sel.options[1]);
+            } else {
+              sel.appendChild(opt);
+            }
+            sel.value = data.id;
+            delBtn.style.display = 'inline-block';
+          }
+        });
+    });
+  }
+})();
 </script>
 
 <!-- ── Reference Data kind list filter ── -->
