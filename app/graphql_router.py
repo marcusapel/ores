@@ -62,6 +62,7 @@ log = logging.getLogger("rddms-admin.graphql")
 # When the active instance changes, notify_instance_changed() tears down and
 # rebuilds the pool with the new connection string (or None → REST fallback).
 _PG_CONN_STRING = os.getenv("GRAPHQL_PG_CONN_STRING") or os.getenv("POSTGRESQL_CONN_STRING", "")
+_PG_CONN_STRING_GLOBAL = _PG_CONN_STRING  # remember the global fallback
 _pool = None  # asyncpg.Pool or None
 
 # Remote RDDMS PostgreSQL (direct access to the cloud-hosted RDDMS database).
@@ -139,12 +140,18 @@ def notify_instance_changed(pg_conn_string: str = "") -> None:
     """Called by instances._apply_instance() when the active OSDU instance changes.
 
     Tears down the existing PG pool so it will be lazily re-created with the
-    new connection string on the next query.  If *pg_conn_string* is empty the
-    pool stays None and all resolvers fall back to the REST API.
+    new connection string on the next query.
+
+    Precedence: the global ``GRAPHQL_PG_CONN_STRING`` env var (local Docker PG)
+    always wins when set — per-instance ``pg_conn_string`` is only used when the
+    global is absent (i.e. on Radix where there is no local Docker PG).
+    If neither is set, the pool stays None and resolvers use REST.
     """
     global _PG_CONN_STRING, _pool
     old = _PG_CONN_STRING
-    _PG_CONN_STRING = pg_conn_string
+    # Local dev: GRAPHQL_PG_CONN_STRING is set → always use Docker PG.
+    # Radix:     GRAPHQL_PG_CONN_STRING absent → use per-instance PG.
+    _PG_CONN_STRING = _PG_CONN_STRING_GLOBAL or pg_conn_string
 
     if _pool is not None:
         # Schedule async close on the running loop (fire-and-forget).
