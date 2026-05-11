@@ -231,7 +231,10 @@ async def auth_callback(request: Request):
         log.info("PKCE login successful (oid=%s…), token persisted", oid[:8])
     else:
         log.info("PKCE login successful, redirecting to /")
-    return RedirectResponse("/")
+    response = RedirectResponse("/")
+    response.set_cookie("ores_user", "1", max_age=30 * 24 * 3600,
+                        samesite="lax", httponly=False)
+    return response
 
 
 @router.get("/logout")
@@ -242,7 +245,9 @@ async def logout(request: Request):
     if oid:
         _ts_delete(oid, instance_name)
     request.session.clear()
-    return RedirectResponse("/login")
+    response = RedirectResponse("/login")
+    response.delete_cookie("ores_user")
+    return response
 
 
 async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
