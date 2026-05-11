@@ -26,11 +26,11 @@
 
 | Page | Purpose |
 |------|---------|
-| **RddmsAdmin** (`/`) | List and manage OSDU Dataspaces - create, lock, unlock, delete, build manifests |
-| **RddmsQuery** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
+| **ResDdmsAdmin** (`/`) | List and manage OSDU Dataspaces - create, lock, unlock, delete, build manifests |
+| **ResDdmsQuery** (`/keys`) | Browse dataspaces, record types, individual objects; inspect table & graph data |
 | **Resqml3D** (`/viz`) | Multi-object 3D viewer – render entire dataspaces or selected RESQML objects in Three.js |
-| **OsduSearch** (`/search`) | Query OSDU Search API with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet) |
-| **Analyse** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
+| **GlobalSearch** (`/search`) | Query OSDU Search API with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet) |
+| **AnalyseDG** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
 | **Add DG** (`/add-dg`) | Create and ingest BusinessDecision, Activity, ActivityTemplate, CollaborationProject, PersistedCollection and generic records. See [Activity guide](Activity.md) |
 | **Stratigraphy** (`/strat`) | Preview and ingest stratigraphic column records |
 | **GraphQL** (`/graphql`) | GraphiQL IDE for RESQML deep-search queries |

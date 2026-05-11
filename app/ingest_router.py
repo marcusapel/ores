@@ -35,8 +35,8 @@ from . import osdu as _osdu_mod
 router = APIRouter()
 
 # Simple in-memory manifest store (last N manifests, with TTL eviction).
-_MAX_ITEMS = 50
-_MAX_AGE_S = 3600  # 1 hour
+_MAX_ITEMS = 200
+_MAX_AGE_S = 14400  # 4 hours
 _MANIFESTS: Dict[str, Dict[str, Any]] = {}
 _MANIFEST_TS: Dict[str, float] = {}
 

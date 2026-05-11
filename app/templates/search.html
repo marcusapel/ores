@@ -39,7 +39,7 @@
   .detail-panel .schema-props-table th { background: #f0f0f0; font-weight: 600; }
   .detail-panel .tab-btns { display: flex; gap: .3rem; margin-bottom: .5rem; }
   .detail-panel .tab-btns button { padding: .2rem .6rem; border: 1px solid #d1d1d1; border-radius: 3px; background: #fff; cursor: pointer; font-size: .8rem; }
-  .detail-panel .tab-btns button.active { background: #0078d4; color: #fff; border-color: #0078d4; }
+  .detail-panel .tab-btns button.active { background: var(--eq-red, #FF1243); color: #fff; border-color: var(--eq-red, #FF1243); }
   .results-scroll thead th { position: sticky; top: 0; background: #f5f5f5; z-index: 1; border-bottom: 2px solid #d1d1d1; }
   .kpi-grid { display:grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap:.5rem; }
   .kpi { border:1px solid #e1dfdd; border-radius:6px; padding:.45rem .55rem; background:#faf9f8; }
@@ -224,8 +224,8 @@
 <style>
   .mode-tab { padding:.45rem 1.1rem; border:none; background:transparent; font-size:.9rem;
     cursor:pointer; color:#605e5c; border-bottom:2px solid transparent; margin-bottom:-2px; font-weight:500; }
-  .mode-tab:hover { color:#004578; background:#f3f2f1; }
-  .mode-tab.active { color:#004578; border-bottom-color:#004578; font-weight:600; }
+  .mode-tab:hover { color:var(--eq-red-dark, #D6002B); background:#f3f2f1; }
+  .mode-tab.active { color:var(--eq-red, #FF1243); border-bottom-color:var(--eq-red, #FF1243); font-weight:600; }
 </style>
 
 <!-- ── Records Search Form (existing) ── -->

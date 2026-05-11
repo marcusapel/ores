@@ -989,6 +989,8 @@ async def dataspaces_manifest_structuremaps(
         "status": "ok",
         "dataspace": ds,
         "depth_count": result.get("depth_count", 0),
+        "time_count": result.get("time_count", 0),
+        "skipped_count": result.get("skipped_count", 0),
         "structuremap_count": len(clean_smaps),
         "manifest": manifest,
     })

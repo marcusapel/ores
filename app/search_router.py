@@ -14,7 +14,8 @@ import asyncio
 import logging
 import os
 import re
-from typing import Any, Dict, List, Set
+import time
+from typing import Any, Dict, List, Set, Tuple
 
 import httpx
 from httpx import HTTPStatusError
@@ -28,6 +29,11 @@ from .schemahandler import extract_osdu_links, extract_metadata_generic
 log = logging.getLogger("rddms-admin.search")
 
 router = APIRouter()
+
+# TTL cache for wildcard kind → concrete kind resolution.
+# Avoids repeated probe roundtrips for the same kind pattern.
+_KIND_CACHE: Dict[str, Tuple[List[str], float]] = {}
+_KIND_CACHE_TTL = 300  # 5 minutes
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 
@@ -625,59 +631,68 @@ async def search_run(
                 ) if query and query.strip() != "*" else False
 
                 if _has_wildcard_kind and _has_leading_wildcard:
-                    # Discover actual versions via a quick query=* probe
-                    probe_payload = {
-                        "kind": current_kind,
-                        "query": "*",
-                        "limit": 1,
-                        "returnedFields": ["kind"],
-                        "trackTotalCount": True,
-                    }
-                    try:
-                        pr = await client.post(search_url, headers=hdr, json=probe_payload)
-                        pr.raise_for_status()
-                        probe_res = pr.json()
-                        # Collect distinct kind strings from probe results
-                        probe_kinds: Set[str] = set()
-                        for prec in probe_res.get("results", []):
-                            pk = prec.get("kind")
-                            if pk:
-                                probe_kinds.add(pk)
-                        # Also try a larger probe if we got hits
-                        probe_total = int(probe_res.get("totalCount") or 0)
-                        if probe_total > 1 and len(probe_kinds) < 5:
-                            probe_payload["limit"] = min(probe_total, 50)
-                            pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
-                            if pr2.status_code == 200:
-                                for prec in pr2.json().get("results", []):
-                                    pk = prec.get("kind")
-                                    if pk:
-                                        probe_kinds.add(pk)
-                        if probe_kinds:
-                            log.info("[SEARCH] Resolved %s to versions: %s", current_kind, probe_kinds)
-                            # Search each concrete version with the user's query
-                            for concrete_kind in sorted(probe_kinds):
-                                payload["kind"] = concrete_kind
-                                r = await client.post(search_url, headers=hdr, json=payload)
-                                r.raise_for_status()
-                                res = r.json()
-                                hit_count = int(res.get("totalCount") or len(res.get("results", [])))
-                                merged_total_count += hit_count
-                                log.info("[SEARCH] kind=%s status=%d hits=%d", concrete_kind, r.status_code, len(res.get("results", [])))
-                                for rec in res.get("results", []):
-                                    rid = rec.get("id")
-                                    if rid and rid not in seen_record_ids:
-                                        seen_record_ids.add(rid)
-                                        all_hit_ids.append(rid)
-                                    if len(all_hit_ids) >= int(limit):
-                                        break
+                    # Check kind cache first (avoids repeated probe round-trips)
+                    _kind_cache_key = current_kind
+                    _cached = _KIND_CACHE.get(_kind_cache_key)
+                    if _cached and (time.time() - _cached[1]) < _KIND_CACHE_TTL:
+                        probe_kinds: Set[str] = set(_cached[0])
+                        log.info("[SEARCH] Kind-cache hit for %s: %d kinds", current_kind, len(probe_kinds))
+                    else:
+                        probe_kinds = set()
+                        # Discover actual versions via a quick query=* probe
+                        probe_payload = {
+                            "kind": current_kind,
+                            "query": "*",
+                            "limit": 1,
+                            "returnedFields": ["kind"],
+                            "trackTotalCount": True,
+                        }
+                        try:
+                            pr = await client.post(search_url, headers=hdr, json=probe_payload)
+                            pr.raise_for_status()
+                            probe_res = pr.json()
+                            for prec in probe_res.get("results", []):
+                                pk = prec.get("kind")
+                                if pk:
+                                    probe_kinds.add(pk)
+                            # Wider probe when first page returned few distinct kinds
+                            probe_total = int(probe_res.get("totalCount") or 0)
+                            if probe_total > 1 and len(probe_kinds) < 5:
+                                probe_payload["limit"] = min(probe_total, 50)
+                                pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
+                                if pr2.status_code == 200:
+                                    for prec in pr2.json().get("results", []):
+                                        pk = prec.get("kind")
+                                        if pk:
+                                            probe_kinds.add(pk)
+                            if probe_kinds:
+                                _KIND_CACHE[_kind_cache_key] = (sorted(probe_kinds), time.time())
+                                log.info("[SEARCH] Resolved %s to versions: %s", current_kind, probe_kinds)
+                            else:
+                                log.info("[SEARCH] Probe for %s returned 0 records", current_kind)
+                        except Exception as e:
+                            log.warning("[SEARCH] Version probe failed for %s: %s", current_kind, e)
+
+                    # Use resolved kinds (from cache or fresh probe)
+                    if probe_kinds:
+                        for concrete_kind in sorted(probe_kinds):
+                            payload["kind"] = concrete_kind
+                            r = await client.post(search_url, headers=hdr, json=payload)
+                            r.raise_for_status()
+                            res = r.json()
+                            hit_count = int(res.get("totalCount") or len(res.get("results", [])))
+                            merged_total_count += hit_count
+                            log.info("[SEARCH] kind=%s status=%d hits=%d", concrete_kind, r.status_code, len(res.get("results", [])))
+                            for rec in res.get("results", []):
+                                rid = rec.get("id")
+                                if rid and rid not in seen_record_ids:
+                                    seen_record_ids.add(rid)
+                                    all_hit_ids.append(rid)
                                 if len(all_hit_ids) >= int(limit):
                                     break
-                            continue  # skip the normal search for this kind
-                        else:
-                            log.info("[SEARCH] Probe for %s returned 0 records", current_kind)
-                    except Exception as e:
-                        log.warning("[SEARCH] Version probe failed for %s: %s", current_kind, e)
+                            if len(all_hit_ids) >= int(limit):
+                                break
+                        continue  # skip the normal search for this kind
 
                 r = await client.post(search_url, headers=hdr, json=payload)
                 r.raise_for_status()
