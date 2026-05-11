@@ -646,12 +646,130 @@ async def _pg_grid2d_surface(pool, ds: str, uuid: str) -> dict[str, Any] | None:
     }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Unified geometry builder (shared by PG and REST paths)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _build_geometry_result(
+    typ: str,
+    title: str,
+    arr_paths: dict[str, str],
+    read_fn,
+    fallback_paths: list[str],
+    marker_labels: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Build a geometry result dict from arrays for the Three.js viewer.
+
+    This is the single implementation for all non-Grid2d RESQML types.
+    Both PG and REST callers prepare their reader and call this.
+
+    Args:
+        typ: RESQML type string (matched case-insensitively).
+        title: Display title for the object.
+        arr_paths: ``{lowered_path: original_path}`` of available arrays.
+        read_fn: ``async (path) -> list[float]`` — reads an array by path.
+        fallback_paths: Ordered original paths for positional fallback reads.
+        marker_labels: Pre-extracted labels for WellboreMarkerFrame objects.
+
+    Returns a dict with ``kind`` + geometry arrays, or ``None`` if *typ* is
+    not recognised.
+    """
+    tl = typ.lower()
+
+    async def _find_read(*keywords: str) -> list[float]:
+        """Read first array whose path contains any keyword."""
+        for lk, rp in arr_paths.items():
+            if any(kw in lk for kw in keywords):
+                return [float(v) for v in await read_fn(rp)]
+        return []
+
+    async def _find_read_int(*keywords: str) -> list[int]:
+        for lk, rp in arr_paths.items():
+            if any(kw in lk for kw in keywords):
+                return [int(v) for v in await read_fn(rp)]
+        return []
+
+    async def _fallback_read(idx: int, cast=float) -> list:
+        if idx < len(fallback_paths):
+            return [cast(v) for v in await read_fn(fallback_paths[idx])]
+        return []
+
+    def _z_stats(positions: list[float]) -> tuple[float, float]:
+        n = len(positions) // 3
+        z = [positions[i * 3 + 2] for i in range(n)] if positions else []
+        return (min(z) if z else 0, max(z) if z else 1)
+
+    # ── TriangulatedSetRepresentation ─────────────────────────────────
+    if "triangulated" in tl:
+        positions = await _find_read("points", "node", "coordinates")
+        indices = await _find_read_int("triangle", "indices")
+        if not positions:
+            positions = await _fallback_read(0)
+        if not indices:
+            indices = await _fallback_read(1, cast=int)
+        zmin, zmax = _z_stats(positions)
+        return {"kind": "surface", "title": title, "positions": positions,
+                "indices": indices, "zmin": zmin, "zmax": zmax}
+
+    # ── PointSetRepresentation ────────────────────────────────────────
+    if "pointset" in tl:
+        positions = await _find_read("points", "node", "coordinates")
+        if not positions:
+            positions = await _fallback_read(0)
+        zmin, zmax = _z_stats(positions)
+        return {"kind": "points", "title": title, "positions": positions,
+                "zmin": zmin, "zmax": zmax}
+
+    # ── WellboreTrajectoryRepresentation ──────────────────────────────
+    if "trajectory" in tl:
+        positions = await _find_read("controlpoints", "points", "xyz")
+        if not positions:
+            positions = await _fallback_read(0)
+        md_values = await _find_read("md", "measureddepth")
+        zmin, zmax = _z_stats(positions)
+        return {"kind": "trajectory", "title": title, "positions": positions,
+                "md": md_values, "zmin": zmin, "zmax": zmax}
+
+    # ── WellboreMarkerFrameRepresentation ─────────────────────────────
+    if "marker" in tl:
+        md_values = await _find_read("md", "nodemd", "measureddepth")
+        positions = await _find_read("points", "xyz", "coordinates")
+        zmin = min(md_values) if md_values else 0
+        zmax = max(md_values) if md_values else 1
+        return {"kind": "markers", "title": title, "positions": positions,
+                "md": md_values, "labels": marker_labels or [],
+                "zmin": zmin, "zmax": zmax}
+
+    # ── PolylineSetRepresentation ─────────────────────────────────────
+    if "polylineset" in tl:
+        positions = await _find_read("points", "node", "coordinates")
+        counts = await _find_read_int("count", "nodecount")
+        if not positions:
+            positions = await _fallback_read(0)
+        zmin, zmax = _z_stats(positions)
+        return {"kind": "polylines", "title": title, "positions": positions,
+                "counts": counts, "zmin": zmin, "zmax": zmax}
+
+    # ── DeviationSurveyRepresentation ─────────────────────────────────
+    if "deviationsurvey" in tl:
+        md_values = await _find_read("md", "measureddepth")
+        if not md_values:
+            md_values = await _fallback_read(0)
+        inclinations = await _find_read("inclin", "inclination")
+        azimuths = await _find_read("azimuth")
+        positions = _devsurv_to_xyz(md_values, inclinations, azimuths)
+        zmin, zmax = _z_stats(positions)
+        return {"kind": "trajectory", "title": title, "positions": positions,
+                "md": md_values, "zmin": zmin, "zmax": zmax}
+
+    return None
+
+
 async def _pg_geometry3d(pool, ds: str, typ: str, uuid: str) -> dict[str, Any] | None:
     """Build 3-D geometry dict from local PostgreSQL.
 
     Returns ``None`` when the object / arrays are not found in PG.
     """
-    import numpy as np
     from .pg_backend import pg_list_arrays, pg_read_array, pg_list_resources
 
     tl = typ.lower()
@@ -676,90 +794,15 @@ async def _pg_geometry3d(pool, ds: str, typ: str, uuid: str) -> dict[str, Any] |
         return None
 
     arr_paths = {a["path"].lower(): a["path"] for a in arrays}
+    fallback_paths = [a["path"] for a in arrays]
 
     async def _read(path: str) -> list[float]:
         return await pg_read_array(pool, ds, uuid, path)
 
-    # ── TriangulatedSetRepresentation ─────────────────────────────────
-    if "triangulated" in tl:
-        positions: list[float] = []
-        indices: list[int] = []
-        for lk, rp in arr_paths.items():
-            if "points" in lk or "node" in lk or "coordinates" in lk:
-                positions = await _read(rp)
-            elif "triangle" in lk or "indices" in lk:
-                indices = [int(v) for v in await _read(rp)]
-        if not positions and len(arrays) >= 1:
-            positions = await _read(arrays[0]["path"])
-        if not indices and len(arrays) >= 2:
-            indices = [int(v) for v in await _read(arrays[1]["path"])]
-
-        n_verts = len(positions) // 3
-        z_arr = [positions[i * 3 + 2] for i in range(n_verts)] if positions else []
-        return {
-            "kind": "surface",
-            "title": title,
-            "positions": positions,
-            "indices": indices,
-            "zmin": min(z_arr) if z_arr else 0,
-            "zmax": max(z_arr) if z_arr else 1,
-        }
-
-    # ── PointSetRepresentation ────────────────────────────────────────
-    if "pointset" in tl:
-        positions = []
-        for lk, rp in arr_paths.items():
-            if "points" in lk or "node" in lk or "coordinates" in lk:
-                positions = await _read(rp)
-                break
-        if not positions and arrays:
-            positions = await _read(arrays[0]["path"])
-
-        n_pts = len(positions) // 3
-        z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-        return {
-            "kind": "points",
-            "title": title,
-            "positions": positions,
-            "zmin": min(z_arr) if z_arr else 0,
-            "zmax": max(z_arr) if z_arr else 1,
-        }
-
-    # ── WellboreTrajectoryRepresentation ──────────────────────────────
-    if "trajectory" in tl:
-        positions = []
-        md_values: list[float] = []
-        for lk, rp in arr_paths.items():
-            if "controlpoints" in lk or "points" in lk or "xyz" in lk:
-                positions = await _read(rp)
-            elif "md" in lk or "measureddepth" in lk:
-                md_values = await _read(rp)
-        if not positions and arrays:
-            positions = await _read(arrays[0]["path"])
-
-        n_pts = len(positions) // 3
-        z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-        return {
-            "kind": "trajectory",
-            "title": title,
-            "positions": positions,
-            "md": md_values,
-            "zmin": min(z_arr) if z_arr else 0,
-            "zmax": max(z_arr) if z_arr else 1,
-        }
-
-    # ── WellboreMarkerFrameRepresentation ─────────────────────────────
+    # Marker labels from XML
+    marker_labels: list[str] | None = None
     if "marker" in tl:
-        md_values = []
-        positions = []
-        labels: list[str] = []
-        for lk, rp in arr_paths.items():
-            if "md" in lk or "nodemd" in lk or "measureddepth" in lk:
-                md_values = await _read(rp)
-            elif "points" in lk or "xyz" in lk or "coordinates" in lk:
-                positions = await _read(rp)
-
-        # Try to get marker labels from XML
+        marker_labels = []
         _, xml_str = await _pg_get_obj_id_and_xml(pool, ds, uuid)
         if xml_str:
             try:
@@ -770,72 +813,13 @@ async def _pg_geometry3d(pool, ds: str, typ: str, uuid: str) -> dict[str, Any] |
                         or _xtext(wm, "Interpretation", "Title")
                         or _xtext(wm, "Citation", "Title")
                     )
-                    labels.append(label)
+                    marker_labels.append(label)
             except ET.ParseError:
                 pass
 
-        return {
-            "kind": "markers",
-            "title": title,
-            "positions": positions,
-            "md": md_values,
-            "labels": labels,
-            "zmin": min(md_values) if md_values else 0,
-            "zmax": max(md_values) if md_values else 1,
-        }
-
-    # ── PolylineSetRepresentation (fault sticks, contours, etc.) ──────
-    if "polylineset" in tl:
-        positions = []
-        counts: list[int] = []
-        for lk, rp in arr_paths.items():
-            if "points" in lk or "node" in lk or "coordinates" in lk:
-                positions = await _read(rp)
-            elif "count" in lk or "nodecount" in lk:
-                counts = [int(v) for v in await _read(rp)]
-        if not positions and arrays:
-            positions = await _read(arrays[0]["path"])
-
-        n_pts = len(positions) // 3
-        z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-        return {
-            "kind": "polylines",
-            "title": title,
-            "positions": positions,
-            "counts": counts,
-            "zmin": min(z_arr) if z_arr else 0,
-            "zmax": max(z_arr) if z_arr else 1,
-        }
-
-    # ── DeviationSurveyRepresentation (MD + inclination + azimuth) ────
-    if "deviationsurvey" in tl:
-        md_values = []
-        inclinations: list[float] = []
-        azimuths: list[float] = []
-        for lk, rp in arr_paths.items():
-            if "md" in lk or "measureddepth" in lk:
-                md_values = await _read(rp)
-            elif "inclin" in lk or "inclination" in lk:
-                inclinations = await _read(rp)
-            elif "azimuth" in lk:
-                azimuths = await _read(rp)
-        if not md_values and arrays:
-            md_values = await _read(arrays[0]["path"])
-
-        # Convert MD/incl/azimuth to XYZ if we have all three
-        positions = _devsurv_to_xyz(md_values, inclinations, azimuths)
-        n_pts = len(positions) // 3
-        z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-        return {
-            "kind": "trajectory",
-            "title": title,
-            "positions": positions,
-            "md": md_values,
-            "zmin": min(z_arr) if z_arr else 0,
-            "zmax": max(z_arr) if z_arr else 1,
-        }
-
-    return None
+    return await _build_geometry_result(
+        typ, title, arr_paths, _read, fallback_paths, marker_labels,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -933,7 +917,6 @@ async def _rest_geometry3d(
     access_token: str, ds: str, typ: str, uuid: str,
 ) -> dict[str, Any]:
     """Fetch 3-D geometry via RDDMS REST API."""
-    import numpy as np
     from . import osdu
 
     enc = urllib.parse.quote(ds, safe="")
@@ -946,6 +929,12 @@ async def _rest_geometry3d(
         obj = osdu._normalize_obj(r1.json(), uuid)
 
         title = (obj.get("Citation") or {}).get("Title") or uuid
+        tl = typ.lower()
+
+        # ── Grid2d is handled by its specialised REST function ────────
+        if "grid2d" in tl:
+            surface = await _rest_grid2d_surface(access_token, ds, uuid)
+            return _surface_to_3d(surface)
 
         r_al = await client.get(f"{obj_url}/arrays", headers=hdr)
         r_al.raise_for_status()
@@ -961,195 +950,33 @@ async def _rest_geometry3d(
                 return inner.get("data") or inner.get("values") or []
             return inner if isinstance(inner, list) else []
 
-        arr_paths = {}
+        arr_paths: dict[str, str] = {}
+        fallback_paths: list[str] = []
         for a in arr_list:
             uid = a.get("uid") or {}
             p = uid.get("pathInResource", "")
             arr_paths[p.lower()] = p
+            fallback_paths.append(p)
 
-        tl = typ.lower()
-
-        # ── Grid2dRepresentation ──────────────────────────────────────
-        if "grid2d" in tl:
-            surface = await _rest_grid2d_surface(access_token, ds, uuid)
-            return _surface_to_3d(surface)
-
-        # ── TriangulatedSetRepresentation ─────────────────────────────
-        if "triangulated" in tl:
-            positions: list[float] = []
-            indices: list[int] = []
-            for lk, rp in arr_paths.items():
-                data = await _read_arr(rp)
-                if "points" in lk or "node" in lk or "coordinates" in lk:
-                    positions = [float(v) for v in data]
-                elif "triangle" in lk or "indices" in lk:
-                    indices = [int(v) for v in data]
-            if not positions and len(arr_list) >= 1:
-                positions = [float(v) for v in await _read_arr(
-                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
-            if not indices and len(arr_list) >= 2:
-                indices = [int(v) for v in await _read_arr(
-                    (arr_list[1].get("uid") or {}).get("pathInResource", ""))]
-
-            n_verts = len(positions) // 3
-            z_arr = [positions[i * 3 + 2] for i in range(n_verts)] if positions else []
-            return {
-                "kind": "surface",
-                "title": title,
-                "positions": positions,
-                "indices": indices,
-                "zmin": min(z_arr) if z_arr else 0,
-                "zmax": max(z_arr) if z_arr else 1,
-            }
-
-        # ── PointSetRepresentation ────────────────────────────────────
-        if "pointset" in tl:
-            positions = []
-            for lk, rp in arr_paths.items():
-                if "points" in lk or "node" in lk or "coordinates" in lk:
-                    data = await _read_arr(rp)
-                    positions = [float(v) for v in data]
-                    break
-            if not positions and arr_list:
-                positions = [float(v) for v in await _read_arr(
-                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
-
-            n_pts = len(positions) // 3
-            z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-            return {
-                "kind": "points",
-                "title": title,
-                "positions": positions,
-                "zmin": min(z_arr) if z_arr else 0,
-                "zmax": max(z_arr) if z_arr else 1,
-            }
-
-        # ── WellboreTrajectoryRepresentation ──────────────────────────
-        if "trajectory" in tl:
-            positions = []
-            for lk, rp in arr_paths.items():
-                if "controlpoints" in lk or "points" in lk or "xyz" in lk:
-                    data = await _read_arr(rp)
-                    positions = [float(v) for v in data]
-                    break
-            if not positions and arr_list:
-                positions = [float(v) for v in await _read_arr(
-                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
-
-            n_pts = len(positions) // 3
-            z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-
-            md_values: list[float] = []
-            for lk, rp in arr_paths.items():
-                if "md" in lk or "measureddepth" in lk:
-                    data = await _read_arr(rp)
-                    md_values = [float(v) for v in data]
-                    break
-
-            return {
-                "kind": "trajectory",
-                "title": title,
-                "positions": positions,
-                "md": md_values,
-                "zmin": min(z_arr) if z_arr else 0,
-                "zmax": max(z_arr) if z_arr else 1,
-            }
-
-        # ── WellboreMarkerFrameRepresentation ─────────────────────────
+        # Marker labels from REST JSON object
+        marker_labels: list[str] | None = None
         if "marker" in tl:
-            md_values = []
-            positions = []
-            labels: list[str] = []
-
-            for lk, rp in arr_paths.items():
-                if "md" in lk or "nodemd" in lk or "measureddepth" in lk:
-                    data = await _read_arr(rp)
-                    md_values = [float(v) for v in data]
-                    break
-            for lk, rp in arr_paths.items():
-                if "points" in lk or "xyz" in lk or "coordinates" in lk:
-                    data = await _read_arr(rp)
-                    positions = [float(v) for v in data]
-                    break
-
-            markers = obj.get("WellboreMarker") or []
-            for m in markers:
+            marker_labels = []
+            for m in obj.get("WellboreMarker") or []:
                 label = (
                     m.get("MarkerName")
                     or (m.get("Interpretation") or {}).get("Title")
                     or (m.get("Citation") or {}).get("Title")
                     or ""
                 )
-                labels.append(label)
+                marker_labels.append(label)
 
-            return {
-                "kind": "markers",
-                "title": title,
-                "positions": positions,
-                "md": md_values,
-                "labels": labels,
-                "zmin": min(md_values) if md_values else 0,
-                "zmax": max(md_values) if md_values else 1,
-            }
-
-        # ── PolylineSetRepresentation ─────────────────────────────────
-        if "polylineset" in tl:
-            positions = []
-            counts: list[int] = []
-            for lk, rp in arr_paths.items():
-                if "points" in lk or "node" in lk or "coordinates" in lk:
-                    data = await _read_arr(rp)
-                    positions = [float(v) for v in data]
-                elif "count" in lk or "nodecount" in lk:
-                    data = await _read_arr(rp)
-                    counts = [int(v) for v in data]
-            if not positions and arr_list:
-                positions = [float(v) for v in await _read_arr(
-                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
-
-            n_pts = len(positions) // 3
-            z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-            return {
-                "kind": "polylines",
-                "title": title,
-                "positions": positions,
-                "counts": counts,
-                "zmin": min(z_arr) if z_arr else 0,
-                "zmax": max(z_arr) if z_arr else 1,
-            }
-
-        # ── DeviationSurveyRepresentation ─────────────────────────────
-        if "deviationsurvey" in tl:
-            md_values = []
-            inclinations: list[float] = []
-            azimuths: list[float] = []
-            for lk, rp in arr_paths.items():
-                if "md" in lk or "measureddepth" in lk:
-                    data = await _read_arr(rp)
-                    md_values = [float(v) for v in data]
-                elif "inclin" in lk or "inclination" in lk:
-                    data = await _read_arr(rp)
-                    inclinations = [float(v) for v in data]
-                elif "azimuth" in lk:
-                    data = await _read_arr(rp)
-                    azimuths = [float(v) for v in data]
-            if not md_values and arr_list:
-                md_values = [float(v) for v in await _read_arr(
-                    (arr_list[0].get("uid") or {}).get("pathInResource", ""))]
-
-            positions = _devsurv_to_xyz(md_values, inclinations, azimuths)
-            n_pts = len(positions) // 3
-            z_arr = [positions[i * 3 + 2] for i in range(n_pts)] if positions else []
-            return {
-                "kind": "trajectory",
-                "title": title,
-                "positions": positions,
-                "md": md_values,
-                "zmin": min(z_arr) if z_arr else 0,
-                "zmax": max(z_arr) if z_arr else 1,
-            }
-
-    raise ValueError(f"Unsupported type for 3D: {typ}")
+        result = await _build_geometry_result(
+            typ, title, arr_paths, _read_arr, fallback_paths, marker_labels,
+        )
+        if result is None:
+            raise ValueError(f"Unsupported type for 3D: {typ}")
+        return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
