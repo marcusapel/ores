@@ -38,6 +38,7 @@ from .analyse import router as analyse_router
 from .addgate import router as addgate_router
 from .keys_router import router as keys_router
 from .graphql_router import router as graphql_router
+from .graphql_refdata import router as graphql_refdata_router
 from .search_router import router as search_router
 from .common import pretty_val as _jinja_pretty_val, access_token as _access_token
 from .howto_router import router as howto_router
@@ -161,6 +162,7 @@ app.include_router(analyse_router)
 app.include_router(addgate_router)
 app.include_router(keys_router)
 app.include_router(graphql_router)
+app.include_router(graphql_refdata_router)
 app.include_router(search_router)
 app.include_router(howto_router)
 

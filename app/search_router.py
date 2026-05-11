@@ -187,6 +187,10 @@ def _collect_refdata_kinds() -> List[Dict[str, Any]]:
     ]
     return [{"kind": k} for k in _REFDATA_KINDS]
 
+# Pre-compute static kind lists (pure data — no reason to rebuild per request)
+_MANIFEST_KINDS = _collect_manifest_kinds()
+_REFDATA_KINDS_LIST = _collect_refdata_kinds()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Record enrichment helpers (moved from main.py)
@@ -514,15 +518,13 @@ async def _enrich_record(
 
 @router.get("/search", response_class=HTMLResponse, summary="Search form (OSDU search v2)")
 async def search_page(request: Request):
-    kind_options = _collect_manifest_kinds()
-    refdata_kinds = _collect_refdata_kinds()
     return templates.TemplateResponse(
         request, "search.html",
         {
             "kind": "",
             "kinds_extra": "",
-            "kind_options": kind_options,
-            "refdata_kinds": refdata_kinds,
+            "kind_options": _MANIFEST_KINDS,
+            "refdata_kinds": _REFDATA_KINDS_LIST,
             "q": "",
             "limit": 50,
             "returnedFields": "id,kind,version",
@@ -553,8 +555,8 @@ async def search_run(
                 "search_mode": "records",
                 "kind": kind,
                 "kinds_extra": kinds_extra,
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": query,
                 "limit": limit,
             },
@@ -717,8 +719,8 @@ async def search_run(
                 },
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "selected_kinds": search_kinds,
                 "q": "*",
                 "limit": limit,
@@ -734,8 +736,8 @@ async def search_run(
                 "error_detail": (r.text[:2000] if r.text else ""),
                 "kind": kind,
                 "kinds_extra": kinds_extra,
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": query,
                 "limit": limit,
             },
@@ -750,8 +752,8 @@ async def search_run(
                 "error_detail": "See server logs",
                 "kind": kind,
                 "kinds_extra": kinds_extra,
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": query,
                 "limit": limit,
             },
@@ -878,8 +880,8 @@ async def search_schemas(
                 "schema_total": len(table_rows),
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "schema_q": query,
                 "limit": limit,
             },
@@ -894,8 +896,8 @@ async def search_schemas(
                 "search_mode": "schemas",
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "schema_q": query,
                 "limit": limit,
             },
@@ -911,8 +913,8 @@ async def search_schemas(
                 "search_mode": "schemas",
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "schema_q": query,
                 "limit": limit,
             },
@@ -947,8 +949,8 @@ async def search_refdata(
                 "search_mode": "refdata",
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -999,8 +1001,8 @@ async def search_refdata(
                 "refdata_total": total_count,
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1015,8 +1017,8 @@ async def search_refdata(
                 "search_mode": "refdata",
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1032,8 +1034,8 @@ async def search_refdata(
                 "search_mode": "refdata",
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1126,13 +1128,13 @@ async def api_refdata_kinds(request: Request):
                 refdata_kinds.add(kind_str)
 
         # Merge with static list
-        static_kinds = {k["kind"] for k in _collect_refdata_kinds()}
+        static_kinds = {k["kind"] for k in _REFDATA_KINDS_LIST}
         all_kinds = sorted(refdata_kinds | static_kinds)
         return JSONResponse({"kinds": all_kinds})
     except Exception as e:
         # Fall back to static list
         log.warning("[REFDATA-KINDS] Schema service fetch failed: %s", e)
-        return JSONResponse({"kinds": [k["kind"] for k in _collect_refdata_kinds()]})
+        return JSONResponse({"kinds": [k["kind"] for k in _REFDATA_KINDS_LIST]})
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1161,8 +1163,8 @@ async def view_record(request: Request, record_id: str):
                 "results": {"results": [enriched], "totalCount": 1},
                 "kind": full.get("kind", ""),
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": record_id,
                 "limit": 1,
             },
@@ -1175,8 +1177,8 @@ async def view_record(request: Request, record_id: str):
                 "error_detail": (e.response.text[:2000] if e.response.text else ""),
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": record_id,
                 "limit": 1,
             },
@@ -1191,8 +1193,8 @@ async def view_record(request: Request, record_id: str):
                 "error_detail": "See server logs",
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": record_id,
                 "limit": 1,
             },
