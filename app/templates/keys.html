@@ -320,10 +320,17 @@
             </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>
+          <span class="btn" id="gql-save-query" style="font-size:12px;padding:3px 10px;" title="Save current query">💾 Save</span>
           <span class="muted" id="gql-status" style="font-size:12px;"></span>
         </div>
 
-
+        <!-- ── Saved GraphQL queries ── -->
+        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <select id="gql-saved-select" style="min-width:200px;font-size:13px;padding:3px 8px;border-radius:4px;border:1px solid #ccc;">
+            <option value="">Saved queries…</option>
+          </select>
+          <button type="button" class="btn" id="gql-delete-query" style="background:#dc3545;border-color:#dc3545;color:#fff;font-size:12px;padding:2px 8px;display:none;" title="Delete selected query">✕</button>
+        </div>
 
         <textarea id="gql-editor" rows="6" style="width:100%;font-family:'Fira Code',Consolas,monospace;font-size:12px;line-height:1.45;border:1px solid #b4d6f5;border-radius:4px;padding:10px;resize:vertical;background:#f0f6fc;tab-size:2;min-height:100px;overflow-y:auto;"></textarea>
 
@@ -3086,6 +3093,102 @@
         runGraphQLQuery();
       }
     });
+
+    // ── Saved GraphQL queries ─────────────────────────────────────────────────
+    (function() {
+      const savedSel = $('gql-saved-select');
+      const saveBtn = $('gql-save-query');
+      const delBtn = $('gql-delete-query');
+      if (!savedSel) return;
+
+      // Load saved queries on page load
+      fetch('/api/queries?source=graphql')
+        .then(r => r.json())
+        .then(function(list) {
+          (list || []).forEach(function(sq) {
+            const opt = document.createElement('option');
+            opt.value = sq.id;
+            opt.dataset.query = sq.query;
+            opt.textContent = sq.name;
+            savedSel.appendChild(opt);
+          });
+        })
+        .catch(function() {});
+
+      // Apply saved query on select
+      savedSel.addEventListener('change', function() {
+        const opt = savedSel.options[savedSel.selectedIndex];
+        if (!opt || !opt.value) { delBtn.style.display = 'none'; return; }
+        const raw = opt.dataset.query || '';
+        // query may contain vars separated by \n---VARS---\n
+        const sep = '\n---VARS---\n';
+        const idx = raw.indexOf(sep);
+        if (idx >= 0) {
+          gqlEditor.value = raw.substring(0, idx);
+          gqlVars.value = raw.substring(idx + sep.length);
+        } else {
+          gqlEditor.value = raw;
+        }
+        delBtn.style.display = 'inline-block';
+      });
+
+      // Delete
+      if (delBtn) {
+        delBtn.addEventListener('click', function() {
+          const qid = savedSel.value;
+          if (!qid) return;
+          if (!confirm('Delete this saved query?')) return;
+          fetch('/api/queries/' + qid, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(function() {
+              for (let i = savedSel.options.length - 1; i >= 0; i--) {
+                if (savedSel.options[i].value === qid) savedSel.remove(i);
+              }
+              savedSel.value = '';
+              delBtn.style.display = 'none';
+            });
+        });
+      }
+
+      // Save
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+          const queryText = (gqlEditor.value || '').trim();
+          if (!queryText) return;
+          const varsText = (gqlVars.value || '{ }').trim();
+          // Build a default name from the first comment or first line
+          const firstLine = queryText.split('\n').find(l => l.trim()) || 'query';
+          const defaultName = firstLine.replace(/^[#{}\s]+/, '').substring(0, 50).trim() || 'query';
+          const name = prompt('Name for this query:', defaultName);
+          if (!name) return;
+          // Pack query + vars together
+          const packed = varsText && varsText !== '{ }' && varsText !== '{}'
+            ? queryText + '\n---VARS---\n' + varsText
+            : queryText;
+          fetch('/api/queries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, kind: '__graphql__', query: packed })
+          })
+            .then(r => r.json())
+            .then(function(data) {
+              if (data.id) {
+                const opt = document.createElement('option');
+                opt.value = data.id;
+                opt.dataset.query = data.query;
+                opt.textContent = data.name;
+                if (savedSel.options.length > 1) {
+                  savedSel.insertBefore(opt, savedSel.options[1]);
+                } else {
+                  savedSel.appendChild(opt);
+                }
+                savedSel.value = data.id;
+                delBtn.style.display = 'inline-block';
+              }
+            });
+        });
+      }
+    })();
 
     // ── Graph visualisation (Mermaid) ─────────────────────────────────────────
     const gqlTabJson = $('gql-tab-json');

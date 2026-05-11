@@ -518,8 +518,8 @@
   const kindPreset = document.getElementById('kindPreset');
   if (!sel) return;
 
-  // Load saved queries via API on page load
-  fetch('/api/queries').then(r => r.json()).then(function(list) {
+  // Load saved queries via API on page load (search only, exclude graphql)
+  fetch('/api/queries?source=search').then(r => r.json()).then(function(list) {
     (list || []).forEach(function(sq) {
       const opt = document.createElement('option');
       opt.value = sq.id;
