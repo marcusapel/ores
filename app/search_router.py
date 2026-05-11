@@ -7,6 +7,9 @@ Handles:
   POST /search/schemas      – OSDU Schema Service search
   POST /search/refdata      – Reference-data record search
   GET  /search/view/{id}    – single record detail view
+  GET  /api/queries         – list saved queries for current user
+  POST /api/queries         – save a query
+  DELETE /api/queries/{id}  – delete a saved query
 """
 
 from __future__ import annotations
@@ -20,11 +23,16 @@ from typing import Any, Dict, List, Set, Tuple
 import httpx
 from httpx import HTTPStatusError
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import osdu
 from .schemahandler import extract_osdu_links, extract_metadata_generic
+from .tokenstore import (
+    save_query as _ts_save_query,
+    list_queries as _ts_list_queries,
+    delete_query as _ts_delete_query,
+)
 
 log = logging.getLogger("rddms-admin.search")
 
@@ -1245,3 +1253,50 @@ async def view_record(request: Request, record_id: str):
             },
             status_code=500,
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Saved queries API
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _user_ctx(request: Request) -> tuple[str, str]:
+    """Return (oid, instance_name) from the session, or empty strings."""
+    if not hasattr(request, "session"):
+        return "", ""
+    return request.session.get("oid", ""), request.session.get("instance_name", "")
+
+
+@router.get("/api/queries")
+async def api_list_queries(request: Request):
+    """List saved queries for the current user."""
+    oid, inst = _user_ctx(request)
+    return _ts_list_queries(oid, inst)
+
+
+@router.post("/api/queries")
+async def api_save_query(request: Request):
+    """Save a search query. Body: {name, kind, query}."""
+    oid, inst = _user_ctx(request)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    name = (body.get("name") or "").strip()
+    kind = (body.get("kind") or "").strip()
+    query = (body.get("query") or "*").strip()
+    if not name:
+        return JSONResponse({"error": "name is required"}, status_code=400)
+    row_id = _ts_save_query(oid, inst, name, kind, query)
+    if row_id is None:
+        return JSONResponse({"error": "Failed to save"}, status_code=500)
+    return {"id": row_id, "name": name, "kind": kind, "query": query}
+
+
+@router.delete("/api/queries/{query_id}")
+async def api_delete_query(request: Request, query_id: int):
+    """Delete a saved query by id."""
+    oid, _ = _user_ctx(request)
+    ok = _ts_delete_query(query_id, oid=oid)
+    if not ok:
+        return JSONResponse({"error": "Failed to delete"}, status_code=500)
+    return {"deleted": query_id}
