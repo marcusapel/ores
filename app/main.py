@@ -266,9 +266,29 @@ async def api_probe_instance():
     inst = get_active()
     try:
         token = await inst.get_access_token()
-        return {"ok": token is not None, "instance": inst.name, "auth_mode": inst.auth_mode}
+        return {
+            "ok": token is not None,
+            "instance": inst.name,
+            "auth_mode": inst.auth_mode,
+            # Non-secret diagnostics to help troubleshoot token failures
+            "tenant_id": inst.tenant_id[:8] + "…" if inst.tenant_id else "",
+            "client_id": inst.client_id[:8] + "…" if inst.client_id else "",
+            "scope": inst.scope or f"{inst.client_id}/.default",
+            "has_secret": bool(inst.client_secret),
+            "has_refresh": bool(inst.refresh_token),
+        }
     except Exception as e:
-        return {"ok": False, "instance": inst.name, "auth_mode": inst.auth_mode, "error": str(e)}
+        return {
+            "ok": False,
+            "instance": inst.name,
+            "auth_mode": inst.auth_mode,
+            "error": str(e),
+            "tenant_id": inst.tenant_id[:8] + "…" if inst.tenant_id else "",
+            "client_id": inst.client_id[:8] + "…" if inst.client_id else "",
+            "scope": inst.scope or f"{inst.client_id}/.default",
+            "has_secret": bool(inst.client_secret),
+            "has_refresh": bool(inst.refresh_token),
+        }
 
 
 @app.post("/api/instances/switch")
