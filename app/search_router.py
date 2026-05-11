@@ -17,8 +17,7 @@ import asyncio
 import logging
 import os
 import re
-import time
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set
 
 import httpx
 from httpx import HTTPStatusError
@@ -27,6 +26,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import osdu
+from .cache import cached_call
 from .common import access_token as _access_token, friendly_value as _friendly_value, friendly_list as _friendly_list, pretty_val as _jinja_pretty_val
 from .schemahandler import extract_osdu_links, extract_metadata_generic
 from .tokenstore import (
@@ -39,10 +39,7 @@ log = logging.getLogger("rddms-admin.search")
 
 router = APIRouter()
 
-# TTL cache for wildcard kind → concrete kind resolution.
-# Avoids repeated probe roundtrips for the same kind pattern.
-_KIND_CACHE: Dict[str, Tuple[List[str], float]] = {}
-_KIND_CACHE_TTL = 300  # 5 minutes
+_KIND_CACHE_TTL = 300  # 5 minutes – used by cached_call for kind resolution
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 templates.env.filters["pretty_val"] = _jinja_pretty_val
@@ -55,6 +52,50 @@ templates.env.filters["pretty_val"] = _jinja_pretty_val
 # ──────────────────────────────────────────────────────────────────────────────
 # Utilities (private to this module)
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+async def _resolve_wildcard_kind(
+    client: httpx.AsyncClient, search_url: str, hdr: dict, wildcard_kind: str,
+) -> List[str]:
+    """Discover concrete kind versions for a wildcard kind pattern.
+
+    Returns a sorted list of concrete kinds, or [] if the probe fails.
+    Used as the backend function for ``cached_call``.
+    """
+    probe_kinds: Set[str] = set()
+    probe_payload = {
+        "kind": wildcard_kind,
+        "query": "*",
+        "limit": 1,
+        "returnedFields": ["kind"],
+        "trackTotalCount": True,
+    }
+    try:
+        pr = await client.post(search_url, headers=hdr, json=probe_payload)
+        pr.raise_for_status()
+        probe_res = pr.json()
+        for prec in probe_res.get("results", []):
+            pk = prec.get("kind")
+            if pk:
+                probe_kinds.add(pk)
+        # Wider probe when first page returned few distinct kinds
+        probe_total = int(probe_res.get("totalCount") or 0)
+        if probe_total > 1 and len(probe_kinds) < 5:
+            probe_payload["limit"] = min(probe_total, 50)
+            pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
+            if pr2.status_code == 200:
+                for prec in pr2.json().get("results", []):
+                    pk = prec.get("kind")
+                    if pk:
+                        probe_kinds.add(pk)
+        if probe_kinds:
+            log.info("[SEARCH] Resolved %s to versions: %s", wildcard_kind, probe_kinds)
+        else:
+            log.info("[SEARCH] Probe for %s returned 0 records", wildcard_kind)
+    except Exception as e:
+        log.warning("[SEARCH] Version probe failed for %s: %s", wildcard_kind, e)
+
+    return sorted(probe_kinds)
 
 
 def _parse_kind_inputs(kind: str, kinds_extra: str) -> List[str]:
@@ -586,47 +627,13 @@ async def search_run(
                 ) if query and query.strip() != "*" else False
 
                 if _has_wildcard_kind and _has_leading_wildcard:
-                    # Check kind cache first (avoids repeated probe round-trips)
-                    _kind_cache_key = current_kind
-                    _cached = _KIND_CACHE.get(_kind_cache_key)
-                    if _cached and (time.time() - _cached[1]) < _KIND_CACHE_TTL:
-                        probe_kinds: Set[str] = set(_cached[0])
-                        log.info("[SEARCH] Kind-cache hit for %s: %d kinds", current_kind, len(probe_kinds))
-                    else:
-                        probe_kinds = set()
-                        # Discover actual versions via a quick query=* probe
-                        probe_payload = {
-                            "kind": current_kind,
-                            "query": "*",
-                            "limit": 1,
-                            "returnedFields": ["kind"],
-                            "trackTotalCount": True,
-                        }
-                        try:
-                            pr = await client.post(search_url, headers=hdr, json=probe_payload)
-                            pr.raise_for_status()
-                            probe_res = pr.json()
-                            for prec in probe_res.get("results", []):
-                                pk = prec.get("kind")
-                                if pk:
-                                    probe_kinds.add(pk)
-                            # Wider probe when first page returned few distinct kinds
-                            probe_total = int(probe_res.get("totalCount") or 0)
-                            if probe_total > 1 and len(probe_kinds) < 5:
-                                probe_payload["limit"] = min(probe_total, 50)
-                                pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
-                                if pr2.status_code == 200:
-                                    for prec in pr2.json().get("results", []):
-                                        pk = prec.get("kind")
-                                        if pk:
-                                            probe_kinds.add(pk)
-                            if probe_kinds:
-                                _KIND_CACHE[_kind_cache_key] = (sorted(probe_kinds), time.time())
-                                log.info("[SEARCH] Resolved %s to versions: %s", current_kind, probe_kinds)
-                            else:
-                                log.info("[SEARCH] Probe for %s returned 0 records", current_kind)
-                        except Exception as e:
-                            log.warning("[SEARCH] Version probe failed for %s: %s", current_kind, e)
+                    # Resolve wildcard kind to concrete versions (cached)
+                    probe_kinds_list: List[str] = await cached_call(
+                        f"kind_resolve:{current_kind}",
+                        _KIND_CACHE_TTL,
+                        _resolve_wildcard_kind, client, search_url, hdr, current_kind,
+                    )
+                    probe_kinds: Set[str] = set(probe_kinds_list)
 
                     # Use resolved kinds (from cache or fresh probe)
                     if probe_kinds:
