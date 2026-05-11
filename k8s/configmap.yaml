@@ -41,6 +41,17 @@ data:
   INSTANCE_EQNDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
   INSTANCE_EQNDEV_DEFAULT_COUNTRIES: "NO"
 
+  # ── "oresdev" - same OSDU backend as eqndev, uses ores-dev app (21b442a9) ──
+  INSTANCE_ORESDEV_TENANT_ID: "3aa4a235-b6e2-48d5-9195-7fcf05b459b0"
+  INSTANCE_ORESDEV_HOSTNAME: "equinorswedev.energy.azure.com"
+  INSTANCE_ORESDEV_DATA_PARTITION_ID: "dev"
+  INSTANCE_ORESDEV_AUTHORITY: "osdu"
+  INSTANCE_ORESDEV_SCHEMA_SOURCE: "wks"
+  INSTANCE_ORESDEV_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+  INSTANCE_ORESDEV_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+  INSTANCE_ORESDEV_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+  INSTANCE_ORESDEV_DEFAULT_COUNTRIES: "NO"
+
   # ── "preship" - Microsoft pre-ship M26 test env ──
   INSTANCE_PRESHIP_TENANT_ID: ""
   INSTANCE_PRESHIP_HOSTNAME: "osdu-ship.msft-osdu-test.org"
