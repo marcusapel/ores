@@ -121,7 +121,14 @@ async def inject_access_token(request: Request, call_next):
         return RedirectResponse("/login-page")
 
     request.state.access_token = access_token
-    return await call_next(request)
+    resp = await call_next(request)
+    # Set lightweight marker cookie so the nav bar JS can show
+    # "Sign out" (green dot) instead of "Sign in" (grey dot).
+    if "ores_user" not in request.cookies:
+        resp.set_cookie("ores_user", "1", max_age=30 * 24 * 3600,
+                        samesite="lax", httponly=False,
+                        secure=_HTTPS_ONLY)
+    return resp
 
 # Attach routers & static
 # Session middleware - added LAST so it is outermost and runs FIRST,
