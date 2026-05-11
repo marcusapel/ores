@@ -47,6 +47,7 @@ spec:
           variables:
             LOG_LEVEL: "INFO"
             DEBUG: "False"
+            HTTPS_ONLY: "true"
             DEFAULT_DATASPACE: "maap/drogon"
             APP_KEY: "ores"
             DEFAULT_INSTANCE: "eqndev"
@@ -74,6 +75,7 @@ spec:
           variables:
             LOG_LEVEL: "WARNING"
             DEBUG: "False"
+            HTTPS_ONLY: "true"
             DEFAULT_DATASPACE: "maap/drogon"
             APP_KEY: "ores-prod"
             DEFAULT_INSTANCE: "eqndev"

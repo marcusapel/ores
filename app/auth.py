@@ -189,11 +189,15 @@ async def auth_callback(request: Request):
         oauth_kwargs["client_secret"] = client_secret
 
     async with AsyncOAuth2Client(**oauth_kwargs) as cli:
-        token = await cli.fetch_token(
-            TOKEN_URL,
-            code=code,
-            code_verifier=code_verifier,
-        )
+        try:
+            token = await cli.fetch_token(
+                TOKEN_URL,
+                code=code,
+                code_verifier=code_verifier,
+            )
+        except Exception as exc:
+            log.error("PKCE token exchange failed: %s", exc)
+            return JSONResponse({"error": f"Token exchange failed: {exc}"}, status_code=502)
 
     # Clean up PKCE state
     request.session.pop("pkce_verifier", None)
