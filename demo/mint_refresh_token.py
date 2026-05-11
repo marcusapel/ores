@@ -28,12 +28,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import http.server
 import secrets
 import sys
-import threading
 import urllib.parse
-import webbrowser
 
 try:
     import httpx
@@ -57,11 +54,16 @@ def _pkce_pair():
     return verifier, challenge
 
 
+_VERIFIER_FILE = "/tmp/_ores_pkce_verifier.json"
+
+
 def main():
     ap = argparse.ArgumentParser(description="Mint a refresh_token via interactive PKCE login")
     ap.add_argument("--client-id", default=DEFAULT_CLIENT_ID, help="App (client) ID")
     ap.add_argument("--tenant", default=DEFAULT_TENANT, help="Azure AD tenant ID")
     ap.add_argument("--scope", default=DEFAULT_SCOPE, help="Space-separated scopes")
+    ap.add_argument("--callback", default=None,
+                    help="Full callback URL from browser address bar (step 2)")
     args = ap.parse_args()
 
     client_id = args.client_id
@@ -69,13 +71,50 @@ def main():
     scopes = args.scope
 
     auth_base = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0"
-    authorize_url = f"{auth_base}/authorize"
     token_url = f"{auth_base}/token"
 
+    # ── STEP 2: Exchange a callback URL for tokens ───────────────────────
+    if args.callback:
+        import json as _json
+        try:
+            with open(_VERIFIER_FILE) as f:
+                saved = _json.load(f)
+        except FileNotFoundError:
+            sys.exit(f"ERROR: No saved PKCE state found at {_VERIFIER_FILE}.\n"
+                     f"       Run without --callback first to generate the auth URL.")
+        code_verifier = saved["code_verifier"]
+        saved_state = saved["state"]
+
+        qs = urllib.parse.urlparse(args.callback).query
+        p = urllib.parse.parse_qs(qs)
+        code = p.get("code", [None])[0]
+        cb_state = p.get("state", [None])[0]
+        err = p.get("error", [None])[0]
+
+        if err:
+            sys.exit(f"ERROR: {err}: {p.get('error_description', [''])[0]}")
+        if not code:
+            sys.exit("ERROR: No ?code= found in the callback URL.")
+        if cb_state != saved_state:
+            sys.exit(f"ERROR: State mismatch — expected {saved_state[:8]}..., "
+                     f"got {(cb_state or '(none)')[:8]}...")
+
+        print("  Exchanging code for tokens...")
+        _exchange_code(token_url, client_id, code, code_verifier, scopes)
+        import os; os.unlink(_VERIFIER_FILE)
+        return
+
+    # ── STEP 1: Generate PKCE pair, save verifier, print auth URL ────────
     code_verifier, code_challenge = _pkce_pair()
     state = secrets.token_urlsafe(16)
 
-    # ── Build authorize URL ──────────────────────────────────────────────
+    # Persist verifier for step 2
+    import json as _json
+    with open(_VERIFIER_FILE, "w") as f:
+        _json.dump({"code_verifier": code_verifier, "state": state,
+                     "client_id": client_id}, f)
+
+    authorize_url = f"{auth_base}/authorize"
     params = {
         "client_id": client_id,
         "response_type": "code",
@@ -88,58 +127,20 @@ def main():
     }
     url = f"{authorize_url}?{urllib.parse.urlencode(params)}"
 
-    # ── Tiny HTTP server to capture the callback ─────────────────────────
-    result = {}
-
-    class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):
-            qs = urllib.parse.urlparse(self.path).query
-            p = urllib.parse.parse_qs(qs)
-            result["code"] = p.get("code", [None])[0]
-            result["state"] = p.get("state", [None])[0]
-            result["error"] = p.get("error", [None])[0]
-            result["error_description"] = p.get("error_description", [None])[0]
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.end_headers()
-            if result.get("code"):
-                self.wfile.write(b"<h2>Login successful!</h2><p>You can close this tab.</p>")
-            else:
-                msg = result.get("error_description") or result.get("error") or "Unknown error"
-                self.wfile.write(f"<h2>Error</h2><p>{msg}</p>".encode())
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
-
-        def log_message(self, *a):
-            pass  # suppress request logging
-
-    server = http.server.HTTPServer(("127.0.0.1", REDIRECT_PORT), Handler)
-
-    print(f"\n  App:    {client_id}\n  Scopes: {scopes}\n")
-    print(f"  Open this URL in your browser:\n")
+    print(f"\n  App:    {client_id}")
+    print(f"  Scopes: {scopes}\n")
+    print(f"  1. Open this URL in your browser:\n")
     print(f"  {url}\n")
-    try:
-        webbrowser.open(url)
-    except Exception:
-        pass  # WSL / headless - user clicks the URL above
-    print(f"  Waiting for callback on http://localhost:{REDIRECT_PORT}/callback ...\n")
-    server.handle_request()  # blocks until one request
-    server.server_close()
+    print(f"  2. Sign in with your Equinor account.")
+    print(f"  3. The browser will redirect to localhost:8400 — it will FAIL to load.")
+    print(f"     That's OK! Copy the FULL URL from the address bar.\n")
+    print(f"  4. Run step 2:")
+    print(f'     python demo/mint_refresh_token.py --callback "URL_FROM_BROWSER"\n')
 
-    if result.get("error"):
-        print(f"ERROR: {result['error']}: {result.get('error_description', '')}")
-        sys.exit(1)
 
-    code = result.get("code")
-    if not code:
-        print("ERROR: No authorization code received.")
-        sys.exit(1)
-
-    if result.get("state") != state:
-        print("ERROR: State mismatch (possible CSRF).")
-        sys.exit(1)
-
-    # ── Exchange code for tokens ─────────────────────────────────────────
-    print("  Exchanging code for tokens...")
+# ── Exchange code for tokens ─────────────────────────────────────────
+def _exchange_code(token_url, client_id, code, code_verifier, scopes):
+    """Exchange authorization code for tokens and print result."""
     r = httpx.post(token_url, data={
         "grant_type": "authorization_code",
         "client_id": client_id,
