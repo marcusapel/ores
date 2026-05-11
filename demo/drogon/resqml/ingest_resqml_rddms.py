@@ -61,7 +61,38 @@ LOCAL_DATASPACE   = "demo/Drogon"
 
 import sys as _sys
 _sys.path.insert(0, str(REPO_ROOT / "demo"))
-from _auth import load_env as _auth_load_env, mint_from_env as get_access_token  # noqa: E402
+from _auth import (                                              # noqa: E402
+    load_env as _auth_load_env,
+    load_instance as _auth_load_instance,
+    get_token as _auth_get_token,
+    mint_from_env as get_access_token,
+)
+
+
+def load_env_from_instance(name: str) -> Dict[str, str]:
+    """Build an env dict from a named instance (k8s/secret+configmap).
+
+    Returns the same key layout as load_env() so the rest of the script
+    works unchanged.
+    """
+    inst = _auth_load_instance(name)
+    host = inst["host"].rstrip("/")
+    partition = inst["partition"]
+    owners = inst.get("owners", [])
+    viewers = inst.get("viewers", [])
+    return {
+        "host":          host,
+        "partition":     partition,
+        "tenant":        inst.get("tenant", ""),
+        "client_id":     inst.get("client_id", ""),
+        "client_secret": inst.get("client_secret", ""),
+        "refresh_token": inst.get("refresh_token", ""),
+        "scope":         inst.get("scope", ""),
+        "etp_url":       f"wss://{host.replace('https://', '')}/api/reservoir-ddms-etp/v2/",
+        "legal_tag":     inst.get("legal_tag", f"{partition}-public-usa-dataset-1"),
+        "owners":        owners[0] if owners else f"data.default.owners@{partition}.dataservices.energy",
+        "viewers":       viewers[0] if viewers else f"data.default.viewers@{partition}.dataservices.energy",
+    }
 
 
 def load_env(path: Path) -> Dict[str, str]:
@@ -188,6 +219,8 @@ def main():
                         help="Target local RDDMS at ws://localhost:9100 (no auth)")
     parser.add_argument("--server-url",
                         help="Override ETP server URL (default depends on --local)")
+    parser.add_argument("--instance", "-i",
+                        help="Named instance from k8s/secret+configmap (e.g. preship, eqndev)")
     parser.add_argument("--env-file", default=str(REPO_ROOT / ".env"),
                         help="Path to .env file - cloud mode only (default: <repo>/.env)")
     parser.add_argument("--dataspace",
@@ -212,15 +245,20 @@ def main():
         dataspace     = args.dataspace or LOCAL_DATASPACE
         xdata         = None          # no ACL for local
     else:
-        env           = load_env(Path(args.env_file))
+        # Prefer --instance over --env-file
+        if args.instance:
+            env = load_env_from_instance(args.instance)
+        else:
+            env = load_env(Path(args.env_file))
         server_url    = args.server_url or env["etp_url"]
         image         = IMAGE_CLOUD
         network_host  = False
         partition     = env["partition"]
         dataspace     = args.dataspace or DEFAULT_DATASPACE
+        countries     = ["US"] if args.instance == "preship" else ["NO"]
         xdata         = {
             "legaltags": [env["legal_tag"]],
-            "otherRelevantDataCountries": ["NO"],
+            "otherRelevantDataCountries": countries,
             "owners": [env["owners"]],
             "viewers": [env["viewers"]],
         }
