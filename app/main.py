@@ -7,6 +7,7 @@ import secrets
 import urllib.parse
 import logging
 import json
+from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional, Set
 
 import httpx
@@ -50,7 +51,18 @@ logging.basicConfig(
 )
 log = logging.getLogger("rddms-admin")
 
-app = FastAPI(title="RDDMS Admin")
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI):
+    """Startup / shutdown lifecycle hook (replaces deprecated on_event)."""
+    yield
+    # ── Shutdown ──
+    await osdu.close_shared_client()
+    from .pg_backend import close_pool
+    await close_pool()
+
+
+app = FastAPI(title="RDDMS Admin", lifespan=_lifespan)
 
 # ── Stable secret key (must be identical across workers) ─────────────────────
 _SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(16)
@@ -151,14 +163,6 @@ app.include_router(keys_router)
 app.include_router(graphql_router)
 app.include_router(search_router)
 app.include_router(howto_router)
-
-
-# Close shared httpx client on shutdown (#9)
-@app.on_event("shutdown")
-async def _shutdown():
-    await osdu.close_shared_client()
-    from .pg_backend import close_pool
-    await close_pool()
 
 
 app.mount(

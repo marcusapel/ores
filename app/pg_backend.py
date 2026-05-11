@@ -153,6 +153,20 @@ def notify_instance_changed(pg_conn_string: str = "") -> None:
         log.info("GraphQL backend switched → %s", label)
 
 
+def get_connection_info() -> dict:
+    """Return sanitised PG connection info for the /api/graphql/info endpoint."""
+    import re as _re_local
+    def _mask(s: str) -> str:
+        s = _re_local.sub(r"password=\S+", "password=***", s)
+        return _re_local.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", s)
+    return {
+        "pg_conn_string": _mask(_PG_CONN_STRING) if _PG_CONN_STRING else None,
+        "rddms_pg_conn_string": _mask(_RDDMS_PG_CONN_STRING) if _RDDMS_PG_CONN_STRING else None,
+        "pg_configured": bool(_PG_CONN_STRING),
+        "rddms_pg_configured": bool(_RDDMS_PG_CONN_STRING),
+    }
+
+
 async def _async_close_pool(pool_to_close) -> None:
     """Close an old PG pool asynchronously (fire-and-forget)."""
     try:
