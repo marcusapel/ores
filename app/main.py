@@ -36,9 +36,9 @@ from .strat import router as strat_router
 from .analyse import router as analyse_router
 from .addgate import router as addgate_router
 from .keys_router import router as keys_router
-from .graphql_router import router as graphql_router, close_pool as _close_gql_pool
+from .graphql_router import router as graphql_router
 from .search_router import router as search_router
-from .search_router import _friendly_value
+from .common import pretty_val as _jinja_pretty_val, access_token as _access_token
 from .howto_router import router as howto_router
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -157,7 +157,8 @@ app.include_router(howto_router)
 @app.on_event("shutdown")
 async def _shutdown():
     await osdu.close_shared_client()
-    await _close_gql_pool()
+    from .pg_backend import close_pool
+    await close_pool()
 
 
 app.mount(
@@ -185,21 +186,6 @@ _FAVICON_SVG = (
 @app.get("/favicon.ico", include_in_schema=False)
 async def _favicon():
     return Response(content=_FAVICON_SVG, media_type="image/svg+xml")
-
-
-def _jinja_pretty_val(val):
-    """Jinja filter: prettify metadata values that may contain JSON."""
-    if val is None:
-        return "-"
-    s = str(val)
-    # Try to parse residual JSON strings and re-format them
-    if s.startswith(("[", "{")):
-        try:
-            obj = json.loads(s)
-            return _friendly_value(obj, 600)
-        except (json.JSONDecodeError, ValueError):
-            pass
-    return s
 
 
 templates.env.filters["pretty_val"] = _jinja_pretty_val
@@ -431,14 +417,6 @@ async def login_page(request: Request):
         },
         "active_instance": get_active_name(),
     })
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Utilities
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _access_token(request: Request) -> str:
-    from .common import access_token as _at
-    return _at(request)
 
 # Pages & actions
 # ──────────────────────────────────────────────────────────────────────────────

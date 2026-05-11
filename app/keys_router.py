@@ -36,20 +36,12 @@ from fastapi.templating import Jinja2Templates
 from . import osdu
 from . import resqml_viz
 from . import structuremap as smap_mod
+from .common import access_token as _access_token, normalize_obj as _normalize_resource_obj
 from .schemahandler import extract_metadata_generic
 
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 log = logging.getLogger("rddms-admin.keys")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Utilities
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _access_token(request: Request) -> str:
-    from .common import access_token as _at
-    return _at(request)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -85,10 +77,10 @@ async def keys_dataspaces(request: Request):
     # --- Fetch functions ---
     async def _fetch_local() -> List[Dict[str, Any]]:
         try:
-            from .graphql_router import _get_pool, _pg_list_dataspaces
-            pool = await _get_pool()
+            from .pg_backend import get_pool, pg_list_dataspaces
+            pool = await get_pool()
             if pool:
-                return await _pg_list_dataspaces(pool)
+                return await pg_list_dataspaces(pool)
         except Exception as e:
             log.debug("keys_dataspaces local PG failed: %s", e)
         return []
@@ -147,10 +139,10 @@ async def keys_types(
         # Try local PG first (instant, no network), fall back to REST
         pg_done = False
         try:
-            from .graphql_router import _get_pool, _pg_list_types
-            pool = await _get_pool()
+            from .pg_backend import get_pool, pg_list_types
+            pool = await get_pool()
             if pool:
-                pg_items = await _pg_list_types(pool, ds)
+                pg_items = await pg_list_types(pool, ds)
                 if pg_items:
                     items = pg_items
                     pg_done = True
@@ -347,25 +339,6 @@ def _infer_type_path(item: Dict[str, Any]) -> str:
     return ""
 
 
-def _normalize_resource_obj(obj: Any, uuid: str) -> Dict[str, Any]:
-    """
-    Ensure we return a dict. If a list is returned by the DDMS, try to select the
-    element with matching UUID; otherwise pick the first dict.
-    """
-    if isinstance(obj, dict):
-        return obj
-    if isinstance(obj, list):
-        for it in obj:
-            if isinstance(it, dict):
-                uid = it.get("Uuid") or it.get("UUID") or it.get("uuid")
-                if uid and str(uid).lower() == (uuid or "").lower():
-                    return it
-        for it in obj:
-            if isinstance(it, dict):
-                return it
-    return {}
-
-
 def _extract_refs_any(x: Any) -> List[Dict[str, Any]]:
     """Run osdu.extract_refs() across dict or list-of-dicts."""
     try:
@@ -412,8 +385,8 @@ async def keys_object_json(
 
     # ── Try local PG first (fast, no network) ─────────────────────────
     try:
-        from .graphql_router import _get_pool
-        pool = await _get_pool()
+        from .pg_backend import get_pool
+        pool = await get_pool()
         if pool:
             pg_obj, pg_arrays = await resqml_viz.pg_get_object_and_arrays(
                 pool, ds, typ_s, uuid_s,
@@ -486,18 +459,18 @@ async def keys_objects(
     # --- Try local PG first (instant, no network) ---
     pg_done = False
     try:
-        from .graphql_router import _get_pool, _pg_list_resources, _pg_list_types
-        pool = await _get_pool()
+        from .pg_backend import get_pool, pg_list_resources, pg_list_types
+        pool = await get_pool()
         if pool:
             if typ:
-                pg_rows = await _pg_list_resources(pool, ds, typ, limit=500)
+                pg_rows = await pg_list_resources(pool, ds, typ, limit=500)
             else:
                 # Get all types then aggregate
-                pg_types = await _pg_list_types(pool, ds)
+                pg_types = await pg_list_types(pool, ds)
                 if pg_types:
                     import asyncio
                     parts = await asyncio.gather(
-                        *[_pg_list_resources(pool, ds, t["name"], limit=500) for t in pg_types if t.get("name")]
+                        *[pg_list_resources(pool, ds, t["name"], limit=500) for t in pg_types if t.get("name")]
                     )
                     pg_rows = []
                     for part in parts:
@@ -1585,8 +1558,8 @@ async def keys_object_graph(
 
     # ── Try PG first ──────────────────────────────────────────────────
     try:
-        from .graphql_router import _get_pool
-        pool = await _get_pool()
+        from .pg_backend import get_pool
+        pool = await get_pool()
         if pool:
             pg_obj, _ = await resqml_viz.pg_get_object_and_arrays(
                 pool, ds, typ_s, uuid_s,
@@ -1620,10 +1593,10 @@ async def keys_object_graph(
         pg_graph_done = False
         # ── Try PG graph first ────────────────────────────────────────
         try:
-            from .graphql_router import _get_pool, _pg_list_relations
-            pool = await _get_pool()
+            from .pg_backend import get_pool, pg_list_relations
+            pool = await get_pool()
             if pool:
-                pg_rels = await _pg_list_relations(pool, ds, typ_s, uuid_s, "both")
+                pg_rels = await pg_list_relations(pool, ds, typ_s, uuid_s, "both")
                 if pg_rels:
                     for rel in pg_rels:
                         item = {
