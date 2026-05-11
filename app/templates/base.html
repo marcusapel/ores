@@ -60,16 +60,19 @@
   .navlink:hover { background: var(--eq-light); color: var(--eq-charcoal); }
   .navlink.active { color: var(--eq-red); background: rgba(255,18,67,.06); }
   .nav-spacer { flex: 1; }
-  .nav-signout {
-    color: var(--eq-grey); font-size: 12.5px; cursor: pointer;
-    padding: .35rem .65rem; border-radius: var(--radius);
+  /* ── Auth toggle switch ── */
+  .auth-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--eq-grey); cursor: pointer;
+    padding: .25rem .5rem; border-radius: var(--radius);
+    user-select: none; white-space: nowrap;
   }
-  .nav-signout:hover { background: var(--eq-light); color: var(--eq-charcoal); }
-  .nav-signin {
-    color: var(--eq-link); font-size: 12.5px; font-weight: 500; cursor: pointer;
-    padding: .35rem .65rem; border-radius: var(--radius); margin-right: .25rem;
+  .auth-toggle:hover { background: var(--eq-light); color: var(--eq-charcoal); }
+  .auth-toggle .auth-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #bbb; display: inline-block; flex-shrink: 0;
   }
-  .nav-signin:hover { background: var(--eq-light); color: var(--eq-link-hover); }
+  .auth-toggle.signed-in .auth-dot { background: var(--eq-success); }
 
   /* ── Main content ── */
   main { padding: 1.25rem 1.5rem; max-width: 1440px; margin: 0 auto; }
@@ -202,6 +205,13 @@
     var current = root.getAttribute('data-current-path') || '/';
     root.textContent = '';
 
+    // RDDMS logo (inline SVG, far left)
+    var rddmsWrap = el('span', { style: { display: 'inline-flex', alignItems: 'center', marginRight: '10px', cursor: 'pointer', flexShrink: '0' } });
+    rddmsWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="36" height="36"><defs><linearGradient id="hl1" x1="0" y1="0" x2="1" y2=".4"><stop offset="0%" stop-color="#1b5e20"/><stop offset="25%" stop-color="#43a047"/><stop offset="50%" stop-color="#fdd835"/><stop offset="75%" stop-color="#f57c00"/><stop offset="100%" stop-color="#c62828"/></linearGradient><linearGradient id="hr1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e65100"/><stop offset="100%" stop-color="#8b3a0a"/></linearGradient><linearGradient id="hw1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#29b6f6"/><stop offset="100%" stop-color="#0277bd"/></linearGradient></defs><rect width="512" height="512" rx="56" fill="#f0f4f8" stroke="#b0bec5" stroke-width="4"/><polygon points="100,120,310,20,310,200,100,300" fill="#8d6e63" opacity=".25"/><polygon points="310,20,490,120,490,300,310,200" fill="#6d4c41" opacity=".25"/><polygon points="100,140,310,40,310,300,100,400" fill="url(#hl1)" opacity=".95"/><polygon points="310,40,490,140,490,320,310,300" fill="url(#hr1)" opacity=".7"/><polygon points="340,32,220,385,260,405,380,52" fill="#d32f2f" opacity=".25"/><line x1="340" y1="32" x2="220" y2="385" stroke="#d32f2f" stroke-width="4" opacity=".7"/><path d="M160 16L160 80Q160 140 178 195Q196 250 206 310L212 390" fill="none" stroke="url(#hw1)" stroke-width="8" stroke-linecap="round"/><g fill="#fff" stroke="#0277bd" stroke-width="3"><circle cx="160" cy="80" r="7"/><circle cx="173" cy="170" r="7"/><circle cx="195" cy="255" r="7"/><circle cx="208" cy="340" r="7"/></g><text x="60" y="490" font-family="sans-serif" font-size="86" font-weight="900" fill="#1a3a5c">R</text><text x="148" y="490" font-family="sans-serif" font-size="50" font-weight="800" letter-spacing="6" fill="#1a3a5c">DDMS</text></svg>';
+    rddmsWrap.title = 'Reservoir DDMS';
+    rddmsWrap.addEventListener('click', function () { window.location.assign('/howto'); });
+    root.appendChild(rddmsWrap);
+
     // Brand
     var brand = el('span', { 'class': 'nav-brand', 'data-href': '/howto' });
     brand.innerHTML = '<span style="font-size:1.15em;">OR</span>ES';
@@ -228,16 +238,22 @@
     // Spacer
     root.appendChild(el('span', { 'class': 'nav-spacer' }));
 
-    // Auth links - always visible so users can do per-user PKCE login
-    // even when the instance's primary auth is client_credentials or env_token
-    root.appendChild(linkSpan('/login-page', 'Sign in', 'nav-signin'));
-    root.appendChild(linkSpan('/logout', 'Sign out', 'nav-signout'));
+    // Auth toggle — single compact switch
+    var hasUser = document.cookie.indexOf('ores_user=') !== -1;
+    var toggle = el('span', { 'class': 'auth-toggle' + (hasUser ? ' signed-in' : '') });
+    var dot = el('span', { 'class': 'auth-dot' });
+    toggle.appendChild(dot);
+    toggle.appendChild(document.createTextNode(hasUser ? 'Sign out' : 'Sign in'));
+    toggle.addEventListener('click', function () {
+      window.location.assign(hasUser ? '/logout' : '/login-page');
+    });
+    root.appendChild(toggle);
 
     // OSDU logo (right side)
     var logo = document.createElement('img');
     logo.src = '/static/osdu.png';
     logo.alt = 'OSDU';
-    logo.style.cssText = 'height:28px;margin-left:10px;cursor:pointer;';
+    logo.style.cssText = 'height:28px;margin-left:8px;cursor:pointer;';
     logo.addEventListener('click', function () { window.open('https://community.opengroup.org/osdu', '_blank'); });
     root.appendChild(logo);
   }
