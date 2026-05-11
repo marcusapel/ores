@@ -70,9 +70,9 @@ async def inject_access_token(request: Request, call_next):
     """
     Resolve an access_token and attach it to request.state.
     Priority:
-      0) Active instance token (client_credentials / instance refresh)
-      1) REFRESH_TOKEN from env (default instance)
-      2) Per-user session token (PKCE)
+      0) Per-user session token (PKCE) — if user explicitly signed in, honour it
+      1) Active instance token (client_credentials / instance refresh)
+      2) REFRESH_TOKEN from env (default instance)
       3) Redirect to /login
     """
     path = request.url.path
@@ -83,16 +83,29 @@ async def inject_access_token(request: Request, call_next):
 
     access_token: str | None = None
 
-    # 0. Try active instance's own token (client_credentials or refresh)
-    try:
-        inst = get_active()
-        inst_token = await inst.get_access_token()
-        if inst_token:
-            access_token = inst_token
-    except Exception as e:
-        log.warning("Instance token mint failed: %s", e)
+    # 0. Prefer per-user PKCE token when the user has an active session.
+    #    This ensures "Sign in with Microsoft" is meaningful — the user's
+    #    own delegated token is used instead of the service-principal token,
+    #    which may lack OSDU entitlements.
+    if request.session.get("oid"):
+        try:
+            sess_tokens = await tokens_from_session(request)
+            if sess_tokens:
+                access_token = sess_tokens.get("access_token")
+        except Exception as e:
+            log.warning("Session token failed: %s", e)
 
-    # 1. Try shared env-token (default instance, refresh_token from env)
+    # 1. Try active instance's own token (client_credentials or refresh)
+    if not access_token:
+        try:
+            inst = get_active()
+            inst_token = await inst.get_access_token()
+            if inst_token:
+                access_token = inst_token
+        except Exception as e:
+            log.warning("Instance token mint failed: %s", e)
+
+    # 2. Try shared env-token (default instance, refresh_token from env)
     if not access_token:
         try:
             env_tokens = await tokens_from_env()
@@ -100,15 +113,6 @@ async def inject_access_token(request: Request, call_next):
                 access_token = env_tokens.get("access_token")
         except Exception as e:
             log.warning("Env-token mint failed: %s", e)
-
-    # 2. Fallback - per-user session token (PKCE flow)
-    if not access_token:
-        try:
-            sess_tokens = await tokens_from_session(request)
-            if sess_tokens:
-                access_token = sess_tokens.get("access_token")
-        except Exception as e:
-            log.warning("Session token failed: %s", e)
 
     # 3. No token at all - redirect to login page (for browser) or 401 (for API)
     if not access_token:
