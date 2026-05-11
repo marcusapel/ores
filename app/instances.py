@@ -120,6 +120,9 @@ class OsduInstance:
             "refresh_token": self.refresh_token,
             "scope": scope_str,
         }
+        # Confidential clients require client_secret in every token request
+        if self.client_secret:
+            data["client_secret"] = self.client_secret
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 r = await client.post(self.token_url, data=data)
