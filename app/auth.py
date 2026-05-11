@@ -102,6 +102,15 @@ async def tokens_from_env() -> Optional[Dict[str, Any]]:
 # Mode 2 - per-user PKCE login (Authorization Code + PKCE)
 # ─────────────────────────────────────────────────────────────
 
+def _get_client_secret() -> str:
+    """Return the active instance's client_secret (empty string if none)."""
+    try:
+        from .instances import get_active
+        return get_active().client_secret or ""
+    except Exception:
+        return ""
+
+
 def _build_redirect_uri(request: Request) -> str:
     """Build callback URI from the incoming request (works behind proxies / Codespaces)."""
     proto = request.headers.get("x-forwarded-proto", request.url.scheme)
@@ -133,12 +142,17 @@ async def login(request: Request):
         login_scopes.append("offline_access")
         log.warning("offline_access missing from SCOPES - added for PKCE login")
 
-    async with AsyncOAuth2Client(
+    client_secret = _get_client_secret()
+    oauth_kwargs: Dict[str, Any] = dict(
         client_id=CLIENT_ID,
         scope=" ".join(login_scopes),
         redirect_uri=redirect_uri,
         code_challenge_method="S256",
-    ) as cli:
+    )
+    if client_secret:
+        oauth_kwargs["client_secret"] = client_secret
+
+    async with AsyncOAuth2Client(**oauth_kwargs) as cli:
         url, _state = cli.create_authorization_url(
             AUTHORIZE_URL,
             state=state,
@@ -162,12 +176,19 @@ async def auth_callback(request: Request):
     code_verifier = request.session.get("pkce_verifier", "")
     redirect_uri = request.session.get("redirect_uri", _build_redirect_uri(request))
 
-    async with AsyncOAuth2Client(
+    # Confidential clients (those with a client_secret) require it in the
+    # token exchange — otherwise Azure AD returns AADSTS7000218.
+    client_secret = _get_client_secret()
+    oauth_kwargs: Dict[str, Any] = dict(
         client_id=CLIENT_ID,
         scope=" ".join(SCOPES),
         redirect_uri=redirect_uri,
         code_challenge_method="S256",
-    ) as cli:
+    )
+    if client_secret:
+        oauth_kwargs["client_secret"] = client_secret
+
+    async with AsyncOAuth2Client(**oauth_kwargs) as cli:
         token = await cli.fetch_token(
             TOKEN_URL,
             code=code,

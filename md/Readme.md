@@ -96,24 +96,104 @@ Different instances can use different credentials. The middleware doesn't care �
 > The "Sign in with Microsoft" button appears on every page and on the login page.
 > This means an expired client secret doesn't lock users out — they can still sign in with their own Equinor account.
 
-### Per-user PKCE login (remote/multi-user deployments)
+### For admins — minting & rotating the shared refresh token
 
-When no shared instance token is configured, the app redirects to Azure AD, performs an OAuth2 Authorization Code + PKCE exchange, and stores the resulting tokens.
+The shared refresh token gives all visitors zero-click OSDU access.
+An admin mints it once via the CLI helper and stores it in `k8s/secret.yaml`:
+
+```bash
+# Step 1 — generate PKCE auth URL
+python demo/mint_refresh_token.py
+
+# Step 2 — sign in in your browser; copy the localhost:8400 callback URL
+python demo/mint_refresh_token.py --callback "<callback URL>"
+```
+
+The script prints the refresh token. Update the secrets:
+
+```yaml
+# k8s/secret.yaml
+INSTANCE_EQNDEV_CLIENT_ID:      "21b442a9-6c1c-4551-b234-afdf010dd3be"
+INSTANCE_EQNDEV_SCOPE:          "https://energy.azure.com/.default openid offline_access"
+INSTANCE_EQNDEV_REFRESH_TOKEN:  "<token from script>"
+```
+
+For Radix deployments, set the same values in **Radix Console → ores → dev → Secrets**.
+
+**Token rotation:** Azure AD may issue a new refresh token on every use.
+The middleware auto-rotates it in memory (`auth.py` line ~82), so the original
+token in `secret.yaml` becomes stale silently. If the pod restarts and the
+old token no longer works, re-run `mint_refresh_token.py`.
+
+**App registration checklist (Azure Portal → App registrations → `21b442a9-...`):**
+
+| Setting | Value |
+|---------|-------|
+| Redirect URIs (Web) | `http://localhost:8400/callback` (CLI minting) |
+|  | `http://localhost:8000/auth/callback` (local dev) |
+|  | `https://web-ores-dev.c3.radix.equinor.com/auth/callback` (Radix dev) |
+|  | `https://web-ores.c3.radix.equinor.com/auth/callback` (Radix prod) |
+| Supported account types | Accounts in this organizational directory only (Equinor) |
+| Allow public client flows | Yes (recommended, but optional if `client_secret` is always supplied) |
+| API permissions | `https://energy.azure.com/.default` (Energy Platform) |
+
+> **Tip:** CLI arguments `--client-id`, `--tenant`, `--scope` let you mint
+> tokens for any app registration, not just the default `21b442a9` app.
+
+---
+
+### For users — signing in
+
+End users **do not need any setup**. Authentication is fully automatic:
+
+| Scenario | What happens |
+|----------|--------------|
+| Shared token is healthy (Mode 0) | Every visitor is authenticated instantly — no login required |
+| Shared token expired / missing | User sees the **Sign in with Microsoft** button on the login page |
+| After clicking Sign in | Browser redirects to Azure AD (Equinor tenant), user signs in |
+| After Azure AD sign-in | Tokens are exchanged via PKCE, stored server-side — user lands on `/` |
+| Subsequent visits (same browser) | Session cookie (30 days) re-uses stored tokens — no re-login |
+| Access token expires (~1 h) | Silently refreshed from the per-user refresh token |
+| Pod restart | Session cookie + SQLite lookup = seamless, no re-login |
+| Session cookie expires (>30 d) | User must sign in again |
+| Logout | Click **Logout** — session + stored tokens are cleared |
+
+**Who can sign in:**
+
+- Any Equinor employee whose Entra ID account has been granted access
+  to the OSDU Energy Platform (the `energy.azure.com` API resource).
+- No per-user configuration, token minting, or admin action is required.
+- The app registration's audience and tenant restriction controls who
+  is allowed (single-tenant: Equinor directory only).
+
+**What users see on the login page:**
+
+1. Instance selector (if multiple OSDU instances are configured).
+2. Status badge showing whether the shared token is healthy.
+3. **"Sign in with Microsoft"** button.
+4. Note explaining that signing in is optional when the shared token works.
+
+---
+
+### Per-user PKCE login (technical detail)
+
+When no shared instance token is configured (or it fails), the app performs an OAuth2 Authorization Code + PKCE exchange:
 
 **Flow:**
 
-1. User redirected to Azure AD, signs in with Equinor/Azure account.
-2. App receives `access_token` + `refresh_token` + `id_token`.
-3. `id_token` decoded to extract user's stable Azure AD Object-ID (`oid`) and UPN.
-4. `refresh_token` persisted to local SQLite (`app/tokenstore.py`) keyed by `oid`.
-5. **30-day** signed session cookie set in browser.
+1. User clicks "Sign in with Microsoft" → redirected to Azure AD.
+2. Azure AD authenticates the user (Equinor SSO) and redirects back to `/auth/callback`.
+3. App exchanges the authorization code for `access_token` + `refresh_token` + `id_token`.
+4. `id_token` decoded to extract user's stable Azure AD Object-ID (`oid`) and UPN.
+5. `refresh_token` persisted to local SQLite (`app/tokenstore.py`) keyed by `(oid, instance_name)`.
+6. **30-day** signed session cookie set in browser — carries only `oid` + `instance_name`.
 
 **Subsequent visits:**
 
-- Valid session cookie + fresh AT cache - served immediately.
-- Expired AT - silently refreshed from encrypted RT in SQLite.
-- Server restarted - `oid` from session cookie looks up persisted RT, mints new AT (no re-login).
-- Session cookie expired (>30 days) - user must log in again.
+- Valid session cookie + fresh AT cache → served immediately.
+- Expired AT → silently refreshed from encrypted RT in SQLite.
+- Server restarted → `oid` from session cookie looks up persisted RT, mints new AT (no re-login).
+- Session cookie expired (>30 days) → user must log in again.
 
 Users only re-authenticate if their Azure AD refresh token expires (90 days inactivity) or they click **Logout**.
 

@@ -58,6 +58,46 @@ PKCE login is **always available as a fallback**, even when the instance is conf
 | `eqndev` | `_REFRESH_TOKEN` | Auto-authenticated via shared token; PKCE fallback if token expires |
 | `preship` | `_CLIENT_SECRET` | Auto-authenticated via service principal; PKCE fallback if secret expires |
 
+### Minting a shared refresh token (admin)
+
+The shared refresh token enables zero-click access for every visitor. An admin mints it once and stores it in `k8s/secret.yaml`:
+
+```bash
+# Step 1 — generate a PKCE auth URL and open it in a browser
+python demo/mint_refresh_token.py
+
+# Step 2 — sign in with your Equinor account; the browser redirects to
+# localhost:8400 (page won't load — that's expected). Copy the full URL
+# from the address bar and exchange it:
+python demo/mint_refresh_token.py --callback "http://localhost:8400/callback?code=...&state=..."
+```
+
+The script prints the refresh token. Paste it into:
+
+```yaml
+# k8s/secret.yaml
+INSTANCE_EQNDEV_REFRESH_TOKEN: "<token>"
+```
+
+For Radix deployments, also set the secret in **Radix Console → ores → dev → Secrets**.
+
+> **Prerequisite:** The app registration (`21b442a9-...`) must have
+> `http://localhost:8400/callback` as a redirect URI (Authentication blade in Azure Portal).
+> For the deployed site, also add `https://<radix-hostname>/auth/callback`.
+
+### Redirect URIs (admin)
+
+The app registration needs redirect URIs for every environment where PKCE login is used:
+
+| Environment | Redirect URI |
+|-------------|--------------|
+| Local dev | `http://localhost:8000/auth/callback` (auto-detected) |
+| Token minting CLI | `http://localhost:8400/callback` |
+| Radix (dev) | `https://web-ores-dev.c3.radix.equinor.com/auth/callback` |
+| Radix (prod) | `https://web-ores.c3.radix.equinor.com/auth/callback` |
+
+Add these in **Azure Portal → App registrations → Authentication → Web → Redirect URIs**.
+
 See [md/Readme.md](md/Readme.md#authentication--sessions) for the full auth & session guide.
 
 ## Pages
