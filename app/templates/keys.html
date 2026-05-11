@@ -318,6 +318,14 @@
               <option value="fed_both">Federated: all three sources</option>
               <option value="fed_enrich">Federated: all + enrichment</option>
             </optgroup>
+            <optgroup label="Cross-System (only via GraphQL)">
+              <option value="xref_grid_props">Grid in catalog → properties in RDDMS</option>
+              <option value="xref_horizon_reps">Horizon in catalog → RDDMS representations</option>
+              <option value="xref_orphan_rddms">RDDMS objects NOT in catalog (orphans)</option>
+              <option value="xref_catalog_only">Catalog records missing from RDDMS</option>
+              <option value="xref_well_chain">Well chain: catalog WPC → RDDMS graph traversal</option>
+              <option value="xref_grid_full">Full grid lineage: catalog → RDDMS → properties + stats</option>
+            </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>
           <span class="btn" id="gql-save-query" style="font-size:12px;padding:3px 10px;" title="Save current query">💾 Save</span>
@@ -2884,6 +2892,210 @@
       properties {
         title kind
         statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}`,
+      // ─── Cross-System Queries (only answerable via GraphQL) ────────────────
+      // These demonstrate the unique value of federated GraphQL:
+      // correlating OSDU catalog metadata with RDDMS object-graph data
+      // using shared UUIDs across systems.
+      xref_grid_props: `# CROSS-SYSTEM: Find grids indexed in OSDU catalog,
+# then discover their attached properties from RDDMS.
+#
+# Why only GraphQL can do this:
+#   OSDU Search knows the grid exists (WPC record) but has NO property data.
+#   RDDMS has the properties (porosity, permeability) but isn't searchable by OSDU kind.
+#   GraphQL bridges the gap: catalog hit → UUID → RDDMS graph → properties.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--IjkGridRepresentation:*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    searchCatalog: true
+    searchRddms: true
+    includeRelations: true
+    includeProperties: true
+    includeStatistics: true
+    limit: 5
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
+      # Relations from RDDMS graph (CRS, stratigraphy, features)
+      relations { uuid name typeName direction }
+      # Properties from RDDMS (porosity, perm, saturation)
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+      }
+    }
+  }
+}`,
+      xref_horizon_reps: `# CROSS-SYSTEM: Horizons known in catalog → their RDDMS representations
+#
+# Why only GraphQL can do this:
+#   Catalog knows HorizonInterpretation records exist (OSDU kind).
+#   But which Grid2D surfaces or triangulated meshes REFERENCE that horizon?
+#   Only RDDMS object graph (sources = reverse edges) knows this.
+#   Standard search cannot traverse relationships across systems.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--HorizonInterpretation:*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_HorizonInterpretation"
+    searchCatalog: true
+    searchRddms: true
+    includeRelations: true
+    limit: 10
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    hits {
+      uuid title dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
+      # Which representations point TO this horizon? (Grid2D, TriangulatedSet, etc.)
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      xref_orphan_rddms: `# CROSS-SYSTEM: Find RDDMS objects NOT indexed in OSDU catalog
+#
+# Why only GraphQL can do this:
+#   Catalog Search only returns what's been ingested to OSDU.
+#   RDDMS may contain objects that were loaded via ETP/EPC import
+#   but never registered as OSDU WPC records.
+#   This query finds them: foundInLocalRddms=true AND foundInCatalog=false.
+#   Useful for: data governance, re-ingestion planning, gap analysis.
+{
+  federatedSearch(
+    text: "*"
+    dataspaces: $DS_LIST
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: false
+    limit: 30
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms
+      osduId
+    }
+  }
+}
+# ↑ After running: filter results where foundInCatalog=false
+#   (those are RDDMS-only orphans not visible to catalog search)`,
+      xref_catalog_only: `# CROSS-SYSTEM: Catalog records that DON'T exist in RDDMS
+#
+# Why only GraphQL can do this:
+#   If catalog ingestion created WPC records from a manifest
+#   but the actual RESQML data was never loaded into RDDMS,
+#   those records are "metadata ghosts" — searchable but not queryable.
+#   This finds them: foundInCatalog=true AND foundInLocalRddms=false.
+#   Useful for: verifying ingestion completeness, finding broken links.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--*:*"
+    dataspaces: $DS_LIST
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: false
+    limit: 30
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
+    }
+  }
+}
+# ↑ After running: filter results where foundInLocalRddms=false
+#   (those are catalog-only records with no RDDMS backing)`,
+      xref_well_chain: `# CROSS-SYSTEM: Trace a well from catalog to full RDDMS graph
+#
+# Why only GraphQL can do this:
+#   OSDU catalog stores flat WPC records — you can search for wells.
+#   But the Feature → Interpretation → Trajectory → FrameRepresentation
+#   chain lives in RDDMS only. Catalog has no knowledge of these edges.
+#   GraphQL finds the well in catalog, then traverses the RDDMS graph
+#   to reveal the full subsurface object hierarchy.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--WellboreTrajectory:*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_WellboreFeature"
+    searchCatalog: true
+    searchRddms: true
+    includeRelations: true
+    includeProperties: true
+    limit: 5
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
+      # Graph edges: Interpretation → Trajectory → FrameRep → logs
+      relations {
+        uuid name typeName direction
+      }
+      # Any attached array properties (deviation surveys, logs)
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}`,
+      xref_grid_full: `# CROSS-SYSTEM: Full grid lineage — catalog metadata + RDDMS graph + array stats
+#
+# The ultimate cross-system query that no single API can answer:
+#   1. OSDU catalog → finds the grid (WPC record with OSDU id, kind, version)
+#   2. UUID match → confirms it exists in RDDMS (data integrity check)
+#   3. Graph traversal → finds CRS, stratigraphy, interpretation links
+#   4. Property discovery → finds porosity, permeability, saturation arrays
+#   5. Array statistics → computes min/max/mean without downloading data
+#
+# This single query replaces: 1 catalog search + N RDDMS REST calls +
+# N property lookups + N array stat computations.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--IjkGridRepresentation:*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: true
+    includeRelations: true
+    includeProperties: true
+    includeStatistics: true
+    propertyFilter: { kind: "porosity", arrayFilter: { threshold: 0.1, operator: GT } }
+    limit: 3
+  ) {
+    totalCatalog totalLocalRddms totalRemoteRddms totalMerged
+    sources queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms foundInRemoteRddms
+      osduId osduKind
+      relations { uuid name typeName direction }
+      properties {
+        uuid title kind uom
+        statistics { count minValue maxValue mean stdDev }
+        matchingCells { count total fraction }
       }
     }
   }
