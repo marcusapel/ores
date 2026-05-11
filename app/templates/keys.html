@@ -217,6 +217,7 @@
               <option value="browse">Browse Objects (list by type)</option>
               <option value="relations">Object Relations (graph traversal)</option>
               <option value="federated">Federated Search (catalog + RDDMS)</option>
+              <option value="cross_system">Cross-System (catalog ↔ RDDMS gaps &amp; lineage)</option>
             </select>
 
             <label style="font-weight:600;color:#323130;">Object type</label>
@@ -277,52 +278,44 @@
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
           <label style="font-weight:600;font-size:13px;">Preset:</label>
           <select id="gql-preset" style="font-size:13px;padding:3px 8px;border-radius:4px;border:1px solid #ccc;">
-            <optgroup label="Explore">
+            <optgroup label="Browse &amp; Explore">
               <option value="status">Backend status</option>
               <option value="dataspaces">List dataspaces</option>
               <option value="types">Resource types &amp; counts</option>
               <option value="objects_grid">Browse IjkGrids</option>
               <option value="objects_wells">Browse wellbores</option>
             </optgroup>
-            <optgroup label="Relationships">
+            <optgroup label="Relations (graph traversal)">
               <option value="rel_grid_targets">Simgrid → targets (CRS, stratigraphy)</option>
               <option value="rel_grid_sources">Simgrid ← sources (properties)</option>
               <option value="rel_well_chain">Well chain: Feature → Interp → Trajectory</option>
             </optgroup>
-            <optgroup label="Deep Search (IjkGrid)">
-              <option value="deep_poro">Porosity &gt; 0.25 (kind: porosity)</option>
-              <option value="deep_perm">Permeability &gt; 500 mD (kind: rock permeability)</option>
-              <option value="deep_sw">Water saturation &lt; 0.3 (kind: saturation)</option>
-              <option value="deep_all_props">All properties on IjkGrids</option>
-            </optgroup>
-            <optgroup label="Deep Search (Surfaces)">
-              <option value="deep_grid2d_all">All Grid2D surfaces</option>
-              <option value="deep_grid2d_arrays">Grid2D array statistics</option>
-            </optgroup>
-            <optgroup label="Deep Search (Horizons)">
-              <option value="deep_horizon_surfaces">Horizon → surfaces (Grid2D)</option>
+            <optgroup label="Deep Search (property filter + stats)">
+              <option value="deep_poro">IjkGrid: porosity &gt; 0.25</option>
+              <option value="deep_perm">IjkGrid: permeability &gt; 500 mD</option>
+              <option value="deep_sw">IjkGrid: water saturation &lt; 0.3</option>
+              <option value="deep_all_props">IjkGrid: all properties</option>
+              <option value="deep_grid2d_all">Grid2D: all surfaces</option>
+              <option value="deep_grid2d_arrays">Grid2D: array statistics</option>
+              <option value="deep_horizon_surfaces">Horizon → surfaces</option>
               <option value="deep_horizon_wells">Horizon → well markers</option>
-            </optgroup>
-            <optgroup label="Deep Search (Well Logs)">
-              <option value="deep_well_phit">Wells with porosity &gt; 0.25 (kind: porosity)</option>
-              <option value="deep_well_perm">Wells with permeability &gt; 100 (kind: rock permeability)</option>
-              <option value="deep_well_all">All log properties on wells</option>
-            </optgroup>
-            <optgroup label="Numerical Data">
-              <option value="array_stats">Array statistics (Simgrid)</option>
+              <option value="deep_well_phit">Wells: porosity &gt; 0.25</option>
+              <option value="deep_well_perm">Wells: permeability &gt; 100</option>
+              <option value="deep_well_all">Wells: all log properties</option>
+              <option value="array_stats">Array statistics (raw)</option>
               <option value="array_sample">Array sample values</option>
             </optgroup>
             <optgroup label="Federated (Catalog + RDDMS)">
-              <option value="fed_local">Local RDDMS only (un-indexed PG data)</option>
+              <option value="fed_local">Local RDDMS only (un-indexed PG)</option>
               <option value="fed_catalog">OSDU catalog only (metadata)</option>
-              <option value="fed_both">All three sources (merged by UUID)</option>
+              <option value="fed_both">All sources merged by UUID</option>
               <option value="fed_enrich">All + relations + property stats</option>
               <option value="xref_grid_props">Grid in catalog → properties in RDDMS</option>
               <option value="xref_horizon_reps">Horizon in catalog → RDDMS representations</option>
-              <option value="xref_orphan_rddms">RDDMS objects NOT in catalog (orphans)</option>
-              <option value="xref_catalog_only">Catalog records missing from RDDMS</option>
-              <option value="xref_well_chain">Well chain: catalog → RDDMS graph traversal</option>
-              <option value="xref_grid_full">Full lineage: catalog → RDDMS → props + filter</option>
+              <option value="xref_orphan_rddms">RDDMS orphans (not in catalog)</option>
+              <option value="xref_catalog_only">Catalog ghosts (not in RDDMS)</option>
+              <option value="xref_well_chain">Well chain: catalog → RDDMS graph</option>
+              <option value="xref_grid_full">Full lineage + property filter</option>
             </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>
@@ -417,7 +410,6 @@
       Organization: { bg: '#e0f2f1', fg: '#004d40', border: '#80cbc4' },
       CRS: { bg: '#eceff1', fg: '#37474f', border: '#b0bec5' },
       Provenance: { bg: '#fff8e1', fg: '#f57f17', border: '#ffe082' },
-      Container: { bg: '#efebe9', fg: '#4e342e', border: '#bcaaa4' },
     };
     const DEFAULT_COLOR = { bg: '#f5f5f5', fg: '#424242', border: '#e0e0e0' };
 
@@ -627,6 +619,51 @@
       foundInCatalog foundInLocalRddms foundInRemoteRddms
       ${relations ? 'relations { uuid name typeName direction }' : ''}
       ${stats ? 'properties { title kind statistics { count minValue maxValue mean } }' : ''}
+    }
+  }
+}`;
+      } else if (action === 'cross_system') {
+        // Cross-system: find objects in both systems, show presence flags + full lineage
+        let propFilter = '';
+        if (prop && op && threshold) {
+          const filterField = matchMode === 'strict' ? 'kind' : 'titleContains';
+          let af = `threshold: ${parseFloat(threshold)}, operator: ${op}`;
+          if (op === 'BETWEEN' && thresholdHigh) af += `, thresholdHigh: ${parseFloat(thresholdHigh)}`;
+          propFilter = `propertyFilter: { ${filterField}: "${prop}", arrayFilter: { ${af} } }`;
+        } else if (prop) {
+          const filterField = matchMode === 'strict' ? 'kind' : 'titleContains';
+          propFilter = `propertyFilter: { ${filterField}: "${prop}" }`;
+        }
+        return `# Cross-system query: catalog ↔ RDDMS comparison + full lineage
+# Objects appear with flags showing WHERE they exist.
+# foundInCatalog=false → RDDMS orphan (not indexed)
+# foundInLocalRddms=false → catalog ghost (no backing data)
+{
+  federatedSearch(
+    text: "*"
+    ${dsArg}
+    typeName: "${typeName}"
+    searchCatalog: true
+    searchRddms: true
+    searchRemoteRddms: true
+    includeRelations: true
+    includeProperties: true
+    includeStatistics: true
+    ${propFilter}
+    limit: ${limit}
+  ) {
+    totalCatalog totalLocalRddms totalRemoteRddms totalMerged
+    sources queryDescription
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms foundInRemoteRddms
+      osduId osduKind
+      relations { uuid name typeName direction }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+        ${(op && threshold) ? 'matchingCells { count total fraction }' : ''}
+      }
     }
   }
 }`;
