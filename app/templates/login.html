@@ -223,6 +223,10 @@
       const data = await resp.json();
       if (data.ok) {
         document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.dataset.name === name));
+        // Clear stale prefetch cache so admin/keys pages re-scan dataspaces
+        sessionStorage.removeItem('_ds_admin');
+        sessionStorage.removeItem('_ds_keys_local');
+        sessionStorage.removeItem('_ds_keys_remote');
         if (data.token_ok) {
           toast.textContent = `Switched to ${name} ✓  Redirecting…`;
           toast.className = 'inst-toast';
@@ -233,7 +237,8 @@
           // Update warning banner
           checkInstanceToken();
           setTimeout(() => { toast.style.display = 'none'; }, 4000);
-        } else {
+        }
+      } else {
         toast.textContent = data.error || 'Switch failed';
         toast.className = 'inst-toast error';
       }

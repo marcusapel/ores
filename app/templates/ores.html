@@ -363,6 +363,12 @@ async function switchInstance(name) {
       toast.className = 'inst-toast';
       // Fade out after 3s
       setTimeout(() => { toast.style.display = 'none'; }, 3000);
+
+      // Clear stale prefetch cache and re-scan dataspaces for new instance
+      sessionStorage.removeItem('_ds_admin');
+      sessionStorage.removeItem('_ds_keys_local');
+      sessionStorage.removeItem('_ds_keys_remote');
+      prefetchDataspaces();
     } else {
       toast.textContent = data.error || 'Switch failed';
       toast.className = 'inst-toast error';
@@ -443,7 +449,7 @@ async function submitAdd(e) {
 }
 
 /* ── Prefetch dataspaces in background so RDDMS pages load instantly ── */
-(function prefetchDataspaces() {
+function prefetchDataspaces() {
   // Admin dataspaces
   fetch('/admin/dataspaces.json', { credentials: 'same-origin' })
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -470,6 +476,7 @@ async function submitAdd(e) {
         sessionStorage.setItem('_ds_keys_remote', JSON.stringify(js.items));
     })
     .catch(() => {});
-})();
+}
+prefetchDataspaces();
 </script>
 {% endblock %}
