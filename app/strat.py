@@ -1162,7 +1162,15 @@ async def list_smda_columns(
                 "status": status,
             }
 
-    columns_list = sorted(columns_map.values(), key=lambda c: c["name"].lower())
+    # Sort alphabetically, but group "column" types before "rank" types.
+    # Within each group, sort by name (case-insensitive).
+    def _sort_key(c):
+        t = (c.get("type") or "").upper()
+        # 0 = COLUMN (first), 1 = anything else / RANK (second)
+        group = 0 if "RANK" not in t else 1
+        return (group, c["name"].lower())
+
+    columns_list = sorted(columns_map.values(), key=_sort_key)
 
     log.info("SMDA strat-column list: %d columns from %d rows (%d pages)",
              len(columns_list), len(all_rows), page)
