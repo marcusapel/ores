@@ -34,3 +34,4 @@ demo/epc/drogon_dg_export
 demo/epc/.etp_token
 ores_tokens.db-shm
 ores_tokens.db-wal
+log.txt
