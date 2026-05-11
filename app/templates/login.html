@@ -113,13 +113,8 @@
     </div>
 
     {% set active_info = instances.get(active_instance, {}) %}
-    {% if active_info.get('auth_mode', '').startswith('client_credentials') and 'refresh_token' not in active_info.get('auth_mode', '') %}
-    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;text-align:left;font-size:13px;color:#664d03;">
-      <strong>⚠ Instance "{{ active_instance }}" primary auth is client_credentials</strong><br>
-      The service principal token may have failed (expired secret?).
-      You can still sign in with your own Microsoft account below.
+    <div id="auth-warning" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;text-align:left;font-size:13px;color:#664d03;">
     </div>
-    {% endif %}
     <a class="btn-login" href="/login">Sign in with Microsoft</a>
     <div class="note">Uses Azure AD with PKCE — no passwords are stored by this app.</div>
   </div>
@@ -228,10 +223,17 @@
       const data = await resp.json();
       if (data.ok) {
         document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.dataset.name === name));
-        toast.textContent = data.token_ok ? `Switched to ${name} ✓` : `Switched to ${name} (token pending)`;
-        toast.className = 'inst-toast';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-      } else {
+        if (data.token_ok) {
+          toast.textContent = `Switched to ${name} ✓  Redirecting…`;
+          toast.className = 'inst-toast';
+          setTimeout(() => { window.location.href = '/ores'; }, 400);
+        } else {
+          toast.textContent = `Switched to ${name} (token pending — sign in below)`;
+          toast.className = 'inst-toast';
+          // Update warning banner
+          checkInstanceToken();
+          setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        } else {
         toast.textContent = data.error || 'Switch failed';
         toast.className = 'inst-toast error';
       }
@@ -240,6 +242,28 @@
       toast.className = 'inst-toast error';
     }
   }
+
+  /* ── Dynamic auth check: probe active instance on page load ── */
+  async function checkInstanceToken() {
+    const warn = document.getElementById('auth-warning');
+    try {
+      const r = await fetch('/api/instances/probe');
+      const data = await r.json();
+      if (data.ok) {
+        // Token works — skip login page entirely
+        window.location.href = '/ores';
+        return;
+      }
+    } catch (_) { /* stay on login */ }
+    // Token didn't work — show contextual message
+    const activeBtn = document.querySelector('.inst-btn.active');
+    const name = activeBtn ? activeBtn.dataset.name : 'active instance';
+    warn.innerHTML = `<strong>⚠ Instance "${name}" has no valid token</strong><br>` +
+      'The service principal or refresh token may have failed. ' +
+      'Sign in with your Microsoft account below, or switch instance.';
+    warn.style.display = 'block';
+  }
+  checkInstanceToken();
 
   /* ── Add dialog ── */
   function openAddDialog() { document.getElementById('add-modal').classList.add('open'); document.getElementById('f-name').focus(); }
