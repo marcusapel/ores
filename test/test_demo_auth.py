@@ -49,11 +49,11 @@ def k8s_dir(tmp_path: Path) -> Path:
         metadata:
           name: ores-config
         data:
-          INSTANCE_SWEDEV_TENANT_ID: "aaa-bbb-ccc"
-          INSTANCE_SWEDEV_CLIENT_ID: "cli-111"
-          INSTANCE_SWEDEV_HOSTNAME: "swedev.energy.azure.com"
-          INSTANCE_SWEDEV_DATA_PARTITION_ID: "dev"
-          INSTANCE_SWEDEV_SCOPE: "cli-111/.default openid"
+          INSTANCE_EQNDEV_TENANT_ID: "aaa-bbb-ccc"
+          INSTANCE_EQNDEV_CLIENT_ID: "cli-111"
+          INSTANCE_EQNDEV_HOSTNAME: "swedev.energy.azure.com"
+          INSTANCE_EQNDEV_DATA_PARTITION_ID: "dev"
+          INSTANCE_EQNDEV_SCOPE: "cli-111/.default openid"
           INSTANCE_PRESHIP_TENANT_ID: "ddd-eee-fff"
           INSTANCE_PRESHIP_CLIENT_ID: "cli-222"
           INSTANCE_PRESHIP_HOSTNAME: "preship.energy.azure.com"
@@ -66,7 +66,7 @@ def k8s_dir(tmp_path: Path) -> Path:
         metadata:
           name: ores-secret
         stringData:
-          INSTANCE_SWEDEV_REFRESH_TOKEN: "rt-swedev-123"
+          INSTANCE_EQNDEV_REFRESH_TOKEN: "rt-swedev-123"
           INSTANCE_PRESHIP_CLIENT_SECRET: "cs-preship-456"
     """))
     return tmp_path
@@ -115,20 +115,20 @@ def _mock_httpx_fail(url, *, data=None, timeout=None) -> MagicMock:
 class TestK8sYamlLoading:
     def test_load_configmap(self, k8s_dir: Path):
         env = _auth._load_k8s_yaml(k8s_dir / "configmap.yaml")
-        assert env["INSTANCE_SWEDEV_TENANT_ID"] == "aaa-bbb-ccc"
-        assert env["INSTANCE_SWEDEV_CLIENT_ID"] == "cli-111"
+        assert env["INSTANCE_EQNDEV_TENANT_ID"] == "aaa-bbb-ccc"
+        assert env["INSTANCE_EQNDEV_CLIENT_ID"] == "cli-111"
 
     def test_load_secret(self, k8s_dir: Path):
         env = _auth._load_k8s_yaml(k8s_dir / "secret.yaml")
-        assert env["INSTANCE_SWEDEV_REFRESH_TOKEN"] == "rt-swedev-123"
+        assert env["INSTANCE_EQNDEV_REFRESH_TOKEN"] == "rt-swedev-123"
 
     def test_load_missing_file(self, tmp_path: Path):
         assert _auth._load_k8s_yaml(tmp_path / "nope.yaml") == {}
 
     def test_load_k8s_env_merges(self, k8s_dir: Path):
         env = _auth.load_k8s_env(k8s_dir)
-        assert env["INSTANCE_SWEDEV_TENANT_ID"] == "aaa-bbb-ccc"
-        assert env["INSTANCE_SWEDEV_REFRESH_TOKEN"] == "rt-swedev-123"
+        assert env["INSTANCE_EQNDEV_TENANT_ID"] == "aaa-bbb-ccc"
+        assert env["INSTANCE_EQNDEV_REFRESH_TOKEN"] == "rt-swedev-123"
         assert env["INSTANCE_PRESHIP_CLIENT_SECRET"] == "cs-preship-456"
 
 
@@ -165,8 +165,8 @@ class TestDotenvParsing:
 
 class TestInstanceResolution:
     def test_resolve_from_k8s(self, k8s_dir: Path):
-        inst = _auth.load_instance("swedev", k8s_dir=k8s_dir)
-        assert inst["name"] == "swedev"
+        inst = _auth.load_instance("eqndev", k8s_dir=k8s_dir)
+        assert inst["name"] == "eqndev"
         assert inst["source"] == "k8s"
         assert inst["tenant"] == "aaa-bbb-ccc"
         assert inst["client_id"] == "cli-111"
@@ -181,9 +181,9 @@ class TestInstanceResolution:
         assert inst["grant"] == "client_credentials"
         assert inst["client_secret"] == "cs-preship-456"
 
-    def test_alias_eqndev_resolves_to_swedev(self, k8s_dir: Path):
-        inst = _auth.load_instance("eqndev", k8s_dir=k8s_dir)
-        assert inst["name"] == "swedev"
+    def test_alias_swedev_resolves_to_eqndev(self, k8s_dir: Path):
+        inst = _auth.load_instance("swedev", k8s_dir=k8s_dir)
+        assert inst["name"] == "eqndev"
 
     def test_resolve_from_environ(self, tmp_path: Path):
         """Fall back to INSTANCE_* env vars when k8s dir is empty."""
@@ -314,5 +314,5 @@ class TestConvenience:
         assert h["Content-Type"] == "application/json"
 
     def test_base_url(self, k8s_dir: Path):
-        url = _auth.base_url("swedev", k8s_dir=k8s_dir)
+        url = _auth.base_url("eqndev", k8s_dir=k8s_dir)
         assert url == "https://swedev.energy.azure.com"
