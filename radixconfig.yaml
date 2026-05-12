@@ -7,7 +7,7 @@ kind: RadixApplication
 metadata:
   name: ores
 spec:
-  # ── Build ──────────────────────────────────────────────────────────
+  # ── Build ─────────────────────────────────────────────────────────
   build:
     useBuildKit: true
 
