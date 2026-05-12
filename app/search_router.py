@@ -607,7 +607,7 @@ async def search_run(
         enriched_results: List[Dict[str, Any]] = []
         seen_record_ids: Set[str] = set()
         merged_total_count = 0
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             # Phase 1: Search all kinds
             all_hit_ids: List[str] = []
             for current_kind in search_kinds:
@@ -815,7 +815,7 @@ async def search_schemas(
             params["limit"] = 1000
             schema_list: list = []
             offset = 0
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with osdu.http_client(timeout=60) as client:
                 while True:
                     params["offset"] = offset
                     r = await client.get(schema_url, headers=hdr, params=params)
@@ -832,7 +832,7 @@ async def search_schemas(
                         break
                     offset += len(page)
         else:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with osdu.http_client(timeout=60) as client:
                 r = await client.get(schema_url, headers=hdr, params=params)
                 r.raise_for_status()
                 data = r.json()
@@ -972,7 +972,7 @@ async def search_refdata(
             "trackTotalCount": True,
         }
 
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.post(search_url, headers=hdr, json=payload)
             r.raise_for_status()
             res = r.json()
@@ -1064,7 +1064,7 @@ async def api_schema_detail(request: Request, kind: str):
     schema_url = f"https://{osdu.OSDU_BASE_URL}/api/schema-service/v1/schema/{kind}"
     hdr = osdu.headers(at)
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.get(schema_url, headers=hdr)
             r.raise_for_status()
             return JSONResponse(r.json())
@@ -1084,7 +1084,7 @@ async def api_record_detail(request: Request, record_id: str):
     storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records/{record_id}"
     hdr = osdu.headers(at)
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.get(storage_url, headers=hdr)
             r.raise_for_status()
             return JSONResponse(r.json())
@@ -1109,7 +1109,7 @@ async def api_refdata_kinds(request: Request):
     hdr = osdu.headers(at)
     try:
         params = {"authority": "*", "source": "*", "entityType": "*", "limit": 1000}
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.get(schema_url, headers=hdr, params=params)
             r.raise_for_status()
             data = r.json()
@@ -1157,7 +1157,7 @@ async def view_record(request: Request, record_id: str):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.get(f"{storage_url}/{record_id}", headers=hdr)
             r.raise_for_status()
             full = r.json()

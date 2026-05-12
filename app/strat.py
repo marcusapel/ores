@@ -42,7 +42,7 @@ async def _osdu_get_record(request: Request, record_id: str) -> dict:
     base = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records"
     url = f"{base}/{urllib.parse.quote(record_id, safe='')}"
     hdr = osdu.headers(at)
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with osdu.http_client(timeout=30) as client:
         r = await client.get(url, headers=hdr)
         log.debug("Storage GET %s → %d", record_id, r.status_code)
         if r.status_code == 200:
@@ -291,7 +291,7 @@ async def strat_search(
     total = 0
     seen_ids: set[str] = set()
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with osdu.http_client(timeout=60) as client:
 
         # ── Helper: run one search query and collect results ──
         async def _search_kind(kind: str, item_type: str, extra_fields=None):
@@ -459,7 +459,7 @@ async def _storage_fetch_many(request: Request, ids: List[str]) -> Dict[str, dic
                 log.warning("Storage GET %s → %d: %s", rid, r.status_code, r.text[:200])
                 r.raise_for_status()
 
-    async with httpx.AsyncClient(timeout=30, http2=True) as client:
+    async with osdu.http_client(timeout=30, http2=True) as client:
         chunks = [uniq[i:i+20] for i in range(0, len(uniq), 20)]
         try:
             # Pass 1: try all IDs as-is
@@ -885,7 +885,7 @@ async def _build_chrono_index(request: Request) -> Dict[str, str]:
     cursor: Optional[str] = None
     page = 0
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with osdu.http_client(timeout=60) as client:
         while True:
             payload: Dict[str, Any] = {
                 "kind": "osdu:wks:reference-data--ChronoStratigraphy:*",
@@ -1229,7 +1229,7 @@ async def storage_put_strat_records(
     results = {"created": 0, "errors": []}
     # Upload in batches of 20
     log.info("Storage PUT %d records in batches of 20", len(records))
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with osdu.http_client(timeout=60) as client:
         for i in range(0, len(records), 20):
             batch = records[i:i + 20]
             try:
@@ -1479,7 +1479,7 @@ async def generate_horizons(request: Request):
         hdr = osdu.headers(at)
 
         ingest_result = {"created": 0, "errors": []}
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             for i in range(0, len(horizons), 20):
                 batch = horizons[i:i + 20]
                 try:
@@ -1706,7 +1706,7 @@ async def generate_units(request: Request):
         hdr = osdu.headers(at)
 
         ingest_result = {"created": 0, "errors": []}
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             for i in range(0, len(units), 20):
                 batch = units[i:i + 20]
                 try:

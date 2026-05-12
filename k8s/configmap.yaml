@@ -62,6 +62,7 @@ data:
   INSTANCE_PRESHIP_DEFAULT_OWNERS: "data.default.owners@opendes.contoso.com"
   INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
   INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
+  INSTANCE_PRESHIP_SSL_VERIFY: "false"
 
 
   # ── Example: "prod" instance (uncomment to enable) ──

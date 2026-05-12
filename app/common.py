@@ -160,7 +160,7 @@ async def search_reservoirs(
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with osdu.http_client(timeout=60) as client:
                 r = await client.post(search_url, headers=hdr, json=payload)
                 r.raise_for_status()
                 results = r.json().get("results", [])
