@@ -513,6 +513,9 @@ async def keys_objects(
         title = (r.get("Citation") or {}).get("Title") or r.get("name") or uid or uri
         ct = r.get("$type") or r.get("contentType") or ""
         type_path = _infer_type_path(r)
+        # When listing by specific type and inference fails, use the requested type
+        if not type_path and typ:
+            type_path = _sanitize_type(typ)
 
         # contains filter on title/uuid
         if qq_norm:
@@ -1495,6 +1498,14 @@ async def keys_object_graph(
     typ_s = _sanitize_type(typ)
     uuid_s = _sanitize_uuid(uuid)
 
+    if not typ_s:
+        return JSONResponse(
+            {"status": "error", "code": 400,
+             "reason": "Missing type",
+             "detail": "Object type is required. Select a specific type instead of (All types)."},
+            status_code=400,
+        )
+
     obj = None
 
     # ── Try PG first ──────────────────────────────────────────────────
@@ -1516,7 +1527,12 @@ async def keys_object_graph(
             obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
             obj = _normalize_resource_obj(obj_raw, uuid_s)
         except HTTPStatusError as exc:
-            return http_error_response(exc)
+            if exc.response.status_code == 404:
+                log.info("graph.json: primary object not found via REST, continuing with minimal info")
+                obj = {}
+                obj_raw = {}
+            else:
+                return http_error_response(exc)
     else:
         obj_raw = obj
 
