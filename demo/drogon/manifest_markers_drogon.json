@@ -6,7 +6,7 @@
     "WorkProduct": null,
     "WorkProductComponents": [
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:642c2619-95d2-4a30-9953-1221fa7fcace:",
+        "id": "dev:work-product-component--WellboreMarkerSet:e0e6cf87-349e-49ec-bf7e-30ff0c5c884b:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -145,7 +145,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:29526cad-6cf8-45d0-9ba1-481607a2f359:",
+        "id": "dev:work-product-component--WellboreMarkerSet:9ac945e3-a655-4a7e-9c40-e8eecd9b0274:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -284,7 +284,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:46571213-b79d-4774-b4fa-fa85a1b52d20:",
+        "id": "dev:work-product-component--WellboreMarkerSet:b11bf81e-f8bc-48b5-a03d-9ac45f3af276:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -423,7 +423,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:386bb65d-8136-4ff1-ae6d-d2c7155efc8b:",
+        "id": "dev:work-product-component--WellboreMarkerSet:d53ce054-4f4e-4a60-80dd-93ea23477299:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -562,7 +562,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:5f26d0a7-2c44-46d8-bfe6-7c82bb61589b:",
+        "id": "dev:work-product-component--WellboreMarkerSet:afa8497b-a51c-4971-8d52-191d07e8fa97:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -701,7 +701,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:4b4871e4-3b34-4eb6-a768-eeb5eeb071e3:",
+        "id": "dev:work-product-component--WellboreMarkerSet:19076723-13d3-42b2-acd1-ab0a682c4891:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -840,7 +840,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:dd88b694-27aa-40a2-8390-a2b6405fc972:",
+        "id": "dev:work-product-component--WellboreMarkerSet:4e638fda-a7a0-4f1a-abfb-b8e1bfd58cc4:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -979,7 +979,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:82ff53e6-24fd-4c65-ab75-19c01e8eb0dc:",
+        "id": "dev:work-product-component--WellboreMarkerSet:e7960826-ca8a-4ecd-8d6b-092a6a25da2d:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -1107,7 +1107,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:fe28bbf8-7721-4436-b4e2-f3042fbf67d0:",
+        "id": "dev:work-product-component--WellboreMarkerSet:042fdd2e-5e59-4e5b-9616-e8959272fc9c:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -1235,7 +1235,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:42fe1b8a-cab8-4579-a775-63f80c9593dc:",
+        "id": "dev:work-product-component--WellboreMarkerSet:d71134b7-2203-4e72-81fe-f0cbf574f4e5:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [
@@ -1363,7 +1363,7 @@
         }
       },
       {
-        "id": "dev:work-product-component--WellboreMarkerSet:bd2688e1-bd2d-4c11-b1d1-cc9cbf8f2ba3:",
+        "id": "dev:work-product-component--WellboreMarkerSet:a401228b-b628-42e2-b9ab-db94f75bfff6:",
         "kind": "osdu:wks:work-product-component--WellboreMarkerSet:1.2.0",
         "acl": {
           "owners": [

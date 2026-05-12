@@ -7,6 +7,7 @@ import secrets
 import urllib.parse
 import logging
 import json
+from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional, Set
 
 import httpx
@@ -36,9 +37,10 @@ from .strat import router as strat_router
 from .analyse import router as analyse_router
 from .addgate import router as addgate_router
 from .keys_router import router as keys_router
-from .graphql_router import router as graphql_router, close_pool as _close_gql_pool
+from .graphql_router import router as graphql_router
+from .graphql_refdata import router as graphql_refdata_router
 from .search_router import router as search_router
-from .search_router import _friendly_value
+from .common import pretty_val as _jinja_pretty_val, access_token as _access_token
 from .howto_router import router as howto_router
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -50,7 +52,18 @@ logging.basicConfig(
 )
 log = logging.getLogger("rddms-admin")
 
-app = FastAPI(title="RDDMS Admin")
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI):
+    """Startup / shutdown lifecycle hook (replaces deprecated on_event)."""
+    yield
+    # ── Shutdown ──
+    await osdu.close_shared_client()
+    from .pg_backend import close_pool
+    await close_pool()
+
+
+app = FastAPI(title="RDDMS Admin", lifespan=_lifespan)
 
 # ── Stable secret key (must be identical across workers) ─────────────────────
 _SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(16)
@@ -83,17 +96,24 @@ async def inject_access_token(request: Request, call_next):
 
     access_token: str | None = None
 
-    # 0. Prefer per-user PKCE token when the user has an active session.
-    #    This ensures "Sign in with Microsoft" is meaningful — the user's
-    #    own delegated token is used instead of the service-principal token,
-    #    which may lack OSDU entitlements.
+    # 0. Prefer per-user PKCE token when the user has an active session
+    #    AND the session was created for the currently active instance.
+    #    After an instance switch, the old session token would be scoped to
+    #    the previous Azure AD tenant/app — skip it so we fall through to
+    #    the new instance's own token (client_credentials or env RT).
     if request.session.get("oid"):
-        try:
-            sess_tokens = await tokens_from_session(request)
-            if sess_tokens:
-                access_token = sess_tokens.get("access_token")
-        except Exception as e:
-            log.warning("Session token failed: %s", e)
+        session_inst = request.session.get("instance_name", "")
+        active_inst = get_active_name()
+        if session_inst == active_inst:
+            try:
+                sess_tokens = await tokens_from_session(request)
+                if sess_tokens:
+                    access_token = sess_tokens.get("access_token")
+            except Exception as e:
+                log.warning("Session token failed: %s", e)
+        else:
+            log.debug("Skipping session token: session is for '%s' but active instance is '%s'",
+                      session_inst, active_inst)
 
     # 1. Try active instance's own token (client_credentials or refresh)
     if not access_token:
@@ -149,15 +169,9 @@ app.include_router(analyse_router)
 app.include_router(addgate_router)
 app.include_router(keys_router)
 app.include_router(graphql_router)
+app.include_router(graphql_refdata_router)
 app.include_router(search_router)
 app.include_router(howto_router)
-
-
-# Close shared httpx client on shutdown (#9)
-@app.on_event("shutdown")
-async def _shutdown():
-    await osdu.close_shared_client()
-    await _close_gql_pool()
 
 
 app.mount(
@@ -185,21 +199,6 @@ _FAVICON_SVG = (
 @app.get("/favicon.ico", include_in_schema=False)
 async def _favicon():
     return Response(content=_FAVICON_SVG, media_type="image/svg+xml")
-
-
-def _jinja_pretty_val(val):
-    """Jinja filter: prettify metadata values that may contain JSON."""
-    if val is None:
-        return "-"
-    s = str(val)
-    # Try to parse residual JSON strings and re-format them
-    if s.startswith(("[", "{")):
-        try:
-            obj = json.loads(s)
-            return _friendly_value(obj, 600)
-        except (json.JSONDecodeError, ValueError):
-            pass
-    return s
 
 
 templates.env.filters["pretty_val"] = _jinja_pretty_val
@@ -261,15 +260,25 @@ async def api_instances():
 
 
 @app.get("/api/instances/probe")
-async def api_probe_instance():
+async def api_probe_instance(request: Request):
     """Test whether the active instance can mint a token right now."""
     inst = get_active()
+    # For per_user_pkce instances, check if the user has an active session
+    has_session = False
+    if inst.auth_mode == "per_user_pkce":
+        oid = request.session.get("oid", "")
+        session_inst = request.session.get("instance_name", "")
+        if oid and session_inst == inst.name:
+            sess_tokens = await tokens_from_session(request)
+            has_session = sess_tokens is not None
     try:
         token = await inst.get_access_token()
+        ok = token is not None or has_session
         return {
-            "ok": token is not None,
+            "ok": ok,
             "instance": inst.name,
             "auth_mode": inst.auth_mode,
+            "has_session": has_session,
             # Non-secret diagnostics to help troubleshoot token failures
             "tenant_id": inst.tenant_id[:8] + "…" if inst.tenant_id else "",
             "client_id": inst.client_id[:8] + "…" if inst.client_id else "",
@@ -279,9 +288,10 @@ async def api_probe_instance():
         }
     except Exception as e:
         return {
-            "ok": False,
+            "ok": has_session,
             "instance": inst.name,
             "auth_mode": inst.auth_mode,
+            "has_session": has_session,
             "error": str(e),
             "tenant_id": inst.tenant_id[:8] + "…" if inst.tenant_id else "",
             "client_id": inst.client_id[:8] + "…" if inst.client_id else "",
@@ -432,14 +442,6 @@ async def login_page(request: Request):
         "active_instance": get_active_name(),
     })
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Utilities
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _access_token(request: Request) -> str:
-    from .common import access_token as _at
-    return _at(request)
-
 # Pages & actions
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -549,4 +551,4 @@ async def dataspaces_create(
             },
             status_code=400,
         )
-    return RedirectResponse(url=f"/d/{urllib.parse.quote(path, safe='')}", status_code=302)
+    return RedirectResponse(url=f"/keys?ds={urllib.parse.quote(path, safe='')}", status_code=302)

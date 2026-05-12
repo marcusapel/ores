@@ -231,7 +231,7 @@
               <select id="ez-prop-pick" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;min-width:140px;">
                 <option value="">(pick or type below)</option>
               </select>
-              <input id="ez-prop" type="text" placeholder="kind: porosity, rock permeability, saturation…"
+              <input id="ez-prop" type="text" placeholder="kind: porosity, permeability, saturation…"
                      autocomplete="off"
                      style="flex:1;min-width:140px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">
               <span id="ez-prop-resolved" style="font-size:11px;color:#107c10;white-space:nowrap;"></span>
@@ -286,19 +286,24 @@
               <option value="objects_wells">Browse wellbores</option>
             </optgroup>
             <optgroup label="Relations (graph traversal)">
-              <option value="rel_grid_targets">Simgrid → targets (CRS, stratigraphy)</option>
-              <option value="rel_grid_sources">Simgrid ← sources (properties)</option>
+              <option value="rel_grid_targets">Geogrid → targets (CRS, stratigraphy)</option>
+              <option value="rel_grid_sources">Geogrid ← sources (properties)</option>
               <option value="rel_well_chain">Well chain: Feature → Interp → Trajectory</option>
+            </optgroup>
+            <optgroup label="Stratigraphy (column + horizons)">
+              <option value="strat_column">Strat column → ranks → units</option>
+              <option value="strat_horizons">Horizons → features → surfaces</option>
+              <option value="strat_boundaries">All boundary features (strat + technical)</option>
+              <option value="xref_strat_horizons">Federated: catalog horizons ↔ RDDMS</option>
             </optgroup>
             <optgroup label="Deep Search (property filter + stats)">
               <option value="deep_poro">IjkGrid: porosity &gt; 0.25</option>
               <option value="deep_perm">IjkGrid: permeability &gt; 500 mD</option>
               <option value="deep_sw">IjkGrid: water saturation &lt; 0.3</option>
               <option value="deep_all_props">IjkGrid: all properties</option>
-              <option value="deep_grid2d_all">Grid2D: all surfaces</option>
+              <option value="deep_grid2d_horizons">Grid2D → horizon / boundary</option>
               <option value="deep_grid2d_arrays">Grid2D: array statistics</option>
-              <option value="deep_horizon_surfaces">Horizon → surfaces</option>
-              <option value="deep_horizon_wells">Horizon → well markers</option>
+              <option value="deep_horizon_grid2d">Horizon → Grid2Ds &amp; representations</option>
               <option value="deep_well_phit">Wells: porosity &gt; 0.25</option>
               <option value="deep_well_perm">Wells: permeability &gt; 100</option>
               <option value="deep_well_all">Wells: all log properties</option>
@@ -2458,7 +2463,7 @@
   }
 }`,
       objects_grid: `# Browse IjkGrid representations (geocellular grids)
-# Drogon has 2: "Simgrid" (107k cells) and "Geogrid" (927k cells)
+# Drogon has "Geogrid" (927k cells); remote instances may also include "Simgrid" (107k cells)
 {
   resqmlObjects(
     dataspace: "$DS"
@@ -2485,13 +2490,13 @@
 }`,
 
       // ─── Relationships ────────────────────────────────────────────────
-      rel_grid_targets: `# TARGETS: what does the Simgrid reference?
+      rel_grid_targets: `# TARGETS: what does the Geogrid reference?
 # Shows CRS and StratigraphicColumnRank links
 {
   objectRelations(
     dataspace: "$DS"
     typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
+    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
     direction: "targets"
   ) {
     uuid
@@ -2501,13 +2506,13 @@
     contentType
   }
 }`,
-      rel_grid_sources: `# SOURCES: what references the Simgrid? (attached properties)
+      rel_grid_sources: `# SOURCES: what references the Geogrid? (attached properties)
 # Returns ContinuousProperty and DiscreteProperty objects
 {
   objectRelations(
     dataspace: "$DS"
     typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
+    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
     direction: "sources"
   ) {
     uuid
@@ -2582,8 +2587,8 @@
   }
 }`,
       deep_perm: `# Deep search: IjkGrids with Permeability > 500 mD (high-perm zones)
-# Uses OSDU canonical kind "rock permeability" (matches PERMX, PERMY, PERMZ)
-# PERMX ranges 0–4278 mD on Simgrid, 0–3830 on Geogrid
+# Kind filter "permeability" matches titles like "Horizontal Permeability"
+# PERMX ranges 0–3830 mD on Geogrid, 0–4278 on Simgrid (if available)
 #
 # Note: arrayFilter requires PG or ETP backend for cell-value access.
 # Alternative: use titleContains: "PERMX" to match only X-direction perm
@@ -2592,7 +2597,7 @@
     $DS_ARG
     typeName: "resqml20.obj_IjkGridRepresentation"
     propertyFilter: {
-      kind: "rock permeability"
+      kind: "permeability"
       arrayFilter: { threshold: 500.0, operator: GT }
     }
     includeStatistics: true
@@ -2658,17 +2663,25 @@
 }`,
 
       // ─── Deep Search (Surfaces / Grid2D) ──────────────────────────────
-      deep_grid2d_all: `# Browse all Grid2D surfaces (depth/time maps)
-# Drogon has 48 surfaces: DS_ (depth), TS_ (time), GS_ (velocity)
+      deep_grid2d_horizons: `# Grid2D surfaces → which horizon / boundary feature?
+# Uses includeRelations to traverse the RESQML object graph:
+#   Grid2D → target HorizonInterpretation → target GeneticBoundaryFeature
+# Each surface points to exactly one horizon interpretation.
 {
-  resqmlObjects(
-    dataspace: "$DS"
+  deepSearch(
+    $DS_ARG
     typeName: "resqml20.obj_Grid2dRepresentation"
-    limit: 48
+    includeRelations: true
+    includeStatistics: false
+    limit: 20
   ) {
-    uuid
-    title
-    typeName
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      relations {
+        uuid name typeName direction
+      }
+    }
   }
 }`,
       deep_grid2d_arrays: `# Grid2D surface array statistics
@@ -2693,48 +2706,185 @@
 }`,
 
       // ─── Deep Search (Horizons) ───────────────────────────────────────
-      deep_horizon_surfaces: `# Horizon → all representations (Grid2D surfaces, points, polylines)
-# TopVolantis has ~14 depth surfaces + point sets + fault line traces
-# Shows the full representation tree rooted at a horizon interpretation
+      deep_horizon_grid2d: `# Horizon → which Grid2D surfaces and representations?
+# The reverse of deep_grid2d_horizons: start from horizons,
+# find all Grid2Ds, PointSets, WellMarkers that reference them.
+# Filter sources by typeName in results to distinguish surface types.
 {
-  objectRelations(
-    dataspace: "$DS"
+  deepSearch(
+    $DS_ARG
     typeName: "resqml20.obj_HorizonInterpretation"
-    uuid: "02e954a9-d7db-4b57-aef7-12b8ebf47a65"
-    direction: "sources"
+    includeRelations: true
+    includeStatistics: false
+    limit: 10
   ) {
-    uuid
-    name
-    typeName
-    contentType
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title
+      relations {
+        uuid name typeName direction
+      }
+    }
   }
 }
+# Drogon horizons:
+#   TopVolantis, BaseVolantis, TopTherys, TopVolon, MSL, BaseVelmodel`,
 
-# Horizons available (paste UUID above):
-#   TopVolantis  02e954a9-d7db-4b57-aef7-12b8ebf47a65
-#   BaseVolantis 3657ca0b-d21f-41ca-801b-4a6a7eb1f426
-#   TopTherys    6c6eeb68-bb4d-4fa4-9eb4-b880b5bd7086
-#   TopVolon     db54a781-84ad-41e5-8bdd-c510246375cd
-#   MSL          7da0e4d7-1955-4031-8eaf-68a93515414d
-#   BaseVelmodel 011ae8ee-bfa5-4804-a675-1f4704b1730c`,
-      deep_horizon_wells: `# Horizon → which wells penetrate it? (well markers)
-# WellboreMarkerFrameRepresentations reference the horizon interpretation
-# Filter for typeName containing "WellboreMarker" in the results
+      // ─── Stratigraphy (column hierarchy + horizon chain) ──────────────
+      strat_column: `# Stratigraphic column hierarchy with relations
+# Drogon has one strat column: "Stratigraphic Column (Geogrid)"
+# Traverses: StratColumn → ColumnRankInterpretation → UnitInterpretations
+#            + HorizonInterpretations linking units to surfaces
+#
+# The RDDMS column matches the catalog "Drogon-Volve Lithostratigraphy"
+# via ResourceURI/UUID cross-references on StratigraphicUnitInterpretation.
 {
-  objectRelations(
-    dataspace: "$DS"
-    typeName: "resqml20.obj_HorizonInterpretation"
-    uuid: "02e954a9-d7db-4b57-aef7-12b8ebf47a65"
-    direction: "sources"
+  col: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_StratigraphicColumn"
+    includeRelations: true
+    limit: 5
   ) {
-    uuid
-    name
-    typeName
-    contentType
+    backend totalScanned totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
   }
-}
-# Results with typeName = WellboreMarkerFrameRepresentation
-# are the wells that have picks at this horizon (TopVolantis)`,
+  rank: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_StratigraphicColumnRankInterpretation"
+    includeRelations: true
+    limit: 5
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+  units: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_StratigraphicUnitInterpretation"
+    includeRelations: true
+    limit: 20
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+}`,
+      strat_horizons: `# Horizon → feature → surface chain (Representation → Interpretation → Feature)
+# Shows the RESQML hierarchy for each horizon:
+#   direction=target → GeneticBoundaryFeature (the geological concept)
+#   direction=source → Grid2D / PointSet / WellboreMarkerFrame (representations)
+#
+# 4 horizons are stratigraphic (TopVolantis, TopTherys, TopVolon, BaseVolantis)
+# 2 are technical boundaries (MSL, BaseVelmodel)
+{
+  horizons: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_HorizonInterpretation"
+    includeRelations: true
+    limit: 10
+  ) {
+    backend totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+  features: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_GeneticBoundaryFeature"
+    includeRelations: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+}`,
+      strat_boundaries: `# All boundary features — stratigraphic + tectonic (faults)
+# GeneticBoundaryFeature = horizons (strat or technical datum)
+# TectonicBoundaryFeature = faults (F1–F6 in Drogon)
+# Stratigraphic boundaries have StratigraphicUnitFeature relations;
+# technical ones (MSL, BaseVelmodel) and faults do not.
+{
+  genetic: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_GeneticBoundaryFeature"
+    includeRelations: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+  tectonic: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_TectonicBoundaryFeature"
+    includeRelations: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+  faults: deepSearch(
+    $DS_ARG
+    typeName: "resqml20.obj_FaultInterpretation"
+    includeRelations: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+    }
+  }
+}`,
+      xref_strat_horizons: `# FEDERATED: Catalog horizon WPCs ↔ RDDMS object graph
+#
+# The gen_markers_strat_drogon.py script creates HorizonInterpretation
+# WPC records with ResourceURI/UUID matching the RDDMS objects.
+# This query finds them in both systems and enriches with RDDMS relations:
+#   catalog metadata (OSDU id, kind) + RDDMS graph (Grid2D surfaces, features)
+#
+# relationFilter keeps only the interesting types (surfaces, features, rank).
+# Without it you also get 9 WellboreMarkerFrame + Activity per horizon.
+# To see ALL relations, remove the relationFilter parameter.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--HorizonInterpretation:*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_HorizonInterpretation"
+    searchCatalog: true
+    searchRddms: true
+    includeRelations: true
+    relationFilter: ["Grid2d", "PointSet", "Boundary", "Stratigraphic", "TriangulatedSet"]
+    limit: 10
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    hits {
+      uuid title dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
 
       // ─── Deep Search (Well Logs) ──────────────────────────────────────
       deep_well_phit: `# Wells with Porosity > 0.25
@@ -2765,7 +2915,7 @@
   }
 }`,
       deep_well_perm: `# Wells with Permeability > 100 mD
-# Uses OSDU canonical kind "rock permeability" (matches KLOGH, PERM*)
+# Kind filter "permeability" matches titles like "KLOGH", "PERM*"
 # KLOGH is the log-derived horizontal permeability
 #
 # Alternative: use titleContains: "KLOGH" to match only log permeability
@@ -2774,7 +2924,7 @@
     $DS_ARG
     typeName: "resqml20.obj_WellboreFrameRepresentation"
     propertyFilter: {
-      kind: "rock permeability"
+      kind: "permeability"
       arrayFilter: { threshold: 100.0, operator: GT }
     }
     includeStatistics: true
@@ -2812,13 +2962,13 @@
 }`,
 
       // ─── Numerical Data ───────────────────────────────────────────────
-      array_stats: `# Get array metadata and statistics for the Simgrid
+      array_stats: `# Get array metadata and statistics for the Geogrid
 # (geometry pillars, cell connectivity, etc.)
 {
   objectArrays(
     dataspace: "$DS"
     typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
+    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
     includeStatistics: true
   ) {
     path
@@ -2830,12 +2980,12 @@
     }
   }
 }`,
-      array_sample: `# Read sample values from Simgrid arrays (first 20 elements)
+      array_sample: `# Read sample values from Geogrid arrays (first 20 elements)
 {
   objectArrays(
     dataspace: "$DS"
     typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
+    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
     includeStatistics: true
     includeSampleValues: true
     sampleSize: 20
@@ -2867,10 +3017,14 @@
   }
 }`,
       fed_catalog: `# Search OSDU catalog only (metadata level)
+# Uses project name from the selected dataspace to scope results.
+# With text: "*" + wildcard kind the entire OSDU instance is searched
+# (>1M records) – change "$DS_NAME" to "*" only if you want that.
 {
   federatedSearch(
-    text: "*"
+    text: "$DS_NAME"
     kind: "osdu:wks:work-product-component--*:*"
+    dataspaces: $DS_LIST
     searchCatalog: true
     searchRddms: false
     searchRemoteRddms: false
@@ -2886,9 +3040,10 @@
 }`,
       fed_both: `# Search ALL THREE: catalog + local PG + remote RDDMS
 # Results merged by UUID – flags show where each was found
+# Uses project name to scope catalog (wildcard kind + text:"*" = >1M hits)
 {
   federatedSearch(
-    text: "*"
+    text: "$DS_NAME"
     kind: "osdu:wks:work-product-component--*:*"
     dataspaces: $DS_LIST
     searchCatalog: true
@@ -2972,11 +3127,25 @@
 }`,
       xref_horizon_reps: `# CROSS-SYSTEM: Horizons known in catalog → their RDDMS representations
 #
+# Requires harmonized catalog data: run gen_markers_strat_drogon.py then
+# ingest manifest_litho_strat_drogon.json to create HorizonInterpretation WPCs.
+#
 # Why only GraphQL can do this:
-#   Catalog knows HorizonInterpretation records exist (OSDU kind).
+#   Catalog knows HorizonInterpretation records exist (OSDU kind + metadata).
 #   But which Grid2D surfaces or triangulated meshes REFERENCE that horizon?
 #   Only RDDMS object graph (sources = reverse edges) knows this.
-#   Standard search cannot traverse relationships across systems.
+#
+# relationFilter: ["Grid2d", "PointSet", "TriangulatedSet"] keeps only
+# surface representations.  Remove it to also see WellboreMarkerFrame (9 per
+# horizon) and Activity.  Activity is always stripped by default.
+#
+# Expected results (4 strat + 2 technical):
+#   TopVolantis  → 4 Grid2D, 6 PointSet   [strat]
+#   BaseVolantis → 4 Grid2D, 6 PointSet   [strat]
+#   TopTherys    → 1 Grid2D, 2 PointSet   [strat]
+#   TopVolon     → 1 Grid2D, 2 PointSet   [strat]
+#   MSL          → 3 Grid2D               [technical]
+#   BaseVelmodel → 2 Grid2D               [technical]
 {
   federatedSearch(
     text: "*"
@@ -2986,6 +3155,7 @@
     searchCatalog: true
     searchRddms: true
     includeRelations: true
+    relationFilter: ["Grid2d", "PointSet", "TriangulatedSet"]
     limit: 10
   ) {
     totalCatalog totalLocalRddms totalMerged sources
@@ -3008,14 +3178,18 @@
 #   but never registered as OSDU WPC records.
 #   This query finds them: foundInLocalRddms=true AND foundInCatalog=false.
 #   Useful for: data governance, re-ingestion planning, gap analysis.
+#
+# text: "$DS_NAME" scopes catalog to this project.
+# Change to "*" to compare against the entire OSDU instance (slow, >1M hits).
 {
   federatedSearch(
-    text: "*"
+    text: "$DS_NAME"
+    kind: "osdu:wks:work-product-component--*:*"
     dataspaces: $DS_LIST
     searchCatalog: true
     searchRddms: true
     searchRemoteRddms: false
-    limit: 30
+    limit: 100
   ) {
     totalCatalog totalLocalRddms totalMerged sources
     queryDescription
@@ -3036,15 +3210,18 @@
 #   those records are "metadata ghosts" — searchable but not queryable.
 #   This finds them: foundInCatalog=true AND foundInLocalRddms=false.
 #   Useful for: verifying ingestion completeness, finding broken links.
+#
+# text: "$DS_NAME" scopes catalog to this project.
+# Change to "*" to scan the entire OSDU instance (slow, >1M hits).
 {
   federatedSearch(
-    text: "*"
+    text: "$DS_NAME"
     kind: "osdu:wks:work-product-component--*:*"
     dataspaces: $DS_LIST
     searchCatalog: true
     searchRddms: true
     searchRemoteRddms: false
-    limit: 30
+    limit: 100
   ) {
     totalCatalog totalLocalRddms totalMerged sources
     queryDescription
@@ -3169,8 +3346,12 @@
       const tpl = GQL_PRESETS[key] || '';
       // For deep search presets, use dataspaces (multi) arg; for others, use single dataspace
       const isDeep = key.startsWith('deep_');
+      // $DS_NAME = project name extracted from the dataspace path
+      // e.g. "maap/drogon" → "Drogon", "user/johan-sverdrup" → "Johan-sverdrup"
+      const dsName = (gqlCurrentDs().split('/').pop() || 'Drogon').replace(/^\w/, c => c.toUpperCase());
       let query = tpl.replace(/\$DS_ARG/g, gqlDataspacesArg());
       query = query.replace(/\$DS_LIST/g, gqlDataspacesList());
+      query = query.replace(/\$DS_NAME/g, dsName);
       query = query.replace(/\$DS/g, gqlCurrentDs());
       gqlEditor.value = query;
     }

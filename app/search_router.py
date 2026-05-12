@@ -17,8 +17,7 @@ import asyncio
 import logging
 import os
 import re
-import time
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set
 
 import httpx
 from httpx import HTTPStatusError
@@ -27,6 +26,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import osdu
+from .cache import cached_call
+from .common import access_token as _access_token, friendly_value as _friendly_value, friendly_list as _friendly_list, pretty_val as _jinja_pretty_val
 from .schemahandler import extract_osdu_links, extract_metadata_generic
 from .tokenstore import (
     save_query as _ts_save_query,
@@ -38,27 +39,8 @@ log = logging.getLogger("rddms-admin.search")
 
 router = APIRouter()
 
-# TTL cache for wildcard kind → concrete kind resolution.
-# Avoids repeated probe roundtrips for the same kind pattern.
-_KIND_CACHE: Dict[str, Tuple[List[str], float]] = {}
-_KIND_CACHE_TTL = 300  # 5 minutes
+_KIND_CACHE_TTL = 300  # 5 minutes – used by cached_call for kind resolution
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
-
-
-def _jinja_pretty_val(val):
-    """Jinja filter: prettify metadata values that may contain JSON."""
-    import json
-    if val is None:
-        return "-"
-    s = str(val)
-    if s.startswith(("[", "{")):
-        try:
-            obj = json.loads(s)
-            return _friendly_value(obj, 600)
-        except (json.JSONDecodeError, ValueError):
-            pass
-    return s
-
 
 templates.env.filters["pretty_val"] = _jinja_pretty_val
 
@@ -71,9 +53,49 @@ templates.env.filters["pretty_val"] = _jinja_pretty_val
 # Utilities (private to this module)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _access_token(request: Request) -> str:
-    from .common import access_token as _at
-    return _at(request)
+
+async def _resolve_wildcard_kind(
+    client: httpx.AsyncClient, search_url: str, hdr: dict, wildcard_kind: str,
+) -> List[str]:
+    """Discover concrete kind versions for a wildcard kind pattern.
+
+    Returns a sorted list of concrete kinds, or [] if the probe fails.
+    Used as the backend function for ``cached_call``.
+    """
+    probe_kinds: Set[str] = set()
+    probe_payload = {
+        "kind": wildcard_kind,
+        "query": "*",
+        "limit": 1,
+        "returnedFields": ["kind"],
+        "trackTotalCount": True,
+    }
+    try:
+        pr = await client.post(search_url, headers=hdr, json=probe_payload)
+        pr.raise_for_status()
+        probe_res = pr.json()
+        for prec in probe_res.get("results", []):
+            pk = prec.get("kind")
+            if pk:
+                probe_kinds.add(pk)
+        # Wider probe when first page returned few distinct kinds
+        probe_total = int(probe_res.get("totalCount") or 0)
+        if probe_total > 1 and len(probe_kinds) < 5:
+            probe_payload["limit"] = min(probe_total, 50)
+            pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
+            if pr2.status_code == 200:
+                for prec in pr2.json().get("results", []):
+                    pk = prec.get("kind")
+                    if pk:
+                        probe_kinds.add(pk)
+        if probe_kinds:
+            log.info("[SEARCH] Resolved %s to versions: %s", wildcard_kind, probe_kinds)
+        else:
+            log.info("[SEARCH] Probe for %s returned 0 records", wildcard_kind)
+    except Exception as e:
+        log.warning("[SEARCH] Version probe failed for %s: %s", wildcard_kind, e)
+
+    return sorted(probe_kinds)
 
 
 def _parse_kind_inputs(kind: str, kinds_extra: str) -> List[str]:
@@ -206,6 +228,10 @@ def _collect_refdata_kinds() -> List[Dict[str, Any]]:
     ]
     return [{"kind": k} for k in _REFDATA_KINDS]
 
+# Pre-compute static kind lists (pure data — no reason to rebuild per request)
+_MANIFEST_KINDS = _collect_manifest_kinds()
+_REFDATA_KINDS_LIST = _collect_refdata_kinds()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Record enrichment helpers (moved from main.py)
@@ -219,42 +245,6 @@ _HEAVY_DATA_KEYS = frozenset({
     "SpatialPoint.Wgs84Coordinates",
     "VirtualProperties.DefaultLocation.Wgs84Coordinates",
 })
-
-
-def _friendly_value(v: Any, max_str: int = 400) -> str:
-    """Convert a single value to a human-friendly string."""
-    if v is None:
-        return ""
-    if isinstance(v, (str, int, float, bool)):
-        s = str(v)
-        return s if len(s) <= max_str else s[:max_str] + "…"
-    if isinstance(v, dict):
-        parts = []
-        for dk, dv in v.items():
-            sv = _friendly_value(dv, max_str=80)
-            parts.append(f"{dk}: {sv}")
-        s = "; ".join(parts)
-        return s if len(s) <= max_str else s[:max_str] + "…"
-    if isinstance(v, list):
-        return _friendly_list(v, max_str)
-    return str(v)[:max_str]
-
-
-def _friendly_list(lst: list, max_str: int = 400) -> str:
-    """Format a list for display."""
-    if not lst:
-        return ""
-    if all(isinstance(x, (str, int, float, bool, type(None))) for x in lst):
-        return ", ".join(str(x) for x in lst)
-    if all(isinstance(x, dict) for x in lst):
-        items = []
-        for d in lst:
-            parts = [f"{k}: {_friendly_value(dv, 80)}" for k, dv in d.items()]
-            items.append("; ".join(parts))
-        s = " │ ".join(items)
-        return s if len(s) <= max_str else s[:max_str] + "…"
-    s = ", ".join(_friendly_value(x, 80) for x in lst)
-    return s if len(s) <= max_str else s[:max_str] + "…"
 
 
 def _flatten_osdu_data(data: Dict[str, Any], max_str: int = 400) -> list:
@@ -569,15 +559,13 @@ async def _enrich_record(
 
 @router.get("/search", response_class=HTMLResponse, summary="Search form (OSDU search v2)")
 async def search_page(request: Request):
-    kind_options = _collect_manifest_kinds()
-    refdata_kinds = _collect_refdata_kinds()
     return templates.TemplateResponse(
         request, "search.html",
         {
             "kind": "",
             "kinds_extra": "",
-            "kind_options": kind_options,
-            "refdata_kinds": refdata_kinds,
+            "kind_options": _MANIFEST_KINDS,
+            "refdata_kinds": _REFDATA_KINDS_LIST,
             "q": "",
             "limit": 50,
             "returnedFields": "id,kind,version",
@@ -608,8 +596,8 @@ async def search_run(
                 "search_mode": "records",
                 "kind": kind,
                 "kinds_extra": kinds_extra,
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": query,
                 "limit": limit,
             },
@@ -619,7 +607,7 @@ async def search_run(
         enriched_results: List[Dict[str, Any]] = []
         seen_record_ids: Set[str] = set()
         merged_total_count = 0
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             # Phase 1: Search all kinds
             all_hit_ids: List[str] = []
             for current_kind in search_kinds:
@@ -639,47 +627,13 @@ async def search_run(
                 ) if query and query.strip() != "*" else False
 
                 if _has_wildcard_kind and _has_leading_wildcard:
-                    # Check kind cache first (avoids repeated probe round-trips)
-                    _kind_cache_key = current_kind
-                    _cached = _KIND_CACHE.get(_kind_cache_key)
-                    if _cached and (time.time() - _cached[1]) < _KIND_CACHE_TTL:
-                        probe_kinds: Set[str] = set(_cached[0])
-                        log.info("[SEARCH] Kind-cache hit for %s: %d kinds", current_kind, len(probe_kinds))
-                    else:
-                        probe_kinds = set()
-                        # Discover actual versions via a quick query=* probe
-                        probe_payload = {
-                            "kind": current_kind,
-                            "query": "*",
-                            "limit": 1,
-                            "returnedFields": ["kind"],
-                            "trackTotalCount": True,
-                        }
-                        try:
-                            pr = await client.post(search_url, headers=hdr, json=probe_payload)
-                            pr.raise_for_status()
-                            probe_res = pr.json()
-                            for prec in probe_res.get("results", []):
-                                pk = prec.get("kind")
-                                if pk:
-                                    probe_kinds.add(pk)
-                            # Wider probe when first page returned few distinct kinds
-                            probe_total = int(probe_res.get("totalCount") or 0)
-                            if probe_total > 1 and len(probe_kinds) < 5:
-                                probe_payload["limit"] = min(probe_total, 50)
-                                pr2 = await client.post(search_url, headers=hdr, json=probe_payload)
-                                if pr2.status_code == 200:
-                                    for prec in pr2.json().get("results", []):
-                                        pk = prec.get("kind")
-                                        if pk:
-                                            probe_kinds.add(pk)
-                            if probe_kinds:
-                                _KIND_CACHE[_kind_cache_key] = (sorted(probe_kinds), time.time())
-                                log.info("[SEARCH] Resolved %s to versions: %s", current_kind, probe_kinds)
-                            else:
-                                log.info("[SEARCH] Probe for %s returned 0 records", current_kind)
-                        except Exception as e:
-                            log.warning("[SEARCH] Version probe failed for %s: %s", current_kind, e)
+                    # Resolve wildcard kind to concrete versions (cached)
+                    probe_kinds_list: List[str] = await cached_call(
+                        f"kind_resolve:{current_kind}",
+                        _KIND_CACHE_TTL,
+                        _resolve_wildcard_kind, client, search_url, hdr, current_kind,
+                    )
+                    probe_kinds: Set[str] = set(probe_kinds_list)
 
                     # Use resolved kinds (from cache or fresh probe)
                     if probe_kinds:
@@ -772,8 +726,8 @@ async def search_run(
                 },
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "selected_kinds": search_kinds,
                 "q": "*",
                 "limit": limit,
@@ -789,8 +743,8 @@ async def search_run(
                 "error_detail": (r.text[:2000] if r.text else ""),
                 "kind": kind,
                 "kinds_extra": kinds_extra,
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": query,
                 "limit": limit,
             },
@@ -805,8 +759,8 @@ async def search_run(
                 "error_detail": "See server logs",
                 "kind": kind,
                 "kinds_extra": kinds_extra,
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": query,
                 "limit": limit,
             },
@@ -861,7 +815,7 @@ async def search_schemas(
             params["limit"] = 1000
             schema_list: list = []
             offset = 0
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with osdu.http_client(timeout=60) as client:
                 while True:
                     params["offset"] = offset
                     r = await client.get(schema_url, headers=hdr, params=params)
@@ -878,7 +832,7 @@ async def search_schemas(
                         break
                     offset += len(page)
         else:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with osdu.http_client(timeout=60) as client:
                 r = await client.get(schema_url, headers=hdr, params=params)
                 r.raise_for_status()
                 data = r.json()
@@ -933,8 +887,8 @@ async def search_schemas(
                 "schema_total": len(table_rows),
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "schema_q": query,
                 "limit": limit,
             },
@@ -949,8 +903,8 @@ async def search_schemas(
                 "search_mode": "schemas",
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "schema_q": query,
                 "limit": limit,
             },
@@ -966,8 +920,8 @@ async def search_schemas(
                 "search_mode": "schemas",
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "schema_q": query,
                 "limit": limit,
             },
@@ -1002,8 +956,8 @@ async def search_refdata(
                 "search_mode": "refdata",
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1018,7 +972,7 @@ async def search_refdata(
             "trackTotalCount": True,
         }
 
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.post(search_url, headers=hdr, json=payload)
             r.raise_for_status()
             res = r.json()
@@ -1054,8 +1008,8 @@ async def search_refdata(
                 "refdata_total": total_count,
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1070,8 +1024,8 @@ async def search_refdata(
                 "search_mode": "refdata",
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1087,8 +1041,8 @@ async def search_refdata(
                 "search_mode": "refdata",
                 "kind": search_kind,
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "refdata_q": query,
                 "limit": limit,
             },
@@ -1110,7 +1064,7 @@ async def api_schema_detail(request: Request, kind: str):
     schema_url = f"https://{osdu.OSDU_BASE_URL}/api/schema-service/v1/schema/{kind}"
     hdr = osdu.headers(at)
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.get(schema_url, headers=hdr)
             r.raise_for_status()
             return JSONResponse(r.json())
@@ -1130,7 +1084,7 @@ async def api_record_detail(request: Request, record_id: str):
     storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records/{record_id}"
     hdr = osdu.headers(at)
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.get(storage_url, headers=hdr)
             r.raise_for_status()
             return JSONResponse(r.json())
@@ -1155,7 +1109,7 @@ async def api_refdata_kinds(request: Request):
     hdr = osdu.headers(at)
     try:
         params = {"authority": "*", "source": "*", "entityType": "*", "limit": 1000}
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.get(schema_url, headers=hdr, params=params)
             r.raise_for_status()
             data = r.json()
@@ -1181,13 +1135,13 @@ async def api_refdata_kinds(request: Request):
                 refdata_kinds.add(kind_str)
 
         # Merge with static list
-        static_kinds = {k["kind"] for k in _collect_refdata_kinds()}
+        static_kinds = {k["kind"] for k in _REFDATA_KINDS_LIST}
         all_kinds = sorted(refdata_kinds | static_kinds)
         return JSONResponse({"kinds": all_kinds})
     except Exception as e:
         # Fall back to static list
         log.warning("[REFDATA-KINDS] Schema service fetch failed: %s", e)
-        return JSONResponse({"kinds": [k["kind"] for k in _collect_refdata_kinds()]})
+        return JSONResponse({"kinds": [k["kind"] for k in _REFDATA_KINDS_LIST]})
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1203,7 +1157,7 @@ async def view_record(request: Request, record_id: str):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             r = await client.get(f"{storage_url}/{record_id}", headers=hdr)
             r.raise_for_status()
             full = r.json()
@@ -1216,8 +1170,8 @@ async def view_record(request: Request, record_id: str):
                 "results": {"results": [enriched], "totalCount": 1},
                 "kind": full.get("kind", ""),
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": record_id,
                 "limit": 1,
             },
@@ -1230,8 +1184,8 @@ async def view_record(request: Request, record_id: str):
                 "error_detail": (e.response.text[:2000] if e.response.text else ""),
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": record_id,
                 "limit": 1,
             },
@@ -1246,8 +1200,8 @@ async def view_record(request: Request, record_id: str):
                 "error_detail": "See server logs",
                 "kind": "",
                 "kinds_extra": "",
-                "kind_options": _collect_manifest_kinds(),
-                "refdata_kinds": _collect_refdata_kinds(),
+                "kind_options": _MANIFEST_KINDS,
+                "refdata_kinds": _REFDATA_KINDS_LIST,
                 "q": record_id,
                 "limit": 1,
             },

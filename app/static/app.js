@@ -21,7 +21,15 @@
   function setText(node, msg) { if (node) node.textContent = msg || ''; }
   async function fetchJSON(url) {
     const r = await fetch(url, { headers: { 'Cache-Control': 'no-store' } });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    if (!r.ok) {
+      let detail = '';
+      try {
+        const errBody = await r.json();
+        const d = errBody.detail || errBody.reason || '';
+        detail = typeof d === 'string' ? d : JSON.stringify(d);
+      } catch { try { detail = (await r.text()).substring(0, 300); } catch {} }
+      throw new Error(`${r.status} ${r.statusText}` + (detail ? ': ' + detail : ''));
+    }
     return r.json();
   }
   async function postForm(url, data) {
@@ -31,7 +39,15 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body
     });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    if (!r.ok) {
+      let detail = '';
+      try {
+        const errBody = await r.json();
+        const d = errBody.detail || errBody.reason || '';
+        detail = typeof d === 'string' ? d : JSON.stringify(d);
+      } catch { try { detail = (await r.text()).substring(0, 300); } catch {} }
+      throw new Error(`${r.status} ${r.statusText}` + (detail ? ': ' + detail : ''));
+    }
     return r.json();
   }
 
@@ -147,7 +163,8 @@
       }
       for (const x of items) {
         const opt = document.createElement('option');
-        const typ2 = x.typePath || x.type || '';
+        // Use item's own typePath, fall back to the type filter from the dropdown
+        const typ2 = x.typePath || x.type || typ || '';
         const uuid = x.uuid || '';
         opt.value = JSON.stringify({ ds, typ: typ2, uuid });
         // Short type label: strip resqml20.obj_ prefix and any (uuid) suffix
@@ -187,9 +204,11 @@
   async function loadRefs() {
     setText(refsSummary, 'Loading…');
     if (refsList) refsList.innerHTML = '';
-    const choice = objSel && objSel.value ? JSON.parse(objSel.value) : null;
-    if (!choice || !choice.uuid) { setText(refsSummary, 'Select an object first.'); return; }
-    const { ds, typ, uuid } = choice;
+    const items = getSelectedItems();
+    if (!items.length) { setText(refsSummary, 'Select an object first.'); return; }
+    // Use first selected item for refs preview
+    const { ds, typ, uuid } = items[0];
+    if (!typ) { setText(refsSummary, 'Cannot load refs: object type unknown. Select a specific type first.'); return; }
     const include = includeRefs && includeRefs.checked ? 'true' : 'false';
     try {
       const url = `/keys/object/graph.json?ds=${encodeURIComponent(ds)}&typ=${encodeURIComponent(typ)}&uuid=${encodeURIComponent(uuid)}&include_refs=${include}`;
@@ -257,14 +276,26 @@ async function buildManifest() {
           // Optional: legal, owners, viewers, countries, create_missing
         })
       });
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      if (!r.ok) {
+        let detail = '';
+        try {
+          const errBody = await r.json();
+          const d = errBody.detail || errBody.reason || '';
+          detail = typeof d === 'string' ? d : JSON.stringify(d);
+        } catch { try { detail = (await r.text()).substring(0, 300); } catch {} }
+        throw new Error(`${r.status} ${r.statusText}` + (detail ? ': ' + detail : ''));
+      }
       res = await r.json();
     }
 
     clearInterval(timer);
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     const mf = res.manifest || {};
-    manifestBox.textContent = JSON.stringify(mf, null, 2);
+    const jsonStr = JSON.stringify(mf, null, 2);
+    // Wrap each line in a span for line-number CSS
+    manifestBox.innerHTML = jsonStr.split('\n')
+      .map(l => '<span class="line">' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>')
+      .join('');
     let msg = `Built manifest (uris=${res.countUris || 0}) in ${elapsed}s`;
     if (res.skippedUris) {
       msg += ` — ${res.skippedUris} URI(s) skipped (${(res.skippedTypes||[]).join(', ')})`;

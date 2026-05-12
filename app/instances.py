@@ -46,8 +46,9 @@ class OsduInstance:
     default_viewers: str = ""
     default_countries: str = "NO"
     refresh_token: str = ""                 # shared refresh token (if any)
-    auth_mode: str = "refresh_token"        # refresh_token | client_credentials | az_cli
+    auth_mode: str = "refresh_token"        # refresh_token | client_credentials | per_user_pkce | az_cli
     graphql_pg_conn_string: str = ""        # per-instance RDDMS PG conn (blank → REST fallback)
+    ssl_verify: bool = True                 # False for test/pre-ship envs with untrusted certs
 
     # --- runtime token cache ---
     _cached_token: str = field(default="", repr=False)
@@ -68,7 +69,14 @@ class OsduInstance:
         """Mint or return cached access_token for this instance.
 
         Tries refresh_token first, then client_credentials.
+        Returns None for per_user_pkce instances — those rely on
+        individual user sessions, not a shared instance-level token.
         """
+        # per_user_pkce instances never mint an instance-level token;
+        # users authenticate individually via the PKCE login flow.
+        if self.auth_mode == "per_user_pkce":
+            return None
+
         if self._cached_token and time.time() < self._cached_exp:
             return self._cached_token
 
@@ -173,10 +181,17 @@ def _load_instances():
         if not hostname:
             continue  # skip incomplete entries
 
-        # Describe auth mode based on available credentials
+        # Describe auth mode based on available credentials.
+        # An explicit AUTH_MODE env var overrides auto-detection,
+        # e.g. INSTANCE_EQNDEVP_AUTH_MODE=per_user_pkce lets the
+        # instance carry a client_secret (for the PKCE exchange)
+        # while still forcing individual user login.
         client_secret = _get("CLIENT_SECRET")
         refresh = _get("REFRESH_TOKEN")
-        if refresh and client_secret:
+        explicit_mode = _get("AUTH_MODE")
+        if explicit_mode:
+            mode = explicit_mode
+        elif refresh and client_secret:
             mode = "refresh_token+client_credentials"
         elif refresh:
             mode = "refresh_token"
@@ -202,6 +217,7 @@ def _load_instances():
             refresh_token=refresh,
             auth_mode=mode,
             graphql_pg_conn_string=_get("GRAPHQL_PG_CONN_STRING"),
+            ssl_verify=_get("SSL_VERIFY", "true").lower() not in ("false", "0", "no"),
         )
         _instances[inst_name] = inst
         log.info("Registered OSDU instance '%s' → %s (partition=%s, auth=%s)",
@@ -285,6 +301,18 @@ def _apply_instance(inst: OsduInstance):
     import app.osdu as osdu_mod
     osdu_mod.OSDU_BASE_URL = inst.hostname
     osdu_mod.DATA_PARTITION_ID = inst.data_partition_id
+    osdu_mod.SSL_VERIFY = inst.ssl_verify
+    # Force-close the shared httpx client: SSL verify is a client-level
+    # setting, so we need a fresh client when switching instances.
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(osdu_mod.close_shared_client())
+        else:
+            loop.run_until_complete(osdu_mod.close_shared_client())
+    except Exception:
+        pass  # Best-effort; next request will create a new client anyway
     osdu_mod.DEFAULT_LEGAL_TAG = inst.default_legal_tag or (
         f"{inst.data_partition_id}-equinor-private-default" if inst.data_partition_id else ""
     )
@@ -297,12 +325,16 @@ def _apply_instance(inst: OsduInstance):
     from .cache import cache_clear
     cache_clear()
 
-    # ── graphql_router: switch PG pool to this instance's conn string ──
-    from . import graphql_router as gql_mod
-    gql_mod.notify_instance_changed(inst.graphql_pg_conn_string)
+    # ── pg_backend: switch PG pool to this instance's conn string ──
+    from .pg_backend import notify_instance_changed
+    notify_instance_changed(inst.graphql_pg_conn_string)
 
     # ── auth.py ──
     import app.auth as auth_mod
+    # Clear stale cached env token from previous instance so it isn't
+    # reused after a round-trip switch (eqndev → preship → eqndev).
+    auth_mod._cached_env_token = {}
+    auth_mod._cached_env_token_exp = 0.0
     auth_mod.TENANT = inst.tenant_id
     auth_mod.CLIENT_ID = inst.client_id
     scopes_str = inst.scope or "openid offline_access"
@@ -311,7 +343,11 @@ def _apply_instance(inst: OsduInstance):
     auth_mod.AUTHORIZE_URL = f"{auth_mod.AUTH_BASE}/authorize"
     auth_mod.TOKEN_URL = f"{auth_mod.AUTH_BASE}/token"
     auth_mod.ENV_REFRESH_TOKEN = inst.refresh_token or None
-    if inst.refresh_token:
+    # Respect explicit per_user_pkce mode even when client_secret is
+    # present (needed for confidential-client PKCE exchange).
+    if inst.auth_mode == "per_user_pkce":
+        auth_mod.AUTH_MODE = "per_user_pkce"
+    elif inst.refresh_token:
         auth_mod.AUTH_MODE = "env_token"
     elif inst.client_secret:
         auth_mod.AUTH_MODE = "client_credentials"
