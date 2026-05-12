@@ -190,7 +190,9 @@ class TestKeysDataspaces:
 
     def test_list_dataspaces(self, authed_client):
         with patch("app.osdu.list_dataspaces", new_callable=AsyncMock,
-                    return_value=_fake_dataspaces()):
+                    return_value=_fake_dataspaces()), \
+             patch("app.pg_backend.get_pool", new_callable=AsyncMock,
+                    return_value=None):
             resp = authed_client.get("/keys/dataspaces.json")
 
         assert resp.status_code == 200
@@ -205,7 +207,9 @@ class TestKeysDataspaces:
     def test_dataspaces_empty_on_error(self, authed_client):
         """When RDDMS is unreachable, return empty list (no crash)."""
         with patch("app.osdu.list_dataspaces", new_callable=AsyncMock,
-                    side_effect=Exception("connection refused")):
+                    side_effect=Exception("connection refused")), \
+             patch("app.pg_backend.get_pool", new_callable=AsyncMock,
+                    return_value=None):
             resp = authed_client.get("/keys/dataspaces.json")
 
         assert resp.status_code == 200
