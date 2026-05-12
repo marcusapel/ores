@@ -260,15 +260,25 @@ async def api_instances():
 
 
 @app.get("/api/instances/probe")
-async def api_probe_instance():
+async def api_probe_instance(request: Request):
     """Test whether the active instance can mint a token right now."""
     inst = get_active()
+    # For per_user_pkce instances, check if the user has an active session
+    has_session = False
+    if inst.auth_mode == "per_user_pkce":
+        oid = request.session.get("oid", "")
+        session_inst = request.session.get("instance_name", "")
+        if oid and session_inst == inst.name:
+            sess_tokens = await tokens_from_session(request)
+            has_session = sess_tokens is not None
     try:
         token = await inst.get_access_token()
+        ok = token is not None or has_session
         return {
-            "ok": token is not None,
+            "ok": ok,
             "instance": inst.name,
             "auth_mode": inst.auth_mode,
+            "has_session": has_session,
             # Non-secret diagnostics to help troubleshoot token failures
             "tenant_id": inst.tenant_id[:8] + "…" if inst.tenant_id else "",
             "client_id": inst.client_id[:8] + "…" if inst.client_id else "",
@@ -278,9 +288,10 @@ async def api_probe_instance():
         }
     except Exception as e:
         return {
-            "ok": False,
+            "ok": has_session,
             "instance": inst.name,
             "auth_mode": inst.auth_mode,
+            "has_session": has_session,
             "error": str(e),
             "tenant_id": inst.tenant_id[:8] + "…" if inst.tenant_id else "",
             "client_id": inst.client_id[:8] + "…" if inst.client_id else "",
