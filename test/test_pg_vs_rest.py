@@ -42,7 +42,7 @@ osdu.OSDU_BASE_URL = (_inst.get("host") or "").replace("https://", "")
 osdu.DATA_PARTITION_ID = _inst.get("partition") or "dev"
 
 from app import resqml_viz  # noqa: E402
-from app.graphql_router import _get_pool, _pg_list_resources, _pg_list_arrays, _pg_read_array  # noqa: E402
+from app.pg_backend import get_pool as _get_pool, pg_list_resources as _pg_list_resources, pg_list_arrays as _pg_list_arrays, pg_read_array as _pg_read_array  # noqa: E402
 
 DS = "maap/drogon"
 OUT_DIR = REPO / "test" / "_pg_vs_rest_output"

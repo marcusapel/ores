@@ -36,20 +36,12 @@ from fastapi.templating import Jinja2Templates
 from . import osdu
 from . import resqml_viz
 from . import structuremap as smap_mod
+from .common import access_token as _access_token, normalize_obj as _normalize_resource_obj, http_error_response
 from .schemahandler import extract_metadata_generic
 
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 log = logging.getLogger("rddms-admin.keys")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Utilities
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _access_token(request: Request) -> str:
-    from .common import access_token as _at
-    return _at(request)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -75,7 +67,6 @@ async def keys_dataspaces(request: Request):
       ?source=remote → only remote RDDMS
       (default)      → both merged
     """
-    import asyncio
     at = _access_token(request)
     items: List[Dict[str, Any]] = []
     seen_paths: set = set()
@@ -85,10 +76,10 @@ async def keys_dataspaces(request: Request):
     # --- Fetch functions ---
     async def _fetch_local() -> List[Dict[str, Any]]:
         try:
-            from .graphql_router import _get_pool, _pg_list_dataspaces
-            pool = await _get_pool()
+            from .pg_backend import get_pool, pg_list_dataspaces
+            pool = await get_pool()
             if pool:
-                return await _pg_list_dataspaces(pool)
+                return await pg_list_dataspaces(pool)
         except Exception as e:
             log.debug("keys_dataspaces local PG failed: %s", e)
         return []
@@ -147,10 +138,10 @@ async def keys_types(
         # Try local PG first (instant, no network), fall back to REST
         pg_done = False
         try:
-            from .graphql_router import _get_pool, _pg_list_types
-            pool = await _get_pool()
+            from .pg_backend import get_pool, pg_list_types
+            pool = await get_pool()
             if pool:
-                pg_items = await _pg_list_types(pool, ds)
+                pg_items = await pg_list_types(pool, ds)
                 if pg_items:
                     items = pg_items
                     pg_done = True
@@ -205,16 +196,7 @@ async def dataspaces_delete(request: Request, path: str = Form(...)):
     try:
         await osdu.delete_dataspace(at, path)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {
-                "status": "error",
-                "code": r.status_code,
-                "reason": r.reason_phrase,
-                "detail": (r.text[:2000] if r.text else ""),
-            },
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok"})
 
 @router.post("/dataspaces/lock", summary="Lock a dataspace")
@@ -223,11 +205,7 @@ async def dataspaces_lock(request: Request, path: str = Form(...)):
     try:
         await osdu.lock_dataspace(at, path)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok"})
 
 @router.post("/dataspaces/unlock", summary="Unlock a dataspace")
@@ -236,11 +214,7 @@ async def dataspaces_unlock(request: Request, path: str = Form(...)):
     try:
         await osdu.unlock_dataspace(at, path)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok"})
 
 @router.post("/dataspaces/import", summary="Import (copy) content from a locked dataspace into another")
@@ -249,11 +223,7 @@ async def dataspaces_import(request: Request, src: str = Form(...), dst: str = F
     try:
         result = await osdu.import_dataspace(at, src, dst)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok", **result})
 
 @router.post("/dataspaces/manifest", summary="Build OSDU manifest for a dataspace")
@@ -278,11 +248,7 @@ async def dataspaces_manifest(
             create_missing_refs=create_missing,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "reason": r.reason_phrase, "detail": (r.text[:2000] if r.text else "")},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     return JSONResponse({"status": "ok", "manifest": manifest})
 
 
@@ -347,25 +313,6 @@ def _infer_type_path(item: Dict[str, Any]) -> str:
     return ""
 
 
-def _normalize_resource_obj(obj: Any, uuid: str) -> Dict[str, Any]:
-    """
-    Ensure we return a dict. If a list is returned by the DDMS, try to select the
-    element with matching UUID; otherwise pick the first dict.
-    """
-    if isinstance(obj, dict):
-        return obj
-    if isinstance(obj, list):
-        for it in obj:
-            if isinstance(it, dict):
-                uid = it.get("Uuid") or it.get("UUID") or it.get("uuid")
-                if uid and str(uid).lower() == (uuid or "").lower():
-                    return it
-        for it in obj:
-            if isinstance(it, dict):
-                return it
-    return {}
-
-
 def _extract_refs_any(x: Any) -> List[Dict[str, Any]]:
     """Run osdu.extract_refs() across dict or list-of-dicts."""
     try:
@@ -412,8 +359,8 @@ async def keys_object_json(
 
     # ── Try local PG first (fast, no network) ─────────────────────────
     try:
-        from .graphql_router import _get_pool
-        pool = await _get_pool()
+        from .pg_backend import get_pool
+        pool = await get_pool()
         if pool:
             pg_obj, pg_arrays = await resqml_viz.pg_get_object_and_arrays(
                 pool, ds, typ_s, uuid_s,
@@ -427,8 +374,11 @@ async def keys_object_json(
 
     # ── REST fallback ─────────────────────────────────────────────────
     if obj is None:
-        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-        obj = _normalize_resource_obj(obj_raw, uuid_s)
+        try:
+            obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+            obj = _normalize_resource_obj(obj_raw, uuid_s)
+        except HTTPStatusError as exc:
+            return http_error_response(exc)
         try:
             arrays = await osdu.list_arrays(at, enc, typ_s, uuid_s)
         except Exception as e:
@@ -486,18 +436,17 @@ async def keys_objects(
     # --- Try local PG first (instant, no network) ---
     pg_done = False
     try:
-        from .graphql_router import _get_pool, _pg_list_resources, _pg_list_types
-        pool = await _get_pool()
+        from .pg_backend import get_pool, pg_list_resources, pg_list_types
+        pool = await get_pool()
         if pool:
             if typ:
-                pg_rows = await _pg_list_resources(pool, ds, typ, limit=500)
+                pg_rows = await pg_list_resources(pool, ds, typ, limit=500)
             else:
                 # Get all types then aggregate
-                pg_types = await _pg_list_types(pool, ds)
+                pg_types = await pg_list_types(pool, ds)
                 if pg_types:
-                    import asyncio
                     parts = await asyncio.gather(
-                        *[_pg_list_resources(pool, ds, t["name"], limit=500) for t in pg_types if t.get("name")]
+                        *[pg_list_resources(pool, ds, t["name"], limit=500) for t in pg_types if t.get("name")]
                     )
                     pg_rows = []
                     for part in parts:
@@ -536,7 +485,6 @@ async def keys_objects(
                                 log.warning("keys_objects: list_resources(%s) failed: %s", name, e_type)
                                 return []
 
-                        import asyncio
                         parts = await asyncio.gather(*[_fetch_type(n) for n in names])
                         agg: List[Dict[str, Any]] = []
                         for part in parts:
@@ -565,6 +513,9 @@ async def keys_objects(
         title = (r.get("Citation") or {}).get("Title") or r.get("name") or uid or uri
         ct = r.get("$type") or r.get("contentType") or ""
         type_path = _infer_type_path(r)
+        # When listing by specific type and inference fails, use the requested type
+        if not type_path and typ:
+            type_path = _sanitize_type(typ)
 
         # contains filter on title/uuid
         if qq_norm:
@@ -692,19 +643,9 @@ async def dataspaces_manifest_build_uris(
             create_missing_refs=bool(create_missing),
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {
-                "status": "error",
-                "code": r.status_code,
-                "reason": r.reason_phrase,
-                "detail": (r.text[:2000] if r.text else ""),
-            },
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     log.info("build-uris: manifest built in %.1fs (uris=%d, total=%.1fs)",
              time.monotonic() - t1, len(safe_uris), time.monotonic() - t0)
-    request.app.state.last_manifest = manifest
     result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
     if skipped:
         result["skippedUris"] = len(skipped)
@@ -824,18 +765,8 @@ async def dataspaces_manifest_build_from_selection(
             create_missing_refs=create_missing,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {
-                "status": "error",
-                "code": r.status_code,
-                "reason": r.reason_phrase,
-                "detail": (r.text[:2000] if r.text else ""),
-            },
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
 
-    request.app.state.last_manifest = manifest
     log.info("Manifest build: ds_paths=%d items=%d raw_uris=%d → safe=%d skipped=%d",
              len(ds_paths), len(items), len(raw_uris), len(safe_uris), len(skipped))
     result: Dict[str, Any] = {"status": "ok", "countUris": len(safe_uris), "manifest": manifest}
@@ -862,11 +793,7 @@ async def keys_structuremap_surfaces(
     try:
         surfaces = await smap_mod.discover_surfaces(at, ds)
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     except Exception as e:
         log.exception("structuremap_surfaces failed: %s", e)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -916,11 +843,7 @@ async def keys_structuremaps(
             at, ds, prefix=prefix, uuids=uuid_list,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     except Exception as e:
         log.exception("structuremaps generation failed: %s", e)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -964,11 +887,7 @@ async def dataspaces_manifest_structuremaps(
             at, ds, prefix=prefix, uuids=uuids,
         )
     except HTTPStatusError as e:
-        r = e.response
-        return JSONResponse(
-            {"status": "error", "code": r.status_code, "detail": r.text[:2000]},
-            status_code=r.status_code or 500,
-        )
+        return http_error_response(e)
     except Exception as e:
         log.exception("structuremap manifest failed: %s", e)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -981,9 +900,6 @@ async def dataspaces_manifest_structuremaps(
         clean_smaps.append(rec)
 
     manifest = smap_mod.wrap_as_manifest(clean_smaps, dataspace=ds)
-
-    # Stash for the front-end
-    request.app.state.last_manifest = manifest
 
     return JSONResponse({
         "status": "ok",
@@ -1060,8 +976,11 @@ async def keys_object_table(
     uuid_s = _sanitize_uuid(uuid)
 
     # 1. Get the Grid2d object to extract shape
-    obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-    obj = _normalize_resource_obj(obj_raw, uuid_s)
+    try:
+        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+        obj = _normalize_resource_obj(obj_raw, uuid_s)
+    except HTTPStatusError as exc:
+        return http_error_response(exc)
 
     ctype = obj.get("$type") or obj.get("contentType") or ""
     if "Grid2dRepresentation" not in ctype and "Grid2dRepresentation" not in typ_s:
@@ -1369,10 +1288,9 @@ async def keys_object_map_png(
     at = _access_token(request)
 
     try:
-        import time as _time
-        _t0 = _time.monotonic()
+        _t0 = time.monotonic()
         surface = await resqml_viz.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
-        _t1 = _time.monotonic()
+        _t1 = time.monotonic()
         log.info("map.png: fetch ds=%s uuid=%s took %.1fs", ds, uuid, _t1 - _t0)
     except Exception as e:
         log.exception("map.png: fetch_grid2d_surface failed for ds=%s uuid=%s: %s", ds, uuid, e)
@@ -1403,7 +1321,7 @@ async def keys_object_map_png(
         unit = crs.get("VerticalUom") or crs.get("ProjectedUom") or "m"
 
     try:
-        _t2 = _time.monotonic()
+        _t2 = time.monotonic()
         png_bytes = resqml_viz.render_grid2d_png(
             zvalues, dims, geometry, crs,
             title=title,
@@ -1412,7 +1330,7 @@ async def keys_object_map_png(
             dpi=dpi,
             unit=unit,
         )
-        _t3 = _time.monotonic()
+        _t3 = time.monotonic()
         log.info("map.png: render %dx%d took %.1fs (%d bytes)", dims[0], dims[1], _t3 - _t2, len(png_bytes))
     except Exception as e:
         log.exception("map.png: render failed for %dx%d grid: %s", dims[0], dims[1], e)
@@ -1537,8 +1455,7 @@ async def keys_object_geometry3d(
     if not _is_3d_type(typ_s):
         raise HTTPException(400, f"Type {typ_s} is not supported for 3D viewing")
 
-    import time as _time
-    _t0 = _time.monotonic()
+    _t0 = time.monotonic()
 
     try:
         result = await resqml_viz.fetch_geometry_3d(at, ds, typ_s, uuid_s)
@@ -1548,7 +1465,7 @@ async def keys_object_geometry3d(
         log.exception("geometry3d: fetch failed for %s/%s: %s", typ_s, uuid_s, e)
         raise HTTPException(502, f"Failed to fetch 3D geometry: {e}")
 
-    _t1 = _time.monotonic()
+    _t1 = time.monotonic()
     n_verts = len(result.get("positions", [])) // 3
     n_idx = len(result.get("indices", [])) // 3
     log.info("geometry3d: %s uuid=%s kind=%s verts=%d tris=%d took %.1fs",
@@ -1581,12 +1498,20 @@ async def keys_object_graph(
     typ_s = _sanitize_type(typ)
     uuid_s = _sanitize_uuid(uuid)
 
+    if not typ_s:
+        return JSONResponse(
+            {"status": "error", "code": 400,
+             "reason": "Missing type",
+             "detail": "Object type is required. Select a specific type instead of (All types)."},
+            status_code=400,
+        )
+
     obj = None
 
     # ── Try PG first ──────────────────────────────────────────────────
     try:
-        from .graphql_router import _get_pool
-        pool = await _get_pool()
+        from .pg_backend import get_pool
+        pool = await get_pool()
         if pool:
             pg_obj, _ = await resqml_viz.pg_get_object_and_arrays(
                 pool, ds, typ_s, uuid_s,
@@ -1598,9 +1523,16 @@ async def keys_object_graph(
 
     # ── REST fallback ─────────────────────────────────────────────────
     if obj is None:
-        # Primary resource (defensive against list-shaped responses)
-        obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
-        obj = _normalize_resource_obj(obj_raw, uuid_s)
+        try:
+            obj_raw = await osdu.get_resource(at, enc, typ_s, uuid_s)
+            obj = _normalize_resource_obj(obj_raw, uuid_s)
+        except HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                log.info("graph.json: primary object not found via REST, continuing with minimal info")
+                obj = {}
+                obj_raw = {}
+            else:
+                return http_error_response(exc)
     else:
         obj_raw = obj
 
@@ -1620,10 +1552,10 @@ async def keys_object_graph(
         pg_graph_done = False
         # ── Try PG graph first ────────────────────────────────────────
         try:
-            from .graphql_router import _get_pool, _pg_list_relations
-            pool = await _get_pool()
+            from .pg_backend import get_pool, pg_list_relations
+            pool = await get_pool()
             if pool:
-                pg_rels = await _pg_list_relations(pool, ds, typ_s, uuid_s, "both")
+                pg_rels = await pg_list_relations(pool, ds, typ_s, uuid_s, "both")
                 if pg_rels:
                     for rel in pg_rels:
                         item = {
@@ -1727,8 +1659,7 @@ async def viz_batch_geometry(
     if len(objects) > 50:
         raise HTTPException(400, f"Max 50 objects per batch, got {len(objects)}")
 
-    import time as _time
-    t0 = _time.monotonic()
+    t0 = time.monotonic()
 
     async def _fetch_one(item: dict) -> dict:
         typ_s = _sanitize_type(item.get("typ", ""))
@@ -1743,7 +1674,7 @@ async def viz_batch_geometry(
 
     results = await asyncio.gather(*[_fetch_one(o) for o in objects])
 
-    t1 = _time.monotonic()
+    t1 = time.monotonic()
     ok = sum(1 for r in results if "error" not in r)
     log.info("viz batch: ds=%s objects=%d ok=%d took=%.1fs", ds, len(objects), ok, t1 - t0)
 

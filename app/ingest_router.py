@@ -110,7 +110,7 @@ async def _post_workflow_run(
     if run_id:
         payload["runId"] = run_id
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, read=60.0)) as client:
+    async with _osdu_mod.http_client(timeout=httpx.Timeout(60.0, read=60.0)) as client:
         r = await client.post(url, headers=headers, content=json.dumps(payload))
         if r.status_code >= 400:
             detail = {
@@ -303,7 +303,7 @@ async def _build_rddms_manifest(
         "createMissingReferences": create_missing_refs,
     }
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, read=120.0)) as client:
+    async with _osdu_mod.http_client(timeout=httpx.Timeout(120.0, read=120.0)) as client:
         r = await client.post(url, headers=headers, json=body)
         if r.status_code >= 400:
             raise HTTPException(
@@ -352,7 +352,7 @@ async def _ingest_via_storage(
             detail="Manifest contains no records to ingest",
         )
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, read=120.0)) as client:
+    async with _osdu_mod.http_client(timeout=httpx.Timeout(120.0, read=120.0)) as client:
         r = await client.put(url, headers=headers, json=records)
         if r.status_code >= 400:
             raise HTTPException(
@@ -585,7 +585,7 @@ async def delete_record(request: Request) -> JSONResponse:
     }
 
     results = []
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with _osdu_mod.http_client(timeout=60) as client:
         for rid in ids:
             url = f"{base_url.rstrip('/')}/api/storage/v2/records/{rid}"
             r = await client.delete(url, headers=headers)
@@ -639,7 +639,7 @@ async def ingest_records(request: Request) -> JSONResponse:
         "Content-Type": "application/json",
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with _osdu_mod.http_client(timeout=120) as client:
         r = await client.put(url, headers=headers, json=records)
         if r.status_code >= 400:
             raise HTTPException(

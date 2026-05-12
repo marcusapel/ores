@@ -251,6 +251,8 @@
   /* ── Dynamic auth check: probe active instance on page load ── */
   async function checkInstanceToken() {
     const warn = document.getElementById('auth-warning');
+    const activeBtn = document.querySelector('.inst-btn.active');
+    const name = activeBtn ? activeBtn.dataset.name : 'active instance';
     try {
       const r = await fetch('/api/instances/probe');
       const data = await r.json();
@@ -259,10 +261,15 @@
         window.location.href = '/ores';
         return;
       }
+      // per_user_pkce instances don't mint shared tokens — sign-in is expected
+      if (data.auth_mode === 'per_user_pkce') {
+        warn.innerHTML = `<strong>Instance "${name}" requires individual sign-in</strong><br>` +
+          'Each user authenticates with their own Equinor account for per-user permissions and audit.';
+        warn.style.display = 'block';
+        return;
+      }
     } catch (_) { /* stay on login */ }
     // Token didn't work — show contextual message
-    const activeBtn = document.querySelector('.inst-btn.active');
-    const name = activeBtn ? activeBtn.dataset.name : 'active instance';
     warn.innerHTML = `<strong>⚠ Instance "${name}" has no valid token</strong><br>` +
       'The service principal or refresh token may have failed. ' +
       'Sign in with your Microsoft account below, or switch instance.';

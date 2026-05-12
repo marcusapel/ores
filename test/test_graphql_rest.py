@@ -29,7 +29,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from app.graphql_router import (
+from app.graphql_search import (
     _parse_eml_entry,
     _extract_property_kind,
     _merge_deep_results,
@@ -224,11 +224,11 @@ class TestDeepSearchRest:
         self.read_array = AsyncMock(return_value=[])
 
         patches = [
-            patch("app.graphql_router._rest_list_resources", self.list_resources),
-            patch("app.graphql_router._rest_list_sources", self.list_sources),
-            patch("app.graphql_router._rest_get_resource", self.get_resource),
-            patch("app.graphql_router._rest_list_arrays", self.list_arrays),
-            patch("app.graphql_router._rest_read_array", self.read_array),
+            patch("app.graphql_search._rest_list_resources", self.list_resources),
+            patch("app.graphql_search._rest_list_sources", self.list_sources),
+            patch("app.graphql_search._rest_get_resource", self.get_resource),
+            patch("app.graphql_search._rest_list_arrays", self.list_arrays),
+            patch("app.graphql_search._rest_read_array", self.read_array),
         ]
         for p in patches:
             p.start()
@@ -241,6 +241,7 @@ class TestDeepSearchRest:
             token="fake", dataspace="test/ds",
             type_name="resqml20.obj_IjkGridRepresentation",
             title_contains=None, property_filter=None,
+            include_relations=False,
             include_statistics=False, include_sample_values=False,
             sample_size=50, limit=20,
         )

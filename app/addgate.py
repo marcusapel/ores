@@ -99,7 +99,7 @@ async def _search_decision_levels(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with osdu.http_client(timeout=20) as client:
             r = await client.post(search_url, json=payload, headers=hdr)
             if not r.is_success:
                 log.warning("DecisionLevel search failed (%s): %s", r.status_code, r.text[:300])
@@ -163,7 +163,7 @@ async def wpc_search(
         "returnedFields": ["id", "kind", "version", "data.Name", "data.Description"],
     }
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with osdu.http_client(timeout=30) as client:
         r = await client.post(search_url, json=payload, headers=hdr)
         if not r.is_success:
             return JSONResponse([])
@@ -378,7 +378,7 @@ async def create_bd(request: Request):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.put(storage_url, json=[bd_record], headers=hdr)
             status = r.status_code
             resp_body = r.text[:2000]
@@ -574,7 +574,7 @@ async def create_cp(request: Request):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.put(storage_url, json=[cp_record], headers=hdr)
             status = r.status_code
             resp_body = r.text[:2000]
@@ -686,7 +686,7 @@ async def create_pc(request: Request):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.put(storage_url, json=[pc_record], headers=hdr)
             status = r.status_code
             resp_body = r.text[:2000]
@@ -723,7 +723,7 @@ async def fetch_record(request: Request, id: str = Query(...)):
     storage_url = f"https://{osdu.OSDU_BASE_URL}/api/storage/v2/records/{id}"
     hdr = osdu.headers(at)
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with osdu.http_client(timeout=20) as client:
             r = await client.get(storage_url, headers=hdr)
     except Exception as e:
         log.error("Fetch record %s failed: %s", id, e)
@@ -797,7 +797,7 @@ async def create_activity_template(request: Request):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.put(storage_url, json=[record], headers=hdr)
             status = r.status_code
             resp_body = r.text[:2000]
@@ -929,7 +929,7 @@ async def create_activity(request: Request):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.put(storage_url, json=[record], headers=hdr)
             status = r.status_code
             resp_body = r.text[:2000]
@@ -1060,7 +1060,7 @@ async def create_generic(request: Request):
     hdr = osdu.headers(at)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with osdu.http_client(timeout=30) as client:
             r = await client.put(storage_url, json=[record], headers=hdr)
             status = r.status_code
             resp_body = r.text[:2000]

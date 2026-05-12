@@ -92,7 +92,16 @@
           "OlderPossibleAge": 170.0,
           "YoungerPossibleAge": 163.0,
           "ColumnStratigraphicHorizonTopID": "",
-          "ColumnStratigraphicHorizonBaseID": ""
+          "ColumnStratigraphicHorizonBaseID": "",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_StratigraphicUnitInterpretation('7c70894a-2442-4735-a219-c954f87ba07d')",
+          "ResourceID": "7c70894a-2442-4735-a219-c954f87ba07d",
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "7c70894a-2442-4735-a219-c954f87ba07d",
+            "rddms_type": "resqml20.obj_StratigraphicUnitInterpretation",
+            "rddms_zone_alias": "Therys",
+            "note": "RDDMS uses zone name 'Therys' for this formation"
+          }
         }
       },
       {
@@ -122,7 +131,16 @@
           "OlderPossibleAge": 163.0,
           "YoungerPossibleAge": 157.0,
           "ColumnStratigraphicHorizonTopID": "",
-          "ColumnStratigraphicHorizonBaseID": ""
+          "ColumnStratigraphicHorizonBaseID": "",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_StratigraphicUnitInterpretation('e3be3316-0ea0-4c20-9722-14a2174ce7ab')",
+          "ResourceID": "e3be3316-0ea0-4c20-9722-14a2174ce7ab",
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "e3be3316-0ea0-4c20-9722-14a2174ce7ab",
+            "rddms_type": "resqml20.obj_StratigraphicUnitInterpretation",
+            "rddms_zone_alias": "Volon",
+            "note": "RDDMS uses zone name 'Volon' for this formation"
+          }
         }
       },
       {
@@ -152,7 +170,16 @@
           "OlderPossibleAge": 157.0,
           "YoungerPossibleAge": 145.0,
           "ColumnStratigraphicHorizonTopID": "",
-          "ColumnStratigraphicHorizonBaseID": ""
+          "ColumnStratigraphicHorizonBaseID": "",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_StratigraphicUnitInterpretation('0b257a04-c38c-4c56-9e18-987b03583830')",
+          "ResourceID": "0b257a04-c38c-4c56-9e18-987b03583830",
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "0b257a04-c38c-4c56-9e18-987b03583830",
+            "rddms_type": "resqml20.obj_StratigraphicUnitInterpretation",
+            "rddms_zone_alias": "Valysar",
+            "note": "RDDMS uses zone name 'Valysar' for this formation"
+          }
         }
       },
       {
@@ -517,6 +544,228 @@
           ],
           "StratigraphicColumnValidityAreaType": "",
           "ValueChainStatusType": ""
+        }
+      },
+      {
+        "id": "dev:work-product-component--HorizonInterpretation:02e954a9-d7db-4b57-aef7-12b8ebf47a65:",
+        "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TopVolantis",
+          "Description": "Top Volantis (Valysar) reservoir \u2013 main Drogon pay zone boundary",
+          "SchemaFormatTypeID": "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation('02e954a9-d7db-4b57-aef7-12b8ebf47a65')",
+          "ResourceID": "02e954a9-d7db-4b57-aef7-12b8ebf47a65",
+          "IsStratigraphicBoundary": true,
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "02e954a9-d7db-4b57-aef7-12b8ebf47a65",
+            "rddms_type": "resqml20.obj_HorizonInterpretation",
+            "rddms_feature_uuid": "2d66e9f5-f120-43c4-93ca-1c8220846fbb",
+            "rddms_feature_type": "resqml20.obj_GeneticBoundaryFeature",
+            "rddms_feature_uri": "eml:///dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature('2d66e9f5-f120-43c4-93ca-1c8220846fbb')",
+            "boundary_class": "stratigraphic"
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--HorizonInterpretation:6c6eeb68-bb4d-4fa4-9eb4-b880b5bd7086:",
+        "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TopTherys",
+          "Description": "Top Therys source rock \u2013 organic-rich shale boundary",
+          "SchemaFormatTypeID": "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation('6c6eeb68-bb4d-4fa4-9eb4-b880b5bd7086')",
+          "ResourceID": "6c6eeb68-bb4d-4fa4-9eb4-b880b5bd7086",
+          "IsStratigraphicBoundary": true,
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "6c6eeb68-bb4d-4fa4-9eb4-b880b5bd7086",
+            "rddms_type": "resqml20.obj_HorizonInterpretation",
+            "rddms_feature_uuid": "49cd1075-1eef-4950-8e50-2bec81ca4275",
+            "rddms_feature_type": "resqml20.obj_GeneticBoundaryFeature",
+            "rddms_feature_uri": "eml:///dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature('49cd1075-1eef-4950-8e50-2bec81ca4275')",
+            "boundary_class": "stratigraphic"
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--HorizonInterpretation:db54a781-84ad-41e5-8bdd-c510246375cd:",
+        "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "TopVolon",
+          "Description": "Top Volon lower reservoir formation boundary",
+          "SchemaFormatTypeID": "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation('db54a781-84ad-41e5-8bdd-c510246375cd')",
+          "ResourceID": "db54a781-84ad-41e5-8bdd-c510246375cd",
+          "IsStratigraphicBoundary": true,
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "db54a781-84ad-41e5-8bdd-c510246375cd",
+            "rddms_type": "resqml20.obj_HorizonInterpretation",
+            "rddms_feature_uuid": "e185b471-9f88-446d-b36e-00c77a7cf0b8",
+            "rddms_feature_type": "resqml20.obj_GeneticBoundaryFeature",
+            "rddms_feature_uri": "eml:///dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature('e185b471-9f88-446d-b36e-00c77a7cf0b8')",
+            "boundary_class": "stratigraphic"
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--HorizonInterpretation:3657ca0b-d21f-41ca-801b-4a6a7eb1f426:",
+        "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "BaseVolantis",
+          "Description": "Base Volantis (Valysar) reservoir \u2013 seal contact",
+          "SchemaFormatTypeID": "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation('3657ca0b-d21f-41ca-801b-4a6a7eb1f426')",
+          "ResourceID": "3657ca0b-d21f-41ca-801b-4a6a7eb1f426",
+          "IsStratigraphicBoundary": true,
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "3657ca0b-d21f-41ca-801b-4a6a7eb1f426",
+            "rddms_type": "resqml20.obj_HorizonInterpretation",
+            "rddms_feature_uuid": "67349b6a-2004-43ed-94bc-43e90b584aad",
+            "rddms_feature_type": "resqml20.obj_GeneticBoundaryFeature",
+            "rddms_feature_uri": "eml:///dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature('67349b6a-2004-43ed-94bc-43e90b584aad')",
+            "boundary_class": "stratigraphic"
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--HorizonInterpretation:7da0e4d7-1955-4031-8eaf-68a93515414d:",
+        "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "MSL",
+          "Description": "Mean Sea Level datum \u2013 technical reference surface (not stratigraphic)",
+          "SchemaFormatTypeID": "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation('7da0e4d7-1955-4031-8eaf-68a93515414d')",
+          "ResourceID": "7da0e4d7-1955-4031-8eaf-68a93515414d",
+          "IsStratigraphicBoundary": false,
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "7da0e4d7-1955-4031-8eaf-68a93515414d",
+            "rddms_type": "resqml20.obj_HorizonInterpretation",
+            "rddms_feature_uuid": "0c402b9f-fa0e-4c36-a08f-37f292115e01",
+            "rddms_feature_type": "resqml20.obj_GeneticBoundaryFeature",
+            "rddms_feature_uri": "eml:///dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature('0c402b9f-fa0e-4c36-a08f-37f292115e01')",
+            "boundary_class": "technical"
+          }
+        }
+      },
+      {
+        "id": "dev:work-product-component--HorizonInterpretation:011ae8ee-bfa5-4804-a675-1f4704b1730c:",
+        "kind": "osdu:wks:work-product-component--HorizonInterpretation:1.0.0",
+        "acl": {
+          "owners": [
+            "data.default.owners@dev.dataservices.energy"
+          ],
+          "viewers": [
+            "data.office.global.viewers@dev.dataservices.energy"
+          ]
+        },
+        "legal": {
+          "legaltags": [
+            "dev-equinor-private-default"
+          ],
+          "otherRelevantDataCountries": [
+            "NO"
+          ]
+        },
+        "data": {
+          "Name": "BaseVelmodel",
+          "Description": "Base of velocity model \u2013 geophysical boundary (not stratigraphic)",
+          "SchemaFormatTypeID": "application/x-resqml+xml;version=2.0;type=obj_HorizonInterpretation",
+          "ResourceURI": "eml:///dataspace('maap/drogon')/resqml20.obj_HorizonInterpretation('011ae8ee-bfa5-4804-a675-1f4704b1730c')",
+          "ResourceID": "011ae8ee-bfa5-4804-a675-1f4704b1730c",
+          "IsStratigraphicBoundary": false,
+          "ExtraMetadata": {
+            "rddms_dataspace": "maap/drogon",
+            "rddms_uuid": "011ae8ee-bfa5-4804-a675-1f4704b1730c",
+            "rddms_type": "resqml20.obj_HorizonInterpretation",
+            "rddms_feature_uuid": "d9593949-6e2a-4514-802f-001d0a6c3708",
+            "rddms_feature_type": "resqml20.obj_GeneticBoundaryFeature",
+            "rddms_feature_uri": "eml:///dataspace('maap/drogon')/resqml20.obj_GeneticBoundaryFeature('d9593949-6e2a-4514-802f-001d0a6c3708')",
+            "boundary_class": "technical"
+          }
         }
       }
     ]

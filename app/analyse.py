@@ -381,7 +381,7 @@ async def analyse_compare(
     # 1. Fetch reservoir record name
     reservoir_name = reservoir_id
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with osdu.http_client(timeout=60) as client:
             rr = await client.get(f"{storage_url}/{reservoir_id}", headers=hdr)
             if rr.status_code == 200:
                 reservoir_name = (
@@ -412,7 +412,7 @@ async def analyse_compare(
 
     gates: List[Dict[str, Any]] = []
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with osdu.http_client(timeout=120) as client:
             # OSDU search (may return false positives - filtered below)
             all_bd_ids: list = []
             try:
