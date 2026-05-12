@@ -96,17 +96,24 @@ async def inject_access_token(request: Request, call_next):
 
     access_token: str | None = None
 
-    # 0. Prefer per-user PKCE token when the user has an active session.
-    #    This ensures "Sign in with Microsoft" is meaningful — the user's
-    #    own delegated token is used instead of the service-principal token,
-    #    which may lack OSDU entitlements.
+    # 0. Prefer per-user PKCE token when the user has an active session
+    #    AND the session was created for the currently active instance.
+    #    After an instance switch, the old session token would be scoped to
+    #    the previous Azure AD tenant/app — skip it so we fall through to
+    #    the new instance's own token (client_credentials or env RT).
     if request.session.get("oid"):
-        try:
-            sess_tokens = await tokens_from_session(request)
-            if sess_tokens:
-                access_token = sess_tokens.get("access_token")
-        except Exception as e:
-            log.warning("Session token failed: %s", e)
+        session_inst = request.session.get("instance_name", "")
+        active_inst = get_active_name()
+        if session_inst == active_inst:
+            try:
+                sess_tokens = await tokens_from_session(request)
+                if sess_tokens:
+                    access_token = sess_tokens.get("access_token")
+            except Exception as e:
+                log.warning("Session token failed: %s", e)
+        else:
+            log.debug("Skipping session token: session is for '%s' but active instance is '%s'",
+                      session_inst, active_inst)
 
     # 1. Try active instance's own token (client_credentials or refresh)
     if not access_token:

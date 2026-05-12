@@ -48,6 +48,7 @@ class OsduInstance:
     refresh_token: str = ""                 # shared refresh token (if any)
     auth_mode: str = "refresh_token"        # refresh_token | client_credentials | az_cli
     graphql_pg_conn_string: str = ""        # per-instance RDDMS PG conn (blank → REST fallback)
+    ssl_verify: bool = True                 # False for test/pre-ship envs with untrusted certs
 
     # --- runtime token cache ---
     _cached_token: str = field(default="", repr=False)
@@ -202,6 +203,7 @@ def _load_instances():
             refresh_token=refresh,
             auth_mode=mode,
             graphql_pg_conn_string=_get("GRAPHQL_PG_CONN_STRING"),
+            ssl_verify=_get("SSL_VERIFY", "true").lower() not in ("false", "0", "no"),
         )
         _instances[inst_name] = inst
         log.info("Registered OSDU instance '%s' → %s (partition=%s, auth=%s)",
@@ -285,6 +287,18 @@ def _apply_instance(inst: OsduInstance):
     import app.osdu as osdu_mod
     osdu_mod.OSDU_BASE_URL = inst.hostname
     osdu_mod.DATA_PARTITION_ID = inst.data_partition_id
+    osdu_mod.SSL_VERIFY = inst.ssl_verify
+    # Force-close the shared httpx client: SSL verify is a client-level
+    # setting, so we need a fresh client when switching instances.
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(osdu_mod.close_shared_client())
+        else:
+            loop.run_until_complete(osdu_mod.close_shared_client())
+    except Exception:
+        pass  # Best-effort; next request will create a new client anyway
     osdu_mod.DEFAULT_LEGAL_TAG = inst.default_legal_tag or (
         f"{inst.data_partition_id}-equinor-private-default" if inst.data_partition_id else ""
     )
@@ -303,6 +317,10 @@ def _apply_instance(inst: OsduInstance):
 
     # ── auth.py ──
     import app.auth as auth_mod
+    # Clear stale cached env token from previous instance so it isn't
+    # reused after a round-trip switch (eqndev → preship → eqndev).
+    auth_mod._cached_env_token = {}
+    auth_mod._cached_env_token_exp = 0.0
     auth_mod.TENANT = inst.tenant_id
     auth_mod.CLIENT_ID = inst.client_id
     scopes_str = inst.scope or "openid offline_access"

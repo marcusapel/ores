@@ -1055,7 +1055,7 @@ async def federated_search_impl(
             "trackTotalCount": True,
         }
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with osdu.http_client(timeout=30) as client:
                 r = await client.post(search_url, headers=hdr, json=payload)
                 r.raise_for_status()
                 resp = r.json()

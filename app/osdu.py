@@ -31,6 +31,11 @@ API_SEMAPHORE = asyncio.Semaphore(_MAX_CONCURRENT)
 # Base DNS name of your ADME/OSDU instance (no scheme).
 OSDU_BASE_URL: str = os.getenv("OSDU_BASE_URL", "")
 
+# SSL certificate verification for the OSDU backend.  Disabled for test/
+# pre-ship environments whose TLS certificates are not in the default CA
+# bundle.  Overridden per-instance by INSTANCE_<NAME>_SSL_VERIFY.
+SSL_VERIFY: bool = True
+
 # Required header for all ADME/OSDU calls.
 DATA_PARTITION_ID: str = os.getenv("DATA_PARTITION_ID", "").strip()
 
@@ -72,7 +77,7 @@ async def _http(timeout: float = 60) -> AsyncIterator[httpx.AsyncClient]:
     """
     global _shared_client
     if _shared_client is None or _shared_client.is_closed:
-        _shared_client = httpx.AsyncClient(timeout=timeout)
+        _shared_client = httpx.AsyncClient(timeout=timeout, verify=SSL_VERIFY)
     else:
         # Update timeout for this call if different from the client default
         _shared_client.timeout = httpx.Timeout(timeout)
@@ -86,6 +91,16 @@ async def close_shared_client() -> None:
         await _shared_client.aclose()
         _shared_client = None
         log.info("Shared httpx client closed")
+
+
+def http_client(timeout: float = 60, **kwargs) -> httpx.AsyncClient:
+    """Create an httpx.AsyncClient with the active instance's SSL settings.
+
+    Use this instead of ``httpx.AsyncClient(...)`` directly so that
+    per-instance SSL_VERIFY is respected (needed for test/pre-ship envs).
+    Extra kwargs (e.g. http2=True) are forwarded to AsyncClient.
+    """
+    return httpx.AsyncClient(timeout=timeout, verify=SSL_VERIFY, **kwargs)
 
 
 def _rddms_url(path: str = "") -> str:
