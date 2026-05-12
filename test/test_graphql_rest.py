@@ -241,6 +241,7 @@ class TestDeepSearchRest:
             token="fake", dataspace="test/ds",
             type_name="resqml20.obj_IjkGridRepresentation",
             title_contains=None, property_filter=None,
+            include_relations=False,
             include_statistics=False, include_sample_values=False,
             sample_size=50, limit=20,
         )

@@ -68,6 +68,16 @@ spec:
             INSTANCE_PRESHIP_DEFAULT_OWNERS: "data.default.owners@opendes.contoso.com"
             INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
             INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
+            # eqndevp - Equinor SWE dev, per-user PKCE (no shared token)
+            INSTANCE_EQNDEVP_AUTH_MODE: "per_user_pkce"
+            INSTANCE_EQNDEVP_HOSTNAME: "equinorswedev.energy.azure.com"
+            INSTANCE_EQNDEVP_DATA_PARTITION_ID: "dev"
+            INSTANCE_EQNDEVP_AUTHORITY: "osdu"
+            INSTANCE_EQNDEVP_SCHEMA_SOURCE: "wks"
+            INSTANCE_EQNDEVP_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+            INSTANCE_EQNDEVP_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+            INSTANCE_EQNDEVP_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+            INSTANCE_EQNDEVP_DEFAULT_COUNTRIES: "NO"
           monitoring: true
 
         - environment: prod
@@ -96,6 +106,16 @@ spec:
             INSTANCE_PRESHIP_DEFAULT_OWNERS: "data.default.owners@opendes.contoso.com"
             INSTANCE_PRESHIP_DEFAULT_VIEWERS: "data.default.viewers@opendes.contoso.com"
             INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
+            # eqndevp - Equinor SWE dev, per-user PKCE (no shared token)
+            INSTANCE_EQNDEVP_AUTH_MODE: "per_user_pkce"
+            INSTANCE_EQNDEVP_HOSTNAME: "equinorswedev.energy.azure.com"
+            INSTANCE_EQNDEVP_DATA_PARTITION_ID: "dev"
+            INSTANCE_EQNDEVP_AUTHORITY: "osdu"
+            INSTANCE_EQNDEVP_SCHEMA_SOURCE: "wks"
+            INSTANCE_EQNDEVP_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+            INSTANCE_EQNDEVP_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+            INSTANCE_EQNDEVP_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+            INSTANCE_EQNDEVP_DEFAULT_COUNTRIES: "NO"
           monitoring: true
           horizontalScaling:
             minReplicas: 2
@@ -117,6 +137,11 @@ spec:
         - INSTANCE_PRESHIP_CLIENT_ID
         - INSTANCE_PRESHIP_CLIENT_SECRET
         - INSTANCE_PRESHIP_SCOPE
+        # eqndevp - per-user PKCE (no REFRESH_TOKEN → forces Mode 2)
+        - INSTANCE_EQNDEVP_TENANT_ID
+        - INSTANCE_EQNDEVP_CLIENT_ID
+        - INSTANCE_EQNDEVP_CLIENT_SECRET
+        - INSTANCE_EQNDEVP_SCOPE
         # Uncomment when SMDA integration is needed
         # - SMDA_CLIENT_ID
         # - SMDA_SCOPE

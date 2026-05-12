@@ -64,6 +64,21 @@ data:
   INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
   INSTANCE_PRESHIP_SSL_VERIFY: "false"
 
+  # ── "eqndevp" - Equinor SWE dev, per-user PKCE (no shared token) ──
+  # Same OSDU backend as eqndev but forces individual user login.
+  # Each user authenticates with their own Entra ID identity, giving
+  # per-user permissions, audit trail, and token isolation.
+  INSTANCE_EQNDEVP_AUTH_MODE: "per_user_pkce"
+  INSTANCE_EQNDEVP_TENANT_ID: ""
+  INSTANCE_EQNDEVP_HOSTNAME: "equinorswedev.energy.azure.com"
+  INSTANCE_EQNDEVP_DATA_PARTITION_ID: "dev"
+  INSTANCE_EQNDEVP_AUTHORITY: "osdu"
+  INSTANCE_EQNDEVP_SCHEMA_SOURCE: "wks"
+  INSTANCE_EQNDEVP_DEFAULT_LEGAL_TAG: "dev-equinor-private-default"
+  INSTANCE_EQNDEVP_DEFAULT_OWNERS: "data.default.owners@dev.dataservices.energy"
+  INSTANCE_EQNDEVP_DEFAULT_VIEWERS: "data.default.viewers@dev.dataservices.energy"
+  INSTANCE_EQNDEVP_DEFAULT_COUNTRIES: "NO"
+
 
   # ── Example: "prod" instance (uncomment to enable) ──
   # INSTANCE_PROD_TENANT_ID: ""
