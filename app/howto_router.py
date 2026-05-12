@@ -81,6 +81,12 @@ _HOWTO_SECTIONS: list[dict] = [
                 "title": "Stratigraphy",
                 "desc": "Data model, tooling & workflow",
             },
+            {
+                "slug": "pws",
+                "file": "PWS.md",
+                "title": "Project & Workflow Service",
+                "desc": "P&WS lifecycle, endpoints & RDDMS integration",
+            },
         ],
     },
 ]

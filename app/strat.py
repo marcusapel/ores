@@ -384,6 +384,8 @@ async def strat_search(
             )
             items.extend(unit_items)
 
+    items.sort(key=lambda x: (x.get("name") or "").lower())
+
     log.info("Search complete: %d items (total=%d, q='%s', type='%s')",
              len(items), total, q, search_type)
     return JSONResponse({"items": items, "total": total})

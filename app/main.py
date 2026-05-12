@@ -540,4 +540,4 @@ async def dataspaces_create(
             },
             status_code=400,
         )
-    return RedirectResponse(url=f"/d/{urllib.parse.quote(path, safe='')}", status_code=302)
+    return RedirectResponse(url=f"/keys?ds={urllib.parse.quote(path, safe='')}", status_code=302)
