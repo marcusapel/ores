@@ -302,6 +302,8 @@ class Query:
         type_name: str = "resqml20.obj_Grid2dRepresentation",
         title_contains: Optional[str] = None,
         property_filter: Optional[PropertyFilter] = None,
+        include_relations: bool = False,
+        relation_filter: Optional[List[str]] = None,
         include_statistics: bool = True,
         include_sample_values: bool = False,
         sample_size: int = 50,
@@ -319,8 +321,8 @@ class Query:
         token = _get_token_from_info(info)
         return await deep_search_impl(
             token, dataspace, dataspaces, type_name, title_contains,
-            property_filter, include_statistics, include_sample_values,
-            sample_size, limit,
+            property_filter, include_relations, include_statistics,
+            include_sample_values, sample_size, limit, relation_filter,
         )
 
     @strawberry.field(
@@ -343,6 +345,7 @@ class Query:
         search_rddms: bool = True,
         search_remote_rddms: bool = True,
         include_relations: bool = False,
+        relation_filter: Optional[List[str]] = None,
         include_properties: bool = False,
         include_statistics: bool = False,
         property_filter: Optional[PropertyFilter] = None,
@@ -368,7 +371,7 @@ class Query:
             token, text, kind, type_name, dataspaces,
             search_catalog, search_rddms, search_remote_rddms,
             include_relations, include_properties, include_statistics,
-            property_filter, limit,
+            property_filter, limit, relation_filter,
         )
 
 

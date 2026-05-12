@@ -46,7 +46,7 @@ class OsduInstance:
     default_viewers: str = ""
     default_countries: str = "NO"
     refresh_token: str = ""                 # shared refresh token (if any)
-    auth_mode: str = "refresh_token"        # refresh_token | client_credentials | az_cli
+    auth_mode: str = "refresh_token"        # refresh_token | client_credentials | per_user_pkce | az_cli
     graphql_pg_conn_string: str = ""        # per-instance RDDMS PG conn (blank → REST fallback)
     ssl_verify: bool = True                 # False for test/pre-ship envs with untrusted certs
 
@@ -69,7 +69,14 @@ class OsduInstance:
         """Mint or return cached access_token for this instance.
 
         Tries refresh_token first, then client_credentials.
+        Returns None for per_user_pkce instances — those rely on
+        individual user sessions, not a shared instance-level token.
         """
+        # per_user_pkce instances never mint an instance-level token;
+        # users authenticate individually via the PKCE login flow.
+        if self.auth_mode == "per_user_pkce":
+            return None
+
         if self._cached_token and time.time() < self._cached_exp:
             return self._cached_token
 
@@ -174,10 +181,17 @@ def _load_instances():
         if not hostname:
             continue  # skip incomplete entries
 
-        # Describe auth mode based on available credentials
+        # Describe auth mode based on available credentials.
+        # An explicit AUTH_MODE env var overrides auto-detection,
+        # e.g. INSTANCE_EQNDEVP_AUTH_MODE=per_user_pkce lets the
+        # instance carry a client_secret (for the PKCE exchange)
+        # while still forcing individual user login.
         client_secret = _get("CLIENT_SECRET")
         refresh = _get("REFRESH_TOKEN")
-        if refresh and client_secret:
+        explicit_mode = _get("AUTH_MODE")
+        if explicit_mode:
+            mode = explicit_mode
+        elif refresh and client_secret:
             mode = "refresh_token+client_credentials"
         elif refresh:
             mode = "refresh_token"
@@ -329,7 +343,11 @@ def _apply_instance(inst: OsduInstance):
     auth_mod.AUTHORIZE_URL = f"{auth_mod.AUTH_BASE}/authorize"
     auth_mod.TOKEN_URL = f"{auth_mod.AUTH_BASE}/token"
     auth_mod.ENV_REFRESH_TOKEN = inst.refresh_token or None
-    if inst.refresh_token:
+    # Respect explicit per_user_pkce mode even when client_secret is
+    # present (needed for confidential-client PKCE exchange).
+    if inst.auth_mode == "per_user_pkce":
+        auth_mod.AUTH_MODE = "per_user_pkce"
+    elif inst.refresh_token:
         auth_mod.AUTH_MODE = "env_token"
     elif inst.client_secret:
         auth_mod.AUTH_MODE = "client_credentials"

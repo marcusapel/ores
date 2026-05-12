@@ -217,6 +217,31 @@ class RelationInfo:
     content_type: str = ""
 
 
+# ── Default noise types filtered from relation results ────────────────────────
+# Activities reference every object in a scenario and are rarely useful.
+_RELATION_NOISE_TYPES = {"obj_Activity"}
+
+
+def _filter_relations(
+    rels: List[RelationInfo],
+    relation_filter: Optional[List[str]] = None,
+) -> List[RelationInfo]:
+    """Filter relation results.
+
+    When *relation_filter* is provided, only relations whose type_name contains
+    one of the given substrings are kept.  Otherwise, default noise types
+    (Activity) are removed.  To include Activity explicitly, pass
+    ``relationFilter: ["Activity"]``.
+    """
+    if relation_filter:
+        return [
+            r for r in rels
+            if any(f.lower() in r.type_name.lower() for f in relation_filter)
+        ]
+    # Default: strip noise
+    return [r for r in rels if not any(n in r.type_name for n in _RELATION_NOISE_TYPES)]
+
+
 @strawberry.type
 class ResqmlObject:
     """A RESQML object from the Reservoir DDMS store."""
@@ -417,10 +442,12 @@ async def _deep_search_pg(
     type_name: str,
     title_contains: Optional[str],
     property_filter: Optional[PropertyFilter],
+    include_relations: bool,
     include_statistics: bool,
     include_sample_values: bool,
     sample_size: int,
     limit: int,
+    relation_filter: Optional[List[str]] = None,
 ) -> DeepSearchResult:
     """Deep search using direct PostgreSQL access - significantly faster."""
     pg_schema = await _pg_schema_for_dataspace(pool, dataspace)
@@ -568,8 +595,40 @@ async def _deep_search_pg(
             if property_filter and property_filter.array_filter and not passes_filter:
                 continue
 
+            # Step 5: Relations (targets + sources) - optional
+            relation_results: Optional[List[RelationInfo]] = None
+            if include_relations:
+                rels = await conn.fetch(f"""
+                    SELECT rel.dst_id, r2.guid, r2.name, t2.xml as typ_xml, u2.ml,
+                           'target' as direction
+                    FROM {pg_schema}.rel rel
+                    JOIN {pg_schema}.res r2 ON rel.dst_id = r2.obj_id
+                    JOIN {pg_schema}.typ t2 ON r2.typ_id = t2.id
+                    JOIN {pg_schema}.uri u2 ON t2.uri_id = u2.id
+                    WHERE rel.obj_id = $1
+                    UNION ALL
+                    SELECT rel.obj_id, r2.guid, r2.name, t2.xml as typ_xml, u2.ml,
+                           'source' as direction
+                    FROM {pg_schema}.rel rel
+                    JOIN {pg_schema}.res r2 ON rel.obj_id = r2.obj_id
+                    JOIN {pg_schema}.typ t2 ON r2.typ_id = t2.id
+                    JOIN {pg_schema}.uri u2 ON t2.uri_id = u2.id
+                    WHERE rel.dst_id = $1
+                """, obj_id)
+                raw_rels = [
+                    RelationInfo(
+                        uuid=str(r["guid"]), name=r["name"],
+                        type_name=f"{r['ml']}.{r['typ_xml']}",
+                        direction=r["direction"],
+                        content_type=f"{r['ml']}.{r['typ_xml']}",
+                    )
+                    for r in rels
+                ]
+                relation_results = _filter_relations(raw_rels, relation_filter)
+
             matched.append(ResqmlObject(
                 uuid=uuid, title=title, type_name=type_name,
+                relations=relation_results,
                 properties=property_results if property_results else None,
             ))
 
@@ -631,10 +690,12 @@ async def _deep_search_rest(
         type_name: str,
         title_contains: Optional[str],
         property_filter: Optional[PropertyFilter],
+        include_relations: bool,
         include_statistics: bool,
         include_sample_values: bool,
         sample_size: int,
         limit: int,
+        relation_filter: Optional[List[str]] = None,
 ) -> DeepSearchResult:
     """REST-based deep search for a single dataspace."""
     backend = "REST"
@@ -799,8 +860,42 @@ async def _deep_search_rest(
         if property_filter and property_filter.array_filter and not passes_filter:
             continue
 
+        # Relations (via REST targets/sources)
+        relation_results: Optional[List[RelationInfo]] = None
+        if include_relations:
+            relation_results = []
+            try:
+                targets = await _rest_list_targets(token, dataspace, type_name, uuid)
+                for t in targets:
+                    parsed = _parse_eml_entry(t)
+                    if parsed["uuid"]:
+                        relation_results.append(RelationInfo(
+                            uuid=parsed["uuid"], name=parsed["name"],
+                            type_name=parsed["contentType"],
+                            direction="target", content_type=parsed["contentType"],
+                        ))
+            except Exception as e:
+                warnings.append(f"{title}: targets failed: {e}")
+            try:
+                src_all = await _rest_list_sources(token, dataspace, type_name, uuid)
+                for s in src_all:
+                    parsed = _parse_eml_entry(s)
+                    if parsed["uuid"]:
+                        relation_results.append(RelationInfo(
+                            uuid=parsed["uuid"], name=parsed["name"],
+                            type_name=parsed["contentType"],
+                            direction="source", content_type=parsed["contentType"],
+                        ))
+            except Exception as e:
+                warnings.append(f"{title}: sources failed: {e}")
+
+        # Apply relation filter
+        if relation_results is not None:
+            relation_results = _filter_relations(relation_results, relation_filter)
+
         matched.append(ResqmlObject(
             uuid=uuid, title=title, type_name=type_name,
+            relations=relation_results,
             properties=property_results if property_results else None,
         ))
 
@@ -848,10 +943,12 @@ async def deep_search_impl(
     type_name: str,
     title_contains: Optional[str],
     property_filter: Optional[PropertyFilter],
+    include_relations: bool,
     include_statistics: bool,
     include_sample_values: bool,
     sample_size: int,
     limit: int,
+    relation_filter: Optional[List[str]] = None,
 ) -> DeepSearchResult:
     """Core deep_search implementation, independent of Strawberry context."""
     # Resolve dataspace list (backwards-compatible: single 'dataspace' still works)
@@ -880,21 +977,21 @@ async def deep_search_impl(
         if pool:
             result = await _deep_search_pg(
                 pool, ds_list[0], type_name, title_contains,
-                property_filter, include_statistics, include_sample_values,
-                sample_size, limit,
+                property_filter, include_relations, include_statistics,
+                include_sample_values, sample_size, limit, relation_filter,
             )
             # Fall back to REST if this dataspace isn't in PG
             if result.total_scanned == 0 and "not found in PG" in result.query_description:
                 return await _deep_search_rest(
                     token, ds_list[0], type_name, title_contains,
-                    property_filter, include_statistics, include_sample_values,
-                    sample_size, limit,
+                    property_filter, include_relations, include_statistics,
+                    include_sample_values, sample_size, limit, relation_filter,
                 )
             return result
         return await _deep_search_rest(
             token, ds_list[0], type_name, title_contains,
-            property_filter, include_statistics, include_sample_values,
-            sample_size, limit,
+            property_filter, include_relations, include_statistics,
+            include_sample_values, sample_size, limit, relation_filter,
         )
 
     # Multiple dataspaces: try PG first for each, fall back to REST per-ds
@@ -905,16 +1002,16 @@ async def deep_search_impl(
         if pool:
             pg_result = await _deep_search_pg(
                 pool, ds, type_name, title_contains,
-                property_filter, include_statistics, include_sample_values,
-                sample_size, limit,
+                property_filter, include_relations, include_statistics,
+                include_sample_values, sample_size, limit, relation_filter,
             )
             if pg_result.total_scanned > 0 or "not found in PG" not in pg_result.query_description:
                 return pg_result
             # Dataspace not in PG → try REST
         return await _deep_search_rest(
             token, ds, type_name, title_contains,
-            property_filter, include_statistics, include_sample_values,
-            sample_size, limit,
+            property_filter, include_relations, include_statistics,
+            include_sample_values, sample_size, limit, relation_filter,
         )
 
     results = await asyncio.gather(*[_search_one_ds(ds) for ds in ds_list])
@@ -1022,6 +1119,7 @@ async def federated_search_impl(
     include_statistics: bool,
     property_filter: Optional[PropertyFilter],
     limit: int,
+    relation_filter: Optional[List[str]] = None,
 ) -> FederatedSearchResult:
     """Core federated_search implementation, independent of Strawberry context."""
     import httpx
@@ -1103,9 +1201,18 @@ async def federated_search_impl(
     # ── Determine RESQML types to search ──────────────────────────────────
     target_types: List[str] = [type_name] if type_name else list(_FEDERATED_TYPES)
 
-    title_filter = text if text != "*" else None
+    # `text` is the OSDU Search query string (used for catalog full-text search).
+    # For RDDMS, apply it as a title filter ONLY when no dataspaces are given;
+    # when dataspaces are specified they already scope the RDDMS results and the
+    # text parameter is likely a project name (e.g. "Drogon") that won't match
+    # individual RESQML object titles (e.g. "Simgrid", "TopVolantis").
+    title_filter = text if text != "*" and not dataspaces else None
     total_local_rddms = 0
     total_remote_rddms = 0
+
+    # RDDMS scanning uses a higher internal limit so catalog hits won't
+    # starve the RDDMS side.  The final result is truncated to `limit`.
+    _rddms_scan_limit = limit * 3
 
     # ── Path B: Local RDDMS (PostgreSQL direct) ───────────────────────────
     if search_rddms:
@@ -1153,9 +1260,9 @@ async def federated_search_impl(
                                     )
                         except Exception:
                             pass
-                        if len(hits_by_uuid) >= limit:
+                        if len(hits_by_uuid) >= _rddms_scan_limit:
                             break
-                    if len(hits_by_uuid) >= limit:
+                    if len(hits_by_uuid) >= _rddms_scan_limit:
                         break
 
     # ── Path C: Remote RDDMS (REST API) ──────────────────────────────────
@@ -1210,9 +1317,9 @@ async def federated_search_impl(
                                 )
                     except Exception:
                         pass
-                    if len(hits_by_uuid) >= limit:
+                    if len(hits_by_uuid) >= _rddms_scan_limit:
                         break
-                if len(hits_by_uuid) >= limit:
+                if len(hits_by_uuid) >= _rddms_scan_limit:
                     break
 
     total_rddms = total_local_rddms + total_remote_rddms
@@ -1226,12 +1333,13 @@ async def federated_search_impl(
             try:
                 if pool and include_relations:
                     rels = await _pg_list_relations(pool, fh.dataspace, fh.type_name, fh.uuid, "both")
-                    fh.relations = [
+                    raw_rels = [
                         RelationInfo(
                             uuid=r["uuid"], name=r["name"], type_name=r["type_name"],
                             direction=r["direction"], content_type=r["content_type"],
                         ) for r in rels
                     ]
+                    fh.relations = _filter_relations(raw_rels, relation_filter)
                 elif not pool and include_relations:
                     try:
                         targets = await _rest_list_targets(token, fh.dataspace, fh.type_name, fh.uuid)
@@ -1251,7 +1359,7 @@ async def federated_search_impl(
                                 name=s.get("Title") or s.get("name") or "",
                                 type_name=ct, direction="source", content_type=ct,
                             ))
-                        fh.relations = rels_list
+                        fh.relations = _filter_relations(rels_list, relation_filter)
                     except Exception:
                         pass
 
@@ -1306,7 +1414,30 @@ async def federated_search_impl(
                 log.debug("federated enrichment failed for %s: %s", fh.uuid, e)
 
     # ── Build result ──────────────────────────────────────────────────────
-    merged = list(hits_by_uuid.values())[:limit]
+    # Fair merge: cross-referenced hits first (found in both systems),
+    # then round-robin RDDMS-only and catalog-only so both sides get
+    # equal representation within the limit.
+    all_hits = list(hits_by_uuid.values())
+    cross_refs = [h for h in all_hits
+                  if h.found_in_catalog and (h.found_in_local_rddms or h.found_in_remote_rddms)]
+    rddms_only = [h for h in all_hits
+                  if not h.found_in_catalog and (h.found_in_local_rddms or h.found_in_remote_rddms)]
+    cat_only = [h for h in all_hits
+                if h.found_in_catalog and not h.found_in_local_rddms and not h.found_in_remote_rddms]
+
+    merged: List[FederatedHit] = list(cross_refs)
+    it_r, it_c = iter(rddms_only), iter(cat_only)
+    while len(merged) < limit:
+        added = False
+        for it in (it_r, it_c):
+            try:
+                merged.append(next(it))
+                added = True
+            except StopIteration:
+                pass
+        if not added:
+            break
+    merged = merged[:limit]
     desc_parts = []
     if text != "*":
         desc_parts.append(f"text='{text}'")

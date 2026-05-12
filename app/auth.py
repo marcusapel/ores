@@ -245,7 +245,7 @@ async def logout(request: Request):
     if oid:
         _ts_delete(oid, instance_name)
     request.session.clear()
-    response = RedirectResponse("/login")
+    response = RedirectResponse("/login-page")
     response.delete_cookie("ores_user")
     return response
 
