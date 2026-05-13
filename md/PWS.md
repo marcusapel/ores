@@ -7,23 +7,6 @@
 
 ---
 
-## Table of Contents
-
-1. [Overview](#1-overview)
-2. [OSDU Schemas](#2-osdu-schemas)
-3. [API Reference](#3-api-reference)
-4. [Project Lifecycle](#4-project-lifecycle)
-5. [SOR & WIP Resource Management](#5-sor--wip-resource-management)
-6. [Detailed Use Cases](#6-detailed-use-cases)
-7. [Reservoir DDMS Impact & Collaboration](#7-reservoir-ddms-impact--collaboration)
-8. [RDDMS Interface Points](#8-rddms-interface-points)
-9. [RDDMS Opportunities](#9-rddms-opportunities)
-10. [Improvement Requirements](#10-improvement-requirements)
-11. [Entity Relationship Diagram](#11-entity-relationship-diagram)
-12. [References](#12-references)
-
----
-
 ## 1. Overview
 
 The **Project & Workflow Service (P&WS)** provides a structured project collaboration layer on top of OSDU. It manages the lifecycle of multi-user subsurface projects where teams assemble trusted data references, work in isolated namespaces (WIP), and publish back to the System of Record (SOR) with full event auditing.
@@ -38,21 +21,19 @@ Key capabilities:
 
 ### CP as Cross-DG Namespace Bridge (SoE ↔ SoR)
 
-A `CollaborationProject` is **not** scoped to a single decision gate — it is the persistent namespace that contextualises all geomodelling work for a field:
+A `CollaborationProject` is **not** scoped to a single decision gate - it is the persistent namespace that contextualises all geomodelling work for a field:
 
-```
- BusinessDecision DG1 ──┐
- BusinessDecision DG2 ──┤── ParentProjectID ──▶ CollaborationProject (master-data)
- BusinessDecision DG3 ──┘                        │
-                                                  ├── TrustedCollectionID ──▶ CollaborationProjectCollection
-                                                  │     └── ResourceIDs[] (SoR: accumulates per gate)
-                                                  │
-                                                  ├── ActivityStates[] (DG1✓ → DG2● → DG3 → FID)
-                                                  │
-                                                  └── Parameters[] (SoE: links to dataspaces, activities, volumes)
+```mermaid
+graph LR
+  DG1["BusinessDecision DG1"] --> CP["CollaborationProject<br/><i>master-data</i>"]
+  DG2["BusinessDecision DG2"] -->|ParentProjectID| CP
+  DG3["BusinessDecision DG3"] --> CP
+  CP -->|TrustedCollectionID| TC["CollaborationProjectCollection<br/><i>ResourceIDs · SoR accumulates per gate</i>"]
+  CP --- AS["ActivityStates<br/>DG1✓ → DG2● → DG3 → FID"]
+  CP --- P["Parameters<br/>SoE: dataspaces, activities, volumes"]
 ```
 
-The `CollaborationProjectCollection` (WPC) is the **SoR accumulator** — each gate adds its curated artefacts to the same collection. Unlike a `PersistedCollection` (which snapshots a single gate's evidence), the trusted collection grows across gates.
+The `CollaborationProjectCollection` (WPC) is the **SoR accumulator** - each gate adds its curated artefacts to the same collection. Unlike a `PersistedCollection` (which snapshots a single gate's evidence), the trusted collection grows across gates.
 
 | Concept | Kind | Role |
 |---------|------|------|
@@ -63,18 +44,19 @@ The `CollaborationProjectCollection` (WPC) is the **SoR accumulator** — each g
 
 ### Where P&WS fits in the OSDU stack
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  Applications: ORES, Petrel, ResInsight, Webviz          │
-├──────────────────────────────────────────────────────────┤
-│  P&WS Service              │  Reservoir DDMS (RDDMS)    │
-│  ─ Project lifecycle       │  ─ RESQML dataspaces        │
-│  ─ SOR/WIP resource mgmt   │  ─ Grids, properties, maps │
-│  ─ Publish & conflict      │  ─ ETP streaming            │
-├──────────────────────────────────────────────────────────┤
-│  Core OSDU Services                                      │
-│  Storage · Search · Schema · Entitlements · Legal        │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+  subgraph Apps[\"Applications\"]
+    ORES[\"ORES\"] ~~~ Petrel[\"Petrel\"] ~~~ RI[\"ResInsight\"] ~~~ WV[\"Webviz\"]
+  end
+  subgraph Mid[\" \"]
+    PWS[\"P&WS Service<br/>Project lifecycle · SOR/WIP · Publish & conflict\"]
+    RDDMS[\"Reservoir DDMS<br/>RESQML dataspaces · Grids, properties, maps · ETP\"]
+  end
+  subgraph Core[\"Core OSDU Services\"]
+    C[\"Storage · Search · Schema · Entitlements · Legal\"]
+  end
+  Apps --> Mid --> Core
 ```
 
 ---
@@ -166,8 +148,8 @@ stateDiagram-v2
 
     note right of Open
         While Open the project accepts
-        POST /resources — add SOR refs
-        POST /lifecycleevents — log work
+        POST /resources - add SOR refs
+        POST /lifecycleevents - log work
         Ingest WIP records via Storage API
         POST /wip-resources/publishing
     end note
@@ -216,13 +198,13 @@ WIP resources live in the project's `Namespace` (UUID-based isolation). They are
 **Scenario**: A subsurface team prepares a concept-select decision gate. Geologists, geophysicists, and reservoir engineers collaborate on a shared dataset spanning wells, seismic interpretations, geomodels, and simulation results.
 
 **P&WS Flow**:
-1. Project manager creates a `CollaborationProject` scoped to the target reservoir — this is master-data that will persist across DG2, DG3, and FID
+1. Project manager creates a `CollaborationProject` scoped to the target reservoir - this is master-data that will persist across DG2, DG3, and FID
 2. Trusted SOR resources are assembled: existing wells, wellbores, trajectories, seismic horizons, stratigraphic column
 3. Each discipline works in WIP: geologist adds new horizon interpretations, engineer adds simulation inputs
 4. Geomodel grids and properties are ingested as WIP records linked to the project namespace
 5. After QC and review, WIP records are published to SOR in controlled batches (wells first, then dependent WPCs)
 6. `BusinessDecision` record is created referencing the project via `ParentProjectID` and the project's published artifacts as `Parameters[]` inputs
-7. Project remains open for the next gate — its trusted collection accumulates the curated artefacts
+7. Project remains open for the next gate - its trusted collection accumulates the curated artefacts
 8. Project is closed only after FID, preserving the full cross-gate lifecycle journal as decision audit trail
 
 **Data types involved**: `Well`, `Wellbore`, `WellboreTrajectory`, `WellboreMarkerSet`, `HorizonInterpretation`, `StructureMap`, `IjkGridRepresentation`, `ReservoirEstimatedVolumes`, `ColumnBasedTable`, `BusinessDecision`, `Risk`
@@ -380,20 +362,11 @@ The ORES web app already integrates P&WS concepts with RDDMS:
 
 ### 8.2 API-Level Interfaces
 
-```
-┌──────────────┐     ┌─────────────────┐     ┌──────────────────┐
-│   P&WS API   │────►│  OSDU Storage   │◄────│   RDDMS REST     │
-│              │     │   & Search      │     │   & ETP          │
-│ /projects    │     │                 │     │                  │
-│ /resources   │     │  CollabProject  │     │ /dataspaces      │
-│ /wip-*       │     │  Collections    │     │ /types           │
-│ /status      │     │  All WPCs       │     │ /resources       │
-│ /lifecycle   │     │                 │     │ /arrays          │
-└──────────────┘     └─────────────────┘     └──────────────────┘
-         │                    │                        │
-         └──────── Project resources reference ────────┘
-                  OSDU catalog records with
-                  DDMSDatasets[] → RDDMS objects
+```mermaid
+graph LR
+  PWS["P&WS API<br/>/projects · /resources<br/>/wip-* · /status · /lifecycle"] -->|records| OSDU["OSDU Storage & Search<br/>CollabProject · Collections · All WPCs"]
+  RDDMS["RDDMS REST & ETP<br/>/dataspaces · /types<br/>/resources · /arrays"] -->|records| OSDU
+  PWS -.->|"Project resources reference<br/>DDMSDatasets[] → RDDMS objects"| RDDMS
 ```
 
 ### 8.3 Data Flow for RDDMS-Backed Projects

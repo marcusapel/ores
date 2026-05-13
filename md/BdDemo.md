@@ -4,7 +4,7 @@
 
 ---
 
-## Quick Start — Using ORES with BusinessDecision Data
+## Quick Start - Using ORES with BusinessDecision Data
 
 ### Searching
 
@@ -16,10 +16,10 @@ OSDU Search returns card-rendered results showing each decision gate record with
 Open the **Analyse** tab (`/analyse`). ORES lists all `Reservoir` master-data records.  
 Select a reservoir (e.g. *Drogon*) and ORES automatically finds every `BusinessDecision` linked to it, orders them by gate (DG1 → DG2 → …), and presents a side-by-side comparison:
 
-- **Volume deltas** — STOIIP, Recoverable, Recovery Factor at P10/P50/P90
-- **Risk evolution** — risks added, reduced, closed, or escalated between gates
-- **Property diffs** — DevelopmentConcept fields, economics parameters
-- **Charts** — overlay visualisations of how metrics change across gates
+- **Volume deltas** - STOIIP, Recoverable, Recovery Factor at P10/P50/P90
+- **Risk evolution** - risks added, reduced, closed, or escalated between gates
+- **Property diffs** - DevelopmentConcept fields, economics parameters
+- **Charts** - overlay visualisations of how metrics change across gates
 
 ### What a Decision Gate Package Contains
 
@@ -30,18 +30,18 @@ Conceptually, each `BusinessDecision` record is **the central hub** of a decisio
 | **Decision identity** | `master-data--BusinessDecision` | Hub record with level (DG1–DG4), approval status, personnel, risks |
 | **Collaboration namespace** | `master-data--CollaborationProject` | Cross-DG master-data that bridges SoE (WIP collaboration) and SoR (trusted collection). Persists from DG1 through FID, accumulating curated artefacts per gate. BD links via `ParentProjectID` |
 | **Reservoir scope** | `master-data--Reservoir` + `ReservoirSegment` | Shared master-data anchors referenced across all gates |
-| **Volumes** | `ReservoirEstimatedVolumes` WPC (raw + stats) | Quantitative evidence — per-realisation and P10/P50/P90 aggregates |
+| **Volumes** | `ReservoirEstimatedVolumes` WPC (raw + stats) | Quantitative evidence - per-realisation and P10/P50/P90 aggregates |
 | **Dashboard labels** | `GeoLabelSet` WPC | Headline P10/P50/P90 figures for quick dashboards |
 | **Input parameters** | `ColumnBasedTable` WPC | Design matrix / uncertainty variables |
-| **Development concept** | `DevelopmentConcept` WPC *(custom schema)* | Structured concept fields — no canonical OSDU kind exists, so a LOCAL registered schema is used |
+| **Development concept** | `DevelopmentConcept` WPC *(custom schema)* | Structured concept fields - no canonical OSDU kind exists, so a LOCAL registered schema is used |
 | **Workflow provenance** | `Activity` + `ActivityTemplate` WPC | Full input/output capture for reproducibility |
 | **Risks** | `master-data--Risk` | Severity/probability ratings evolving gate-to-gate |
 | **Governance documents** | `Document` WPC | SRA, CRA, PDO (DG1); adds PTR at DG2 |
 | **Geomodel** | `ETPDataspace` dataset → RDDMS | Gridded reservoir model lives in Reservoir DDMS, linked via an ETP dataspace pointer |
 | **Evidence bundle** | `PersistedCollection` WPC | DG2+ packages all artefacts (99 records in the Drogon example) into one searchable collection |
-| **Project collection** | `CollaborationProjectCollection` WPC | SoR accumulator — the trusted collection referenced by the CP grows across gates (unlike PersistedCollection which snapshots one gate) |
+| **Project collection** | `CollaborationProjectCollection` WPC | SoR accumulator - the trusted collection referenced by the CP grows across gates (unlike PersistedCollection which snapshots one gate) |
 
-All links flow through the BD's `Parameters[]` array using canonical OSDU kinds and types — `Input` for evidence artefacts, `InputReference` for context/scope anchors (reservoir, prior-gate BD, ETP dataspace). See the entity relationship diagram and the full schema tables below.
+All links flow through the BD's `Parameters[]` array using canonical OSDU kinds and types - `Input` for evidence artefacts, `InputReference` for context/scope anchors (reservoir, prior-gate BD, ETP dataspace). See the entity relationship diagram and the full schema tables below.
 
 ---
 
@@ -55,7 +55,7 @@ A DG1 package spans **~15 records**; a full DG2 decision gate package spans **~1
 
 | # | Category | OSDU Kind | Purpose |
 |---|----------|-----------|---------|
-| 1 | Master-data | `osdu:wks:master-data--BusinessDecision:1.0.0` | Decision record — central hub linking all evidence |
+| 1 | Master-data | `osdu:wks:master-data--BusinessDecision:1.0.0` | Decision record - central hub linking all evidence |
 | 2 | Master-data | `osdu:wks:master-data--Reservoir:2.0.0` | Reservoir entity (shared across gates) |
 | 3 | Master-data | `osdu:wks:master-data--ReservoirSegment:2.0.0` | Fault-bounded segments |
 | 4 | Master-data | `osdu:wks:master-data--Risk:1.2.0` | Risk records with severity/probability ratings |
@@ -64,10 +64,10 @@ A DG1 package spans **~15 records**; a full DG2 decision gate package spans **~1
 | 7 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Input parameters (design matrix) |
 | 8 | WPC | `osdu:wks:work-product-component--Activity:1.0.0` | Workflow run record |
 | 9 | WPC | `osdu:wks:work-product-component--ActivityTemplate:1.0.0` | Workflow template (parameter slots) |
-| 10 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | Governance documents — DG1: SRA, CRA, PDO; DG2 adds PTR |
+| 10 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | Governance documents - DG1: SRA, CRA, PDO; DG2 adds PTR |
 | 11 | WPC | `osdu:wks:work-product-component--GeoLabelSet:1.0.0` | Headline P10/P50/P90 volumes for dashboards |
 | 12 | Dataset | `osdu:wks:dataset--ETPDataspace:1.0.0` | RDDMS dataspace pointer for geomodel |
-| -- | Master-data | `osdu:wks:master-data--CollaborationProject:1.0.0` | Cross-DG collaboration namespace — bridges SoE and SoR, persists across gates |
+| -- | Master-data | `osdu:wks:master-data--CollaborationProject:1.0.0` | Cross-DG collaboration namespace - bridges SoE and SoR, persists across gates |
 | -- | WPC | `osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0` | Trusted SoR resource accumulator (ResourceIDs[] grow per gate) |
 
 #### DG2 Additions
@@ -78,7 +78,7 @@ A DG1 package spans **~15 records**; a full DG2 decision gate package spans **~1
 | 14 | WPC | `osdu:wks:work-product-component--IjkGridRepresentation:1.0.0` | Static grid model + per-property child grids (11 WPCs) |
 | 15 | WPC | `osdu:wks:work-product-component--StructureMap:1.0.0` | Depth surfaces, amplitude maps, facies fraction maps (12 WPCs) |
 | 16 | WPC | `osdu:wks:work-product-component--GenericRepresentation:1.0.0` | Property averages, APS probability cubes, polygons (44 WPCs) |
-| 17 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Simulator tables — relperm, PVT, summary, completions, gruptree (5 WPCs) |
+| 17 | WPC | `osdu:wks:work-product-component--ColumnBasedTable:1.3.0` | Simulator tables - relperm, PVT, summary, completions, gruptree (5 WPCs) |
 | 18 | WPC | `osdu:wks:work-product-component--PersistedCollection:1.0.0` | Evidence-package bundling all DG2 artefacts (99 DataReferences) |
 | 19–25 | Reference-data | DecisionLevel, DecisionApprovalStatus, RiskCategory, RiskSeverityScale, RiskProbabilityScale, RiskAcceptanceCriteria, Facets/PropertyTypes/UoM | Decision catalogs and volume metadata |
 
@@ -225,7 +225,7 @@ graph TD
 
 | Layer | Role | Gate behaviour |
 |-------|------|----------------|
-| **Master-data** (Reservoir, Segments, Risk, BD, **CollaborationProject**) | Identity anchors | Shared/evolving across gates — CP persists from DG1 through FID |
+| **Master-data** (Reservoir, Segments, Risk, BD, **CollaborationProject**) | Identity anchors | Shared/evolving across gates - CP persists from DG1 through FID |
 | **WPCs** (REV, CBT, Activity, Documents, **CollabProjectCollection**) | Versioned evidence | New per gate (except CollabProjectCollection which accumulates) |
 
 The BD `Parameters[]` array bridges these: it references both master-data (as `InputReference`) and WPCs (as `Input`/`Output`).
@@ -260,7 +260,7 @@ flowchart LR
 
 The BD references the dataspace via `Parameters[]` with role `InputReference`.
 
-> **DatasetIDs gap:** The RDDMS manifest builder does **not** populate `DatasetIDs` on WPCs — the field that links a WPC back to its parent Dataset (ETPDataspace). After ingesting RDDMS-sourced WPCs, a post-ingest patch is needed to set `DatasetIDs: ["<ETPDataspace-record-id>"]` on each WPC. Without this, WPCs are orphaned from their dataspace in OSDU search.
+> **DatasetIDs gap:** The RDDMS manifest builder does **not** populate `DatasetIDs` on WPCs - the field that links a WPC back to its parent Dataset (ETPDataspace). After ingesting RDDMS-sourced WPCs, a post-ingest patch is needed to set `DatasetIDs: ["<ETPDataspace-record-id>"]` on each WPC. Without this, WPCs are orphaned from their dataspace in OSDU search.
 
 ---
 
@@ -312,9 +312,9 @@ Each BD carries a volume uncertainty summary (STOIIP P90/P50/P10, Recoverable, R
 
 ---
 
-## 7. PersistedCollection — Evidence Package
+## 7. PersistedCollection - Evidence Package
 
-At DG2, all decision artefacts are bundled into a `PersistedCollection` WPC with `DataReferences[]` listing every record ID in the package. The Drogon DG2 collection ("Drogon DG2 — Evidence Package") contains **99 DataReferences** spanning:
+At DG2, all decision artefacts are bundled into a `PersistedCollection` WPC with `DataReferences[]` listing every record ID in the package. The Drogon DG2 collection ("Drogon DG2 - Evidence Package") contains **99 DataReferences** spanning:
 
 | Group | Count | Example Kinds |
 |-------|------:|---------------|
@@ -338,13 +338,13 @@ The BD references this collection via `Parameters[]` (`ParameterRole: InputRefer
 
 ## 8. Design Principles
 
-1. **One BusinessDecision per gate** — links all evidence through `Parameters[]`
-2. **CollaborationProject spans gates** — master-data namespace that bridges SoE and SoR; BDs link via `ParentProjectID`; trusted collection accumulates per gate
-3. **Lossless traceability** — every reference preserved with role semantics
-4. **Risk evolution is explicit** — canonical risk records tracked gate-to-gate
-5. **Volumes are authoritative** — `ReservoirEstimatedVolumes` is the domain WPC; `GeoLabelSet` for dashboards
-6. **Activity provides reproducibility** — captures full workflow configuration
-7. **PersistedCollection snapshots one gate** — DG2+ packages all artefacts into a single searchable collection
-8. **CollaborationProjectCollection accumulates across gates** — the SoR grows; PersistedCollection freezes
+1. **One BusinessDecision per gate** - links all evidence through `Parameters[]`
+2. **CollaborationProject spans gates** - master-data namespace that bridges SoE and SoR; BDs link via `ParentProjectID`; trusted collection accumulates per gate
+3. **Lossless traceability** - every reference preserved with role semantics
+4. **Risk evolution is explicit** - canonical risk records tracked gate-to-gate
+5. **Volumes are authoritative** - `ReservoirEstimatedVolumes` is the domain WPC; `GeoLabelSet` for dashboards
+6. **Activity provides reproducibility** - captures full workflow configuration
+7. **PersistedCollection snapshots one gate** - DG2+ packages all artefacts into a single searchable collection
+8. **CollaborationProjectCollection accumulates across gates** - the SoR grows; PersistedCollection freezes
 
 

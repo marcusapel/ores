@@ -124,15 +124,46 @@
   color: var(--eq-slate);
 }
 .article-body blockquote p:last-child { margin-bottom: 0; }
-.article-body table { margin: 0 0 1rem; }
+.article-body table {
+  margin: 0 0 1rem;
+  font-size: 0.82em;
+  line-height: 1.25;
+  border-collapse: collapse;
+  width: max-content;
+  max-width: 100%;
+}
+.article-body th,
+.article-body td {
+  padding: 3px 8px;
+  white-space: nowrap;
+  border: 1px solid var(--eq-border);
+}
+@media (max-width: 1100px) {
+  .article-body th,
+  .article-body td { white-space: normal; }
+  .article-body table { width: 100%; }
+}
+.article-body th {
+  background: var(--eq-light);
+  font-weight: 600;
+}
 .article-body pre {
   overflow-x: auto;
+  font-size: 0.82em;
+  line-height: 1.3;
+}
+.article-body code {
+  font-size: 0.88em;
 }
 .article-body pre.mermaid {
   background: transparent;
   border: none;
   padding: 0;
   text-align: center;
+}
+.article-body pre.mermaid svg {
+  max-width: 100%;
+  font-size: 13px;
 }
 /* permalink anchors from toc extension */
 .article-body .headerlink {

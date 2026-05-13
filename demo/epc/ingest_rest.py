@@ -27,7 +27,7 @@ DS = "maap/drogon"
 DS_ENC = "maap%2Fdrogon"
 SCRIPT_DIR = Path(__file__).resolve().parent
 XML_DIR = SCRIPT_DIR / "drogon_osdu"
-BATCH_SIZE = 10  # conservative — the server may reject large payloads
+BATCH_SIZE = 10  # conservative - the server may reject large payloads
 
 TENANT = "3aa4a235-b6e2-48d5-9195-7fcf05b459b0"
 CLIENT_ID = "ebd2bfee-ecba-47b7-a33c-017d0131879d"

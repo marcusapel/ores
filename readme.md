@@ -45,13 +45,13 @@ Each instance can use a different token strategy. The middleware tries them in o
 
 | Priority | Strategy | Config needed | Typical use |
 |----------|----------|---------------|-------------|
-| 0 | **Instance token** | `_REFRESH_TOKEN` and/or `_CLIENT_SECRET` | Zero-click — shared across all users |
+| 0 | **Instance token** | `_REFRESH_TOKEN` and/or `_CLIENT_SECRET` | Zero-click - shared across all users |
 | 1 | **Env token** | Top-level `REFRESH_TOKEN` (legacy) | Single-instance setups |
-| 2 | **Per-user PKCE** | Nothing — always available | Users sign in via Azure AD |
+| 2 | **Per-user PKCE** | Nothing - always available | Users sign in via Azure AD |
 
 PKCE login is **always available as a fallback**, even when the instance is configured with `client_credentials`. If the service principal secret expires, users can still sign in with their own Microsoft account.
 
-**Example — two instances with different strategies:**
+**Example - two instances with different strategies:**
 
 | Instance | Secret vars | Behaviour |
 |----------|-------------|----------|
@@ -63,11 +63,11 @@ PKCE login is **always available as a fallback**, even when the instance is conf
 The shared refresh token enables zero-click access for every visitor. An admin mints it once and stores it in `k8s/secret.yaml`:
 
 ```bash
-# Step 1 — generate a PKCE auth URL and open it in a browser
+# Step 1 - generate a PKCE auth URL and open it in a browser
 python demo/mint_refresh_token.py
 
-# Step 2 — sign in with your Equinor account; the browser redirects to
-# localhost:8400 (page won't load — that's expected). Copy the full URL
+# Step 2 - sign in with your Equinor account; the browser redirects to
+# localhost:8400 (page won't load - that's expected). Copy the full URL
 # from the address bar and exchange it:
 python demo/mint_refresh_token.py --callback "http://localhost:8400/callback?code=...&state=..."
 ```

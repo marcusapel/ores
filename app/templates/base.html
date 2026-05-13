@@ -238,7 +238,7 @@
     // Spacer
     root.appendChild(el('span', { 'class': 'nav-spacer' }));
 
-    // Auth toggle — single compact switch
+    // Auth toggle - single compact switch
     var hasUser = document.cookie.indexOf('ores_user=') !== -1;
     var toggle = el('span', { 'class': 'auth-toggle' + (hasUser ? ' signed-in' : '') });
     var dot = el('span', { 'class': 'auth-dot' });
@@ -282,7 +282,9 @@
   mermaid.initialize({
     startOnLoad: true,
     theme: 'default',
-    securityLevel: 'loose'
+    securityLevel: 'loose',
+    themeVariables: { fontSize: '13px' },
+    flowchart: { curve: 'basis', nodeSpacing: 30, rankSpacing: 40 }
   });
 </script>
 <script src=/static/app.js></script>

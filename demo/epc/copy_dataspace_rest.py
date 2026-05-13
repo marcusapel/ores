@@ -39,7 +39,7 @@ from typing import Any
 try:
     import requests
 except ImportError:
-    sys.exit("Missing requests — pip install requests")
+    sys.exit("Missing requests - pip install requests")
 
 # ── Paths ──────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent

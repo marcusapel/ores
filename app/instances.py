@@ -69,7 +69,7 @@ class OsduInstance:
         """Mint or return cached access_token for this instance.
 
         Tries refresh_token first, then client_credentials.
-        Returns None for per_user_pkce instances — those rely on
+        Returns None for per_user_pkce instances - those rely on
         individual user sessions, not a shared instance-level token.
         """
         # per_user_pkce instances never mint an instance-level token;

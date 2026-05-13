@@ -183,7 +183,7 @@ async def auth_callback(request: Request):
     redirect_uri = request.session.get("redirect_uri", _build_redirect_uri(request))
 
     # Confidential clients (those with a client_secret) require it in the
-    # token exchange — otherwise Azure AD returns AADSTS7000218.
+    # token exchange - otherwise Azure AD returns AADSTS7000218.
     client_secret = _get_client_secret()
     oauth_kwargs: Dict[str, Any] = dict(
         client_id=CLIENT_ID,

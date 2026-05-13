@@ -228,7 +228,7 @@ def _collect_refdata_kinds() -> List[Dict[str, Any]]:
     ]
     return [{"kind": k} for k in _REFDATA_KINDS]
 
-# Pre-compute static kind lists (pure data — no reason to rebuild per request)
+# Pre-compute static kind lists (pure data - no reason to rebuild per request)
 _MANIFEST_KINDS = _collect_manifest_kinds()
 _REFDATA_KINDS_LIST = _collect_refdata_kinds()
 

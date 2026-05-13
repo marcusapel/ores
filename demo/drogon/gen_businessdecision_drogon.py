@@ -277,19 +277,19 @@ def main():
                 "equinor": {
                     "Alternatives": [
                         {
-                            "Name": "Proceed to DG2 — full 7-segment development",
+                            "Name": "Proceed to DG2 - full 7-segment development",
                             "Rank": 1,
                             "Rationale": "All 7 segments show commercial volumes; porosity risk manageable.",
                             "RecommendedAction": "Approve",
                         },
                         {
-                            "Name": "Reduced scope — CentralHorst + CentralSouth only",
+                            "Name": "Reduced scope - CentralHorst + CentralSouth only",
                             "Rank": 2,
                             "Rationale": "Best economics, lowest uncertainty; leaves ~40% upside for later.",
                             "RecommendedAction": "Consider",
                         },
                         {
-                            "Name": "Defer — acquire more appraisal data",
+                            "Name": "Defer - acquire more appraisal data",
                             "Rank": 3,
                             "Rationale": "Floodplain porosity poorly constrained; more core data recommended.",
                             "RecommendedAction": "Fallback",

@@ -4,19 +4,18 @@
 
 ## Query Paths
 
-```
-ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
-            ──► RDDMS REST API     (browse dataspaces/types/objects/graph/arrays)
-            ──► ETP WebSocket      (bulk import/export, streaming)
-            ──► GraphQL /api/graphql/query  (deep search + arrays + graph)
-                    │
-               ┌────┴─────────────────────────────┐
-               │ Path A: OSDU Catalog (ES)        │  ← kind + text search
-               │ Path B: Local PG (asyncpg)       │  ← fastest, un-indexed data
-               │ Path C: Remote RDDMS (REST)      │  ← Azure-hosted dataspaces
-               └──────────────────────────────────┘
-                         ↓ merge by UUID ↓
-                    FederatedSearchResult
+```mermaid
+graph LR
+  C["ORES Client"] --> OSDU["OSDU Search API<br/><i>metadata, spatial, kind-based</i>"]
+  C --> REST["RDDMS REST API<br/><i>browse dataspaces/types/objects/graph/arrays</i>"]
+  C --> ETP["ETP WebSocket<br/><i>bulk import/export, streaming</i>"]
+  C --> GQL["GraphQL /api/graphql/query<br/><i>deep search + arrays + graph</i>"]
+  GQL --> A["Path A: OSDU Catalog · ES<br/>kind + text search"]
+  GQL --> B["Path B: Local PG · asyncpg<br/>fastest, un-indexed data"]
+  GQL --> Cr["Path C: Remote RDDMS · REST<br/>Azure-hosted dataspaces"]
+  A --> F["FederatedSearchResult<br/><i>merge by UUID</i>"]
+  B --> F
+  Cr --> F
 ```
 
 | Path | Best for | Speed |
@@ -66,7 +65,7 @@ ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
 | `GET .../resources/{uuid}/sources` | Reverse references |
 | `GET .../resources/{uuid}/arrays` | List arrays |
 | `GET .../resources/{uuid}/arrays/{path}` | Read array data |
-> **Performance note:** Each REST call carries ~40–100 ms overhead (TLS, Azure gateway, JSON serialization). Deep queries that touch N objects × M properties × K arrays result in (N+M+K) serial HTTP calls — the _N+1 problem_. For a 10-grid porosity search this means ~80 calls × 60 ms ≈ **5 s**. Prefer GraphQL+PG when available (same query runs in **0.1–0.5 s** via server-side SQL joins). Large array reads are also slower: 100K floats transfer as ~1.5 MB JSON vs 800 KB binary over PG.
+> **Performance note:** Each REST call carries ~40–100 ms overhead (TLS, Azure gateway, JSON serialization). Deep queries that touch N objects × M properties × K arrays result in (N+M+K) serial HTTP calls - the _N+1 problem_. For a 10-grid porosity search this means ~80 calls × 60 ms ≈ **5 s**. Prefer GraphQL+PG when available (same query runs in **0.1–0.5 s** via server-side SQL joins). Large array reads are also slower: 100K floats transfer as ~1.5 MB JSON vs 800 KB binary over PG.
 ---
 
 ## 3. GraphQL Deep Search
@@ -503,8 +502,6 @@ curl /api/graphql/resolve-alias?term=sat
 
 ### Standard Property Kinds (RESQML reference)
 
-<div style="font-size:0.82em; line-height:1.3">
-
 | Canonical name | Aliases | Unit | Description |
 |---|---|---|---|
 | porosity | poro, phit, phi, nphi | v/v | Void space fraction |
@@ -528,11 +525,7 @@ curl /api/graphql/resolve-alias?term=sat
 | age | age, chrono | Ma | Geological age |
 | displacement | throw, heave | m | Fault displacement |
 
-</div>
-
 ### RESQML Type Categories
-
-<div style="font-size:0.82em; line-height:1.3">
 
 | Category | Example types |
 |---|---|
@@ -546,36 +539,11 @@ curl /api/graphql/resolve-alias?term=sat
 | Provenance | Activity, ActivityTemplate |
 | Container | EpcExternalPartReference |
 
-</div>
-
----
-
-## Colored Result Cards
-
-Easy Mode renders results as **type-colored cards** instead of raw JSON:
-
-| Category | Color scheme | Badge |
-|----------|-------------|-------|
-| Grid | Green bg, dark green text | `IjkGrid` |
-| Surface | Blue bg, dark blue text | `Grid2d` |
-| Well | Orange bg, dark orange text | `WellboreFeature` |
-| Property | Purple bg, dark purple text | `ContinuousProperty` |
-| Stratigraphy | Pink bg, dark pink text | `HorizonInterpretation` |
-| CRS | Grey bg, dark grey text | `LocalDepth3dCrs` |
-
-Each card includes:
-- **UUID** (monospace, selectable)
-- **Title** (bold, category-colored)
-- **Type badge** (short name like `IjkGrid` instead of `resqml20.obj_IjkGridRepresentation`)
-- **Sparkline bar** for statistics (min → mean → max with blue needle for mean)
-- **Matching cells bar** (green/orange/red based on fraction)
-- **Source flags** for federated results (Catalog, Local PG, Remote)
-
 ---
 
 ## Query Performance Guide
 
-_Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates — discovery protocol is not yet implemented on RDDMS._
+_Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates - discovery protocol is not yet implemented on RDDMS._
 
 ### Summary Table
 
@@ -593,17 +561,17 @@ _Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates — 
 
 | Factor | REST | GraphQL + PG |
 |--------|------|-------------|
-| **N+1 queries** | Deep search = `O(G × P × A)` serial HTTP calls | `O(1)` — server-side SQL joins on the `rel` adjacency table |
+| **N+1 queries** | Deep search = `O(G × P × A)` serial HTTP calls | `O(1)` - server-side SQL joins on the `rel` adjacency table |
 | **Array transfer** | JSON text (`[0.123, …]`) ~1.5 MB per 100K floats | Binary `bytea` ~800 KB, decoded via `struct.unpack` in ~5 ms |
 | **Network hops** | 2–3 (TLS → Azure Front Door → NestJS → PG) | 0 (co-located asyncpg → PG, binary wire protocol) |
 | **Per-call overhead** | ~40–100 ms (TLS amortised, gateway, JSON serialization) | ~1–5 ms (binary protocol, connection pool) |
 
 ### Performance Tips
 
-1. **Always prefer GraphQL + PG** when `GRAPHQL_PG_CONN_STRING` is set — the resolver auto-selects the fastest backend.
-2. **Avoid REST for deep queries** — 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). The same query takes ~0.2 s on PG.
+1. **Always prefer GraphQL + PG** when `GRAPHQL_PG_CONN_STRING` is set - the resolver auto-selects the fastest backend.
+2. **Avoid REST for deep queries** - 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). The same query takes ~0.2 s on PG.
 3. **Large arrays:** PG binary transfer is 5–10× faster than JSON. If you must use REST, avoid reading arrays > 100K elements in tight loops.
-4. **Federated search** runs OSDU catalog + RDDMS in parallel — enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
+4. **Federated search** runs OSDU catalog + RDDMS in parallel - enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
 5. **Connection pooling** is automatic: `httpx.AsyncClient` for REST, `asyncpg` pool (min=2, max=10) for PG.
 6. **ETP** currently covers bulk import/export only. When discovery protocol is implemented, expect REST-like portability with PG-like speed (binary Avro over persistent WebSocket).
 

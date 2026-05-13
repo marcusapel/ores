@@ -10,7 +10,7 @@ Usage:
   python demo/mint_refresh_token_paste.py
 
 After Azure AD redirects to http://localhost:8400/callback?code=...
-your browser will show "can't reach this page".  That's fine —
+your browser will show "can't reach this page".  That's fine -
 copy the FULL URL from the address bar and paste it here.
 """
 from __future__ import annotations
@@ -63,7 +63,7 @@ def main():
     print(f"\n  1. Open this URL in your browser:\n")
     print(f"  {url}\n")
     print(f"  2. Sign in with your Equinor account.")
-    print(f"  3. The browser will redirect to localhost:8400 — it will FAIL to load.")
+    print(f"  3. The browser will redirect to localhost:8400 - it will FAIL to load.")
     print(f"     That's OK! Copy the FULL URL from the address bar.\n")
 
     callback_url = input("  Paste the full callback URL here:\n  ").strip()

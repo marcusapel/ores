@@ -1,5 +1,5 @@
 """
-GraphQL deep search & federated search — implementation module.
+GraphQL deep search & federated search - implementation module.
 
 Extracted from graphql_router.py (P6b refactoring) to keep the
 GraphQL router focused on schema wiring and basic resolvers.
@@ -432,7 +432,7 @@ def _extract_refs(obj: Dict[str, Any]) -> List[Dict[str, str]]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Deep search — PG native implementation
+# Deep search - PG native implementation
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -653,7 +653,7 @@ async def _deep_search_pg(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Deep search — REST implementation
+# Deep search - REST implementation
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -917,7 +917,7 @@ async def _deep_search_rest(
     if property_filter and property_filter.array_filter and total_scanned > 0 and len(matched) == 0:
         warnings.append(
             f"All {total_scanned} objects skipped by arrayFilter "
-            f"(threshold {property_filter.array_filter.operator.value} {property_filter.array_filter.threshold}) — "
+            f"(threshold {property_filter.array_filter.operator.value} {property_filter.array_filter.threshold}) - "
             f"remove arrayFilter to see kind-matched results on REST backend"
         )
 
@@ -932,7 +932,7 @@ async def _deep_search_rest(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Deep search — resolver implementation (called from Query.deep_search)
+# Deep search - resolver implementation (called from Query.deep_search)
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -1019,7 +1019,7 @@ async def deep_search_impl(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Federated search — helpers
+# Federated search - helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -1085,7 +1085,7 @@ def _extract_resqml_type(kind: str, data: Dict[str, Any]) -> Optional[str]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Federated search — resolver implementation
+# Federated search - resolver implementation
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Default RESQML types to search when no type_name is specified
