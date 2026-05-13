@@ -241,7 +241,7 @@
     <h3>2. Decision Metadata</h3>
     <div class="form-grid">
       <label for="bd-name">Name *</label>
-      <input type="text" id="bd-name" placeholder="e.g. MyField - Decision Gate 2 Concept Select" />
+      <input type="text" id="bd-name" placeholder="e.g. Drogon DG1 - Identify & Assess" />
 
       <label for="bd-project">Project name</label>
       <input type="text" id="bd-project" placeholder="e.g. MyField Development" />
@@ -249,7 +249,7 @@
       <label for="bd-level">Decision level *</label>
       <select id="bd-level" onchange="toggleCustomLevel()">
         {% for dl in decision_levels %}
-        <option value="{{ dl.id }}"{% if dl.id == 'DG2' %} selected{% endif %}>{{ dl.name }}</option>
+        <option value="{{ dl.id }}"{% if dl.id == 'DG1' %} selected{% endif %}>{{ dl.name }}</option>
         {% endfor %}
         <option value="__custom__">Other (user-defined)…</option>
       </select>
@@ -389,7 +389,7 @@
   <div class="mode-panel" id="mode-cp" style="display:none;">
   <h2>Add Collaboration Project</h2>
   <p class="muted" style="margin-top:-.5rem;margin-bottom:1rem;">
-    Create a new <code>CollaborationProject</code> record - a multi-user collaboration workspace linking to trusted data and RDDMS dataspaces.
+    Create a new <code>CollaborationProject</code> record &mdash; a cross-DG master-data namespace bridging collaboration (SoE) and trusted data (SoR).
   </p>
 
   <!-- ═══ CP 1. Project metadata ═══ -->
@@ -397,13 +397,13 @@
     <h3>1. Project Metadata</h3>
     <div class="form-grid">
       <label for="cp-name">Project name *</label>
-      <input type="text" id="cp-name" placeholder="e.g. Drogon DG2 Geomodelling" />
+      <input type="text" id="cp-name" placeholder="e.g. Drogon Geomodelling" />
 
       <label for="cp-description">Description</label>
-      <textarea id="cp-description" rows="3" placeholder="Human-readable project description…"></textarea>
+      <textarea id="cp-description" rows="3" placeholder="Geomodelling namespace — bridges collaboration (SoE) with trusted data (SoR). Persists across decision gates."></textarea>
 
       <label for="cp-purpose">Purpose</label>
-      <textarea id="cp-purpose" rows="2" placeholder="Objectives of this collaboration project…"></textarea>
+      <textarea id="cp-purpose" rows="2" placeholder="e.g. Steward the geomodel lifecycle from DG1 through FID."></textarea>
 
       <label for="cp-lifecycle">Lifecycle status</label>
       <select id="cp-lifecycle">
@@ -418,11 +418,11 @@
 
       <label for="cp-end-date">End date</label>
       <input type="date" id="cp-end-date" />
-      <span class="hint">Planning timeline (not enforced by the platform).</span>
+      <span class="hint">Optional. Cross-DG projects typically leave this open until FID.</span>
 
       <label for="cp-namespace">Namespace</label>
-      <input type="text" id="cp-namespace" placeholder="Auto-generated if empty" />
-      <span class="hint">Data platform namespace for WIP resources. Leave blank for auto.</span>
+      <input type="text" id="cp-namespace" placeholder="e.g. project-drogon-geomodelling" />
+      <span class="hint">Cross-DG namespace for WIP resources. Leave blank for auto.</span>
     </div>
   </div>
 
@@ -522,18 +522,18 @@
     <h3>1. Collection Metadata</h3>
     <div class="form-grid">
       <label for="pc-name">Name *</label>
-      <input type="text" id="pc-name" placeholder="e.g. Drogon DG2 - Evidence Package" />
+      <input type="text" id="pc-name" placeholder="e.g. Drogon - Evidence Package" />
 
       <label for="pc-description">Description</label>
       <textarea id="pc-description" rows="3" placeholder="Describe what this collection bundles and its purpose…"></textarea>
 
       <label for="pc-tags">Tags</label>
-      <input type="text" id="pc-tags" placeholder="Comma-separated, e.g. DG2, Drogon, EvidencePackage" />
+      <input type="text" id="pc-tags" placeholder="Comma-separated, e.g. Drogon, EvidencePackage" />
       <span class="hint">Free-form labels for discovery &amp; filtering.</span>
 
       <label for="pc-custom-id">Custom ID</label>
       <input type="text" id="pc-custom-id" placeholder="Leave blank for auto-generated ID" />
-      <span class="hint">Optional. Short slug like <code>Drogon-DG2-EvidencePackage</code> (partition prefix added automatically).</span>
+      <span class="hint">Optional. Short slug like <code>Drogon-EvidencePackage</code> (partition prefix added automatically).</span>
     </div>
   </div>
 
