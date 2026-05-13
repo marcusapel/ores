@@ -96,7 +96,7 @@ def main():
         if not code:
             sys.exit("ERROR: No ?code= found in the callback URL.")
         if cb_state != saved_state:
-            sys.exit(f"ERROR: State mismatch — expected {saved_state[:8]}..., "
+            sys.exit(f"ERROR: State mismatch - expected {saved_state[:8]}..., "
                      f"got {(cb_state or '(none)')[:8]}...")
 
         print("  Exchanging code for tokens...")
@@ -132,7 +132,7 @@ def main():
     print(f"  1. Open this URL in your browser:\n")
     print(f"  {url}\n")
     print(f"  2. Sign in with your Equinor account.")
-    print(f"  3. The browser will redirect to localhost:8400 — it will FAIL to load.")
+    print(f"  3. The browser will redirect to localhost:8400 - it will FAIL to load.")
     print(f"     That's OK! Copy the FULL URL from the address bar.\n")
     print(f"  4. Run step 2:")
     print(f'     python demo/mint_refresh_token.py --callback "URL_FROM_BROWSER"\n')

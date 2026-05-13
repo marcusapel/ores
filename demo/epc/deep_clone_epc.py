@@ -3,7 +3,7 @@
 Deep-clone an EPC file by remapping all UUIDs to fresh values.
 
 Produces a new EPC with identical topology and metadata but globally
-unique UUIDs — suitable for importing into the same RDDMS instance
+unique UUIDs - suitable for importing into the same RDDMS instance
 as a truly independent dataspace.
 
 Usage:
@@ -19,7 +19,7 @@ Algorithm:
   4. Rename filenames that embed UUIDs (obj_Type_UUID.xml, _rels/...).
   5. Re-pack into a new EPC (ZIP) archive.
 
-No HDF5 rewriting needed — RDDMS EPC exports embed array data in
+No HDF5 rewriting needed - RDDMS EPC exports embed array data in
 the binary store (no external .h5 files inside the archive).
 """
 
@@ -104,7 +104,7 @@ def deep_clone(src_path: Path, dst_path: Path) -> dict:
                     new_text = _remap_text(text, mapping)
                     new_raw = new_text.encode("utf-8")
                 except UnicodeDecodeError:
-                    # Binary entry — pass through unchanged
+                    # Binary entry - pass through unchanged
                     new_raw = raw
 
                 # Remap filename

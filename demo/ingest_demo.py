@@ -363,7 +363,7 @@ def extract_records(manifest: dict) -> List[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Ingestion — Workflow API (manifest mode)
+#  Ingestion - Workflow API (manifest mode)
 # ═══════════════════════════════════════════════════════════════════════
 WORKFLOW_ID = "Osdu_ingest"
 
@@ -449,7 +449,7 @@ def ingest_via_workflow(client: httpx.Client, manifest: dict,
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Ingestion — Storage API (record mode)
+#  Ingestion - Storage API (record mode)
 # ═══════════════════════════════════════════════════════════════════════
 MAX_RETRIES = 4
 RETRY_BACKOFF = [3, 6, 10, 15]
@@ -687,7 +687,7 @@ Examples:
     try:
         TARGET = load_instance_config(args.target)
     except (SystemExit, Exception) as e:
-        # Instance not found — allow if user provides explicit overrides
+        # Instance not found - allow if user provides explicit overrides
         if args.host and args.partition:
             TARGET = {
                 "host": "", "partition": "", "tenant": "", "client_id": "",

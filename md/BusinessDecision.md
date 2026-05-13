@@ -33,28 +33,28 @@ Built-in properties: `DecisionLevelID`, `ApprovalStatusID`, `RiskIDs`, `RiskAsse
 **Pros**: Strong validation; easy filtering (e.g., "Approved DG2").
 **Cons**: Not meant to enumerate full input/output sets.
 
-### C) CollaborationProject — Cross-DG Namespace (SoE ↔ SoR bridge)
+### C) CollaborationProject - Cross-DG Namespace (SoE ↔ SoR bridge)
 
 A `master-data--CollaborationProject` record provides a **persistent identity** that outlives any single decision gate. It acts as a contextualising namespace:
 
-- **SoE side** — teams collaborate on work-in-progress iterations (geomodels, volumes, parameters)
-- **SoR side** — a `CollaborationProjectCollection` WPC accumulates curated, trusted references across gates
-- **Lifecycle** — the CP begins at DG1 and persists through DG2, DG3, FID; its `ActivityStates[]` track the cross-gate timeline
-- **ParentProjectID** — links back to the originating `BusinessDecision`
+- **SoE side** - teams collaborate on work-in-progress iterations (geomodels, volumes, parameters)
+- **SoR side** - a `CollaborationProjectCollection` WPC accumulates curated, trusted references across gates
+- **Lifecycle** - the CP begins at DG1 and persists through DG2, DG3, FID; its `ActivityStates[]` track the cross-gate timeline
+- **ParentProjectID** - links back to the originating `BusinessDecision`
 
 The CP's `Parameters[]` reference the same data objects as the BD, but scoped for the ongoing collaboration rather than a single gate vote.
 
 **Pros**: Stable master-data identity across gates; clean SoE/SoR separation; TrustedCollection grows incrementally.
 **Cons**: Additional record to maintain; relationship to BD needs clear convention.
 
-### D) PersistedCollection — Gate Evidence Package
+### D) PersistedCollection - Gate Evidence Package
 
 Bundle WPCs into a **versioned evidence set** for a specific gate and reference it from the BD.
 
 - `PersistedCollection` - curated evidence set: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md)
 
 **Pros**: One ID represents the gate package; simpler governance.
-**Cons**: WPC, not master-data — scoped to one gate; still uses `Parameters[]` for role semantics.
+**Cons**: WPC, not master-data - scoped to one gate; still uses `Parameters[]` for role semantics.
 
 > **CP vs PersistedCollection**: CP is master-data (long-lived, cross-DG); PersistedCollection is a WPC (versioned, gate-scoped). CP's TrustedCollection references accumulate over time; a PersistedCollection snapshots one gate's evidence.
 
@@ -74,12 +74,13 @@ Many WPCs natively reference reservoir entities (e.g., `ReservoirEstimatedVolume
 6. **Risks & docs**: link via `RiskIDs` and `RiskAssessmentDocument`.
 
 **Cross-DG lifecycle:**
-```
-DG1 BD ──────────────────── DG2 BD ──────────── DG3 BD ──── FID BD
-  │                           │                   │           │
-  └── CP (master-data) ───────┴───────────────────┴───────────┘
-       │                                                      
-       └── TrustedCollection (WPC) — accumulates SoR refs per gate
+```mermaid
+graph LR
+  DG1["DG1 BD"] --> CP["CP<br/><i>master-data</i>"]
+  DG2["DG2 BD"] --> CP
+  DG3["DG3 BD"] --> CP
+  FID["FID BD"] --> CP
+  CP --> TC["TrustedCollection · WPC<br/><i>accumulates SoR refs per gate</i>"]
 ```
 
 **Typical kinds at decision gates:**

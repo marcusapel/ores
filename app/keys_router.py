@@ -537,7 +537,7 @@ async def keys_objects(
 
 # Types whose URIs crash the RDDMS manifests/build endpoint (server 500).
 # EpcExternalPartReference is an internal EPC packaging artefact (array
-# data references) with no OSDU WPC mapping — the builder cannot handle it.
+# data references) with no OSDU WPC mapping - the builder cannot handle it.
 _MANIFEST_SKIP_TYPES = {
     "obj_EpcExternalPartReference",
 }

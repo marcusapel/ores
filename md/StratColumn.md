@@ -4,18 +4,6 @@
 
 ---
 
-## Table of Contents
-
-1. [OSDU Stratigraphic Column Data Model](#1-osdu-stratigraphic-column-data-model)
-2. [Units vs Horizons](#2-units-vs-horizons)
-3. [Chronostratigraphy vs Lithostratigraphy](#3-chronostratigraphy-vs-lithostratigraphy)
-4. [Hierarchical Composition & Age](#4-hierarchical-composition--age)
-5. [Source-System Mapping (SMDA / OW -> OSDU)](#5-source-system-mapping)
-6. [RDDMS RESQML Ingest](#6-rddms-resqml-ingest)
-7. [Schema Links & References](#7-schema-links--references)
-
----
-
 ## 1) OSDU Stratigraphic Column Data Model
 
 ### 1.1 Core Entities

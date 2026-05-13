@@ -616,8 +616,8 @@ async def create_pc(request: Request):
     PersistedCollection is a simple WPC that bundles multiple data object
     references under a single curated collection. Primary fields:
       - Name, Description (mandatory)
-      - DataReferences[] — ordered list of OSDU record IDs
-      - Tags[] — freeform string tags
+      - DataReferences[] - ordered list of OSDU record IDs
+      - Tags[] - freeform string tags
 
     Expects JSON body with:
       name, description, tags (comma-separated string),
@@ -748,10 +748,10 @@ async def create_activity_template(request: Request):
     """Build and ingest an ActivityTemplate WPC record.
 
     Expects JSON body:
-      name                 — template name
-      description          — optional description
-      originator           — optional originator
-      parameter_templates  — list of slot dicts with Title, Description,
+      name                 - template name
+      description          - optional description
+      originator           - optional originator
+      parameter_templates  - list of slot dicts with Title, Description,
                              IsInput, IsOutput, MinOccurs, MaxOccurs,
                              DefaultParameterKind
     """
@@ -833,14 +833,14 @@ async def create_activity(request: Request):
     """Build and ingest an Activity WPC record.
 
     Expects JSON body:
-      name              — activity name
-      description       — optional description
-      originator        — optional originator
-      template_id       — ActivityTemplate record ID
-      workflow_status   — e.g. "Completed"
-      creation_datetime — ISO date/time string
-      parent_object_id  — optional parent master-data ID
-      parameters        — list of {title, role, kind, value, desc}
+      name              - activity name
+      description       - optional description
+      originator        - optional originator
+      template_id       - ActivityTemplate record ID
+      workflow_status   - e.g. "Completed"
+      creation_datetime - ISO date/time string
+      parent_object_id  - optional parent master-data ID
+      parameters        - list of {title, role, kind, value, desc}
     """
     at = _access_token(request)
     body = await request.json()
@@ -977,9 +977,9 @@ async def create_generic(request: Request):
       "ext.custom" type=string value="hello"
 
     Expects JSON body with:
-      kind  — full OSDU kind string (e.g. "osdu:wks:master-data--Risk:1.2.0")
-      record_id — optional explicit record ID; auto-generated if empty
-      fields — [{key, value, type}] list building the data block
+      kind  - full OSDU kind string (e.g. "osdu:wks:master-data--Risk:1.2.0")
+      record_id - optional explicit record ID; auto-generated if empty
+      fields - [{key, value, type}] list building the data block
     """
     at = _access_token(request)
     body = await request.json()

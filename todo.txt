@@ -10,7 +10,7 @@ Updated: 2026-05-11
 1.1  RDDMS REST API is EML-URI-centric
      ──────────────────────────────────
      REST listing returns {"uri": "eml:///dataspace('ds')/type(uuid)"}
-     — no top-level UUID/ContentType keys.
+     - no top-level UUID/ContentType keys.
      Fix: _parse_eml_entry() regex parser.
 
 1.2  GET /resources wraps single object in a list
@@ -32,7 +32,7 @@ Updated: 2026-05-11
      POST /manifests/build produces WPCs without DatasetIDs.
      Fix: manifest_ingest.py auto-patches DatasetIDs after build.
 
-1.7  Local RDDMS stack — architecture
+1.7  Local RDDMS stack - architecture
      open-etp-client image (840 MB) = NestJS REST API, NOT a CLI.
      Includes manifest builder at POST /manifests/build.
      Env vars: RDMS_ETP_PROTOCOL, RDMS_ETP_HOST, RDMS_ETP_PORT,
@@ -49,7 +49,7 @@ Updated: 2026-05-11
                returns HTTP 400 with an HTML page body ("OsduUi - Home"
                with Equinor design tokens) instead of JSON.
      Observed: 2026-05-10 on swedev. Was working before.
-     Likely:   OSDU M26 API gateway change — the gateway intercepts
+     Likely:   OSDU M26 API gateway change - the gateway intercepts
                the POST and returns its own error page before the
                request reaches the RDDMS service.
      Payload sent (known-good format):
@@ -71,7 +71,7 @@ Updated: 2026-05-11
      https://web-ores-dev.c3.radix.equinor.com shows "OsduUi - Home"
      in the browser tab instead of ORES. The Radix ingress is
      routing to the OSDU UI container instead of the ORES pod.
-     Same root cause suspected as §1.8 — M26 gateway/routing change.
+     Same root cause suspected as §1.8 - M26 gateway/routing change.
      See also: §3.9.
 
 
@@ -86,7 +86,7 @@ Updated: 2026-05-11
        ✓ P12 _KIND_CACHE replaced with cached_call utility
        ✓ P13 asyncio.Lock on get_pool / get_rddms_pool (double-checked)
        ✓ P14 Removed dead request.app.state.last_manifest writes
-       — P16 PG→REST fallback cascade: deferred (each site has distinct
+       - P16 PG→REST fallback cascade: deferred (each site has distinct
              fallback logic; abstracting hurts readability more than it
              saves code)
 
@@ -104,7 +104,7 @@ Updated: 2026-05-11
      ──────────────────────────────────────
      UI widget to map LocalPropertyKind → Standard kinds per-dataspace.
 
-2.4  deep_search performance — server-side bulk query
+2.4  deep_search performance - server-side bulk query
      ─────────────────────────────────────────────────
      Client-side property cache done. Need server-side "typeSearch"
      or "bulkGet" endpoint (see §3.4).
@@ -177,32 +177,32 @@ Updated: 2026-05-11
 5. ORES ROUTE LIMITATIONS
 ───────────────────────────────────────────────────────────────────────
 
-  /graphql — deep_search
+  /graphql - deep_search
      Array threshold filtering needs PG access for cell values.
      (REST path implemented but RDDMS doesn't expose all arrays.)
 
-  /graphql — federated_search
+  /graphql - federated_search
      Auto-discovers up to 50 dataspaces; searches 12 RESQML types.
      OSDU full-text search may produce false positives.
 
-  /analyse — compare
+  /analyse - compare
      OSDU Search v2 can't filter nested array paths. Uses full-text
-     workaround — may miss BDs.
+     workaround - may miss BDs.
 
-  /keys — table view (STL resolution)
+  /keys - table view (STL resolution)
      Heuristic STL matching may pick wrong lookup table.
 
-  /keys — structuremaps
+  /keys - structuremaps
      Time-domain Grid2d surfaces skipped (count shown in response
      as time_count / skipped_count).
 
-  /strat — SMDA import/push
+  /strat - SMDA import/push
      Requires `az` CLI or SMDA_API_KEY. Non-functional without.
 
   /api/manifest/last
      In-memory only: max 200, 4h TTL, lost on pod restart.
 
-  /search — wildcard kind queries
+  /search - wildcard kind queries
      ADME rejects kind:*. Auto-resolves via probe; results cached
      5 min to avoid repeated round-trips.
 

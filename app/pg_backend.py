@@ -139,7 +139,7 @@ def notify_instance_changed(pg_conn_string: str = "") -> None:
     new connection string on the next query.
 
     Precedence: the global ``GRAPHQL_PG_CONN_STRING`` env var (local Docker PG)
-    always wins when set — per-instance ``pg_conn_string`` is only used when the
+    always wins when set - per-instance ``pg_conn_string`` is only used when the
     global is absent (i.e. on Radix where there is no local Docker PG).
     If neither is set, the pool stays None and resolvers use REST.
     """
@@ -196,7 +196,7 @@ async def _async_close_pool(pool_to_close) -> None:
 ARY_TYPE_FMT = {0: "i", 1: "d", 2: "f", 3: "q", 4: "i", 5: "h"}  # int32, float64, float32, int64, int32, int16
 
 # Valid PG schema name pattern (defence-in-depth against SQL injection via
-# f-string schema interpolation — the value comes from admin.spaces, not user
+# f-string schema interpolation - the value comes from admin.spaces, not user
 # input, but we validate anyway).
 _SAFE_SCHEMA_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
@@ -211,7 +211,7 @@ async def pg_schema_for_dataspace(pool, dataspace: str) -> Optional[str]:
             return None
         schema = row["dbfile"]
         if not _SAFE_SCHEMA_RE.match(schema):
-            log.error("Unsafe PG schema name %r for dataspace %r — refusing to query", schema, dataspace)
+            log.error("Unsafe PG schema name %r for dataspace %r - refusing to query", schema, dataspace)
             return None
         return schema
 

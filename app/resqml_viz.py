@@ -667,7 +667,7 @@ async def _build_geometry_result(
         typ: RESQML type string (matched case-insensitively).
         title: Display title for the object.
         arr_paths: ``{lowered_path: original_path}`` of available arrays.
-        read_fn: ``async (path) -> list[float]`` — reads an array by path.
+        read_fn: ``async (path) -> list[float]`` - reads an array by path.
         fallback_paths: Ordered original paths for positional fallback reads.
         marker_labels: Pre-extracted labels for WellboreMarkerFrame objects.
 

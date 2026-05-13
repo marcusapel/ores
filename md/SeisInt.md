@@ -1,21 +1,5 @@
 # Seismic Interpretation - Data Model & Implementation Guide
 
-## Table of Contents
-
-- [1) Overview - What Lives Where](#1-overview--what-lives-where)
-- [2) Schema Inheritance Architecture](#2-schema-inheritance-architecture)
-- [3) Interpretation Chain - Seed to Surface](#3-interpretation-chain--seed-to-surface)
-- [4) Implemented Record Types](#4-implemented-record-types)
-- [5) Object Naming Conventions (Drogon / Volve)](#5-object-naming-conventions-drogon--volve)
-- [6) RESQML ↔ OSDU Metadata Mapping](#6-resqml--osdu-metadata-mapping)
-- [7) RESQML 2.0.1 vs 2.2 - Implications for OSDU](#7-resqml-201-vs-22--implications-for-osdu)
-- [8) GenericBinGrid vs SeismicBinGrid](#8-genericbingrid-vs-seismicbingrid)
-- [9) Grid Strategy: Pattern A vs Pattern B](#9-grid-strategy-pattern-a-vs-pattern-b)
-- [10) Dual-Catalog Pattern](#10-dual-catalog-pattern)
-- [11) Generation Pipeline](#11-generation-pipeline)
-- [12) ORES Web App - Live StructureMap Generation](#12-ores-web-app--live-structuremap-generation)
-- [13) References](#13-references)
-
 ---
 
 ## 1) Overview - What Lives Where

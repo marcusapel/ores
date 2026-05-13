@@ -101,7 +101,7 @@ def _patch_record(rec: dict, ds_id: str | None) -> dict:
         data = rec.setdefault("data", {})
         ddms = data.get("DDMSDatasets", [])
         if ddms:
-            # DDMSDatasets already present from manifest builder — ensure
+            # DDMSDatasets already present from manifest builder - ensure
             # DatasetIDs links to the ETPDataspace record too
             if "DatasetIDs" not in data:
                 data["DatasetIDs"] = [ds_id]
@@ -270,7 +270,7 @@ def main():
     ds_safe = ds.replace("/", "_")
 
     print(f"{'=' * 60}")
-    print(f"manifest_ingest — {ds}")
+    print(f"manifest_ingest - {ds}")
     print(f"{'=' * 60}")
 
     # ── Step 1: Build manifest locally ──
@@ -325,7 +325,7 @@ def main():
             ok = push_via_storage(token, base_osdu, manifest)
 
     if ok:
-        print(f"\nDone — {total} records indexed in OSDU catalog")
+        print(f"\nDone - {total} records indexed in OSDU catalog")
     else:
         print(f"\nSome records failed to index")
         sys.exit(1)

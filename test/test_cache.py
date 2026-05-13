@@ -124,12 +124,12 @@ async def test_instance_switch_uses_separate_cache_keys():
     r1 = await cached_call("list_dataspaces:eqndev.energy.azure.com", 600, _fetch, "tok1")
     assert r1 == ["ds_from_call_1"]
 
-    # Simulate preship — different cache key → new backend call
+    # Simulate preship - different cache key → new backend call
     r2 = await cached_call("list_dataspaces:osdu-ship.msft-osdu-test.org", 600, _fetch, "tok2")
     assert r2 == ["ds_from_call_2"]
     assert call_count == 2  # two separate calls, not cached across instances
 
-    # Re-read eqndev — should still be cached
+    # Re-read eqndev - should still be cached
     r3 = await cached_call("list_dataspaces:eqndev.energy.azure.com", 600, _fetch, "tok3")
     assert r3 == ["ds_from_call_1"]
     assert call_count == 2  # no new call

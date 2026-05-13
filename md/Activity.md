@@ -8,25 +8,6 @@
 
 ---
 
-## Table of Contents
-
-1. [Purpose & Concept](#1-purpose--concept)
-2. [OSDU Schema Overview](#2-osdu-schema-overview)
-3. [Template vs Activity](#3-template-vs-activity)
-4. [Parameter Model](#4-parameter-model)
-5. [Worked Example: Reservoir Simulation (Drogon)](#5-worked-example-reservoir-simulation-drogon)
-6. [Worked Example: Seismic Interpretation](#6-worked-example-seismic-interpretation)
-7. [Worked Example: QC / Validation](#7-worked-example-qc--validation)
-8. [Worked Example: FMU / ERT Ensemble Workflow](#8-worked-example-fmu--ert-ensemble-workflow)
-9. [Linking Activities to BusinessDecision](#9-linking-activities-to-businessdecision)
-10. [Entity Relationship Diagrams](#10-entity-relationship-diagrams)
-11. [Creating Activities via the ORES Web UI](#11-creating-activities-via-the-ores-web-ui)
-12. [Creating Activities via Pipeline Scripts](#12-creating-activities-via-pipeline-scripts)
-13. [Best Practices](#13-best-practices)
-14. [References](#14-references)
-
----
-
 ## 1. Purpose & Concept
 
 **Activities** are the OSDU mechanism for recording **provenance** - capturing *who ran what workflow, with which inputs, and what was produced*. They answer the question: "How did this data come to exist?"

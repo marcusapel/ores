@@ -106,7 +106,7 @@ def main():
 
     print(f"\n  Total fetched: {len(all_objects)} objects")
     if args.dry_run:
-        print("  (dry run — not copying)")
+        print("  (dry run - not copying)")
         return
 
     # ── 3. Begin transaction on destination ───────────────────────────────

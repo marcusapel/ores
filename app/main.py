@@ -83,7 +83,7 @@ async def inject_access_token(request: Request, call_next):
     """
     Resolve an access_token and attach it to request.state.
     Priority:
-      0) Per-user session token (PKCE) — if user explicitly signed in, honour it
+      0) Per-user session token (PKCE) - if user explicitly signed in, honour it
       1) Active instance token (client_credentials / instance refresh)
       2) REFRESH_TOKEN from env (default instance)
       3) Redirect to /login
@@ -99,7 +99,7 @@ async def inject_access_token(request: Request, call_next):
     # 0. Prefer per-user PKCE token when the user has an active session
     #    AND the session was created for the currently active instance.
     #    After an instance switch, the old session token would be scoped to
-    #    the previous Azure AD tenant/app — skip it so we fall through to
+    #    the previous Azure AD tenant/app - skip it so we fall through to
     #    the new instance's own token (client_credentials or env RT).
     if request.session.get("oid"):
         session_inst = request.session.get("instance_name", "")

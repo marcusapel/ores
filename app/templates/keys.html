@@ -2809,7 +2809,7 @@
     }
   }
 }`,
-      strat_boundaries: `# All boundary features — stratigraphic + tectonic (faults)
+      strat_boundaries: `# All boundary features - stratigraphic + tectonic (faults)
 # GeneticBoundaryFeature = horizons (strat or technical datum)
 # TectonicBoundaryFeature = faults (F1–F6 in Drogon)
 # Stratigraphic boundaries have StratigraphicUnitFeature relations;
@@ -3207,7 +3207,7 @@
 # Why only GraphQL can do this:
 #   If catalog ingestion created WPC records from a manifest
 #   but the actual RESQML data was never loaded into RDDMS,
-#   those records are "metadata ghosts" — searchable but not queryable.
+#   those records are "metadata ghosts" - searchable but not queryable.
 #   This finds them: foundInCatalog=true AND foundInLocalRddms=false.
 #   Useful for: verifying ingestion completeness, finding broken links.
 #
@@ -3237,7 +3237,7 @@
       xref_well_chain: `# CROSS-SYSTEM: Trace a well from catalog to full RDDMS graph
 #
 # Why only GraphQL can do this:
-#   OSDU catalog stores flat WPC records — you can search for wells.
+#   OSDU catalog stores flat WPC records - you can search for wells.
 #   But the Feature → Interpretation → Trajectory → FrameRepresentation
 #   chain lives in RDDMS only. Catalog has no knowledge of these edges.
 #   GraphQL finds the well in catalog, then traverses the RDDMS graph
@@ -3271,7 +3271,7 @@
     }
   }
 }`,
-      xref_grid_full: `# CROSS-SYSTEM: Full grid lineage — catalog metadata + RDDMS graph + array stats
+      xref_grid_full: `# CROSS-SYSTEM: Full grid lineage - catalog metadata + RDDMS graph + array stats
 #
 # The ultimate cross-system query that no single API can answer:
 #   1. OSDU catalog → finds the grid (WPC record with OSDU id, kind, version)

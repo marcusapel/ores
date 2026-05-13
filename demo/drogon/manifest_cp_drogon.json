@@ -23,7 +23,7 @@
       },
       "data": {
         "ProjectName": "Drogon Geomodelling",
-        "Description": "Geomodelling namespace for Drogon — bridges collaboration (SoE) with trusted data (SoR). Persists across decision gates.",
+        "Description": "Geomodelling namespace for Drogon - bridges collaboration (SoE) with trusted data (SoR). Persists across decision gates.",
         "Purpose": "Steward the Drogon geomodel lifecycle from DG1 through FID. Curate trusted volumes, properties and RESQML artefacts per gate.",
         "Namespace": "project-drogon-geomodelling",
         "LifecycleStatusID": "dev:reference-data--CollaborationProjectLifecycleStatus:Open:",
