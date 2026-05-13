@@ -972,7 +972,7 @@ async def create_generic(request: Request):
       type   - "string" | "number" | "boolean" | "json" | "array" | "auto"
 
     Array and nested-object fields use dot-notation for keys:
-      "Tags"       type=array  value="DG2, Drogon, EvidencePackage"
+      "Tags"       type=array  value="Drogon, EvidencePackage"
       "RiskIDs"    type=array  value="dev:master-data--Risk:foo:1, dev:..."
       "ext.custom" type=string value="hello"
 
