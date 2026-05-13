@@ -2,7 +2,7 @@
 
 > **FMU context**: fmu-dataio exports in-place volumes as standard results (Parquet with BULK, NET, PORV, HCPV, STOIIP, GIIP keyed by ZONE, REGION, FACIES, REAL). This guide maps those to `ReservoirEstimatedVolumes` WPC in OSDU.
 >
-> **Links**: [fmu-dataio docs](https://fmu-dataio.readthedocs.io/en/latest/) · [Uncertainty guide](Uncertainty.md) · [FMU ↔ OSDU](FmuOsdu.md) · [BusinessDecision](BusinessDecision.md)
+> **Links**: [fmu-dataio docs](https://fmu-dataio.readthedocs.io/en/latest/) · [Uncertainty guide](/howto/uncertainty) · [BusinessDecision](/howto/business-decision)
 
 ---
 

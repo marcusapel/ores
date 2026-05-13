@@ -82,7 +82,7 @@ A DG1 package spans **~15 records**; a full DG2 decision gate package spans **~1
 
 - **Kind:** `dev:wks:work-product-component--DevelopmentConcept:1.0.0`
 - **Purpose:** Captures the selected development concept with structured fields that survive OSDU ingestion.
-- **Why?** OSDU has no canonical `DevelopmentConcept` WPC. A registered LOCAL schema ensures fields are validated, searchable, and evolvable. See [DevConcept.md](DevConcept.md).
+- **Why?** OSDU has no canonical `DevelopmentConcept` WPC. A registered LOCAL schema ensures fields are validated, searchable, and evolvable.
 
 ### 1.3 Entity Relationship Diagram
 

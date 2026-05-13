@@ -3,7 +3,7 @@
 > **Service version**: 0.30.0-SNAPSHOT  
 > **Base path**: `/api/pws/v1`  
 > **Repo**: [community.opengroup.org/osdu/platform/system/project-and-workflow](https://community.opengroup.org/osdu/platform/system/project-and-workflow)   
-> **Related guides**: [Activity](Activity.md) · [BusinessDecision](BusinessDecision.md) · [DevConcept](DevConcept.md) · [Volumes](Volumes.md) · [Risk](Risk.md) · [Query](Query.md) · [FmuOsdu](FmuOsdu.md) · [Uncertainty](Uncertainty.md)
+> **Related guides**: [Activity](/howto/activity) · [BusinessDecision](/howto/business-decision) · [Volumes](/howto/volumes) · [Risk](/howto/risk) · [Query](/howto/query-guide) · [Uncertainty](/howto/uncertainty)
 
 ---
 
@@ -531,13 +531,11 @@ erDiagram
 | MVP1 Jupyter notebook | [docs/notebook/mvp1.ipynb](https://community.opengroup.org/osdu/platform/system/project-and-workflow/-/blob/main/docs/notebook/mvp1.ipynb) |
 | CollaborationProject schema | [OSDU Data Definitions](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/master-data/CollaborationProject.1.0.0.md) |
 | MVP1 test notes | [PWS-MVP1-notebook-M25-test.md](PWS-MVP1-notebook-M25-test.md) |
-| RDDMS query guide | [Query.md](Query.md) |
-| Seismic interpretation (RDDMS) | [SeisInt.md](SeisInt.md) |
-| Activity & provenance | [Activity.md](Activity.md) |
-| BusinessDecision guide | [BusinessDecision.md](BusinessDecision.md) |
-| FMU ↔ OSDU mapping | [FmuOsdu.md](FmuOsdu.md) |
-| Volumes | [Volumes.md](Volumes.md) |
-| Uncertainty | [Uncertainty.md](Uncertainty.md) |
-| Risk management | [Risk.md](Risk.md) |
-| DevelopmentConcept | [DevConcept.md](DevConcept.md) |
-| Stratigraphy | [StratColumn.md](StratColumn.md) |
+| RDDMS query guide | [Query](/howto/query-guide) |
+| Seismic interpretation (RDDMS) | [SeisInt](/howto/seismic-interp) |
+| Activity & provenance | [Activity](/howto/activity) |
+| BusinessDecision guide | [BusinessDecision](/howto/business-decision) |
+| Volumes | [Volumes](/howto/volumes) |
+| Uncertainty | [Uncertainty](/howto/uncertainty) |
+| Risk management | [Risk](/howto/risk) |
+| Stratigraphy | [StratColumn](/howto/strat-column) |
