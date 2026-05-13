@@ -607,7 +607,7 @@ sequenceDiagram
 
 ### ORES Workspace
 
-- [SeisTodo.md](SeisTodo.md) - Open questions & follow-up work (Oslo'26 DD Workshop)
+- SeisTodo - Open questions & follow-up work (Oslo'26 DD Workshop)
 - [`demo/seisint/gen_fault_polylines.py`](../demo/seisint/gen_fault_polylines.py) - Fault PolylineSet → GenericRepresentation
 - [`demo/seisint/gen_horizon_controlpoints.py`](../demo/seisint/gen_horizon_controlpoints.py) - PointSet → HorizonControlPoints:1.0.0
 - [`demo/seisint/build_rddms_catalog.py`](../demo/seisint/build_rddms_catalog.py) - Multi-type RDDMS discovery

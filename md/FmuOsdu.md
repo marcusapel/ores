@@ -7,7 +7,7 @@
 > - [fmu-sumo](https://github.com/equinor/fmu-sumo) - Interaction with Sumo (current SoR for FMU results)
 > - [ERT](https://github.com/equinor/ert) - Ensemble-based Reservoir Tool (workflow orchestrator)
 >
-> **Related guides**: [BusinessDecision](BusinessDecision.md) · [Volumes](Volumes.md) · [Uncertainty](Uncertainty.md) · [Risk](Risk.md) · [DevConcept](DevConcept.md) · [SeisInt](SeisInt.md) · [StratColumn](StratColumn.md)
+> **Related guides**: [BusinessDecision](/howto/business-decision) · [Volumes](/howto/volumes) · [Uncertainty](/howto/uncertainty) · [Risk](/howto/risk) · [SeisInt](/howto/seismic-interp) · [StratColumn](/howto/strat-column)
 
 ---
 
@@ -225,5 +225,5 @@ Round-trip rules:
 | Sumo | [github.com/equinor/fmu-sumo](https://github.com/equinor/fmu-sumo) |
 | REV schema (OSDU) | [OSDU Data Definitions](https://community.opengroup.org/osdu/data/data-definitions) |
 | Activity semantics | [AbstractProjectActivity](https://community.opengroup.org/osdu/data/data-definitions) |
-| Volume guide | [Volumes.md](Volumes.md) |
-| Uncertainty guide | [Uncertainty.md](Uncertainty.md) |
+| Volume guide | [Volumes](/howto/volumes) |
+| Uncertainty guide | [Uncertainty](/howto/uncertainty) |

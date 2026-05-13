@@ -2,7 +2,7 @@
 
 > **Scope:** Detailed guide for OSDU `Activity` and `ActivityTemplate` records - how to capture workflow provenance, link inputs/outputs, and connect activities to `BusinessDecision` gates. Covers reservoir simulation, seismic interpretation, QC, and FMU workflows.
 >
-> **Related guides**: [BusinessDecision](BusinessDecision.md) · [BD Demo](BdDemo.md) · [Uncertainty](Uncertainty.md) · [FMU-OSDU](FmuOsdu.md) · [SeisInt](SeisInt.md) · [Volumes](Volumes.md) · [Risk](Risk.md)
+> **Related guides**: [BusinessDecision](/howto/business-decision) · [BD Demo](/howto/bd-demo) · [Uncertainty](/howto/uncertainty) · [SeisInt](/howto/seismic-interp) · [Volumes](/howto/volumes) · [Risk](/howto/risk)
 >
 > **Web UI**: The ORES [Create Record → Activity](/add-dg) tab lets you create both ActivityTemplates and Activity records interactively - including preset scaffolds for common workflow types.
 
@@ -1032,8 +1032,7 @@ python demo/run_pipeline.py --show demo/drogon
 | Drogon Activity generator | `demo/drogon/gen_activity_drogon.py` |
 | Drogon Activity manifest | `demo/drogon/manifest_activity_drogon.json` |
 | ORES Activity tab | `/add-dg` → Activity tab |
-| BD guide | [BusinessDecision.md](BusinessDecision.md) |
-| BD Demo guide | [BdDemo.md](BdDemo.md) |
-| FMU-OSDU mapping | [FmuOsdu.md](FmuOsdu.md) |
-| Uncertainty guide | [Uncertainty.md](Uncertainty.md) |
-| SeisInt guide | [SeisInt.md](SeisInt.md) |
+| BD guide | [BusinessDecision](/howto/business-decision) |
+| BD Demo guide | [Drogon Demo](/howto/bd-demo) |
+| Uncertainty guide | [Uncertainty](/howto/uncertainty) |
+| SeisInt guide | [SeisInt](/howto/seismic-interp) |

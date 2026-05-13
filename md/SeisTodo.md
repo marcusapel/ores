@@ -307,7 +307,7 @@ graph TD
 
 | Topic | Link |
 |---|---|
-| SeisInt demo guide | [SeisInt.md](SeisInt.md) |
+| SeisInt demo guide | [SeisInt](/howto/seismic-interp) |
 | RDDMS mapping fix (MR#95) | [community.opengroup.org](https://community.opengroup.org/osdu/platform/domain-data-mgmt-services/reservoir/home/-/merge_requests/95) |
 | Issue #31 - Structure Map | [GitLab](https://gitlab.opengroup.org/osdu/subcommittees/data-def/projects/seismic/docs/-/issues/31) |
 | Issue #863 - Activity Template | [GitLab](https://gitlab.opengroup.org/osdu/data/data-definitions/-/issues/863) |

@@ -262,6 +262,5 @@ erDiagram
 | REV schema (OSDU) | [OSDU Data Definitions - ReservoirEstimatedVolumes](https://community.opengroup.org/osdu/data/data-definitions) |
 | ColumnBasedTable (OSDU) | [OSDU Data Definitions - ColumnBasedTable](https://community.opengroup.org/osdu/data/data-definitions) |
 | Activity semantics (OSDU) | [OSDU Data Definitions - AbstractProjectActivity](https://community.opengroup.org/osdu/data/data-definitions) |
-| Volume schemas (this repo) | [md/Volumes.md](Volumes.md) |
-| FMU ↔ OSDU mapping | [md/FmuOsdu.md](FmuOsdu.md) |
+| Volume schemas (this repo) | [Volumes](/howto/volumes) |
 

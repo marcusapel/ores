@@ -171,7 +171,7 @@ graph LR
 
 ## 8. Related guides
 
-- [Volumes](Volumes.md) - ReservoirEstimatedVolumes WPC, raw vs aggregated
-- [Uncertainty](Uncertainty.md) - FMU ensemble inputs & outputs in OSDU, Activity provenance
-- [Risk](Risk.md) - Risk master-data, mitigation documents, risk catalogs
-- [BdDemo](BdDemo.md) - DG2 data model guide with full entity-relationship view
+- [Volumes](/howto/volumes) - ReservoirEstimatedVolumes WPC, raw vs aggregated
+- [Uncertainty](/howto/uncertainty) - FMU ensemble inputs & outputs in OSDU, Activity provenance
+- [Risk](/howto/risk) - Risk master-data, mitigation documents, risk catalogs
+- [Drogon Demo](/howto/bd-demo) - DG package data model guide with full entity-relationship view

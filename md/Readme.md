@@ -31,7 +31,7 @@
 | **Resqml3D** (`/viz`) | Multi-object 3D viewer – render entire dataspaces or selected RESQML objects in Three.js |
 | **GlobalSearch** (`/search`) | Query OSDU Search API with kind-specific cards (BusinessDecision, REV, Risk, GeoLabelSet) |
 | **AnalyseDG** (`/analyse`) | Compare Business Decisions across decision gates (DG1-DG4) with volume/risk/economics deltas and charts |
-| **Add DG** (`/add-dg`) | Create and ingest BusinessDecision, Activity, ActivityTemplate, CollaborationProject, PersistedCollection and generic records. See [Activity guide](Activity.md) |
+| **Add DG** (`/add-dg`) | Create and ingest BusinessDecision, Activity, ActivityTemplate, CollaborationProject, PersistedCollection and generic records. See [Activity guide](/howto/activity) |
 | **Stratigraphy** (`/strat`) | Preview and ingest stratigraphic column records |
 | **GraphQL** (`/graphql`) | GraphiQL IDE for RESQML deep-search queries |
 | **HowTo** (`/howto`) | Browse grouped markdown documentation articles |
@@ -506,15 +506,13 @@ python -m pytest test/ -v
 | OSDU client | `app/osdu.py` |
 | Demo auth | `demo/_auth.py` |
 | Pipeline runner | `demo/run_pipeline.py` |
-| Activity guide | [md/Activity.md](Activity.md) |
-| BD guide | [md/BdDemo.md](BdDemo.md) |
-| SeisInt guide | [md/SeisInt.md](SeisInt.md) |
-| Strat guide | [md/StratColumn.md](StratColumn.md) |
-| CRS guide | [md/CrsGuide.md](CrsGuide.md) |
-| FMU-OSDU | [md/FmuOsdu.md](FmuOsdu.md) |
-| Risk guide | [md/Risk.md](Risk.md) |
-| Uncertainty | [md/Uncertainty.md](Uncertainty.md) |
-| Volumes | [md/Volumes.md](Volumes.md) |
-| GeoLabelSet | [md/GeoLabelSet.md](GeoLabelSet.md) |
-| Query guide | [md/Query.md](Query.md) |
-| DevConcept | [md/DevConcept.md](DevConcept.md) |
+| Activity guide | [/howto/activity](/howto/activity) |
+| BD guide | [/howto/bd-demo](/howto/bd-demo) |
+| SeisInt guide | [/howto/seismic-interp](/howto/seismic-interp) |
+| Strat guide | [/howto/strat-column](/howto/strat-column) |
+| CRS guide | [/howto/crs-guide](/howto/crs-guide) |
+| Risk guide | [/howto/risk](/howto/risk) |
+| Uncertainty | [/howto/uncertainty](/howto/uncertainty) |
+| Volumes | [/howto/volumes](/howto/volumes) |
+| GeoLabelSet | [/howto/geolabelset](/howto/geolabelset) |
+| Query guide | [/howto/query-guide](/howto/query-guide) |
