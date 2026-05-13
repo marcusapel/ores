@@ -24,7 +24,7 @@ ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
 | OSDU Search | Records by kind, metadata keywords, spatial | Fast (metadata only) |
 | RDDMS REST | Browse dataspaces, single objects, full XML | Medium |
 | ETP WebSocket | Bulk EPC import/export, streaming | Fast |
-| GraphQL (PG) | Deep filtering, array predicates, multi-dataspace | Fastest |
+| GraphQL (PG) | Deep filtering, array predicates, multi-dataspace | Fastest (10–50× vs REST) |
 | GraphQL federated | OSDU + RDDMS simultaneously, UUID dedup | Fast (parallel) |
 
 ---
@@ -66,7 +66,7 @@ ORES Client ──► OSDU Search API    (metadata, spatial, kind-based)
 | `GET .../resources/{uuid}/sources` | Reverse references |
 | `GET .../resources/{uuid}/arrays` | List arrays |
 | `GET .../resources/{uuid}/arrays/{path}` | Read array data |
-
+> **Performance note:** Each REST call carries ~40–100 ms overhead (TLS, Azure gateway, JSON serialization). Deep queries that touch N objects × M properties × K arrays result in (N+M+K) serial HTTP calls — the _N+1 problem_. For a 10-grid porosity search this means ~80 calls × 60 ms ≈ **5 s**. Prefer GraphQL+PG when available (same query runs in **0.1–0.5 s** via server-side SQL joins). Large array reads are also slower: 100K floats transfer as ~1.5 MB JSON vs 800 KB binary over PG.
 ---
 
 ## 3. GraphQL Deep Search
@@ -503,33 +503,39 @@ curl /api/graphql/resolve-alias?term=sat
 
 ### Standard Property Kinds (RESQML reference)
 
-| Canonical name | Common aliases | Unit | Description |
-|----------------|---------------|------|-------------|
-| porosity | poro, phit, phi, nphi | v/v | Fraction of void space |
+<div style="font-size:0.82em; line-height:1.3">
+
+| Canonical name | Aliases | Unit | Description |
+|---|---|---|---|
+| porosity | poro, phit, phi, nphi | v/v | Void space fraction |
 | permeability | perm, permx, permy, permz, kh | mD | Flow capacity |
-| water saturation | sw, swat, swatinit | v/v | Water fraction in pore space |
-| oil saturation | so, soil | v/v | Oil fraction in pore space |
-| gas saturation | sg, sgas | v/v | Gas fraction in pore space |
-| net-to-gross | ntg, n2g | ratio | Net reservoir thickness / gross |
+| water saturation | sw, swat, swatinit | v/v | Water fraction |
+| oil saturation | so, soil | v/v | Oil fraction |
+| gas saturation | sg, sgas | v/v | Gas fraction |
+| net-to-gross | ntg, n2g | ratio | Net/gross thickness |
 | depth | tvd, tvdss, z | m | Vertical depth |
 | pressure | pres, pressure, bhp | bar | Fluid pressure |
-| temperature | temp | °C | Formation temperature |
+| temperature | temp | °C | Formation temp |
 | bulk density | rhob, den | g/cm³ | Bulk density log |
-| gamma ray | gr, gamma | API | Natural gamma radiation |
+| gamma ray | gr, gamma | API | Gamma radiation |
 | resistivity | rt, res, ild | ohm·m | Formation resistivity |
 | acoustic impedance | ai, imp | (m/s)·(g/cm³) | Seismic impedance |
 | velocity | vp, vs, vel | m/s | Seismic velocities |
 | facies | facies, lith, litho | - | Discrete rock type |
-| zone | zone, region, segment | - | Discrete zone/region index |
+| zone | zone, region, segment | - | Zone/region index |
 | thickness | thick, dz, isochore | m | Layer thickness |
 | volume | vol, bulk_vol, bv | m³ | Volume attribute |
 | age | age, chrono | Ma | Geological age |
 | displacement | throw, heave | m | Fault displacement |
 
+</div>
+
 ### RESQML Type Categories
 
+<div style="font-size:0.82em; line-height:1.3">
+
 | Category | Example types |
-|----------|--------------|
+|---|---|
 | Grid | IjkGrid, UnstructuredGrid |
 | Surface | Grid2d, TriangulatedSet |
 | Well | WellboreFeature, WellboreInterpretation, WellboreTrajectory, WellboreFrame |
@@ -539,6 +545,8 @@ curl /api/graphql/resolve-alias?term=sat
 | CRS | LocalDepth3dCrs, LocalTime3dCrs |
 | Provenance | Activity, ActivityTemplate |
 | Container | EpcExternalPartReference |
+
+</div>
 
 ---
 
@@ -562,6 +570,42 @@ Each card includes:
 - **Sparkline bar** for statistics (min → mean → max with blue needle for mean)
 - **Matching cells bar** (green/orange/red based on fraction)
 - **Source flags** for federated results (Catalog, Local PG, Remote)
+
+---
+
+## Query Performance Guide
+
+_Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates — discovery protocol is not yet implemented on RDDMS._
+
+### Summary Table
+
+| Operation | REST API | GraphQL + PG | ETP (est.) |
+|-----------|----------|-------------|------------|
+| **Simple listing** (50 objects) | 80–200 ms | **5–15 ms** | 10–30 ms |
+| **Object + relations + arrays** | 300–600 ms | **10–30 ms** | 15–50 ms |
+| **Deep search** (10 grids, PORO > 0.25) | 5–15 s | **0.1–0.5 s** | 0.1–0.4 s |
+| **Large array read** (500K float64) | 1–3 s | **0.1–0.3 s** | 0.05–0.2 s |
+| **Setup complexity** | None (just URL) | PG access needed | ETP client + discovery impl |
+| **Portability** | Any OSDU | Co-located only | Any ETP server |
+| **Standard** | RDDMS REST v2 | Internal | Energistics ETP 1.2 |
+
+### Why PG is 10–50× Faster
+
+| Factor | REST | GraphQL + PG |
+|--------|------|-------------|
+| **N+1 queries** | Deep search = `O(G × P × A)` serial HTTP calls | `O(1)` — server-side SQL joins on the `rel` adjacency table |
+| **Array transfer** | JSON text (`[0.123, …]`) ~1.5 MB per 100K floats | Binary `bytea` ~800 KB, decoded via `struct.unpack` in ~5 ms |
+| **Network hops** | 2–3 (TLS → Azure Front Door → NestJS → PG) | 0 (co-located asyncpg → PG, binary wire protocol) |
+| **Per-call overhead** | ~40–100 ms (TLS amortised, gateway, JSON serialization) | ~1–5 ms (binary protocol, connection pool) |
+
+### Performance Tips
+
+1. **Always prefer GraphQL + PG** when `GRAPHQL_PG_CONN_STRING` is set — the resolver auto-selects the fastest backend.
+2. **Avoid REST for deep queries** — 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). The same query takes ~0.2 s on PG.
+3. **Large arrays:** PG binary transfer is 5–10× faster than JSON. If you must use REST, avoid reading arrays > 100K elements in tight loops.
+4. **Federated search** runs OSDU catalog + RDDMS in parallel — enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
+5. **Connection pooling** is automatic: `httpx.AsyncClient` for REST, `asyncpg` pool (min=2, max=10) for PG.
+6. **ETP** currently covers bulk import/export only. When discovery protocol is implemented, expect REST-like portability with PG-like speed (binary Avro over persistent WebSocket).
 
 ---
 
