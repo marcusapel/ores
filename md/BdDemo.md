@@ -1,6 +1,45 @@
-# BusinessDecision Demo - Data Model Guide
+# BusinessDecision Drogon Demo - Data Model Guide
 
-> **Scope:** Documents the data model and schema patterns for a Decision Gate 1 and 2 package. Covers OSDU schemas, relationships, activity-based provenance, and cross-gate analysis. For demo data and pipeline specifics, see `demo/drogon_dg2/`.
+> **Scope:** Documents the data model and schema patterns for a Decision Gate 1 and 2 package using the Drogon field as a worked example. Covers OSDU schemas, relationships, activity-based provenance, and cross-gate analysis. For demo data and pipeline specifics, see `demo/drogon_dg2/`.
+
+---
+
+## Quick Start — Using ORES with BusinessDecision Data
+
+### Searching
+
+Open the **Search** tab (`/search`) and query for kind `osdu:wks:master-data--BusinessDecision:*.*.*`.  
+OSDU Search returns card-rendered results showing each decision gate record with its name, project, decision level, and approval status. Click a result card to inspect the full JSON, including the `Parameters[]` array that links every piece of evidence.
+
+### Analysing Decision Gates
+
+Open the **Analyse** tab (`/analyse`). ORES lists all `Reservoir` master-data records.  
+Select a reservoir (e.g. *Drogon*) and ORES automatically finds every `BusinessDecision` linked to it, orders them by gate (DG1 → DG2 → …), and presents a side-by-side comparison:
+
+- **Volume deltas** — STOIIP, Recoverable, Recovery Factor at P10/P50/P90
+- **Risk evolution** — risks added, reduced, closed, or escalated between gates
+- **Property diffs** — DevelopmentConcept fields, economics parameters
+- **Charts** — overlay visualisations of how metrics change across gates
+
+### What a Decision Gate Package Contains
+
+Conceptually, each `BusinessDecision` record is **the central hub** of a decision gate package. It ties together:
+
+| Concept | OSDU Representation | Role |
+|---------|---------------------|------|
+| **Decision identity** | `master-data--BusinessDecision` | Hub record with level (DG1–DG4), approval status, personnel, risks |
+| **Reservoir scope** | `master-data--Reservoir` + `ReservoirSegment` | Shared master-data anchors referenced across all gates |
+| **Volumes** | `ReservoirEstimatedVolumes` WPC (raw + stats) | Quantitative evidence — per-realisation and P10/P50/P90 aggregates |
+| **Dashboard labels** | `GeoLabelSet` WPC | Headline P10/P50/P90 figures for quick dashboards |
+| **Input parameters** | `ColumnBasedTable` WPC | Design matrix / uncertainty variables |
+| **Development concept** | `DevelopmentConcept` WPC *(custom schema)* | Structured concept fields — no canonical OSDU kind exists, so a LOCAL registered schema is used |
+| **Workflow provenance** | `Activity` + `ActivityTemplate` WPC | Full input/output capture for reproducibility |
+| **Risks** | `master-data--Risk` | Severity/probability ratings evolving gate-to-gate |
+| **Governance documents** | `Document` WPC | SRA, CRA, PDO (DG1); adds PTR at DG2 |
+| **Geomodel** | `ETPDataspace` dataset → RDDMS | Gridded reservoir model lives in Reservoir DDMS, linked via an ETP dataspace pointer |
+| **Evidence bundle** | `PersistedCollection` WPC | DG2+ packages all artefacts (99 records in the Drogon example) into one searchable collection |
+
+All links flow through the BD's `Parameters[]` array using canonical OSDU kinds and types — `Input` for evidence artefacts, `InputReference` for context/scope anchors (reservoir, prior-gate BD, ETP dataspace). See the entity relationship diagram and the full schema tables below.
 
 ---
 
@@ -291,15 +330,4 @@ The BD references this collection via `Parameters[]` (`ParameterRole: InputRefer
 5. **Activity provides reproducibility** — captures full workflow configuration
 6. **PersistedCollection bundles** — DG2+ packages all artefacts into a single searchable collection
 
----
 
-## 9. Related Guides
-
-| Document | Focus |
-|----------|-------|
-| [BusinessDecision.md](BusinessDecision.md) | BD implementation: linking patterns, Parameters[], payloads |
-| [Risk.md](Risk.md) | Risk taxonomy, canonical Risk records |
-| [Uncertainty.md](Uncertainty.md) | FMU ensemble persistence, Activity semantics |
-| [Volumes.md](Volumes.md) | ReservoirEstimatedVolumes: raw vs aggregated |
-| [GeoLabelSet.md](GeoLabelSet.md) | Dashboard labels: GeoLabelType, statistics facets |
-| [DevConcept.md](DevConcept.md) | DevelopmentConcept custom schema |
