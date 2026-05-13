@@ -1,7 +1,7 @@
 
 # OSDU Decision Gates with `BusinessDecision` - Implementation Guide
 
-> **Scope:** Model DG1…DG4 decisions as `osdu:wks:master-data--BusinessDecision:1.0.0` records, linking inputs and outputs using **activity parameters** and/or **persisted collections**. This guide summarizes options, pros/cons, and provides example payloads and diagrams.
+> **Scope:** Model DG1…DG4 decisions as `osdu:wks:master-data--BusinessDecision:1.0.0` records, linking inputs and outputs using **activity parameters** and/or **persisted collections**. Use `CollaborationProject` as the cross-gate master-data namespace bridging System of Engagement (SoE) and System of Record (SoR). This guide summarizes options, pros/cons, and provides example payloads and diagrams.
 
 ---
 
@@ -33,17 +33,32 @@ Built-in properties: `DecisionLevelID`, `ApprovalStatusID`, `RiskIDs`, `RiskAsse
 **Pros**: Strong validation; easy filtering (e.g., "Approved DG2").
 **Cons**: Not meant to enumerate full input/output sets.
 
-### C) Persisted collections: `WorkProduct` and `PersistedCollection`
+### C) CollaborationProject — Cross-DG Namespace (SoE ↔ SoR bridge)
 
-Bundle WPCs into a **versioned container** and reference it as a single parameter.
+A `master-data--CollaborationProject` record provides a **persistent identity** that outlives any single decision gate. It acts as a contextualising namespace:
 
-- `WorkProduct` - deliverable bundle: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product/WorkProduct.1.0.0.md)
+- **SoE side** — teams collaborate on work-in-progress iterations (geomodels, volumes, parameters)
+- **SoR side** — a `CollaborationProjectCollection` WPC accumulates curated, trusted references across gates
+- **Lifecycle** — the CP begins at DG1 and persists through DG2, DG3, FID; its `ActivityStates[]` track the cross-gate timeline
+- **ParentProjectID** — links back to the originating `BusinessDecision`
+
+The CP's `Parameters[]` reference the same data objects as the BD, but scoped for the ongoing collaboration rather than a single gate vote.
+
+**Pros**: Stable master-data identity across gates; clean SoE/SoR separation; TrustedCollection grows incrementally.
+**Cons**: Additional record to maintain; relationship to BD needs clear convention.
+
+### D) PersistedCollection — Gate Evidence Package
+
+Bundle WPCs into a **versioned evidence set** for a specific gate and reference it from the BD.
+
 - `PersistedCollection` - curated evidence set: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md)
 
 **Pros**: One ID represents the gate package; simpler governance.
-**Cons**: Extra objects; still use `Parameters[]` for role semantics.
+**Cons**: WPC, not master-data — scoped to one gate; still uses `Parameters[]` for role semantics.
 
-### D) Rely on WPC→master-data links
+> **CP vs PersistedCollection**: CP is master-data (long-lived, cross-DG); PersistedCollection is a WPC (versioned, gate-scoped). CP's TrustedCollection references accumulate over time; a PersistedCollection snapshots one gate's evidence.
+
+### E) Rely on WPC→master-data links
 
 Many WPCs natively reference reservoir entities (e.g., `ReservoirEstimatedVolumes` → `Reservoir`). Navigate via WPC without duplicating relationships.
 
@@ -52,10 +67,20 @@ Many WPCs natively reference reservoir entities (e.g., `ReservoirEstimatedVolume
 ## 3. Recommended pattern for DG1…DG4
 
 1. **One `BusinessDecision` per gate**: set `DecisionLevelID`, `ApprovalStatusID`, dates, owners, summary.
-2. **Anchor the primary artifact** via `PriorActivityIDs`.
-3. **List inputs and outputs** in `Parameters[]` with `ParameterRole` = `input`/`output`/`context`.
-4. **Optionally** package artifacts into a **WorkProduct** or **PersistedCollection**.
-5. **Risks & docs**: link via `RiskIDs` and `RiskAssessmentDocument`.
+2. **One `CollaborationProject` per modelling discipline**: persists across gates as the SoE↔SoR namespace. Its `TrustedCollectionID` points to a `CollaborationProjectCollection` WPC that accumulates curated references.
+3. **Anchor the primary artifact** via `PriorActivityIDs`.
+4. **List inputs and outputs** in `Parameters[]` with `ParameterRole` = `input`/`output`/`context`.
+5. **Package gate evidence** into a `PersistedCollection` (DG2+).
+6. **Risks & docs**: link via `RiskIDs` and `RiskAssessmentDocument`.
+
+**Cross-DG lifecycle:**
+```
+DG1 BD ──────────────────── DG2 BD ──────────── DG3 BD ──── FID BD
+  │                           │                   │           │
+  └── CP (master-data) ───────┴───────────────────┴───────────┘
+       │                                                      
+       └── TrustedCollection (WPC) — accumulates SoR refs per gate
+```
 
 **Typical kinds at decision gates:**
 - Inputs: `Well`, `GenericRepresentation`, `VelocityModeling`, `ColumnBasedTable`, `ProductionValues`
@@ -86,19 +111,26 @@ graph LR
   BD -- output --> CBTout
 ```
 
-### 4.2 DG with a persisted collection
+### 4.2 DG with CollaborationProject and persisted collection
 ```mermaid
 graph LR
-  BD["BusinessDecision (DG)"]
-  WP["WorkProduct - DG Package"]
-  GR["GenericRepresentation"]
-  VM["VelocityModeling"]
-  CBT["ColumnBasedTable"]
+  BD["BusinessDecision (DG1)"]
+  CP["CollaborationProject<br/><i>master-data, cross-DG</i>"]
+  TC["CollaborationProjectCollection<br/><i>TrustedCollection WPC</i>"]
+  PC["PersistedCollection<br/><i>gate evidence</i>"]
+  REV["REV WPC"]
+  ETP["ETPDataspace"]
+  RES["Reservoir"]
 
-  BD -- input --> WP
-  WP --- GR
-  WP --- VM
-  WP --- CBT
+  BD -- ParentProject --- CP
+  CP -- TrustedCollectionID --> TC
+  TC -.->|ResourceIDs| REV
+  TC -.->|ResourceIDs| ETP
+  TC -.->|ResourceIDs| RES
+  BD -- Parameters/Input --> REV
+  BD -- Parameters/InputRef --> PC
+  PC -.->|DataReferences| REV
+  PC -.->|DataReferences| ETP
 ```
 
 ---
@@ -146,26 +178,31 @@ graph LR
 
 ---
 
-## 6. Choosing between `Parameters[]` vs. persisted collections
+## 6. Choosing between patterns
 
-| Option | Best for | Pros | Cons |
+| Pattern | Best for | Identity | Lifecycle |
 |---|---|---|---|
-| `Parameters[]` | Precise workflow/provenance | Rich semantics; multi-values, keys | Heavier nested queries |
-| `WorkProduct` | Stable, versioned DG package | One ID; easier ACL/legal | Extra object to manage |
-| `PersistedCollection` | Evidence package / curated set | One ID for DG artifacts | Extra object to manage |
-| Explicit fields | Gate filters & governance | Simple queries | Not a substitute for full input/output lists |
+| `Parameters[]` | Precise workflow/provenance per gate | Embedded in BD | Per gate |
+| `CollaborationProject` (master-data) | Cross-DG namespace, SoE↔SoR bridge | Own master-data record | Persists across gates |
+| `CollaborationProjectCollection` (WPC) | Accumulating trusted SoR references | WPC linked from CP | Grows per gate |
+| `PersistedCollection` (WPC) | Gate-scoped evidence snapshot | WPC linked from BD | Per gate |
+| Explicit BD fields | Gate filters & governance | Built-in properties | Per gate |
 
-**Recommendation:** Use **both**: typed decision fields for gate metadata **and** `Parameters[]` for inputs/outputs/context.
+**Recommendation:** Use **all three layers**:
+- `BusinessDecision` per gate (with `Parameters[]` for inputs/outputs)
+- `CollaborationProject` as the long-lived namespace (with `TrustedCollectionID` → growing SoR)
+- `PersistedCollection` per gate (DG2+) for evidence snapshots
 
 ---
 
 ## 7. References
 
 - `BusinessDecision` schema: [Community examples](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Examples/master-data/BusinessDecision.1.0.0.json)
+- `CollaborationProject` schema: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/master-data/CollaborationProject.1.0.0.md)
+- `CollaborationProjectCollection` schema: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/CollaborationProjectCollection.1.0.0.md)
 - `AbstractProjectActivity`: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/abstract/AbstractProjectActivity.1.2.0.md)
 - Decision catalogs: [DecisionLevel](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/reference-data/DecisionLevel.1.0.0.md)
-- WPCs: [VelocityModeling](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/VelocityModeling.1.3.0.md), [GenericRepresentation](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/Examples/work-product-component/GenericRepresentation.1.0.0.json)
-- WorkProduct / PersistedCollection: [PersistedCollection ER](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md)
+- `PersistedCollection`: [ER doc](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/PersistedCollection.1.0.0.md)
 
 ---
 
