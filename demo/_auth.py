@@ -279,6 +279,9 @@ def _mint(inst: Dict[str, Any], *, verbose: bool = True) -> str:
             "refresh_token": inst["refresh_token"],
             "scope":         inst.get("scope") or f"{inst['client_id']}/.default openid offline_access",
         }
+        # Confidential clients require client_secret even for refresh_token grants
+        if inst.get("client_secret"):
+            form["client_secret"] = inst["client_secret"]
     elif grant == "client_credentials":
         form = {
             "grant_type":    "client_credentials",

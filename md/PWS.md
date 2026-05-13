@@ -30,10 +30,36 @@ The **Project & Workflow Service (P&WS)** provides a structured project collabor
 
 Key capabilities:
 - **Collaboration Projects** - named containers with purpose, dates, personnel, ACLs, and lifecycle status
+- **Cross-DG master-data** - a `CollaborationProject` is `master-data`, not a transient workspace. It **persists across decision gates** (DG1 → DG2 → DG3 → FID), accumulating trusted data references at each gate while bridging the System of Engagement (SoE: WIP collaboration) and the System of Record (SoR: curated artefacts)
 - **Trusted SOR resources** - curated list of existing OSDU records the project uses as baseline input
 - **WIP (Work In Progress) namespaces** - isolated workspaces where contributors modify data without affecting the SOR
 - **WIP → SOR publishing** - controlled promotion of WIP records back into the shared data fabric with conflict detection
 - **Lifecycle event journal** - chronological log of every project action (creation, opening, resource additions, publications, closure)
+
+### CP as Cross-DG Namespace Bridge (SoE ↔ SoR)
+
+A `CollaborationProject` is **not** scoped to a single decision gate — it is the persistent namespace that contextualises all geomodelling work for a field:
+
+```
+ BusinessDecision DG1 ──┐
+ BusinessDecision DG2 ──┤── ParentProjectID ──▶ CollaborationProject (master-data)
+ BusinessDecision DG3 ──┘                        │
+                                                  ├── TrustedCollectionID ──▶ CollaborationProjectCollection
+                                                  │     └── ResourceIDs[] (SoR: accumulates per gate)
+                                                  │
+                                                  ├── ActivityStates[] (DG1✓ → DG2● → DG3 → FID)
+                                                  │
+                                                  └── Parameters[] (SoE: links to dataspaces, activities, volumes)
+```
+
+The `CollaborationProjectCollection` (WPC) is the **SoR accumulator** — each gate adds its curated artefacts to the same collection. Unlike a `PersistedCollection` (which snapshots a single gate's evidence), the trusted collection grows across gates.
+
+| Concept | Kind | Role |
+|---------|------|------|
+| **CollaborationProject** | `master-data` | Persistent cross-DG namespace, SoE↔SoR bridge |
+| **CollaborationProjectCollection** | `work-product-component` | Versioned SoR accumulator (ResourceIDs[]) |
+| **PersistedCollection** | `work-product-component` | Per-gate evidence snapshot (DataReferences[]) |
+| **BusinessDecision** | `master-data` | Per-gate decision hub, links to CP via ParentProjectID |
 
 ### Where P&WS fits in the OSDU stack
 
@@ -190,13 +216,14 @@ WIP resources live in the project's `Namespace` (UUID-based isolation). They are
 **Scenario**: A subsurface team prepares a concept-select decision gate. Geologists, geophysicists, and reservoir engineers collaborate on a shared dataset spanning wells, seismic interpretations, geomodels, and simulation results.
 
 **P&WS Flow**:
-1. Project manager creates a `CollaborationProject` scoped to the target reservoir and decision gate
+1. Project manager creates a `CollaborationProject` scoped to the target reservoir — this is master-data that will persist across DG2, DG3, and FID
 2. Trusted SOR resources are assembled: existing wells, wellbores, trajectories, seismic horizons, stratigraphic column
 3. Each discipline works in WIP: geologist adds new horizon interpretations, engineer adds simulation inputs
 4. Geomodel grids and properties are ingested as WIP records linked to the project namespace
 5. After QC and review, WIP records are published to SOR in controlled batches (wells first, then dependent WPCs)
-6. `BusinessDecision` record is created referencing the project's published artifacts as `Parameters[]` inputs
-7. Project is closed, preserving the full lifecycle journal as decision audit trail
+6. `BusinessDecision` record is created referencing the project via `ParentProjectID` and the project's published artifacts as `Parameters[]` inputs
+7. Project remains open for the next gate — its trusted collection accumulates the curated artefacts
+8. Project is closed only after FID, preserving the full cross-gate lifecycle journal as decision audit trail
 
 **Data types involved**: `Well`, `Wellbore`, `WellboreTrajectory`, `WellboreMarkerSet`, `HorizonInterpretation`, `StructureMap`, `IjkGridRepresentation`, `ReservoirEstimatedVolumes`, `ColumnBasedTable`, `BusinessDecision`, `Risk`
 

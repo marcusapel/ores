@@ -28,6 +28,7 @@ Conceptually, each `BusinessDecision` record is **the central hub** of a decisio
 | Concept | OSDU Representation | Role |
 |---------|---------------------|------|
 | **Decision identity** | `master-data--BusinessDecision` | Hub record with level (DG1–DG4), approval status, personnel, risks |
+| **Collaboration namespace** | `master-data--CollaborationProject` | Cross-DG master-data that bridges SoE (WIP collaboration) and SoR (trusted collection). Persists from DG1 through FID, accumulating curated artefacts per gate. BD links via `ParentProjectID` |
 | **Reservoir scope** | `master-data--Reservoir` + `ReservoirSegment` | Shared master-data anchors referenced across all gates |
 | **Volumes** | `ReservoirEstimatedVolumes` WPC (raw + stats) | Quantitative evidence — per-realisation and P10/P50/P90 aggregates |
 | **Dashboard labels** | `GeoLabelSet` WPC | Headline P10/P50/P90 figures for quick dashboards |
@@ -38,6 +39,7 @@ Conceptually, each `BusinessDecision` record is **the central hub** of a decisio
 | **Governance documents** | `Document` WPC | SRA, CRA, PDO (DG1); adds PTR at DG2 |
 | **Geomodel** | `ETPDataspace` dataset → RDDMS | Gridded reservoir model lives in Reservoir DDMS, linked via an ETP dataspace pointer |
 | **Evidence bundle** | `PersistedCollection` WPC | DG2+ packages all artefacts (99 records in the Drogon example) into one searchable collection |
+| **Project collection** | `CollaborationProjectCollection` WPC | SoR accumulator — the trusted collection referenced by the CP grows across gates (unlike PersistedCollection which snapshots one gate) |
 
 All links flow through the BD's `Parameters[]` array using canonical OSDU kinds and types — `Input` for evidence artefacts, `InputReference` for context/scope anchors (reservoir, prior-gate BD, ETP dataspace). See the entity relationship diagram and the full schema tables below.
 
@@ -65,6 +67,8 @@ A DG1 package spans **~15 records**; a full DG2 decision gate package spans **~1
 | 10 | WPC | `osdu:wks:work-product-component--Document:1.2.0` | Governance documents — DG1: SRA, CRA, PDO; DG2 adds PTR |
 | 11 | WPC | `osdu:wks:work-product-component--GeoLabelSet:1.0.0` | Headline P10/P50/P90 volumes for dashboards |
 | 12 | Dataset | `osdu:wks:dataset--ETPDataspace:1.0.0` | RDDMS dataspace pointer for geomodel |
+| -- | Master-data | `osdu:wks:master-data--CollaborationProject:1.0.0` | Cross-DG collaboration namespace — bridges SoE and SoR, persists across gates |
+| -- | WPC | `osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0` | Trusted SoR resource accumulator (ResourceIDs[] grow per gate) |
 
 #### DG2 Additions
 
@@ -94,6 +98,7 @@ graph TD
         RISK["Risk ×N"]
         BD["BusinessDecision DG2"]
         BD_DG1["BusinessDecision DG1"]
+        CP["CollaborationProject<br/><i>cross-DG namespace</i>"]
     end
 
     subgraph "Work Product Components"
@@ -110,6 +115,7 @@ graph TD
         MAPS["StructureMap + GenericRep<br/><i>surfaces, polygons</i>"]
         SIM["ColumnBasedTable<br/><i>simulator tables ×5</i>"]
         PC["PersistedCollection<br/><i>evidence package</i>"]
+        CPC["CollabProjectCollection<br/><i>SoR accumulator</i>"]
     end
 
     subgraph "Datasets"
@@ -137,6 +143,14 @@ graph TD
     BD -->|Parameters - Input| SIM
     BD -->|Parameters - InputRef| PC
 
+    BD -->|ParentProjectID| CP
+    BD_DG1 -->|ParentProjectID| CP
+    CP -->|TrustedCollectionID| CPC
+    CPC -.->|ResourceIDs| REV_RAW
+    CPC -.->|ResourceIDs| GRID
+    CPC -.->|ResourceIDs| RES
+    CPC -.->|ResourceIDs| ETP
+
     PC -.->|DataReferences| REV_RAW
     PC -.->|DataReferences| GRID
     PC -.->|DataReferences| MAPS
@@ -162,8 +176,9 @@ graph TD
 
     class RES,SEG master
     class BD,BD_DG1 bd
+    class CP bd
     class RISK risk
-    class REV_RAW,REV_STAT,PARAMS,PP,GLS,ACT,TMPL,DOCS,DEV,GRID,MAPS,SIM,PC wpc
+    class REV_RAW,REV_STAT,PARAMS,PP,GLS,ACT,TMPL,DOCS,DEV,GRID,MAPS,SIM,PC,CPC wpc
     class ETP dataset
     class DL,AS,RC ref
 ```
@@ -210,8 +225,8 @@ graph TD
 
 | Layer | Role | Gate behaviour |
 |-------|------|----------------|
-| **Master-data** (Reservoir, Segments, Risk, BD) | Identity anchors | Shared/evolving across gates |
-| **WPCs** (REV, CBT, Activity, Documents) | Versioned evidence | New per gate |
+| **Master-data** (Reservoir, Segments, Risk, BD, **CollaborationProject**) | Identity anchors | Shared/evolving across gates — CP persists from DG1 through FID |
+| **WPCs** (REV, CBT, Activity, Documents, **CollabProjectCollection**) | Versioned evidence | New per gate (except CollabProjectCollection which accumulates) |
 
 The BD `Parameters[]` array bridges these: it references both master-data (as `InputReference`) and WPCs (as `Input`/`Output`).
 
@@ -324,10 +339,12 @@ The BD references this collection via `Parameters[]` (`ParameterRole: InputRefer
 ## 8. Design Principles
 
 1. **One BusinessDecision per gate** — links all evidence through `Parameters[]`
-2. **Lossless traceability** — every reference preserved with role semantics
-3. **Risk evolution is explicit** — canonical risk records tracked gate-to-gate
-4. **Volumes are authoritative** — `ReservoirEstimatedVolumes` is the domain WPC; `GeoLabelSet` for dashboards
-5. **Activity provides reproducibility** — captures full workflow configuration
-6. **PersistedCollection bundles** — DG2+ packages all artefacts into a single searchable collection
+2. **CollaborationProject spans gates** — master-data namespace that bridges SoE and SoR; BDs link via `ParentProjectID`; trusted collection accumulates per gate
+3. **Lossless traceability** — every reference preserved with role semantics
+4. **Risk evolution is explicit** — canonical risk records tracked gate-to-gate
+5. **Volumes are authoritative** — `ReservoirEstimatedVolumes` is the domain WPC; `GeoLabelSet` for dashboards
+6. **Activity provides reproducibility** — captures full workflow configuration
+7. **PersistedCollection snapshots one gate** — DG2+ packages all artefacts into a single searchable collection
+8. **CollaborationProjectCollection accumulates across gates** — the SoR grows; PersistedCollection freezes
 
 

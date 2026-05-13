@@ -125,33 +125,23 @@ def main():
         "acl":   DEFAULT_ACL,
         "legal": DEFAULT_LEGAL,
         "data": {
-            "Name": "Drogon - Decision Gate 1 DG1 Identify & Assess",
+            "Name": "Drogon DG1 - Identify & Assess",
             "Description": (
-                "DG1 evaluation of the Valysar fluvial formation in the Drogon field, "
-                "covering static in-place volume estimation across 7 reservoir segments "
-                "(NorthSea, NorthHorst, CentralHorst, CentralFlanks, CentralSouth, "
-                "SouthWing, EastLobe) with three facies types (Channel, Crevasse, "
-                "Floodplain). The assessment uses FMU-driven uncertainty realisations "
-                "to derive P10/P50/P90 oil and gas volumes, forming the basis for the "
-                "DG2 Concept Select recommendation."
+                "DG1 volume assessment of the Valysar formation, Drogon field. "
+                "P10/P50/P90 oil & gas estimates across 7 segments."
             ),
             "ProjectName": "Drogon Field Development",
             "DecisionLevelID": f"{args.id_prefix}:reference-data--DecisionLevel:DG1:",
             "ApprovalStatusID": f"{args.id_prefix}:reference-data--DecisionApprovalStatus:Approved:",
             "DecisionDueDate": "2026-03-15",
             "DecisionDate": "2026-02-28",
-            "DecisionSummary": (
-                "Evaluate the Valysar formation of the Drogon field. "
-                "Assess in-place volumes (oil + gas) across 7 reservoir segments "
-                "with facies-dependent porosity uncertainty. "
-                "Determine whether to proceed to DG2 Concept Select."
-            ),
+            "DecisionSummary": "Assess Valysar in-place volumes and recommend proceed/no-go for DG2.",
             "RiskIDs": risk_ids,
             "PriorActivityIDs": prior_activity_ids,
             "Parameters": [
                 {
                     "Title": "Raw volumes (per realisation)",
-                    "Selection": "Raw per-realisation volumes feeding the statistical summary",
+                    "Selection": "Per-realisation FMU output",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": raw_wpc_id,
@@ -161,7 +151,7 @@ def main():
                 },
                 {
                     "Title": "Statistical volumes (P10/P50/P90)",
-                    "Selection": "Aggregated statistics used for the DG1 assessment",
+                    "Selection": "P10/P50/P90 aggregates",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": stat_wpc_id,
@@ -171,7 +161,7 @@ def main():
                 },
                 {
                     "Title": "Valysar parameters (OWC, porosity)",
-                    "Selection": "Per-segment, per-facies input parameters",
+                    "Selection": "Per-segment/facies inputs",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": params_wpc_id,
@@ -181,14 +171,14 @@ def main():
                 },
                 {
                     "Title": "Reservoir scope",
-                    "Selection": "Master-data context for the decision",
+                    "Selection": "Valysar reservoir",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:InputReference:",
                     "DataObjectParameter": reservoir_id,
                 },
                 {
                     "Title": "GeoModelDataspace",
-                    "Selection": "RDDMS ETP dataspace with the Drogon DG2 geomodel EPC files (RMS export)",
+                    "Selection": "RDDMS geomodel EPC store",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:InputReference:",
                     "DataObjectParameter": dataspace_id,
@@ -198,7 +188,7 @@ def main():
                 },
                 *([{
                     "Title": "Development Concept",
-                    "Selection": "DG1 development concept definition",
+                    "Selection": "DG1 concept definition",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": devconcept_wpc_id,
@@ -208,7 +198,7 @@ def main():
                 }] if devconcept_wpc_id else []),
                 *([{
                     "Title": "GeoLabelSet (segment volumes + properties)",
-                    "Selection": "Per-segment P10/P50/P90 volumes and petro-physical summaries",
+                    "Selection": "Segment volume labels",
                     "ParameterKindID": f"{args.id_prefix}:reference-data--ParameterKind:DataObject:",
                     "ParameterRoleID": f"{args.id_prefix}:reference-data--ParameterRole:Input:",
                     "DataObjectParameter": geolabelset_id,
@@ -220,47 +210,47 @@ def main():
             # ── Canonical: Personnel[] ← Authors ──
             "Personnel": [
                 {
-                    "Name": "Kristin Haugen",
+                    "Name": "Inge Lehmann",
                     "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:GeoscienceLead:",
                     "Organisation": "Drogon Subsurface",
                 },
                 {
-                    "Name": "Henrik Bjørnstad",
+                    "Name": "Vladimir Vernadsky",
                     "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:ReservoirEngineer:",
                     "Organisation": "Drogon Reservoir Management",
                 },
                 {
-                    "Name": "Anna-Lise Tveit",
+                    "Name": "Friedrich Mohs",
                     "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:Petrophysicist:",
                     "Organisation": "Drogon Petec",
                 },
                 {
-                    "Name": "Erik Stensrud",
+                    "Name": "Abraham G. Werner",
                     "ProjectRoleID": f"{args.id_prefix}:reference-data--ProjectRole:FMULead:",
                     "Organisation": "Drogon Geomodelling",
                 },
             ],
             # ── Canonical: DecisionOwners/Makers/Contributors[] ← ReviewTeam ──
             "DecisionOwners": [
-                {"Name": "Kristin Haugen", "Organisation": "Drogon Subsurface Lead"},
+                {"Name": "Inge Lehmann", "Organisation": "Drogon Subsurface Lead"},
             ],
             "DecisionMakers": [
-                {"Name": "Lars Kongsvik", "Organisation": "Drogon Project Director"},
+                {"Name": "Pyotr Kropotkin", "Organisation": "Drogon Project Director"},
             ],
             "Contributors": [
-                {"Name": "Erik Stensrud", "Organisation": "Drogon Geomodelling"},
-                {"Name": "Marte Nygaard", "Organisation": "ST MSU Subsurface QA"},
+                {"Name": "Abraham G. Werner", "Organisation": "Drogon Geomodelling"},
+                {"Name": "Alexander von Humboldt", "Organisation": "ST MSU Subsurface QA"},
             ],
             # ── Canonical: Remarks[] ← Recommendations ──
             "Remarks": [
                 {"Remark": r, "RemarkSource": "DG1 Recommendations"}
                 for r in [
-                    "Implement Level 3 FMU uncertainty workflow with increased realisation count (target 50+) for DG2",
-                    "Acquire additional core data from NorthSea and EastLobe segments to reduce porosity uncertainty",
-                    "Evaluate seismic reprocessing for improved depth conversion of Valysar top reservoir",
-                    "Conduct cross-discipline review of OWC sensitivity on recovery factor estimates",
-                    "Execute production testing programme across suspected fault blocks to establish pressure connectivity and constrain dynamic simulation models (target DG2 input, 2027-Q2)",
-                    "Plan up to 4 additional infill wells targeting isolated fault compartments; include CAPEX range 50–150 MUSD in DG2 cost estimate and sensitivity analysis",
+                    "Upgrade FMU to Level 3 with 50+ realisations for DG2",
+                    "Acquire core data in NorthSea and EastLobe for porosity calibration",
+                    "Evaluate seismic reprocessing for Valysar depth conversion",
+                    "Cross-discipline OWC sensitivity review on recovery factors",
+                    "Production testing across fault blocks for pressure connectivity (target DG2, 2027-Q2)",
+                    "Plan up to 4 infill wells; include CAPEX 50-150 MUSD in DG2 sensitivity",
                 ]
             ],
             # ── ProjectSpecifications[] ← KeyEconomics (DG1 preliminary) ──
@@ -287,50 +277,29 @@ def main():
                 "equinor": {
                     "Alternatives": [
                         {
-                            "Name": "Proceed to DG2 with full 7-segment development",
+                            "Name": "Proceed to DG2 — full 7-segment development",
                             "Rank": 1,
-                            "Rationale": (
-                                "Static in-place volumes support commercial viability "
-                                "across all 7 segments; porosity risk manageable with "
-                                "appraisal data. Full scope maximises resource capture "
-                                "from CentralHorst (highest Oil concentration) through EastLobe."
-                            ),
+                            "Rationale": "All 7 segments show commercial volumes; porosity risk manageable.",
                             "RecommendedAction": "Approve",
                         },
                         {
-                            "Name": "Reduced scope - focus on CentralHorst and CentralSouth",
+                            "Name": "Reduced scope — CentralHorst + CentralSouth only",
                             "Rank": 2,
-                            "Rationale": (
-                                "CentralHorst and CentralSouth carry the highest Oil density "
-                                "and lowest porosity uncertainty (Channel facies dominant). "
-                                "De-risks early production but leaves ~40% of upside for "
-                                "later phases."
-                            ),
+                            "Rationale": "Best economics, lowest uncertainty; leaves ~40% upside for later.",
                             "RecommendedAction": "Consider",
                         },
                         {
-                            "Name": "Defer - acquire additional appraisal data",
+                            "Name": "Defer — acquire more appraisal data",
                             "Rank": 3,
-                            "Rationale": (
-                                "Floodplain facies porosity (avg 0.10) and cementation "
-                                "effects in deeper segments remain poorly constrained. "
-                                "Additional core data from NorthSea and EastLobe segments "
-                                "would reduce volume uncertainty range before committing to DG2."
-                            ),
+                            "Rationale": "Floodplain porosity poorly constrained; more core data recommended.",
                             "RecommendedAction": "Fallback",
                         },
                     ],
                     "UncertaintySummary": {
-                        "Basis": (
-                            "FMU static in-place volumes from 3 uncertainty realisations "
-                            "across 7 segments and 3 facies types"
-                        ),
-                        "Note": (
-                            "See stat WPC for full P10/P50/P90 breakdown per segment "
-                            "& facies. Volume Unit: m\u00b3."
-                        ),
+                        "Basis": "FMU static volumes, 3 realisations, 7 segments, 3 facies",
+                        "Note": "See stat WPC for P10/P50/P90 per segment & facies (m³).",
                         "TotalRealisations": 3,
-                        "MethodologyReference": "FMU Level 2 static uncertainty workflow (Valysar geomodel v1)",
+                        "MethodologyReference": "FMU Level 2 static uncertainty workflow (Valysar v1)",
                         "StaticInPlace_Oil_MSm3": {
                             "P90": 28.5,
                             "P50": 34.5,
