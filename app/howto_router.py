@@ -67,7 +67,7 @@ _HOWTO_SECTIONS: list[dict] = [
                 "slug": "seismic-interp",
                 "file": "SeisInt.md",
                 "title": "Seismic Interpretation",
-                "desc": "M27 data model, RDDMS patterns & Volantis demo",
+                "desc": "M27 data model, RDDMS patterns & Drogon demo",
             },
             {
                 "slug": "crs-guide",
