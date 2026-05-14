@@ -17,6 +17,7 @@
   ul#ds-list { list-style: none; padding-left: 0; }
   ul#ds-list li { padding: .35rem 0; border-bottom: 1px dashed #eee; }
   ul#ds-list code { background:#f6f6f6; padding:.05rem .35rem; border-radius:4px; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
 </style>
 
 <h1>Reservoir DDMS Admin</h1>
@@ -176,7 +177,17 @@
           }
         } catch (_) {}
       }
-      if (window.showLoading) window.showLoading('Loading dataspaces…');
+
+      // Show inline progress with elapsed time
+      let elapsed = 0;
+      dsList.innerHTML = '<li class="muted" id="ds-loading-msg" style="animation:pulse 1.5s ease-in-out infinite">' +
+        '⏳ Loading dataspaces from RDDMS… <span id="ds-elapsed">0</span>s</li>';
+      const timer = setInterval(() => {
+        elapsed++;
+        const el = document.getElementById('ds-elapsed');
+        if (el) el.textContent = elapsed;
+      }, 1000);
+
       try {
         const r = await fetch('/admin/dataspaces.json', { credentials: 'same-origin' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -186,7 +197,7 @@
         console.error('[Admin] dataspaces load failed', e);
         dsList.innerHTML = '<li class="muted">Failed to load dataspaces.</li>';
       } finally {
-        if (window.hideLoading) window.hideLoading();
+        clearInterval(timer);
       }
     }
 
