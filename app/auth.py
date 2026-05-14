@@ -43,7 +43,6 @@ TOKEN_URL = f"{AUTH_BASE}/token"
 ENV_REFRESH_TOKEN: Optional[str] = (
     os.getenv("REFRESH_TOKEN")
     or os.getenv("refresh_token")
-    or os.getenv("INSTANCE_EQNDEV_REFRESH_TOKEN")
     or None
 )
 AUTH_MODE = "env_token" if ENV_REFRESH_TOKEN else "per_user_pkce"
@@ -216,12 +215,6 @@ async def auth_callback(request: Request):
     request.session.pop("redirect_uri", None)
 
     # ── Extract identity from token response ──────────────────────────
-    # Azure AD token responses include varying fields depending on scope,
-    # client type, and API version.  Log what we received for diagnostics.
-    token_keys = sorted(k for k in token.keys() if k != "access_token")
-    log.info("PKCE callback: token response keys=%s, expires_in=%s",
-             token_keys, token.get("expires_in"))
-
     rt = token.get("refresh_token", "")
     at = token.get("access_token", "")
     exp = time.time() + int(token.get("expires_in", 3600)) - 60
@@ -232,44 +225,32 @@ async def auth_callback(request: Request):
     oid = claims.get("oid", "")
     upn = claims.get("preferred_username") or claims.get("upn") or claims.get("email", "")
 
-    if oid:
-        log.info("PKCE callback: got oid=%s… from id_token", oid[:8])
-    else:
+    if not oid:
         # Fallback: Azure AD access tokens are also JWTs containing oid/upn.
         # This covers cases where the token endpoint omits id_token
         # (e.g. .default scope, certain confidential-client configurations).
         at_claims = decode_id_token_payload(at) if at else {}
         oid = at_claims.get("oid", "")
         upn = upn or at_claims.get("preferred_username") or at_claims.get("upn") or at_claims.get("email", "")
-        if oid:
-            log.info("PKCE callback: got oid=%s… from access_token JWT (no id_token)", oid[:8])
-        else:
-            log.warning("PKCE callback: no oid in id_token or access_token! "
-                        "id_token present=%s, at present=%s, id_claims_keys=%s, at_claims_keys=%s",
-                        bool(id_token_raw), bool(at),
-                        sorted(claims.keys()), sorted(at_claims.keys()))
+        if not oid:
+            log.warning("PKCE callback: no oid found in id_token or access_token")
 
     # ── Persist session & tokens ──────────────────────────────────────
     from .instances import get_active_name
     inst_name = get_active_name()
     request.session["oid"] = oid
     request.session["instance_name"] = inst_name
-    log.info("PKCE callback: session set oid=%s inst=%s, has_at=%s has_rt=%s",
-             oid[:8] if oid else "(empty)", inst_name, bool(at), bool(rt))
 
     # Tokens stored server-side only (encrypted in SQLite, AT cached in-memory)
     if oid and at:
         _ts_set_cached_at(oid, inst_name, at, exp)
-        log.info("PKCE callback: AT cached in-memory for oid=%s… inst=%s (exp in %ds)",
-                 oid[:8], inst_name, int(exp - time.time()))
     if oid and rt:
         _ts_upsert(oid, inst_name, rt, upn)
-        log.info("PKCE login OK: oid=%s… inst=%s — AT cached + RT persisted", oid[:8], inst_name)
+        log.info("PKCE login OK: oid=%s… inst=%s (AT + RT)", oid[:8], inst_name)
     elif oid and at:
-        log.info("PKCE login OK: oid=%s… inst=%s — AT cached (no RT from Azure AD)", oid[:8], inst_name)
+        log.info("PKCE login OK: oid=%s… inst=%s (AT only)", oid[:8], inst_name)
     else:
-        log.warning("PKCE login: no oid — AT NOT cached, session will not authenticate! "
-                    "Check Azure AD app permissions and scope configuration.")
+        log.warning("PKCE login: no oid — session will not authenticate")
     response = RedirectResponse("/")
     response.set_cookie("ores_user", "1", max_age=30 * 24 * 3600,
                         samesite="lax", httponly=False)
