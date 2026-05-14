@@ -110,19 +110,12 @@ async def inject_access_token(request: Request, call_next):
                 sess_tokens = await tokens_from_session(request)
                 if sess_tokens:
                     access_token = sess_tokens.get("access_token")
-                    log.debug("MW: got session token for oid=%s… inst=%s path=%s",
-                              session_oid[:8], session_inst, path)
                 else:
-                    log.warning("MW: tokens_from_session returned None for oid=%s… inst=%s path=%s",
-                                session_oid[:8], session_inst, path)
+                    log.debug("Session token expired for oid=%s… inst=%s", session_oid[:8], session_inst)
             except Exception as e:
                 log.warning("Session token failed: %s", e)
         else:
-            log.debug("MW: skipping session token: session is for '%s' but active instance is '%s'",
-                      session_inst, active_inst)
-    else:
-        log.debug("MW: no oid in session for path=%s (session keys=%s)",
-                  path, sorted(request.session.keys()))
+            log.debug("Skipping session token: session=%s active=%s", session_inst, active_inst)
 
     # 1. Try active instance's own token (client_credentials or refresh)
     if not access_token:
@@ -131,7 +124,6 @@ async def inject_access_token(request: Request, call_next):
             inst_token = await inst.get_access_token()
             if inst_token:
                 access_token = inst_token
-                log.debug("MW: got instance token for '%s' (auth_mode=%s)", inst.name, inst.auth_mode)
         except Exception as e:
             log.warning("Instance token mint failed: %s", e)
 
@@ -146,10 +138,6 @@ async def inject_access_token(request: Request, call_next):
 
     # 3. No token at all - redirect to login page (for browser) or 401 (for API)
     if not access_token:
-        log.warning("MW: no token for path=%s — oid=%s, active_inst=%s, auth_mode=%s → redirecting",
-                    path, session_oid[:8] if session_oid else "(none)",
-                    get_active_name(),
-                    get_active().auth_mode if get_active() else "?")
         if path.startswith("/api"):
             return JSONResponse({"error": "Authentication required. No env token and no session."}, status_code=401)
         return RedirectResponse("/login-page")
