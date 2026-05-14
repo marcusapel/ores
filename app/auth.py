@@ -230,10 +230,13 @@ async def auth_callback(request: Request):
     request.session["instance_name"] = inst_name
 
     # Tokens stored server-side only (encrypted in SQLite, AT cached in-memory)
+    if oid and at:
+        _ts_set_cached_at(oid, inst_name, at, exp)
     if oid and rt:
         _ts_upsert(oid, inst_name, rt, upn)
-        _ts_set_cached_at(oid, inst_name, at, exp)
-        log.info("PKCE login successful (oid=%s…), token persisted", oid[:8])
+        log.info("PKCE login successful (oid=%s…), token + RT persisted", oid[:8])
+    elif oid and at:
+        log.info("PKCE login successful (oid=%s…), AT cached (no RT)", oid[:8])
     else:
         log.info("PKCE login successful, redirecting to /")
     response = RedirectResponse("/")
