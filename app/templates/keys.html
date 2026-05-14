@@ -1788,9 +1788,9 @@
           : '<p class="muted">No arrays.</p>';
 
         // --- Grid2d section (auto-detect table vs depth map) ---
-        if (isGrid2dType(typ) && arr.length > 0) {
+        if (isGrid2dType(typ)) {
           grid2dSection.style.display = '';
-          const mode = classifyGrid2d(js.content || {});
+          const mode = (arr.length > 0) ? classifyGrid2d(js.content || {}) : 'map';
           grid2dBadge.textContent = mode === 'table' ? 'Data Table'
                                  : mode === 'map'   ? 'Depth Map'
                                  : 'Grid2dRepresentation';
@@ -1810,9 +1810,12 @@
           grid2dBadge.textContent = shortType;
           grid2dStatus.textContent = '';
           btnTable.style.display = 'none';
-          btnMap.style.display = 'none';
+          // Show depth map for TriangulatedSet surfaces
+          const isSurface = typ.toLowerCase().includes('triangulated');
+          btnMap.style.display = isSurface ? '' : 'none';
           btn3d.style.display = '';
-          grid2dView.innerHTML = `<p class="muted">Click "View 3D" to render this ${esc(shortType)} interactively.</p>`;
+          const mapHint = isSurface ? ' Use "Show depth map" for a 2D top-down view.' : '';
+          grid2dView.innerHTML = `<p class="muted">Click "View 3D" to render this ${esc(shortType)} interactively.${mapHint}</p>`;
         }
 
         // --- Raw JSON ---
@@ -1828,13 +1831,13 @@
     }
 
     async function loadMap() {
-      const ds = dsSel.value, uuid = objSel.value;
+      const ds = dsSel.value, uuid = objSel.value, typ = typSel.value;
       if (!ds || !uuid) return;
       grid2dStatus.textContent = 'Loading map…';
       grid2dView.innerHTML = '';
       try {
         // First fetch metadata to show stats while PNG loads
-        const metaUrl = `/keys/object/map.json?ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}`;
+        const metaUrl = `/keys/object/map.json?ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}&typ=${encodeURIComponent(typ)}`;
         const metaRes = await fetch(metaUrl, { credentials: 'same-origin' });
         let statsHtml = '';
         if (metaRes.ok) {
@@ -1842,8 +1845,11 @@
           const s = meta.stats || {};
           const c = meta.crs || {};
           const d = meta.dims || [0,0];
+          const isTriset = meta.kind === 'triset';
+          const dimLabel = isTriset ? `${d[0].toLocaleString()} verts · ${d[1].toLocaleString()} tris`
+                                    : `${d[0]}×${d[1]}`;
           statsHtml = `<div style="font-size:13px;color:#605e5c;margin-bottom:6px;">`
-            + `<b>${esc(meta.title || '')}</b> - ${d[0]}×${d[1]}`
+            + `<b>${esc(meta.title || '')}</b> - ${dimLabel}`
             + (s.min !== undefined ? ` - z: ${s.min} … ${s.max} ${c.verticalUom || 'm'}` : '')
             + (c.projectedUom ? ` - xy: ${c.projectedUom}` : '')
             + `</div>`;
@@ -1851,7 +1857,7 @@
 
         // Build PNG URL with controls
         let cmap = 'viridis_r', dpi = 120, w = 12, h = 9;
-        const pngUrl = () => `/keys/object/map.png?ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}&cmap=${cmap}&dpi=${dpi}&w=${w}&h=${h}`;
+        const pngUrl = () => `/keys/object/map.png?ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}&typ=${encodeURIComponent(typ)}&cmap=${cmap}&dpi=${dpi}&w=${w}&h=${h}`;
 
         grid2dView.innerHTML = statsHtml
           + `<div class="map-controls">`
@@ -2072,9 +2078,9 @@
         let zExag = 1;
         if (extZ > 0 && kind === 'surface') {
           const ratio = extZ / extLateral;
-          // Always exaggerate surfaces so depth is clearly visible
-          // Target: vertical extent should be ~40% of lateral extent in view
-          if (ratio < 0.4) zExag = Math.max(3, Math.min(25, 0.4 / ratio));
+          // Auto-exaggerate so depth relief is clearly visible in 3D
+          // No hard cap – the HUD shows the exaggeration factor
+          if (ratio < 0.4) zExag = Math.max(3, 0.4 / ratio);
         }
 
         // Normalize positions to center and apply z-exaggeration

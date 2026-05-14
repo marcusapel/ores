@@ -467,6 +467,120 @@ def render_grid2d_png(
     return buf.read()
 
 
+# ── PNG renderer for TriangulatedSetRepresentation ───────────────────────────
+
+def render_triset_png(
+    positions: list[float],
+    indices: list[int],
+    *,
+    title: str = "",
+    cmap: str = "viridis_r",
+    figsize: tuple[int, int] = (10, 8),
+    dpi: int = 120,
+    nan_sentinel: float = 1e30,
+    unit: str = "m",
+    max_render_tris: int = 200_000,
+) -> bytes:
+    """
+    Render a TriangulatedSetRepresentation as a top-down depth-coloured map.
+
+    Uses matplotlib's ``tripcolor`` for native triangulated surface rendering.
+    Returns PNG bytes.
+    """
+    import numpy as np
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.tri import Triangulation
+    from matplotlib.colors import Normalize
+    from matplotlib.ticker import FuncFormatter
+
+    n_verts = len(positions) // 3
+    if n_verts < 3:
+        raise ValueError(f"Too few vertices ({n_verts}) for triangulation")
+
+    x = np.array([positions[i * 3] for i in range(n_verts)], dtype=np.float64)
+    y = np.array([positions[i * 3 + 1] for i in range(n_verts)], dtype=np.float64)
+    z = np.array([positions[i * 3 + 2] for i in range(n_verts)], dtype=np.float64)
+    z[np.abs(z) > nan_sentinel] = np.nan
+
+    n_tris = len(indices) // 3
+    triangles = (
+        np.array(indices[: n_tris * 3], dtype=np.int32).reshape(n_tris, 3)
+        if n_tris > 0
+        else None
+    )
+
+    # Downsample very large meshes
+    if triangles is not None and n_tris > max_render_tris:
+        step = max(1, n_tris // max_render_tris)
+        triangles = triangles[::step]
+        used = np.unique(triangles.ravel())
+        remap = np.full(n_verts, -1, dtype=np.int32)
+        remap[used] = np.arange(len(used), dtype=np.int32)
+        x, y, z = x[used], y[used], z[used]
+        triangles = remap[triangles]
+        n_verts = len(used)
+        log.info("render_triset_png: downsampled to %d verts, %d tris",
+                 n_verts, len(triangles))
+
+    valid = np.isfinite(z)
+    if not valid.any():
+        raise ValueError("All z-values are NaN or infinite")
+    vmin, vmax = float(z[valid].min()), float(z[valid].max())
+
+    if triangles is not None:
+        tri = Triangulation(x, y, triangles)
+    else:
+        tri = Triangulation(x, y)  # Delaunay fallback
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+
+    tcf = ax.tripcolor(
+        tri, z, cmap=cmap, shading="gouraud",
+        norm=Normalize(vmin=vmin, vmax=vmax),
+    )
+
+    cbar = fig.colorbar(tcf, ax=ax, shrink=0.85, pad=0.02)
+    cbar.set_label(f"Depth ({unit})", fontsize=10)
+
+    ax.set_xlabel("Easting (m)", fontsize=10)
+    ax.set_ylabel("Northing (m)", fontsize=10)
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.3, linewidth=0.5)
+    ax.tick_params(labelsize=8)
+
+    x_range = x.max() - x.min()
+    y_range = y.max() - y.min()
+
+    def _fmt_km(val, _):
+        return f"{val / 1000:.1f}"
+
+    if x_range > 5000 or y_range > 5000:
+        ax.xaxis.set_major_formatter(FuncFormatter(_fmt_km))
+        ax.yaxis.set_major_formatter(FuncFormatter(_fmt_km))
+        ax.set_xlabel("Easting (km)", fontsize=10)
+        ax.set_ylabel("Northing (km)", fontsize=10)
+
+    if title:
+        ax.set_title(title, fontsize=12, fontweight="bold")
+
+    # Stats annotation
+    ax.annotate(
+        f"{n_verts:,} verts · {n_tris:,} tris · z: {vmin:.1f}…{vmax:.1f} {unit}",
+        xy=(0.01, 0.01), xycoords="axes fraction",
+        fontsize=7, color="gray", alpha=0.8,
+    )
+
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=dpi)
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # PostgreSQL path  (fast, local)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -879,8 +993,13 @@ async def _rest_grid2d_surface(
 
         # Z-values
         r_al = await client.get(f"{base_obj}/arrays", headers=hdr)
-        r_al.raise_for_status()
-        arr_list = r_al.json() or []
+        if r_al.status_code in (404, 405, 412):
+            log.warning("_rest_grid2d_surface: HTTP %d on arrays for %s",
+                        r_al.status_code, uuid)
+            arr_list = []
+        else:
+            r_al.raise_for_status()
+            arr_list = r_al.json() or []
 
         arr_path = ""
         for a in arr_list:
@@ -937,8 +1056,13 @@ async def _rest_geometry3d(
             return _surface_to_3d(surface)
 
         r_al = await client.get(f"{obj_url}/arrays", headers=hdr)
-        r_al.raise_for_status()
-        arr_list = r_al.json() or []
+        if r_al.status_code in (404, 405, 412):
+            log.warning("_rest_geometry3d: HTTP %d on arrays for %s/%s",
+                        r_al.status_code, typ, uuid)
+            arr_list = []
+        else:
+            r_al.raise_for_status()
+            arr_list = r_al.json() or []
 
         async def _read_arr(path: str) -> list:
             arr_enc = urllib.parse.quote(path, safe="")
