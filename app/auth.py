@@ -142,11 +142,16 @@ async def login(request: Request):
     request.session["pkce_state"] = state
     request.session["redirect_uri"] = redirect_uri
 
-    # Ensure offline_access is present so Azure AD returns a refresh token (#16)
+    # Ensure offline_access and openid are present.
+    # offline_access → Azure AD returns a refresh token (#16)
+    # openid → Azure AD returns an id_token with oid/upn (required for session)
     login_scopes = list(SCOPES)
     if "offline_access" not in login_scopes:
         login_scopes.append("offline_access")
         log.warning("offline_access missing from SCOPES - added for PKCE login")
+    if "openid" not in login_scopes:
+        login_scopes.append("openid")
+        log.warning("openid missing from SCOPES - added for PKCE login")
 
     client_secret = _get_client_secret()
     oauth_kwargs: Dict[str, Any] = dict(
