@@ -229,6 +229,10 @@ async def list_arrays(access_token: str, ds_enc: str, typ: str, uuid: str) -> li
             _rddms_url(f"/dataspaces/{ds_enc}/resources/{typ}/{uuid}/arrays"),
             headers=headers(access_token),
         )
+        if r.status_code in (404, 405, 412):
+            log.warning("list_arrays: HTTP %d for %s/%s – arrays not available via REST",
+                        r.status_code, typ, uuid)
+            return []
         r.raise_for_status()
         return r.json() or []
 

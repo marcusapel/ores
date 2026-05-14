@@ -1264,32 +1264,78 @@ async def keys_object_table(
     })
 
 
-# ── Depth-map PNG rendering for Grid2dRepresentation ────────────────────────
+# ── Depth-map PNG rendering for surface types ───────────────────────────────
 
 from fastapi.responses import Response
+
+# Surface types that support 2D depth-map rendering
+_MAP_SURFACE_TYPES = {"triangulatedsetrepresentation"}
+
+
+def _is_map_surface(typ: str) -> bool:
+    """Return True if *typ* is a non-Grid2d surface that supports 2D map."""
+    return any(k in (typ or "").lower() for k in _MAP_SURFACE_TYPES)
+
 
 @router.get("/keys/object/map.png")
 async def keys_object_map_png(
     request: Request,
     ds: str = Query(..., description="Dataspace path"),
-    uuid: str = Query(..., description="UUID of Grid2dRepresentation"),
+    uuid: str = Query(..., description="UUID of the object"),
+    typ: str = Query("", description="RESQML type (omit for Grid2d)"),
     cmap: str = Query("viridis_r", description="Matplotlib colormap"),
     dpi: int = Query(120, ge=72, le=300, description="Image DPI"),
     w: int = Query(10, ge=4, le=20, description="Figure width (inches)"),
     h: int = Query(8, ge=4, le=16, description="Figure height (inches)"),
 ):
     """
-    Render a Grid2dRepresentation as a depth-map PNG with correct RESQML
-    coordinate rotation, colour bar, grid lines and CRS annotation.
+    Render a surface as a depth-map PNG.
 
-    Fetches the object, its z-value array and the referenced CRS in one
-    logical transaction against the Reservoir DDMS REST API.
+    Supports Grid2dRepresentation (regular lattice) and
+    TriangulatedSetRepresentation (irregular triangulated mesh).
     """
     at = _access_token(request)
+    uuid_s = _sanitize_uuid(uuid)
 
+    # ── Non-Grid2d surface types (TriangulatedSet etc.) ───────────────
+    if typ and _is_map_surface(typ):
+        typ_s = _sanitize_type(typ)
+        try:
+            _t0 = time.monotonic()
+            geo = await resqml_viz.fetch_geometry_3d(at, ds, typ_s, uuid_s)
+            _t1 = time.monotonic()
+            log.info("map.png(triset): fetch %s uuid=%s took %.1fs",
+                     typ_s, uuid_s, _t1 - _t0)
+        except Exception as e:
+            log.exception("map.png(triset): fetch_geometry_3d failed: %s", e)
+            raise HTTPException(502, f"Failed to fetch geometry: {e}")
+
+        positions = geo.get("positions") or []
+        indices = geo.get("indices") or []
+        title = geo.get("title") or uuid_s
+        if not positions:
+            raise HTTPException(404, "No geometry data available for this surface")
+
+        try:
+            _t2 = time.monotonic()
+            png_bytes = resqml_viz.render_triset_png(
+                positions, indices,
+                title=title, cmap=cmap, figsize=(w, h), dpi=dpi,
+            )
+            _t3 = time.monotonic()
+            n_verts = len(positions) // 3
+            log.info("map.png(triset): render %d verts took %.1fs (%d bytes)",
+                     n_verts, _t3 - _t2, len(png_bytes))
+        except Exception as e:
+            log.exception("map.png(triset): render failed: %s", e)
+            raise HTTPException(500, f"Render failed: {e}")
+
+        return Response(content=png_bytes, media_type="image/png")
+
+    # ── Grid2d (original path) ────────────────────────────────────────
     try:
         _t0 = time.monotonic()
-        surface = await resqml_viz.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+        surface = await resqml_viz.fetch_grid2d_surface(at, ds, uuid_s)
         _t1 = time.monotonic()
         log.info("map.png: fetch ds=%s uuid=%s took %.1fs", ds, uuid, _t1 - _t0)
     except Exception as e:
@@ -1343,17 +1389,52 @@ async def keys_object_map_png(
 async def keys_object_map_json(
     request: Request,
     ds: str = Query(..., description="Dataspace path"),
-    uuid: str = Query(..., description="UUID of Grid2dRepresentation"),
+    uuid: str = Query(..., description="UUID of the object"),
+    typ: str = Query("", description="RESQML type (omit for Grid2d)"),
 ):
     """
-    Return the parsed surface metadata (geometry, CRS, dims, stats) as JSON
-    - useful for the front-end to know what it can plot before requesting
-    the full PNG.
+    Return surface metadata (geometry, CRS, dims, stats) as JSON.
+
+    Supports Grid2dRepresentation and TriangulatedSetRepresentation.
     """
     at = _access_token(request)
+    uuid_s = _sanitize_uuid(uuid)
 
+    # ── Non-Grid2d surface types ──────────────────────────────────────
+    if typ and _is_map_surface(typ):
+        typ_s = _sanitize_type(typ)
+        try:
+            geo = await resqml_viz.fetch_geometry_3d(at, ds, typ_s, uuid_s)
+        except Exception as e:
+            raise HTTPException(502, f"Failed to fetch geometry: {e}")
+
+        positions = geo.get("positions") or []
+        indices = geo.get("indices") or []
+        n_verts = len(positions) // 3
+        n_tris = len(indices) // 3
+        title = geo.get("title") or uuid_s
+        zmin = geo.get("zmin", 0)
+        zmax = geo.get("zmax", 1)
+
+        stats = {}
+        if n_verts > 0:
+            stats = {
+                "min": round(zmin, 2), "max": round(zmax, 2),
+                "count": n_verts,
+            }
+
+        return JSONResponse({
+            "title": title,
+            "dims": [n_verts, n_tris],
+            "geometry": None,
+            "crs": None,
+            "stats": stats,
+            "kind": "triset",
+        })
+
+    # ── Grid2d (original path) ────────────────────────────────────────
     try:
-        surface = await resqml_viz.fetch_grid2d_surface(at, ds, _sanitize_uuid(uuid))
+        surface = await resqml_viz.fetch_grid2d_surface(at, ds, uuid_s)
     except Exception as e:
         raise HTTPException(502, f"Failed to fetch surface: {e}")
 
