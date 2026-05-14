@@ -112,9 +112,6 @@
       <span class="inst-toast" id="inst-toast"></span>
     </div>
 
-    {% set active_info = instances.get(active_instance, {}) %}
-    <div id="auth-warning" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;text-align:left;font-size:13px;color:#664d03;">
-    </div>
     <a class="btn-login" href="/login">Sign in with Microsoft</a>
     <div class="note">Uses Azure AD with PKCE - no passwords are stored by this app.</div>
   </div>
@@ -234,8 +231,6 @@
         } else {
           toast.textContent = `Switched to ${name} (token pending - sign in below)`;
           toast.className = 'inst-toast';
-          // Update warning banner
-          checkInstanceToken();
           setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
       } else {
@@ -247,35 +242,6 @@
       toast.className = 'inst-toast error';
     }
   }
-
-  /* ── Dynamic auth check: probe active instance on page load ── */
-  async function checkInstanceToken() {
-    const warn = document.getElementById('auth-warning');
-    const activeBtn = document.querySelector('.inst-btn.active');
-    const name = activeBtn ? activeBtn.dataset.name : 'active instance';
-    try {
-      const r = await fetch('/api/instances/probe');
-      const data = await r.json();
-      if (data.ok) {
-        // Token works - skip login page entirely
-        window.location.href = '/ores';
-        return;
-      }
-      // per_user_pkce instances don't mint shared tokens - sign-in is expected
-      if (data.auth_mode === 'per_user_pkce') {
-        warn.innerHTML = `<strong>Instance "${name}" requires individual sign-in</strong><br>` +
-          'Each user authenticates with their own Equinor account for per-user permissions and audit.';
-        warn.style.display = 'block';
-        return;
-      }
-    } catch (_) { /* stay on login */ }
-    // Token didn't work - show contextual message
-    warn.innerHTML = `<strong>⚠ Instance "${name}" has no valid token</strong><br>` +
-      'The service principal or refresh token may have failed. ' +
-      'Sign in with your Microsoft account below, or switch instance.';
-    warn.style.display = 'block';
-  }
-  checkInstanceToken();
 
   /* ── Add dialog ── */
   function openAddDialog() { document.getElementById('add-modal').classList.add('open'); document.getElementById('f-name').focus(); }
