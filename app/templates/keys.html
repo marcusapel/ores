@@ -85,6 +85,7 @@
   }
   .btn-show3d-results:hover { background: #0e6b0e; box-shadow: 0 3px 8px rgba(16,124,16,0.45); }
   .btn-show3d-results svg { width: 16px; height: 16px; fill: currentColor; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
 </style>
 {% endblock %}
 
@@ -103,6 +104,9 @@
         <span id="ds-count" style="font-size:11px;color:#999;white-space:nowrap;"></span>
       </div>
       <select id="ds" size="6" multiple style="width:100%;"></select>
+      <div id="ds-loading-status" style="display:none;font-size:12px;color:#666;animation:pulse 1.5s ease-in-out infinite;">
+        ⏳ Loading dataspaces from RDDMS… <span id="ds-loading-elapsed">0</span>s
+      </div>
       <span class="muted" style="font-size:11px;">Ctrl/Cmd+click for multi-select (GraphQL deep search)
         &nbsp;|&nbsp; <span style="color:#107c10;">&bull; local</span>
         &nbsp;<span style="color:#004578;">&#9675; remote</span>
@@ -1549,7 +1553,12 @@
       }
 
       // Progressive load: local first (instant), then remote in background
-      showLoading('Loading dataspaces…');
+      const dsStatus = document.getElementById('ds-loading-status');
+      const dsElapsed = document.getElementById('ds-loading-elapsed');
+      let elapsed = 0;
+      dsStatus.style.display = 'block';
+      const timer = setInterval(() => { elapsed++; if (dsElapsed) dsElapsed.textContent = elapsed; }, 1000);
+
       let gotSome = false;
       try {
         // Phase 1: fast local PG dataspaces
@@ -1566,9 +1575,13 @@
         // Non-fatal - continue to remote
         console.debug('Local dataspaces failed:', e);
       }
-      hideLoading();
 
-      // Phase 2: fetch remote in background (no spinner, non-blocking)
+      // Phase 2: fetch remote (with status update)
+      if (dsStatus) dsStatus.innerHTML = '⏳ Loading remote dataspaces… <span id="ds-loading-elapsed">' + elapsed + '</span>s';
+      const dsElapsed2 = document.getElementById('ds-loading-elapsed');
+      clearInterval(timer);
+      const timer2 = setInterval(() => { elapsed++; if (dsElapsed2) dsElapsed2.textContent = elapsed; }, 1000);
+
       (async () => {
         try {
           const rRemote = await fetch('/keys/dataspaces.json?source=remote', { credentials: 'same-origin' });
@@ -1591,6 +1604,8 @@
         } catch (e) {
           console.debug('Remote dataspaces failed:', e);
         }
+        clearInterval(timer2);
+        if (dsStatus) dsStatus.style.display = 'none';
         // Final fallback if nothing loaded
         if (!gotSome) {
           if (Array.isArray(window.PREFILL_DS) && window.PREFILL_DS.length > 0) {
