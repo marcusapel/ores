@@ -28,7 +28,8 @@ from PyQt6.QtWidgets import (
     QSplitter, QTreeWidget, QTreeWidgetItem, QLabel, QPushButton,
     QTextEdit, QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox,
     QComboBox, QLineEdit, QTabWidget, QScrollArea, QCheckBox,
-    QProgressBar, QFrame, QSizePolicy, QFileDialog
+    QProgressBar, QFrame, QSizePolicy, QFileDialog, QColorDialog,
+    QGridLayout
 )
 from PyQt6.QtGui import QPixmap, QFont, QColor, QTextCursor, QIcon
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
@@ -42,10 +43,11 @@ from weco.engine import get_version
 # ═══════════════════════════════════════════════════════════════════════════
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent  # bin/ → project root
-DATA_DIR = SCRIPT_DIR / "data"
-OUTPUT_DIR = SCRIPT_DIR / "output"
+DATA_DIR = SCRIPT_DIR / "demo" / "data"
+OUTPUT_DIR = SCRIPT_DIR / "tmp" / "img"
 
 WELL_COLORS = plt.cm.tab10.colors
+LOG_COLORS = ['#1565c0', '#c62828', '#2e7d32', '#6a1b9a', '#e65100']
 
 # Full option reset dict to prevent global state leakage
 RESET_OPTS = {
@@ -63,13 +65,16 @@ RESET_OPTS = {
 }
 
 DATASETS = {
+    # ── Basic Teaching Demos ──────────────────────────────────────────
     "1_variance_weights": {
         "title": "Variance Cost Weight Sweep",
         "subtitle": "3 synthetic wells · 2 data properties",
         "description": (
-            "Three synthetic wells with two data properties (VarData1, VarData2).\n"
-            "Sweep the relative weight between the two properties to see how\n"
-            "changing var-weight steers the correlation result."
+            "Three synthetic wells with two log curves (VarData1, VarData2).\n"
+            "The engine correlates unit boundaries by minimising log variance\n"
+            "at each tie-point. Sweep the relative weight to see how the\n"
+            "choice of primary log steers which boundaries are honoured.\n"
+            "Grey framework lines show the overall alignment geometry."
         ),
         "wells": DATA_DIR / "data_set_1.1" / "wells.txt",
         "runs": [
@@ -81,8 +86,6 @@ DATASETS = {
                                              "var_data2": "VarData2", "var_weight2": 0.5}},
             {"name": "Favor1 70/30", "opts": {"var_data": "VarData1", "var_weight": 0.7,
                                               "var_data2": "VarData2", "var_weight2": 0.3}},
-            {"name": "Favor2 30/70", "opts": {"var_data": "VarData1", "var_weight": 0.3,
-                                              "var_data2": "VarData2", "var_weight2": 0.7}},
         ],
         "common_opts": {"cost_function": "composite", "order": "linear",
                         "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10},
@@ -91,9 +94,10 @@ DATASETS = {
         "title": "No-Crossing Constraint",
         "subtitle": "3 synthetic wells · region constraint",
         "description": (
-            "Adds no-crossing constraint on region 'NoCrossing' which forces\n"
-            "correlation lines to respect zone ordering (stratigraphic units).\n"
-            "Demonstrates hard constraints on the correlation graph."
+            "No-crossing on 'NoCrossing' region enforces that unit boundaries\n"
+            "cannot swap order — like biozone datums that are time-equivalent.\n"
+            "Red lines = zone boundaries; if a gap (blue) appears, it means\n"
+            "the engine infers a hiatus (missing time) in that well."
         ),
         "wells": DATA_DIR / "data_set_1.2" / "wells.txt",
         "runs": [
@@ -106,10 +110,9 @@ DATASETS = {
         "title": "Distality-Facies Cost",
         "subtitle": "2 real wells · palaeo-geographic cost",
         "description": (
-            "Two wells (A, B) with DISTAL, FACIES properties and\n"
-            "regions (BIOZONES, SEQUENCE). Uses dist-distal/dist-facies cost\n"
-            "to penalise inconsistent facies vs. distality relationships.\n"
-            "Order = distality (most-distal well first)."
+            "Two wells (A, B) with DISTAL/FACIES_1 regions.\n"
+            "Distality cost penalises correlating proximal facies\n"
+            "with distal facies. Order = distality (most-distal first)."
         ),
         "wells": DATA_DIR / "data_set_3" / "wells.txt",
         "runs": [
@@ -117,15 +120,14 @@ DATASETS = {
                 "dist_distal": "DISTAL", "dist_facies": "FACIES_1", "dist_scaling": 1.0}},
         ],
         "common_opts": {"cost_function": "composite", "order": "distality",
-                        "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 50},
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
     },
     "4_gap_cost": {
         "title": "Gap Cost Exploration",
         "subtitle": "2 real wells · varying gap penalty",
         "description": (
-            "Same wells as dataset 3. Explores the effect of const-gap-cost\n"
-            "which penalises gaps (missing intervals). Higher gap cost forces\n"
-            "more 1-to-1 matching; lower allows more gaps/hiatuses."
+            "Explores the effect of const-gap-cost which penalises gaps.\n"
+            "Higher gap cost → more 1-to-1 matching; lower → allows hiatuses."
         ),
         "wells": DATA_DIR / "data_set_4" / "wells.txt",
         "runs": [
@@ -137,15 +139,16 @@ DATASETS = {
                                               "dist_distal": "DISTAL", "dist_facies": "FACIES_1"}},
         ],
         "common_opts": {"cost_function": "composite", "order": "distality",
-                        "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 50},
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
     },
     "5_ordering": {
         "title": "Ordering Strategy Comparison",
         "subtitle": "3 synthetic wells · 3 ordering modes",
         "description": (
-            "Same 3 wells with variance cost, but different merge ordering:\n"
-            "linear, pyramidal, inverse. Shows how the order in which wells\n"
-            "are merged in the task tree affects the best correlation."
+            "Same wells, but different merge order (which pair is correlated\n"
+            "first). Order affects where gaps (hiatuses) are placed — the\n"
+            "primary source of uncertainty in stratigraphic correlation.\n"
+            "Compare gap positions (blue lines) between modes."
         ),
         "wells": DATA_DIR / "data_set_1.1" / "wells.txt",
         "runs": [
@@ -156,6 +159,264 @@ DATASETS = {
         "common_opts": {"cost_function": "composite", "var_data": "VarData1",
                         "var_weight": 1.0, "max_cor": 10, "nbr_cor": 10,
                         "out_nbr_cor": 10},
+    },
+    # ── Domain Demos ──────────────────────────────────────────────────
+    "6_coal_basin": {
+        "title": "Coal Basin – DEN+GR Seam Correlation",
+        "subtitle": "10 coal boreholes · 6 named seams",
+        "description": (
+            "Correlate coal SEAM boundaries across the basin.\n"
+            "Red lines = seam contacts (sharp DEN transitions at 1.3→2.5 g/cc).\n"
+            "Blue gaps = seam splitting/merging or washout erosion.\n"
+            "The k-best results capture uncertainty in seam continuity —\n"
+            "crucial for resource estimation and mine planning."
+        ),
+        "geology_note": (
+            "Setting: Intracratonic coal basin (Carboniferous, Ruhr/Upper Silesian analogue).\n"
+            "Cyclothem model (roof shale → marine band → COAL → tonstein → seat earth → sandstone → siltstone).\n"
+            "6 named seams: Katharina (3.0 m, 100% persistent), Sonnenschein (1.5 m, marine band above),\n"
+            "Präsident (2.5 m, frequent splitting), Zollverein (1.8 m), Flöz 9 (1.2 m), Flöz 10 (0.8 m).\n"
+            "Key features: seam splitting, washout zones (fluvial erosion), tonstein isochronous markers,\n"
+            "marine bands (Goniatitenschicht), brandschiefer (burnt shale), ironstone nodules.\n"
+            "References: Diessel (1992), Thomas (2002), Ward (2016)."
+        ),
+        "wells": DATA_DIR / "data_set_coal" / "wells_10.txt",
+        "runs": [
+            {"name": "DEN+GR (standard)", "opts": {
+                "var_data": "DEN", "var_weight": 0.6,
+                "var_data2": "GR", "var_weight2": 0.4,
+                "const_gap_cost": 3.0}},
+            {"name": "DEN only", "opts": {
+                "var_data": "DEN", "var_weight": 1.0,
+                "const_gap_cost": 3.0}},
+            {"name": "Multi-log (5)", "opts": {
+                "var_data": "GR", "var_weight": 0.25,
+                "var_data2": "DEN", "var_weight2": 0.35,
+                "var_data3": "RT", "var_weight3": 0.15,
+                "var_data4": "SON", "var_weight4": 0.15,
+                "var_data5": "NEU", "var_weight5": 0.10,
+                "const_gap_cost": 3.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 20, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 15},
+    },
+    "7_quaternary": {
+        "title": "Quaternary – GR+RT Hydrogeology",
+        "subtitle": "20 shallow wells · glacial lowland",
+        "description": (
+            "Correlate aquifer/aquitard BOUNDARIES (sand↔till contacts).\n"
+            "Red lines = lithological contacts (GR transitions at aquifer tops/bases).\n"
+            "Blue gaps = glacial erosion surfaces or unit pinch-out.\n"
+            "Key for groundwater model layering (which aquifers connect)."
+        ),
+        "geology_note": (
+            "Setting: Northern European glacial lowland (Pleistocene).\n"
+            "5 lithostratigraphic units: Holocene cover → Weichselian till/outwash →\n"
+            "Eemian interglacial (clay/peat, often missing) → Saalian till/outwash → Elsterian tunnel-valley fill.\n"
+            "6 facies: gravel, sand, silty sand, till, clay, peat + periglacial features\n"
+            "(ice-wedge casts, cryoturbation, dropstones).\n"
+            "Logs: GR (lithology), RT (permeability), SPT (geotechnical), COND (hydraulic conductivity),\n"
+            "MS (magnetic susceptibility — till indicator), WC (water content).\n"
+            "References: Ehlers & Gibbard (2004), Keys (1990), Vandenberghe (2003)."
+        ),
+        "wells": DATA_DIR / "data_set_quaternary" / "wells_20.txt",
+        "runs": [
+            {"name": "GR+RT (standard)", "opts": {
+                "var_data": "GR", "var_weight": 0.7,
+                "var_data2": "RT", "var_weight2": 0.3,
+                "const_gap_cost": 1.5}},
+            {"name": "GR+RT+SPT (3-log)", "opts": {
+                "var_data": "GR", "var_weight": 0.50,
+                "var_data2": "RT", "var_weight2": 0.25,
+                "var_data3": "SPT", "var_weight3": 0.25,
+                "const_gap_cost": 2.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "8_shallow_marine": {
+        "title": "Shallow Marine – GR+RHOB+DT Reservoir",
+        "subtitle": "10 wells · wave-dominated shoreface",
+        "description": (
+            "Correlate FLOODING SURFACES (parasequence boundaries).\n"
+            "Red lines = maximum flooding surfaces (GR spikes at shale drapes).\n"
+            "Blue gaps = condensation or bypass — thinner downdip sections.\n"
+            "BIOZONE no-crossing locks bio-datum planes for Wheeler diagram."
+        ),
+        "geology_note": (
+            "Setting: Hugin Formation analogue (Upper Jurassic, North Sea).\n"
+            "Wave-dominated shoreface / bay-fill system, 10 wells along depositional dip.\n"
+            "5 parasequences (PS1–PS5) with clinoform geometry and lateral facies change.\n"
+            "8 facies: offshore mud, offshore transition, lower/upper shoreface, foreshore,\n"
+            "bay-fill mud, tidal channel, transgressive lag.\n"
+            "Biozones BZ1 (base PS2) and BZ2 (base PS4) serve as no-crossing constraints.\n"
+            "References: Baville (2022), Kieft et al. (2010), Catuneanu (2006)."
+        ),
+        "wells": DATA_DIR / "data_set_shallow_marine" / "wells.txt",
+        "runs": [
+            {"name": "GR+RHOB+DT", "opts": {
+                "var_data": "GR", "var_weight": 0.5,
+                "var_data2": "RHOB", "var_weight2": 0.3,
+                "var_data3": "DT", "var_weight3": 0.2,
+                "const_gap_cost": 2.0}},
+            {"name": "With BIOZONE no-crossing", "opts": {
+                "var_data": "GR", "var_weight": 0.5,
+                "var_data2": "RHOB", "var_weight2": 0.3,
+                "var_data3": "DT", "var_weight3": 0.2,
+                "no_crossing": "BIOZONE",
+                "const_gap_cost": 2.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "9_fluvial": {
+        "title": "Fluvial – GR Channel Correlation",
+        "subtitle": "12 wells · laterally discontinuous channels",
+        "description": (
+            "Correlate CHANNEL BASE/TOP contacts (sand↔floodplain transitions).\n"
+            "Blue gaps dominate — channels pinch out laterally by definition.\n"
+            "Low gap-cost allows hiatuses (not every channel reaches every well).\n"
+            "High gap-cost forces layer-cake (wrong for fluvial architecture)."
+        ),
+        "geology_note": (
+            "Setting: Meandering/braided fluvial system.\n"
+            "6 facies: floodplain (GR~120), crevasse splay (GR~75), channel fill (GR~30),\n"
+            "channel lag (GR~15), levee (GR~90), oxbow lake (GR~110).\n"
+            "Channels meander sinusoidally and pinch out laterally — this is one of the\n"
+            "hardest correlation scenarios because sand bodies are inherently discontinuous.\n"
+            "The gap cost parameter controls the balance between layer-cake (wrong) and\n"
+            "event-based (correct) interpretations.\n"
+            "References: Bridge (2003), Miall (2014)."
+        ),
+        "wells": DATA_DIR / "data_set_fluvial" / "wells.txt",
+        "runs": [
+            {"name": "GR + gap cost", "opts": {
+                "var_data": "GR", "var_weight": 1.0,
+                "const_gap_cost": 0.5}},
+            {"name": "GR no gap cost", "opts": {
+                "var_data": "GR", "var_weight": 1.0,
+                "const_gap_cost": 0.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "10_delta": {
+        "title": "Delta – GR+DEN Prograding System",
+        "subtitle": "8 wells · shingled parasequences",
+        "description": (
+            "Correlate CLINOFORM SURFACES (parasequence boundaries).\n"
+            "Red lines = prodelta↔delta-front transitions.\n"
+            "Gaps indicate condensation in distal positions (Wheeler wedge).\n"
+            "k-best results show alternative clinoform geometries."
+        ),
+        "geology_note": (
+            "Setting: Prograding river-dominated delta.\n"
+            "8 facies: prodelta shale, distal/proximal delta front, distributary mouth bar,\n"
+            "distributary channel, interdistributary bay, marsh, delta plain.\n"
+            "6 parasequences with coarsening-upward profiles; beds thicken and coarsen\n"
+            "landward as the delta progrades basinward.\n"
+            "Wells ordered by distality — proximal wells see more sand, distal more shale.\n"
+            "References: Bhattacharya (2006), Olariu & Bhattacharya (2006)."
+        ),
+        "wells": DATA_DIR / "data_set_delta" / "wells.txt",
+        "runs": [
+            {"name": "GR+DEN", "opts": {
+                "var_data": "GR", "var_weight": 0.6,
+                "var_data2": "DEN", "var_weight2": 0.4}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "11_bryson": {
+        "title": "Bryson – Zone-Constrained Facies",
+        "subtitle": "7 wells · Appalachian Basin (categorical)",
+        "description": (
+            "Correlate ZONE and MEMBER boundaries using categorical facies.\n"
+            "ZONE no-crossing = hard constraint (dated horizons cannot swap).\n"
+            "Red lines show where ZONE/MEMBER/SEQSTRAT boundaries match.\n"
+            "Gaps = condensation or non-deposition within a zone."
+        ),
+        "geology_note": (
+            "Setting: Appalachian Basin (Devonian–Carboniferous).\n"
+            "Purely categorical correlation — no continuous wireline logs.\n"
+            "Data: FACIES (lithofacies codes), MEMBER (lithostratigraphic member),\n"
+            "ZONE (biostratigraphic zone — time-equivalent), SEQSTRAT (sequence boundaries).\n"
+            "ZONE no-crossing enforces that biozone datums do not swap order,\n"
+            "demonstrating integration of bio- and litho-stratigraphy.\n"
+            "Reference: Bryson (2000), Haq et al. (1987)."
+        ),
+        "wells": DATA_DIR / "data_set_bryson" / "wells.txt",
+        "runs": [
+            {"name": "FACIES + ZONE nc", "opts": {
+                "var_data": "FACIES", "no_crossing": "ZONE"}},
+            {"name": "FACIES only", "opts": {
+                "var_data": "FACIES"}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+    },
+    "12_sigrun": {
+        "title": "Sigrun – GR+NPHI North Sea",
+        "subtitle": "2 wells · SEQUENCE boundaries",
+        "description": (
+            "Correlate SEQUENCE boundaries in a North Sea well pair.\n"
+            "Red lines = sequence boundary / MFS positions.\n"
+            "Gaps indicate condensed sections or erosion at unconformities.\n"
+            "The 2-well case shows pure DTW alignment for well-tie."
+        ),
+        "geology_note": (
+            "Setting: Gudrun-Sigrun area, Northern North Sea (Upper Jurassic).\n"
+            "Hugin and Draupne Formations — marine shale/sand sequence.\n"
+            "2-well correlation demonstrates DTW well-tie (log-shape matching)\n"
+            "without structural control — purely data-driven alignment.\n"
+            "Sequence boundaries and maximum flooding surfaces (MFS) are the\n"
+            "primary correlation targets.\n"
+            "Reference: Kieft et al. (2010), Partington et al. (1993)."
+        ),
+        "wells": DATA_DIR / "data_set_sigrun" / "wells.txt",
+        "runs": [
+            {"name": "GR+NPHI", "opts": {
+                "var_data": "GR", "var_weight": 0.6,
+                "var_data2": "NPHI", "var_weight2": 0.4}},
+            {"name": "GR only", "opts": {
+                "var_data": "GR", "var_weight": 1.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+    },
+    "13_troll": {
+        "title": "Troll – Facies+Distality Categorical",
+        "subtitle": "5 wells · categorical correlation",
+        "description": (
+            "Correlate BIOZONE and SEQUENCE boundaries using categorical\n"
+            "facies + distality (Walther's Law: facies belts shift predictably).\n"
+            "Red lines = facies-belt transitions (boundary correlation).\n"
+            "Gaps = condensation in distal or bypass in proximal wells."
+        ),
+        "geology_note": (
+            "Setting: Troll field, Northern North Sea (Sognefjord Formation, Upper Jurassic).\n"
+            "Thick sand reservoir (~150 m) with lateral facies transitions.\n"
+            "Walther's Law: vertical facies succession mirrors lateral facies belts —\n"
+            "the distality cost function encodes this principle mathematically.\n"
+            "No continuous logs — demonstrates that categorical facies + distality\n"
+            "ordering alone can drive meaningful stratigraphic correlation.\n"
+            "Reference: Dreyer et al. (2005), Holgate et al. (2013)."
+        ),
+        "wells": DATA_DIR / "data_set_troll" / "wells.txt",
+        "runs": [
+            {"name": "FACIES+DISTALITY", "opts": {
+                "var_data": "FACIES", "var_weight": 0.6,
+                "var_data2": "DISTALITY", "var_weight2": 0.4}},
+            {"name": "FACIES only", "opts": {
+                "var_data": "FACIES", "var_weight": 1.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
     },
 }
 
@@ -195,13 +456,18 @@ class CorrelationWorker(QThread):
 #  Plot Generation
 # ═══════════════════════════════════════════════════════════════════════════
 
-def generate_plot(well_list, res_file, title, data_name=None, depth_name=None, cor_index=0):
-    """Generate a correlation plot and return the PNG path (temp file)."""
+def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
+                  cor_index=0, plot_settings=None):
+    """Generate a correlation plot with wells in narrow columns and correlation
+    lines drawn in dedicated gap corridors between them.  Includes a legend."""
     if res_file is None or res_file.get_nbr_results() == 0:
         return None
 
     n_wells = len(res_file.well_id)
     wells = [well_list.wells[wid] for wid in res_file.well_id]
+
+    SKIP_DATA = {"Depth", "DEPTH", "MD", "TVD", "TVDSS", "X", "Y", "Z"}
+    ZONE_CMAP = plt.cm.Set3.colors  # 12 distinct pastel colors
 
     def get_depth(well):
         for dn in ("Depth", "DEPTH", "MD"):
@@ -211,60 +477,254 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None, c
 
     depths = [get_depth(w) for w in wells]
 
-    if data_name is None:
-        for dname in wells[0].data:
-            if dname.upper() not in ("DEPTH", "MD", "TVD", "TVDSS"):
-                data_name = dname
-                break
+    # Identify log channels (up to 3) for display
+    def get_log_names(well, max_logs=3):
+        names = []
+        for k in well.data:
+            if k not in SKIP_DATA and len(names) < max_logs:
+                names.append(k)
+        return names
 
-    fig_width = max(8, 2.5 * n_wells + 2)
-    fig, axes = plt.subplots(1, n_wells, figsize=(fig_width, 7), sharey=False)
-    if n_wells == 1:
-        axes = [axes]
+    log_names = get_log_names(wells[0])
 
-    fig.suptitle(title, fontsize=11, fontweight="bold")
+    # Identify regions for zone bands (up to 2)
+    def get_region_names(well, max_regions=2):
+        return list(well.region.keys())[:max_regions] if hasattr(well, 'region') and well.region else []
 
-    for i, (well, ax, depth) in enumerate(zip(wells, axes, depths)):
-        ax.set_title(well.name, fontsize=10, color=WELL_COLORS[i % 10])
-        ax.invert_yaxis()
-        ax.set_ylabel("Depth")
+    region_names = get_region_names(wells[0])
+    has_zones = bool(region_names)
 
-        if data_name and data_name in well.data:
-            vals = list(well.data[data_name])[:len(depth)]
-            ax.plot(vals, depth[:len(vals)], color=WELL_COLORS[i % 10],
-                    linewidth=1.2, label=data_name)
-            ax.set_xlabel(data_name)
-            ax.legend(fontsize=7, loc="lower right")
+    # ── GridSpec layout: [well | gap | well | gap | ... | well] ───────
+    # Width ratios: well columns narrow, gap columns for correlation lines
+    n_gaps = n_wells - 1
+    well_ratio = 1.0
+    gap_ratio = 0.4 if n_wells <= 5 else 0.25
+    width_ratios = []
+    for i in range(n_wells):
+        width_ratios.append(well_ratio)
+        if i < n_gaps:
+            width_ratios.append(gap_ratio)
+    total_cols = n_wells + n_gaps
+
+    fig_width = max(10, 1.8 * n_wells + 1.0 * n_gaps + 2)
+    fig_height = 8
+    fig = plt.figure(figsize=(fig_width, fig_height))
+    gs = fig.add_gridspec(1, total_cols, width_ratios=width_ratios,
+                          wspace=0.05, left=0.04, right=0.96, top=0.90, bottom=0.08)
+
+    fig.suptitle(title, fontsize=11, fontweight="bold", y=0.96)
+
+    # Create well axes (even indices in gridspec) and gap axes (odd indices)
+    well_axes = []
+    gap_axes = []
+    for col_idx in range(total_cols):
+        if col_idx % 2 == 0:
+            ax = fig.add_subplot(gs[0, col_idx])
+            well_axes.append(ax)
         else:
+            ax = fig.add_subplot(gs[0, col_idx])
+            ax.set_xlim(0, 1)
+            ax.axis('off')  # invisible — just a corridor for lines
+            gap_axes.append(ax)
+
+    axes = well_axes  # for compatibility
+
+    # ── Draw wells ────────────────────────────────────────────────────
+    for i, (well, ax, depth) in enumerate(zip(wells, axes, depths)):
+        ax.set_title(well.name, fontsize=8, fontweight="bold",
+                     color=WELL_COLORS[i % 10], pad=3)
+        ax.invert_yaxis()
+        if i == 0:
+            ax.set_ylabel("Depth", fontsize=8)
+        else:
+            ax.set_yticklabels([])
+
+        # ── Zone/region background bands ──────────────────────────────
+        if has_zones:
+            for ri, rname in enumerate(region_names):
+                if hasattr(well, 'region') and rname in well.region:
+                    raw_region = list(well.region[rname])
+                    if raw_region and isinstance(raw_region[0], (list, tuple)) and len(raw_region[0]) >= 3:
+                        unique_zones = sorted(set(e[0] for e in raw_region if e[0] is not None))
+                        zone_color_map = {z: ZONE_CMAP[j % len(ZONE_CMAP)]
+                                          for j, z in enumerate(unique_zones)}
+                        for entry in raw_region:
+                            val, start, count = entry[0], entry[1], entry[2]
+                            if val is None or val not in zone_color_map:
+                                continue
+                            end = start + count - 1
+                            y_top = depth[start] if start < len(depth) else start
+                            y_bot = depth[min(end, len(depth)-1)] if end < len(depth) else end
+                            alpha = 0.25 if ri == 0 else 0.15
+                            ax.axhspan(y_top, y_bot, color=zone_color_map[val],
+                                       alpha=alpha, zorder=0)
+                            if ri == 0 and (y_bot - y_top) > 0:
+                                y_mid = (y_top + y_bot) / 2
+                                ax.text(0.03, y_mid, str(val)[:10],
+                                        transform=ax.get_yaxis_transform(),
+                                        fontsize=5, va='center', ha='left',
+                                        color='#333', alpha=0.7,
+                                        bbox=dict(boxstyle='round,pad=0.1',
+                                                  fc='white', alpha=0.5, lw=0))
+
+        # ── Log traces ────────────────────────────────────────────────
+        plotted_logs = []
+        for li, lname in enumerate(log_names):
+            if lname in well.data:
+                vals = list(well.data[lname])[:len(depth)]
+                if vals:
+                    color = LOG_COLORS[li % len(LOG_COLORS)]
+                    ax.plot(vals, depth[:len(vals)], color=color,
+                            linewidth=1.0 if li > 0 else 1.2,
+                            alpha=0.9 if li == 0 else 0.6,
+                            label=lname)
+                    plotted_logs.append(lname)
+
+        if not plotted_logs:
             ax.set_xlim(-0.5, 0.5)
             ax.axvline(0, color=WELL_COLORS[i % 10], linewidth=2)
-            ax.set_xlabel("Well Stick")
-        ax.grid(True, alpha=0.3)
 
-    # Draw correlation lines
+        ax.tick_params(labelsize=6, length=2)
+        ax.grid(True, alpha=0.15, linewidth=0.3)
+        # Remove x-tick labels to save space
+        ax.set_xticklabels([])
+
+    # ── Compute correlation line positions ────────────────────────────
     cid = min(cor_index, res_file.get_nbr_results() - 1)
     path = res_file.get_result_full_path(cid)
     cost = res_file.get_result_cost(cid)
 
-    for step, node in enumerate(path):
+    # Build boundary indices from primary (coarsest) region
+    boundary_indices = [set() for _ in range(n_wells)]
+    primary_region = None
+    if region_names:
+        best_rname, best_count = None, 999999
+        for rname in region_names:
+            total_intervals = sum(
+                len(list(w.region[rname])) for w in wells
+                if hasattr(w, 'region') and rname in w.region
+            )
+            if 0 < total_intervals < best_count:
+                best_count = total_intervals
+                best_rname = rname
+        primary_region = best_rname
+
+    for wi, well in enumerate(wells):
+        if primary_region and hasattr(well, 'region') and primary_region in well.region:
+            rlist = list(well.region[primary_region])
+            if rlist and isinstance(rlist[0], (list, tuple)) and len(rlist[0]) >= 3:
+                for entry in rlist:
+                    boundary_indices[wi].add(entry[1])
+
+    # Classify steps
+    boundary_steps = set()
+    boundary_scores = {}
+    gap_steps = set()
+    min_gap_run = max(3, len(path) // 80)
+
+    for step_idx in range(1, len(path)):
+        node = path[step_idx]
+        prev = path[step_idx - 1]
+        score = 0
+        for wi in range(n_wells):
+            if node[wi] in boundary_indices[wi] and node[wi] != prev[wi]:
+                score += 1
+        if score > 0:
+            boundary_steps.add(step_idx)
+            boundary_scores[step_idx] = score
+
+    MAX_BOUNDARY_LINES = (plot_settings or {}).get('max_boundaries', 30)
+    if len(boundary_steps) > MAX_BOUNDARY_LINES:
+        ranked = sorted(boundary_steps, key=lambda s: boundary_scores.get(s, 0), reverse=True)
+        boundary_steps = set(ranked[:MAX_BOUNDARY_LINES])
+
+    for wi in range(n_wells):
+        run_start = None
+        for step_idx in range(1, len(path)):
+            stayed = (path[step_idx][wi] == path[step_idx - 1][wi])
+            if stayed:
+                if run_start is None:
+                    run_start = step_idx
+            else:
+                if run_start is not None and (step_idx - run_start) >= min_gap_run:
+                    gap_steps.add((run_start + step_idx) // 2)
+                run_start = None
+        if run_start is not None and (len(path) - run_start) >= min_gap_run:
+            gap_steps.add((run_start + len(path) - 1) // 2)
+
+    gap_steps -= boundary_steps
+    MAX_GAP_LINES = (plot_settings or {}).get('max_gaps', 20)
+    if len(gap_steps) > MAX_GAP_LINES:
+        gap_steps = set(sorted(gap_steps)[:MAX_GAP_LINES])
+
+    n_path = len(path)
+    framework_interval = max(1, n_path // 6)
+    framework_steps = {s for s in range(0, n_path, framework_interval)}
+    framework_steps.add(0)
+    framework_steps.add(n_path - 1)
+    framework_steps -= boundary_steps
+    framework_steps -= gap_steps
+
+    # ── Draw correlation lines in gap corridors ───────────────────────
+    ps = plot_settings or {}
+    clr_boundary = ps.get('boundary', '#D32F2F')
+    clr_gap = ps.get('gap', '#1565C0')
+    clr_framework = ps.get('framework', '#999999')
+
+    for step_idx in sorted(boundary_steps | gap_steps | framework_steps):
+        node = path[step_idx]
+        if step_idx in boundary_steps:
+            color, alpha, lw = clr_boundary, 0.85, 1.4
+        elif step_idx in gap_steps:
+            color, alpha, lw = clr_gap, 0.6, 1.0
+        else:
+            color, alpha, lw = clr_framework, 0.3, 0.4
+
+        ls = ":" if step_idx in gap_steps else "-"
+
         for j in range(n_wells - 1):
             ml = node[j]
             mr = node[j + 1]
             if ml < len(depths[j]) and mr < len(depths[j + 1]):
                 yl = depths[j][ml]
                 yr = depths[j + 1][mr]
+                # Draw from right edge of well_axes[j] to left edge of well_axes[j+1]
                 con = matplotlib.patches.ConnectionPatch(
                     xyA=(1.0, yl), coordsA=axes[j].get_yaxis_transform(),
                     xyB=(0.0, yr), coordsB=axes[j + 1].get_yaxis_transform(),
-                    color="gray", alpha=0.5, linewidth=0.7)
+                    color=color, alpha=alpha, linewidth=lw, linestyle=ls,
+                    zorder=5)
                 fig.add_artist(con)
 
-    fig.text(0.5, 0.01,
-             f"Correlation #{cid}  |  Cost: {cost:.4f}  |  "
-             f"{res_file.get_nbr_results()} total correlations",
-             ha="center", fontsize=9, style="italic")
+    # ── Legend ─────────────────────────────────────────────────────────
+    from matplotlib.lines import Line2D
+    legend_elements = []
+    # Log legend entries
+    for li, lname in enumerate(log_names):
+        legend_elements.append(Line2D([0], [0], color=LOG_COLORS[li % len(LOG_COLORS)],
+                                      linewidth=1.2, label=lname))
+    # Correlation line legend
+    n_boundaries = len(boundary_steps)
+    n_gaps_count = len(gap_steps)
+    if n_boundaries:
+        legend_elements.append(Line2D([0], [0], color=clr_boundary, linewidth=1.4,
+                                      label=f'Unit boundary ({n_boundaries})'))
+    if n_gaps_count:
+        legend_elements.append(Line2D([0], [0], color=clr_gap, linewidth=1.0,
+                                      linestyle=':', label=f'Gap/hiatus ({n_gaps_count})'))
+    legend_elements.append(Line2D([0], [0], color=clr_framework, linewidth=0.5,
+                                  label='Framework'))
+    fig.legend(handles=legend_elements, loc='lower center', ncol=len(legend_elements),
+               fontsize=7, framealpha=0.8, edgecolor='#ccc',
+               bbox_to_anchor=(0.5, 0.005))
 
-    plt.tight_layout(rect=[0, 0.03, 1, 0.94])
+    # ── Title subtitle ────────────────────────────────────────────────
+    subtitle_parts = [f"Correlation #{cid}", f"Cost: {cost:.4f}",
+                      f"{res_file.get_nbr_results()} solutions"]
+    if primary_region:
+        subtitle_parts.append(f"Boundaries: {primary_region}")
+    fig.text(0.5, 0.92, "  |  ".join(subtitle_parts),
+             ha="center", fontsize=8, color="#555")
 
     # Save to output dir
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -360,6 +820,12 @@ class DemoRunnerWindow(QMainWindow):
         self.info_desc.setFont(QFont("Monospace", 10))
         info_layout.addWidget(self.info_desc)
 
+        self.info_geology = QLabel("")
+        self.info_geology.setWordWrap(True)
+        self.info_geology.setFont(QFont("", 9))
+        self.info_geology.setStyleSheet("color: #555; margin-top: 6px;")
+        info_layout.addWidget(self.info_geology)
+
         self.info_wells = QLabel("")
         self.info_wells.setFont(QFont("", 10))
         info_layout.addWidget(self.info_wells)
@@ -373,14 +839,124 @@ class DemoRunnerWindow(QMainWindow):
         info_layout.addStretch()
         self.tabs.addTab(self.info_widget, "Info && Params")
 
-        # Tab 2: Plot (result view)
+        # Tab 2: Plot (result view) with paging
+        results_widget = QWidget()
+        results_vlayout = QVBoxLayout(results_widget)
+        results_vlayout.setContentsMargins(4, 4, 4, 4)
+
+        # ─ Paging controls (top bar) ─
+        paging_bar = QHBoxLayout()
+        self.run_selector = QComboBox()
+        self.run_selector.setMinimumWidth(200)
+        self.run_selector.currentIndexChanged.connect(self._on_run_selector_changed)
+        paging_bar.addWidget(QLabel("Run:"))
+        paging_bar.addWidget(self.run_selector, 1)
+
+        paging_bar.addSpacing(20)
+        self.btn_prev = QPushButton("◀ Prev")
+        self.btn_prev.clicked.connect(self._page_prev)
+        paging_bar.addWidget(self.btn_prev)
+
+        self.result_spin = QSpinBox()
+        self.result_spin.setPrefix("Result #")
+        self.result_spin.setMinimum(0)
+        self.result_spin.setMaximum(0)
+        self.result_spin.valueChanged.connect(self._on_result_spin_changed)
+        paging_bar.addWidget(self.result_spin)
+
+        self.btn_next = QPushButton("Next ▶")
+        self.btn_next.clicked.connect(self._page_next)
+        paging_bar.addWidget(self.btn_next)
+
+        self.result_cost_label = QLabel("")
+        self.result_cost_label.setFont(QFont("Monospace", 9))
+        paging_bar.addSpacing(10)
+        paging_bar.addWidget(self.result_cost_label)
+        paging_bar.addStretch()
+
+        results_vlayout.addLayout(paging_bar)
+
+        # ─ Plot settings panel (collapsible) ─
+        settings_group = QGroupBox("Plot Settings")
+        settings_group.setCheckable(True)
+        settings_group.setChecked(False)  # collapsed by default
+        settings_layout = QGridLayout(settings_group)
+        settings_layout.setContentsMargins(6, 4, 6, 4)
+        settings_layout.setSpacing(4)
+
+        # Log color controls
+        settings_layout.addWidget(QLabel("Log Colors:"), 0, 0)
+        self._log_color_btns = []
+        for li in range(3):
+            btn = QPushButton(f"Log {li+1}")
+            btn.setFixedSize(60, 22)
+            btn.setStyleSheet(f"background-color: {LOG_COLORS[li]}; color: white; font-size: 9px;")
+            btn.clicked.connect(lambda checked, idx=li: self._pick_log_color(idx))
+            settings_layout.addWidget(btn, 0, li + 1)
+            self._log_color_btns.append(btn)
+
+        # Correlation line colors
+        settings_layout.addWidget(QLabel("Boundary:"), 1, 0)
+        self._boundary_color_btn = QPushButton("")
+        self._boundary_color_btn.setFixedSize(60, 22)
+        self._boundary_color_btn.setStyleSheet("background-color: #D32F2F; color: white; font-size: 9px;")
+        self._boundary_color_btn.clicked.connect(lambda: self._pick_line_color('boundary'))
+        settings_layout.addWidget(self._boundary_color_btn, 1, 1)
+
+        settings_layout.addWidget(QLabel("Gap/Hiatus:"), 1, 2)
+        self._gap_color_btn = QPushButton("")
+        self._gap_color_btn.setFixedSize(60, 22)
+        self._gap_color_btn.setStyleSheet("background-color: #1565C0; color: white; font-size: 9px;")
+        self._gap_color_btn.clicked.connect(lambda: self._pick_line_color('gap'))
+        settings_layout.addWidget(self._gap_color_btn, 1, 3)
+
+        settings_layout.addWidget(QLabel("Framework:"), 1, 4)
+        self._framework_color_btn = QPushButton("")
+        self._framework_color_btn.setFixedSize(60, 22)
+        self._framework_color_btn.setStyleSheet("background-color: #999999; font-size: 9px;")
+        self._framework_color_btn.clicked.connect(lambda: self._pick_line_color('framework'))
+        settings_layout.addWidget(self._framework_color_btn, 1, 5)
+
+        # Max lines controls
+        settings_layout.addWidget(QLabel("Max boundaries:"), 2, 0)
+        self._max_boundaries_spin = QSpinBox()
+        self._max_boundaries_spin.setRange(5, 100)
+        self._max_boundaries_spin.setValue(30)
+        self._max_boundaries_spin.setFixedWidth(60)
+        settings_layout.addWidget(self._max_boundaries_spin, 2, 1)
+
+        settings_layout.addWidget(QLabel("Max gaps:"), 2, 2)
+        self._max_gaps_spin = QSpinBox()
+        self._max_gaps_spin.setRange(5, 100)
+        self._max_gaps_spin.setValue(20)
+        self._max_gaps_spin.setFixedWidth(60)
+        settings_layout.addWidget(self._max_gaps_spin, 2, 3)
+
+        # Refresh button
+        self._refresh_btn = QPushButton("Refresh Plot")
+        self._refresh_btn.setFixedWidth(90)
+        self._refresh_btn.clicked.connect(self._display_current_result)
+        settings_layout.addWidget(self._refresh_btn, 2, 5)
+
+        results_vlayout.addWidget(settings_group)
+
+        # ─ Plot area ─
         self.plot_scroll = QScrollArea()
         self.plot_scroll.setWidgetResizable(True)
         self.plot_container = QWidget()
         self.plot_layout = QVBoxLayout(self.plot_container)
         self.plot_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.plot_scroll.setWidget(self.plot_container)
-        self.tabs.addTab(self.plot_scroll, "Results")
+        results_vlayout.addWidget(self.plot_scroll, 1)
+
+        # ─ Cost ranking bar (bottom) ─
+        self.ranking_label = QLabel("")
+        self.ranking_label.setFont(QFont("Monospace", 8))
+        self.ranking_label.setWordWrap(True)
+        self.ranking_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        results_vlayout.addWidget(self.ranking_label)
+
+        self.tabs.addTab(results_widget, "Results")
 
         # Tab 3: Engine Log
         self.log_text = QTextEdit()
@@ -419,6 +995,7 @@ class DemoRunnerWindow(QMainWindow):
     def _show_dataset_info(self, ds_key, ds):
         self.info_title.setText(ds["title"])
         self.info_desc.setText(ds["description"])
+        self.info_geology.setText(ds.get("geology_note", ""))
 
         wells_path = ds["wells"]
         if wells_path.exists():
@@ -441,6 +1018,7 @@ class DemoRunnerWindow(QMainWindow):
         run = next(r for r in ds["runs"] if r["name"] == run_name)
         self.info_title.setText(f"{ds['title']} → {run_name}")
         self.info_desc.setText(ds["description"])
+        self.info_geology.setText(ds.get("geology_note", ""))
 
         wells_path = ds["wells"]
         if wells_path.exists():
@@ -559,9 +1137,13 @@ class DemoRunnerWindow(QMainWindow):
         self._total_runs = len(runs)
         self._completed_runs = 0
         self._all_results = []
+        self._run_results = {}
 
         # Clear old results display
         self._clear_plots()
+        self.run_selector.clear()
+        self.ranking_label.setText("")
+        self.result_cost_label.setText("")
         self.log_text.clear()
 
         self.progress.setVisible(True)
@@ -625,10 +1207,10 @@ class DemoRunnerWindow(QMainWindow):
             self.log_text.append(
                 f"  ✓ {run_name}: cost={cost:.4f}, {n_cor} correlations\n")
 
-            # Generate plot
-            plot_path = generate_plot(well_list, res_file, run_name)
-            if plot_path:
-                self._add_plot(run_name, plot_path, cost, n_cor)
+            # Store result for paging
+            self._run_results[run_name] = (res_file, well_list, n_cor)
+            self.run_selector.addItem(f"{run_name}  (cost={cost:.4f}, n={n_cor})", run_name)
+
             self._all_results.append((run_name, cost, n_cor))
         else:
             self.log_text.append(f"  ✗ {run_name}: FAILED\n")
@@ -645,18 +1227,82 @@ class DemoRunnerWindow(QMainWindow):
         self.statusBar().showMessage(f"Done — {n} run(s) completed successfully")
         self.tabs.setCurrentIndex(1)  # Switch to Results tab
 
-        # Add summary at bottom of results
-        if self._all_results:
-            summary = QLabel(self._format_summary())
-            summary.setFont(QFont("Monospace", 9))
-            summary.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            self.plot_layout.addWidget(summary)
+        # Auto-select first run to display
+        if self.run_selector.count() > 0:
+            self.run_selector.setCurrentIndex(0)
+            self._display_current_result()
 
     def _format_summary(self):
         lines = ["\n─── Summary ───────────────────────────────────────\n"]
         for name, cost, n_cor in self._all_results:
             lines.append(f"  {name:40s}  cost={cost:.4f}  ({n_cor} cors)")
         return "\n".join(lines)
+
+    # ─── Result Paging ────────────────────────────────────────────────
+
+    def _on_run_selector_changed(self, index):
+        """User selected a different run from the dropdown."""
+        if index < 0:
+            return
+        run_name = self.run_selector.itemData(index)
+        if run_name and run_name in self._run_results:
+            res_file, well_list, n_cor = self._run_results[run_name]
+            self.result_spin.blockSignals(True)
+            self.result_spin.setMaximum(n_cor - 1)
+            self.result_spin.setValue(0)
+            self.result_spin.blockSignals(False)
+            self._display_current_result()
+
+    def _page_prev(self):
+        val = self.result_spin.value()
+        if val > 0:
+            self.result_spin.setValue(val - 1)
+
+    def _page_next(self):
+        val = self.result_spin.value()
+        if val < self.result_spin.maximum():
+            self.result_spin.setValue(val + 1)
+
+    def _on_result_spin_changed(self, value):
+        self._display_current_result()
+
+    def _display_current_result(self):
+        """Render the plot for the currently selected run + result index."""
+        index = self.run_selector.currentIndex()
+        if index < 0:
+            return
+        run_name = self.run_selector.itemData(index)
+        if not run_name or run_name not in self._run_results:
+            return
+
+        res_file, well_list, n_cor = self._run_results[run_name]
+        cor_index = self.result_spin.value()
+
+        # Update cost label
+        cost = res_file.get_result_cost(cor_index)
+        self.result_cost_label.setText(
+            f"Cost: {cost:.4f}  |  Result {cor_index + 1} of {n_cor}")
+
+        # Update ranking info
+        ranking_lines = []
+        for i in range(min(n_cor, 10)):
+            c = res_file.get_result_cost(i)
+            marker = " ◀" if i == cor_index else ""
+            ranking_lines.append(f"  #{i}: cost={c:.4f}{marker}")
+        self.ranking_label.setText(
+            f"Top-{min(n_cor, 10)} ranked results (lowest cost = best):\n"
+            + "\n".join(ranking_lines))
+
+        # Generate plot for this cor_index
+        title = f"{run_name} — Result #{cor_index}"
+        plot_settings = self._get_plot_colors()
+        plot_path = generate_plot(well_list, res_file, title, cor_index=cor_index,
+                                  plot_settings=plot_settings)
+
+        # Display in plot area
+        self._clear_plots()
+        if plot_path:
+            self._add_plot(title, plot_path, cost, n_cor)
 
     # ─── Plot Display ─────────────────────────────────────────────────
 
@@ -672,11 +1318,6 @@ class DemoRunnerWindow(QMainWindow):
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         frame_layout = QVBoxLayout(frame)
         frame_layout.setContentsMargins(4, 4, 4, 4)
-
-        # Title label
-        lbl_title = QLabel(f"{title}  —  cost: {cost:.4f}  ({n_cor} correlations)")
-        lbl_title.setFont(QFont("", 10, QFont.Weight.Bold))
-        frame_layout.addWidget(lbl_title)
 
         # Image
         pixmap = QPixmap(png_path)
@@ -694,6 +1335,50 @@ class DemoRunnerWindow(QMainWindow):
             frame_layout.addWidget(QLabel(f"(plot saved to {png_path})"))
 
         self.plot_layout.addWidget(frame)
+
+    # ─── Plot Settings (color pickers) ─────────────────────────────────
+
+    def _pick_log_color(self, idx):
+        """Open color dialog for log trace color."""
+        color = QColorDialog.getColor(QColor(LOG_COLORS[idx]), self, f"Log {idx+1} Color")
+        if color.isValid():
+            LOG_COLORS[idx] = color.name()
+            self._log_color_btns[idx].setStyleSheet(
+                f"background-color: {color.name()}; color: white; font-size: 9px;")
+            self._display_current_result()
+
+    def _pick_line_color(self, line_type):
+        """Open color dialog for correlation line colors."""
+        if line_type == 'boundary':
+            current = self._boundary_color_btn.styleSheet()
+            color = QColorDialog.getColor(QColor('#D32F2F'), self, "Boundary Line Color")
+            if color.isValid():
+                self._boundary_color = color.name()
+                self._boundary_color_btn.setStyleSheet(
+                    f"background-color: {color.name()}; color: white; font-size: 9px;")
+        elif line_type == 'gap':
+            color = QColorDialog.getColor(QColor('#1565C0'), self, "Gap/Hiatus Line Color")
+            if color.isValid():
+                self._gap_color = color.name()
+                self._gap_color_btn.setStyleSheet(
+                    f"background-color: {color.name()}; color: white; font-size: 9px;")
+        elif line_type == 'framework':
+            color = QColorDialog.getColor(QColor('#999999'), self, "Framework Line Color")
+            if color.isValid():
+                self._framework_color = color.name()
+                self._framework_color_btn.setStyleSheet(
+                    f"background-color: {color.name()}; font-size: 9px;")
+        self._display_current_result()
+
+    def _get_plot_colors(self):
+        """Return current color settings for generate_plot."""
+        return {
+            'boundary': getattr(self, '_boundary_color', '#D32F2F'),
+            'gap': getattr(self, '_gap_color', '#1565C0'),
+            'framework': getattr(self, '_framework_color', '#999999'),
+            'max_boundaries': self._max_boundaries_spin.value(),
+            'max_gaps': self._max_gaps_spin.value(),
+        }
 
     # ─── Export ───────────────────────────────────────────────────────
 

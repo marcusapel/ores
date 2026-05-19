@@ -489,7 +489,7 @@ class ResFile:
         )
         self.well_id = new_well_id
 
-    def build_list(self):
+    def build_list(self, max_paths_per_node: int = 200):
         if not self.size:
             return
 
@@ -503,6 +503,10 @@ class ResFile:
                 trans_cost = self.cost[(n, dst)]
                 for cost, path in back_res[dst]:
                     res.append((cost + trans_cost, (n,) + path))
+            # Prune to keep only the top-k cheapest paths per node
+            if len(res) > max_paths_per_node:
+                res.sort()
+                res = res[:max_paths_per_node]
             # noinspection PyTypeChecker
             back_res[n] = res
         # noinspection PyUnresolvedReferences

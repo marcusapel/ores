@@ -80,6 +80,10 @@ class CorrelationLine(BaseModel):
     markers: List[int] = Field(
         ..., description="Marker index per well (in well-list order)."
     )
+    line_type: str = Field(
+        default="framework",
+        description="Type: 'boundary' (unit contact), 'gap' (hiatus), or 'framework' (geometry)"
+    )
 
 
 class RunResult(BaseModel):
@@ -154,6 +158,7 @@ class DemoItem(BaseModel):
     group: str
     wells: str
     geology: Optional[str] = None
+    description: Optional[str] = None
     option_keys: List[str] = Field(default_factory=list)
 
 
@@ -334,22 +339,112 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
 
 
 def _extract_results(rf, data, n_best: int) -> List[RunResult]:
-    """Convert engine results to response objects."""
+    """Convert engine results to response objects.
+    
+    Filters the full DTW path to only geologically meaningful lines:
+    - boundary: steps where a region boundary is crossed
+    - gap: significant hiatuses (one well stays constant for multiple steps)
+    - framework: evenly-spaced orientation lines
+    """
     n = min(n_best, rf.get_nbr_results())
     n_wells = rf.nbr_well()
     results = []
+
+    # Build boundary indices from regions in data (WellList)
+    boundary_indices = [set() for _ in range(n_wells)]
+    if hasattr(data, 'wells'):
+        # Pick the region with fewest intervals (coarsest stratigraphy)
+        all_regions = {}
+        for wi, well in enumerate(data.wells):
+            if hasattr(well, 'region') and well.region:
+                for rname, rdata in well.region.items():
+                    rlist = list(rdata)
+                    if rname not in all_regions:
+                        all_regions[rname] = 0
+                    all_regions[rname] += len(rlist)
+        primary_region = min(all_regions, key=all_regions.get) if all_regions else None
+
+        if primary_region:
+            for wi, well in enumerate(data.wells):
+                if hasattr(well, 'region') and primary_region in well.region:
+                    rlist = list(well.region[primary_region])
+                    if rlist and isinstance(rlist[0], (list, tuple)) and len(rlist[0]) >= 3:
+                        for entry in rlist:
+                            boundary_indices[wi].add(entry[1])
+
     for i in range(n):
         path = rf.get_result_full_path(i)
         cost = float(rf.get_result_cost(i))
 
         # Deduplicate consecutive identical steps
-        lines = []
+        deduped = []
         prev = None
         for step in path:
             if step != prev:
-                markers = [int(step[w]) for w in range(n_wells)]
-                lines.append(CorrelationLine(markers=markers))
+                deduped.append(step)
                 prev = step
+
+        n_path = len(deduped)
+        if n_path == 0:
+            results.append(RunResult(index=i, cost=cost, n_ties=0, lines=[]))
+            continue
+
+        # Classify steps: boundary, gap, or framework
+        boundary_steps = set()
+        boundary_scores = {}
+        for step_idx in range(1, n_path):
+            node = deduped[step_idx]
+            prev_node = deduped[step_idx - 1]
+            score = sum(1 for wi in range(n_wells)
+                        if node[wi] in boundary_indices[wi] and node[wi] != prev_node[wi])
+            if score > 0:
+                boundary_steps.add(step_idx)
+                boundary_scores[step_idx] = score
+
+        # Cap boundaries at 30
+        if len(boundary_steps) > 30:
+            ranked = sorted(boundary_steps, key=lambda s: boundary_scores.get(s, 0), reverse=True)
+            boundary_steps = set(ranked[:30])
+
+        # Detect significant gaps
+        gap_steps = set()
+        min_gap_run = max(3, n_path // 80)
+        for wi in range(n_wells):
+            run_start = None
+            for step_idx in range(1, n_path):
+                if deduped[step_idx][wi] == deduped[step_idx - 1][wi]:
+                    if run_start is None:
+                        run_start = step_idx
+                else:
+                    if run_start is not None and (step_idx - run_start) >= min_gap_run:
+                        gap_steps.add((run_start + step_idx) // 2)
+                    run_start = None
+            if run_start is not None and (n_path - run_start) >= min_gap_run:
+                gap_steps.add((run_start + n_path - 1) // 2)
+        gap_steps -= boundary_steps
+        if len(gap_steps) > 20:
+            gap_steps = set(sorted(gap_steps)[:20])
+
+        # Framework lines
+        fw_interval = max(1, n_path // 6)
+        framework_steps = {s for s in range(0, n_path, fw_interval)}
+        framework_steps.add(0)
+        framework_steps.add(n_path - 1)
+        framework_steps -= boundary_steps
+        framework_steps -= gap_steps
+
+        # Build output lines with type
+        lines = []
+        for step_idx in sorted(boundary_steps | gap_steps | framework_steps):
+            node = deduped[step_idx]
+            markers = [int(node[w]) for w in range(n_wells)]
+            if step_idx in boundary_steps:
+                lt = "boundary"
+            elif step_idx in gap_steps:
+                lt = "gap"
+            else:
+                lt = "framework"
+            lines.append(CorrelationLine(markers=markers, line_type=lt))
 
         results.append(RunResult(
             index=i,
@@ -499,6 +594,7 @@ def validate_options(options: Dict[str, Any]):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Log names ranked by geological discriminating power (best first).
+# NEVER include depth/coordinate names — they are monotonic and break DTW.
 _LOG_PRIORITY = [
     "GR", "Gamma", "gamma", "SP",
     "DEN", "RHOB", "DPHI",
@@ -507,17 +603,20 @@ _LOG_PRIORITY = [
     "NEU", "NPHI",
     "Pe", "PEF",
     "VarData1", "VarData2",
-    "FACIES_1", "Facies",
-    "Depth", "DEPTH",
 ]
+
+# Data names that should NEVER be used as correlation variables.
+_SKIP_DATA = {"Depth", "DEPTH", "MD", "TVD", "TVDSS", "X", "Y", "Z",
+              "Azimuth", "Dip"}
 
 # Region name patterns that signal constraint types.
 _CONSTRAINT_REGIONS = {
     "no-crossing": ["BIOZONE", "biozone", "Biozone", "ZONE", "zone",
-                     "AGE", "age", "Stage", "stage"],
+                     "AGE", "age", "Stage", "stage",
+                     "SEQUENCE", "sequence", "Sequence"],
     "same-region": ["FACIES", "facies", "Facies", "LITHOLOGY", "lithology",
                     "Lithology", "FORMATION", "formation", "Formation",
-                    "LITHO", "litho"],
+                    "LITHO", "litho", "SEAM", "seam"],
 }
 
 
@@ -525,9 +624,13 @@ def _suggest_defaults_for_wells(wl) -> tuple:
     """Analyse a WellList and suggest optimal defaults.
 
     Returns (options_dict, reasoning_dict).
-    """
-    from weco.data import WellList as PyWellList
 
+    Design principles:
+    - Never use Depth/MD/X/Y/Z as var-data (monotonic → degenerate DTW)
+    - same-region is NOT auto-applied (too restrictive, causes failures)
+    - no-crossing IS suggested (hard constraint, usually safe)
+    - band-width is set for large datasets to bound runtime
+    """
     options: Dict[str, Any] = {}
     reasoning: Dict[str, str] = {}
 
@@ -535,8 +638,15 @@ def _suggest_defaults_for_wells(wl) -> tuple:
     region_names = wl.get_region_names()
     n_wells = len(wl.wells)
 
-    # --- Pick best logs ---
-    ranked = [n for n in _LOG_PRIORITY if n in data_names]
+    # --- Pick best logs (exclude depth/coord names) ---
+    usable_data = [n for n in data_names if n not in _SKIP_DATA]
+    ranked = [n for n in _LOG_PRIORITY if n in usable_data]
+
+    # If no priority match, use first usable data name that looks like a log
+    if not ranked and usable_data:
+        # Prefer names that are also in region (likely categorical but still usable)
+        ranked = usable_data[:2]
+
     if ranked:
         options["var-data"] = ranked[0]
         reasoning["var-data"] = f"Best-ranked log available: {ranked[0]}"
@@ -553,29 +663,43 @@ def _suggest_defaults_for_wells(wl) -> tuple:
             reasoning["var-data3"] = f"Tertiary log: {ranked[2]}"
             reasoning["var-weight3"] = "Tertiary log lowest weight"
 
-    # --- Constraint regions ---
-    for opt_key, patterns in _CONSTRAINT_REGIONS.items():
-        for pat in patterns:
-            if pat in region_names:
-                options[opt_key] = pat
-                reasoning[opt_key] = f"Region '{pat}' matches {opt_key} constraint"
-                break
+    # --- Constraint regions (only no-crossing is safe to auto-apply) ---
+    for pat in _CONSTRAINT_REGIONS["no-crossing"]:
+        if pat in region_names:
+            options["no-crossing"] = pat
+            reasoning["no-crossing"] = f"Region '{pat}' provides stratigraphic ordering"
+            break
+
+    # NOTE: same-region is NOT auto-applied — it is too restrictive and
+    # causes "no correlation possible" when facies zones don't align.
+    # Users can enable it manually if their data supports it.
 
     # --- Well-count-adaptive settings ---
     if n_wells >= 15:
-        options["max-cor"] = 100
-        reasoning["max-cor"] = f"Increased for {n_wells}-well project"
+        options["max-cor"] = 50
+        options["band-width"] = 30
+        reasoning["max-cor"] = f"Bounded for {n_wells}-well project performance"
+        reasoning["band-width"] = "Bandwidth limit for large datasets"
         options["const-gap-cost"] = 2.0
-        reasoning["const-gap-cost"] = "Higher gap penalty for large projects"
+        reasoning["const-gap-cost"] = "Gap penalty for large projects"
     elif n_wells >= 6:
         options["max-cor"] = 50
+        options["band-width"] = 40
         reasoning["max-cor"] = f"Standard setting for {n_wells} wells"
+        reasoning["band-width"] = "Bandwidth limit for medium datasets"
+    else:
+        options["max-cor"] = 50
+        reasoning["max-cor"] = "Standard n-best search width"
 
-    # --- Position-based ordering ---
+    # Always request multiple results for ranking
+    options["nbr-cor"] = 10
+    reasoning["nbr-cor"] = "Request 10-best for result ranking"
+
+    # --- Position-based ordering (only if wells actually have coordinates) ---
     has_coords = any(
         abs(w.x) > 1e-6 or abs(w.y) > 1e-6 for w in wl.wells
     )
-    if has_coords:
+    if has_coords and n_wells >= 4:
         options["order"] = "position"
         reasoning["order"] = "Wells have coordinates — positional ordering"
 
@@ -617,52 +741,151 @@ def list_demos():
     if data_dir is None:
         return DemoListResponse(demos=[])
     demos = []
-    # Built-in demo catalogue
+    # Built-in demo catalogue — each entry has geology-specific opts that
+    # are proven to produce meaningful correlations for that dataset.
     _DEMO_CATALOGUE = [
+        # ── Basic Teaching Demos ──────────────────────────────────────
         {"id": "ds1.1", "title": "Data Set 1.1 – Variance Weights",
          "group": "Basic", "wells": "data_set_1.1/wells.txt",
-         "geology": "quaternary"},
+         "geology": "quaternary",
+         "description": "3 synthetic wells, 2 properties. Demonstrates how "
+                        "var-weight steers the correlation between VarData1/2.",
+         "opts": {"var-data": "VarData1", "var-weight": 0.7,
+                  "var-data2": "VarData2", "var-weight2": 0.3,
+                  "max-cor": 10, "nbr-cor": 10}},
         {"id": "ds1.2", "title": "Data Set 1.2 – No-Crossing Regions",
          "group": "Basic", "wells": "data_set_1.2/wells.txt",
-         "geology": "quaternary"},
+         "geology": "quaternary",
+         "description": "3 synthetic wells with NoCrossing region. Forces "
+                        "correlations to respect stratigraphic ordering.",
+         "opts": {"var-data": "VarData1", "no-crossing": "NoCrossing",
+                  "max-cor": 10, "nbr-cor": 10}},
         {"id": "ds1.3", "title": "Data Set 1.3 – Same-Region Cost",
          "group": "Basic", "wells": "data_set_1.3/wells_A.txt",
-         "geology": "quaternary"},
+         "geology": "quaternary",
+         "description": "5 wells with Facies region. Same-region penalises "
+                        "correlating different facies classes.",
+         "opts": {"var-data": "Distality", "same-region": "Facies",
+                  "max-cor": 50, "nbr-cor": 10}},
         {"id": "ds1.4", "title": "Data Set 1.4 – Multi-Distality",
          "group": "Basic", "wells": "data_set_1.4/wells_A.weco",
-         "geology": "quaternary"},
+         "geology": "quaternary",
+         "description": "5 wells with distality cost. Penalises correlating "
+                        "proximal facies with distal facies.",
+         "opts": {"dist-distal": "Distality", "dist-facies": "Facies",
+                  "dist-scaling": 1.0, "order": "distality",
+                  "max-cor": 50, "nbr-cor": 10}},
         {"id": "ds1.5", "title": "Data Set 1.5 – Polarity / Dip",
-         "group": "Basic", "wells": "data_set_1.5/wells.txt"},
-        {"id": "ds2", "title": "Data Set 2 – Distance / Gap Cost",
-         "group": "Intermediate", "wells": "data_set_2/wells.txt"},
+         "group": "Basic", "wells": "data_set_1.5/wells.txt",
+         "description": "9 wells with structural dip/azimuth. Polarity cost "
+                        "uses dip direction to constrain correlations.",
+         "opts": {"var-data": "Dip", "polarity-region": "Facies",
+                  "max-cor": 50, "nbr-cor": 10, "band-width": 30}},
+        # ── Intermediate ──────────────────────────────────────────────
+        {"id": "ds2", "title": "Data Set 2 – Gap Cost",
+         "group": "Intermediate", "wells": "data_set_2/wells.txt",
+         "description": "9 wells demonstrating gap cost penalty. Higher gap "
+                        "cost forces more complete 1-to-1 matching.",
+         "opts": {"var-data": "Dip", "const-gap-cost": 5.0,
+                  "max-cor": 50, "nbr-cor": 10, "band-width": 30}},
+        # ── Advanced ──────────────────────────────────────────────────
         {"id": "ds3", "title": "Data Set 3 – Distality / Facies",
-         "group": "Advanced", "wells": "data_set_3/wells.txt"},
+         "group": "Advanced", "wells": "data_set_3/wells.txt",
+         "description": "2 wells with DISTAL + FACIES_1 distality cost. "
+                        "Penalises inconsistent facies-distality relationships.",
+         "opts": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
+                  "dist-scaling": 1.0, "order": "distality",
+                  "max-cor": 50, "nbr-cor": 10}},
         {"id": "ds4", "title": "Data Set 4 – Biozone Constraint",
-         "group": "Advanced", "wells": "data_set_4/wells.txt"},
-        {"id": "coal", "title": "Coal Basin – Seam Correlation",
+         "group": "Advanced", "wells": "data_set_4/wells.txt",
+         "description": "2 wells with BIOZONES no-crossing + distality. "
+                        "Biozone boundaries lock key horizons.",
+         "opts": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
+                  "no-crossing": "BIOZONES", "order": "distality",
+                  "max-cor": 50, "nbr-cor": 10}},
+        # ── Domain: Coal Basin ────────────────────────────────────────
+        {"id": "coal", "title": "Coal Basin – DEN+GR Seam Correlation",
          "group": "Domain", "wells": "data_set_coal/wells_10.txt",
-         "geology": "coal"},
-        {"id": "quaternary", "title": "Quaternary – Hydrogeology",
+         "geology": "coal",
+         "description": "10 coal boreholes with 6 named seams. DEN (bulk "
+                        "density) is the primary coal indicator: coal=1.3 g/cc "
+                        "vs rock=2.3-2.7 g/cc. Gap cost penalises missing seams.",
+         "opts": {"var-data": "DEN", "var-weight": 0.6,
+                  "var-data2": "GR", "var-weight2": 0.4,
+                  "max-cor": 20, "nbr-cor": 10,
+                  "const-gap-cost": 3.0, "band-width": 15}},
+        # ── Domain: Quaternary Hydrogeology ───────────────────────────
+        {"id": "quaternary", "title": "Quaternary – GR+RT Hydrogeology",
          "group": "Domain", "wells": "data_set_quaternary/wells_20.txt",
-         "geology": "quaternary"},
-        {"id": "shallow_marine", "title": "Shallow Marine – Reservoir",
+         "geology": "quaternary",
+         "description": "20 shallow Quaternary wells (glacial lowland). "
+                        "GR separates sand/gravel (aquifer) from till/clay "
+                        "(aquitard). RT adds permeability discrimination.",
+         "opts": {"var-data": "GR", "var-weight": 0.7,
+                  "var-data2": "RT", "var-weight2": 0.3,
+                  "max-cor": 30, "nbr-cor": 10,
+                  "const-gap-cost": 1.5, "band-width": 20}},
+        # ── Domain: Shallow Marine ────────────────────────────────────
+        {"id": "shallow_marine",
+         "title": "Shallow Marine – GR+RHOB+DT Reservoir",
          "group": "Domain", "wells": "data_set_shallow_marine/wells.txt",
-         "geology": "shallow_marine"},
-        {"id": "bryson", "title": "Bryson – Appalachian Basin",
+         "geology": "shallow_marine",
+         "description": "10 wells along depositional dip (Hugin Fm analogue). "
+                        "Wave-dominated shoreface with clinoform geometry. "
+                        "GR+RHOB+DT multi-log variance correlation.",
+         "opts": {"var-data": "GR", "var-weight": 0.5,
+                  "var-data2": "RHOB", "var-weight2": 0.3,
+                  "var-data3": "DT", "var-weight3": 0.2,
+                  "max-cor": 30, "nbr-cor": 10,
+                  "const-gap-cost": 2.0, "band-width": 20}},
+        # ── Domain: Bryson (Appalachian) ──────────────────────────────
+        {"id": "bryson", "title": "Bryson – Zone-Constrained Facies",
          "group": "Domain", "wells": "data_set_bryson/wells.txt",
-         "geology": "fluvial"},
-        {"id": "fluvial", "title": "Fluvial – Channel Belt",
+         "geology": "fluvial",
+         "description": "7 Appalachian Basin wells with categorical data only "
+                        "(FACIES, MEMBER, ZONE, SEQSTRAT). Uses FACIES as "
+                        "correlation variable with ZONE no-crossing constraint.",
+         "opts": {"var-data": "FACIES", "no-crossing": "ZONE",
+                  "max-cor": 50, "nbr-cor": 10}},
+        # ── Domain: Fluvial Channel Belt ──────────────────────────────
+        {"id": "fluvial", "title": "Fluvial – GR Channel Correlation",
          "group": "Domain", "wells": "data_set_fluvial/wells.txt",
-         "geology": "fluvial"},
-        {"id": "delta", "title": "Delta – Deltaic System",
+         "geology": "fluvial",
+         "description": "12 wells through laterally discontinuous channel "
+                        "sandbodies. GR alone with gap cost — allows hiatuses "
+                        "where channels pinch out between wells.",
+         "opts": {"var-data": "GR", "var-weight": 1.0,
+                  "max-cor": 30, "nbr-cor": 10,
+                  "const-gap-cost": 0.5, "band-width": 20}},
+        # ── Domain: Delta ─────────────────────────────────────────────
+        {"id": "delta", "title": "Delta – GR+DEN Prograding System",
          "group": "Domain", "wells": "data_set_delta/wells.txt",
-         "geology": "deltaic"},
-        {"id": "sigrun", "title": "Sigrun – North Sea",
+         "geology": "deltaic",
+         "description": "8 wells through a prograding delta. GR separates "
+                        "sand (distributary) from mud (prodelta). DEN adds "
+                        "porosity discrimination in shingled parasequences.",
+         "opts": {"var-data": "GR", "var-weight": 0.6,
+                  "var-data2": "DEN", "var-weight2": 0.4,
+                  "max-cor": 30, "nbr-cor": 10, "band-width": 20}},
+        # ── Domain: Sigrun (North Sea) ────────────────────────────────
+        {"id": "sigrun", "title": "Sigrun – GR+NPHI North Sea",
          "group": "Domain", "wells": "data_set_sigrun/wells.txt",
-         "geology": "shallow_marine"},
-        {"id": "troll", "title": "Troll – North Sea",
+         "geology": "shallow_marine",
+         "description": "2 North Sea wells (Sigrun field). GR+NPHI two-log "
+                        "correlation for well-tie in marine shale/sand sequence.",
+         "opts": {"var-data": "GR", "var-weight": 0.6,
+                  "var-data2": "NPHI", "var-weight2": 0.4,
+                  "max-cor": 50, "nbr-cor": 10}},
+        # ── Domain: Troll (North Sea) ─────────────────────────────────
+        {"id": "troll", "title": "Troll – Facies+Distality Categorical",
          "group": "Domain", "wells": "data_set_troll/wells.txt",
-         "geology": "shallow_marine"},
+         "geology": "shallow_marine",
+         "description": "5 Troll field wells with categorical facies and "
+                        "distality data. No continuous logs — correlation "
+                        "driven by facies similarity and distality ordering.",
+         "opts": {"var-data": "FACIES", "var-weight": 0.6,
+                  "var-data2": "DISTALITY", "var-weight2": 0.4,
+                  "max-cor": 50, "nbr-cor": 10}},
     ]
     for d in _DEMO_CATALOGUE:
         wells_path = data_dir / d["wells"]
@@ -673,13 +896,72 @@ def list_demos():
                 group=d["group"],
                 wells=str(wells_path),
                 geology=d.get("geology"),
+                description=d.get("description"),
             ))
     return DemoListResponse(demos=demos)
 
 
+def _get_demo_opts(demo_id: str) -> dict:
+    """Look up per-demo geology-specific options from the catalogue.
+
+    These are tested parameters that produce meaningful correlations
+    for each dataset's specific geological concept.
+    """
+    _DEMO_OPTS = {
+        "ds1.1": {"var-data": "VarData1", "var-weight": 0.7,
+                  "var-data2": "VarData2", "var-weight2": 0.3,
+                  "max-cor": 10, "nbr-cor": 10},
+        "ds1.2": {"var-data": "VarData1", "no-crossing": "NoCrossing",
+                  "max-cor": 10, "nbr-cor": 10},
+        "ds1.3": {"var-data": "Distality", "same-region": "Facies",
+                  "max-cor": 50, "nbr-cor": 10},
+        "ds1.4": {"dist-distal": "Distality", "dist-facies": "Facies",
+                  "dist-scaling": 1.0, "order": "distality",
+                  "max-cor": 50, "nbr-cor": 10},
+        "ds1.5": {"var-data": "Dip", "polarity-region": "Facies",
+                  "max-cor": 50, "nbr-cor": 10, "band-width": 30},
+        "ds2": {"var-data": "Dip", "const-gap-cost": 5.0,
+                "max-cor": 50, "nbr-cor": 10, "band-width": 30},
+        "ds3": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
+                "dist-scaling": 1.0, "order": "distality",
+                "max-cor": 50, "nbr-cor": 10},
+        "ds4": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
+                "no-crossing": "BIOZONES", "order": "distality",
+                "max-cor": 50, "nbr-cor": 10},
+        "coal": {"var-data": "DEN", "var-weight": 0.6,
+                 "var-data2": "GR", "var-weight2": 0.4,
+                 "max-cor": 20, "nbr-cor": 10,
+                 "const-gap-cost": 3.0, "band-width": 15},
+        "quaternary": {"var-data": "GR", "var-weight": 0.7,
+                       "var-data2": "RT", "var-weight2": 0.3,
+                       "max-cor": 30, "nbr-cor": 10,
+                       "const-gap-cost": 1.5, "band-width": 20},
+        "shallow_marine": {"var-data": "GR", "var-weight": 0.5,
+                           "var-data2": "RHOB", "var-weight2": 0.3,
+                           "var-data3": "DT", "var-weight3": 0.2,
+                           "max-cor": 30, "nbr-cor": 10,
+                           "const-gap-cost": 2.0, "band-width": 20},
+        "bryson": {"var-data": "FACIES", "no-crossing": "ZONE",
+                   "max-cor": 50, "nbr-cor": 10},
+        "fluvial": {"var-data": "GR", "var-weight": 1.0,
+                    "max-cor": 30, "nbr-cor": 10,
+                    "const-gap-cost": 0.5, "band-width": 20},
+        "delta": {"var-data": "GR", "var-weight": 0.6,
+                  "var-data2": "DEN", "var-weight2": 0.4,
+                  "max-cor": 30, "nbr-cor": 10, "band-width": 20},
+        "sigrun": {"var-data": "GR", "var-weight": 0.6,
+                   "var-data2": "NPHI", "var-weight2": 0.4,
+                   "max-cor": 50, "nbr-cor": 10},
+        "troll": {"var-data": "FACIES", "var-weight": 0.6,
+                  "var-data2": "DISTALITY", "var-weight2": 0.4,
+                  "max-cor": 50, "nbr-cor": 10},
+    }
+    return _DEMO_OPTS.get(demo_id, {})
+
+
 @app.post("/run/demo", response_model=RunResponse, tags=["demos"])
 def run_demo(req: DemoRunRequest):
-    """Run a built-in demo dataset with appropriate default options."""
+    """Run a built-in demo dataset with geology-specific default options."""
     # Get the demo list
     demo_list = list_demos().demos
     demo = None
@@ -693,7 +975,12 @@ def run_demo(req: DemoRunRequest):
                             detail=f"Demo '{req.demo_id}' not found.")
 
     wl = _load_well_list(demo.wells)
-    options, _ = _suggest_defaults_for_wells(wl)
+
+    # Use per-demo opts from the catalogue (geology-specific, tested params)
+    options = _get_demo_opts(req.demo_id)
+    if not options:
+        # Fallback to auto-suggestion if no per-demo opts
+        options, _ = _suggest_defaults_for_wells(wl)
 
     try:
         rf, data, elapsed = _run_engine(wl, options)

@@ -28,8 +28,8 @@ from weco.ext import ProjectExt
 from weco.data import WellList, ResFile, ResAndWL
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent  # bin/ → project root
-DATA_DIR = SCRIPT_DIR / "data"
-OUTPUT_DIR = SCRIPT_DIR / "output"
+DATA_DIR = SCRIPT_DIR / "demo" / "data"
+OUTPUT_DIR = SCRIPT_DIR / "tmp" / "img"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -133,6 +133,197 @@ DATASETS = {
         "common_opts": {"cost_function": "composite", "var_data": "VarData1",
                         "var_weight": 1.0, "max_cor": 10, "nbr_cor": 10,
                         "out_nbr_cor": 10},
+    },
+
+    # ── Domain Demos ──────────────────────────────────────────────────
+
+    "6_coal_basin": {
+        "title": "Coal Basin – DEN+GR Seam Correlation (Carboniferous cyclothem)",
+        "description": (
+            "Geological setting: Intracratonic coal basin (Ruhr/Upper Silesian analogue).\n"
+            "10 boreholes through cyclic coal-bearing sequences (cyclothems).\n"
+            "6 named seams (Katharina, Sonnenschein, Präsident, Zollverein, Flöz 9, Flöz 10)\n"
+            "with splitting, washout zones, tonstein markers, and marine bands.\n"
+            "DEN is the primary coal indicator (coal=1.3 g/cc vs rock=2.3–2.7 g/cc).\n"
+            "Gap cost penalises missing seams; k-best captures splitting uncertainty."
+        ),
+        "wells": DATA_DIR / "data_set_coal" / "wells_10.txt",
+        "runs": [
+            {"name": "DEN+GR_standard", "opts": {
+                "var_data": "DEN", "var_weight": 0.6,
+                "var_data2": "GR", "var_weight2": 0.4,
+                "const_gap_cost": 3.0}},
+            {"name": "DEN_only", "opts": {
+                "var_data": "DEN", "var_weight": 1.0,
+                "const_gap_cost": 3.0}},
+            {"name": "Multi_log_5", "opts": {
+                "var_data": "GR", "var_weight": 0.25,
+                "var_data2": "DEN", "var_weight2": 0.35,
+                "var_data3": "RT", "var_weight3": 0.15,
+                "var_data4": "SON", "var_weight4": 0.15,
+                "var_data5": "NEU", "var_weight5": 0.10,
+                "const_gap_cost": 3.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 20, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 15},
+    },
+    "7_quaternary": {
+        "title": "Quaternary Hydrogeology – GR+RT Aquifer Mapping (Pleistocene glacial)",
+        "description": (
+            "Geological setting: Northern European glacial lowland (Pleistocene).\n"
+            "20 shallow wells (10–60 m) through 5 lithostratigraphic units:\n"
+            "Holocene cover → Weichselian till → Eemian interglacial →\n"
+            "Saalian outwash → Elsterian tunnel-valley fill.\n"
+            "GR separates sand/gravel aquifers from till/clay aquitards.\n"
+            "Periglacial features (ice-wedge casts, cryoturbation) add noise.\n"
+            "Key for groundwater model layering (which aquifers connect)."
+        ),
+        "wells": DATA_DIR / "data_set_quaternary" / "wells_20.txt",
+        "runs": [
+            {"name": "GR+RT_standard", "opts": {
+                "var_data": "GR", "var_weight": 0.7,
+                "var_data2": "RT", "var_weight2": 0.3,
+                "const_gap_cost": 1.5}},
+            {"name": "GR+RT+SPT_3log", "opts": {
+                "var_data": "GR", "var_weight": 0.50,
+                "var_data2": "RT", "var_weight2": 0.25,
+                "var_data3": "SPT", "var_weight3": 0.25,
+                "const_gap_cost": 2.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "8_shallow_marine": {
+        "title": "Shallow Marine Shoreface – GR+RHOB+DT (Upper Jurassic, North Sea)",
+        "description": (
+            "Geological setting: Hugin Formation analogue — wave-dominated shoreface.\n"
+            "10 wells along depositional dip with clinoform geometry.\n"
+            "5 parasequences (PS1–PS5): lower shoreface → upper shoreface → foreshore,\n"
+            "bounded by flooding surfaces (maximum flooding = GR spikes).\n"
+            "8 facies: offshore mud, offshore transition, lower/upper shoreface,\n"
+            "foreshore, bay-fill, tidal channel, transgressive lag.\n"
+            "BIOZONE no-crossing locks bio-datum planes for Wheeler diagrams."
+        ),
+        "wells": DATA_DIR / "data_set_shallow_marine" / "wells.txt",
+        "runs": [
+            {"name": "GR+RHOB+DT", "opts": {
+                "var_data": "GR", "var_weight": 0.5,
+                "var_data2": "RHOB", "var_weight2": 0.3,
+                "var_data3": "DT", "var_weight3": 0.2,
+                "const_gap_cost": 2.0}},
+            {"name": "with_BIOZONE_nocrossing", "opts": {
+                "var_data": "GR", "var_weight": 0.5,
+                "var_data2": "RHOB", "var_weight2": 0.3,
+                "var_data3": "DT", "var_weight3": 0.2,
+                "no_crossing": "BIOZONE",
+                "const_gap_cost": 2.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "9_fluvial": {
+        "title": "Fluvial Channel Belt – GR (laterally discontinuous)",
+        "description": (
+            "Geological setting: Meandering/braided fluvial system.\n"
+            "12 wells through laterally discontinuous channel sandbodies.\n"
+            "6 facies: floodplain, crevasse splay, channel fill, channel lag,\n"
+            "levee, oxbow lake. Channels meander and pinch out laterally.\n"
+            "Low gap-cost allows hiatuses (not every channel reaches every well).\n"
+            "High gap-cost forces layer-cake geometry (incorrect for fluvial).\n"
+            "This is one of the hardest correlation scenarios in stratigraphy."
+        ),
+        "wells": DATA_DIR / "data_set_fluvial" / "wells.txt",
+        "runs": [
+            {"name": "GR_with_gap", "opts": {
+                "var_data": "GR", "var_weight": 1.0,
+                "const_gap_cost": 0.5}},
+            {"name": "GR_no_gap", "opts": {
+                "var_data": "GR", "var_weight": 1.0,
+                "const_gap_cost": 0.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "10_delta": {
+        "title": "Delta Clinoforms – GR+DEN Prograding Parasequences",
+        "description": (
+            "Geological setting: Prograding river-dominated delta.\n"
+            "8 wells through shingled parasequences with coarsening-upward cycles.\n"
+            "8 facies: prodelta shale, distal/proximal delta front,\n"
+            "distributary mouth bar, distributary channel, interdistributary bay,\n"
+            "marsh, delta plain. Beds thicken/coarsen landward (progradation).\n"
+            "Gaps indicate condensation in distal positions (Wheeler wedge)."
+        ),
+        "wells": DATA_DIR / "data_set_delta" / "wells.txt",
+        "runs": [
+            {"name": "GR+DEN", "opts": {
+                "var_data": "GR", "var_weight": 0.6,
+                "var_data2": "DEN", "var_weight2": 0.4}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "band_width": 20},
+    },
+    "11_bryson": {
+        "title": "Bryson – Zone-Constrained Facies (Appalachian Basin)",
+        "description": (
+            "Geological setting: Appalachian Basin (Devonian–Carboniferous).\n"
+            "7 wells with categorical data only: FACIES, MEMBER, ZONE, SEQSTRAT.\n"
+            "ZONE no-crossing = hard constraint (dated horizons cannot swap).\n"
+            "Demonstrates purely categorical correlation without continuous logs."
+        ),
+        "wells": DATA_DIR / "data_set_bryson" / "wells.txt",
+        "runs": [
+            {"name": "FACIES+ZONE_nc", "opts": {
+                "var_data": "FACIES", "no_crossing": "ZONE"}},
+            {"name": "FACIES_only", "opts": {
+                "var_data": "FACIES"}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+    },
+    "12_sigrun": {
+        "title": "Sigrun – GR+NPHI Well-Tie (North Sea, Upper Jurassic)",
+        "description": (
+            "Geological setting: Gudrun-Sigrun area, North Sea (Hugin/Draupne Fms).\n"
+            "2 wells with GR + NPHI in a marine shale/sand sequence.\n"
+            "The 2-well case shows pure DTW alignment for well-tie.\n"
+            "Gaps indicate condensed sections or erosion at unconformities."
+        ),
+        "wells": DATA_DIR / "data_set_sigrun" / "wells.txt",
+        "runs": [
+            {"name": "GR+NPHI", "opts": {
+                "var_data": "GR", "var_weight": 0.6,
+                "var_data2": "NPHI", "var_weight2": 0.4}},
+            {"name": "GR_only", "opts": {
+                "var_data": "GR", "var_weight": 1.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+    },
+    "13_troll": {
+        "title": "Troll – Facies+Distality (North Sea, Sognefjord Fm)",
+        "description": (
+            "Geological setting: Troll field, Northern North Sea (Sognefjord Formation).\n"
+            "5 wells with categorical facies and distality (Walther's Law).\n"
+            "No continuous logs — correlation driven by facies similarity\n"
+            "and distality ordering (facies belts shift predictably).\n"
+            "Thick sand reservoir with lateral facies transitions."
+        ),
+        "wells": DATA_DIR / "data_set_troll" / "wells.txt",
+        "runs": [
+            {"name": "FACIES+DISTALITY", "opts": {
+                "var_data": "FACIES", "var_weight": 0.6,
+                "var_data2": "DISTALITY", "var_weight2": 0.4}},
+            {"name": "FACIES_only", "opts": {
+                "var_data": "FACIES", "var_weight": 1.0}},
+        ],
+        "common_opts": {"cost_function": "composite",
+                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
     },
 }
 

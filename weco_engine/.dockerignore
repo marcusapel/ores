@@ -23,12 +23,6 @@ build/
 .git/
 .gitignore
 
-# Old / duplicate source trees
-WeCo-0.9.24/
-WeCo-master/
-examples/
-html/
-
 # Documentation source (not needed at runtime)
 doc_src/
 doc/doc/
@@ -38,4 +32,4 @@ doc/doc/
 *.sh
 *.log
 bin/
-output/
+tmp/
