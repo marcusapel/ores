@@ -43,6 +43,7 @@ from .search_router import router as search_router
 from .common import pretty_val as _jinja_pretty_val, access_token as _access_token
 from .howto_router import router as howto_router
 from .weco_router import router as weco_router
+from .weco_docs_router import router as weco_docs_router
 
 # ──────────────────────────────────────────────────────────────────────────────
 # App setup & logging
@@ -176,6 +177,7 @@ app.include_router(graphql_refdata_router)
 app.include_router(search_router)
 app.include_router(howto_router)
 app.include_router(weco_router, prefix="/weco", tags=["weco"])
+app.include_router(weco_docs_router, prefix="/weco", tags=["weco-docs"])
 
 
 app.mount(
