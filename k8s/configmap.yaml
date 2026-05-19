@@ -80,6 +80,17 @@ data:
   INSTANCE_PRESHIP_DEFAULT_COUNTRIES: "US"
   INSTANCE_PRESHIP_SSL_VERIFY: "false"
 
+  # ── "interop" - ADME Interop (client_credentials) ──
+  INSTANCE_INTEROP_AUTH_MODE: "client_credentials"
+  INSTANCE_INTEROP_HOSTNAME: "admeinterop.energy.azure.com"
+  INSTANCE_INTEROP_DATA_PARTITION_ID: "opendes"
+  INSTANCE_INTEROP_AUTHORITY: "osdu"
+  INSTANCE_INTEROP_SCHEMA_SOURCE: "wks"
+  INSTANCE_INTEROP_DEFAULT_LEGAL_TAG: "opendes-default-legal-tag"
+  INSTANCE_INTEROP_DEFAULT_OWNERS: "data.default.owners@opendes.dataservices.energy"
+  INSTANCE_INTEROP_DEFAULT_VIEWERS: "data.default.viewers@opendes.dataservices.energy"
+  INSTANCE_INTEROP_DEFAULT_COUNTRIES: "US"
+
 
   # ── Example: "prod" instance (uncomment to enable) ──
   # INSTANCE_PROD_TENANT_ID: ""
