@@ -134,39 +134,25 @@ spec:
                 cpu:
                   value: 70
 
-      # Secrets - set in Radix Console (never in git)
-      secrets:
-        - SECRET_KEY
-        # eqndev - per-user PKCE (no REFRESH_TOKEN)
-        - INSTANCE_EQNDEV_TENANT_ID
-        - INSTANCE_EQNDEV_CLIENT_ID
-        - INSTANCE_EQNDEV_CLIENT_SECRET
-        - INSTANCE_EQNDEV_SCOPE
-        # preship - client_credentials
-        - INSTANCE_PRESHIP_TENANT_ID
-        - INSTANCE_PRESHIP_CLIENT_ID
-        - INSTANCE_PRESHIP_CLIENT_SECRET
-        - INSTANCE_PRESHIP_SCOPE
-        # interop - ADME Interop (client_credentials)
-        - INSTANCE_INTEROP_TENANT_ID
-        - INSTANCE_INTEROP_CLIENT_ID
-        - INSTANCE_INTEROP_CLIENT_SECRET
-        - INSTANCE_INTEROP_SCOPE
-        # Uncomment when SMDA integration is needed
-        # - SMDA_CLIENT_ID
-        # - SMDA_SCOPE
-        # - SMDA_API_KEY
+      # Secrets - set via Radix Console when OSDU access is needed.
+      # Uncomment entries below after setting values in Console.
+      # secrets:
+      #   - SECRET_KEY
+      #   - INSTANCE_EQNDEV_TENANT_ID
+      #   - INSTANCE_EQNDEV_CLIENT_ID
+      #   - INSTANCE_EQNDEV_CLIENT_SECRET
+      #   - INSTANCE_EQNDEV_SCOPE
 
-      # Health probes matching k8s/deployment.yaml
+      # Health probes
       readinessProbe:
         httpGet:
-          path: /login-page
+          path: /weco/health
           port: 8000
         initialDelaySeconds: 5
         periodSeconds: 10
       livenessProbe:
         httpGet:
-          path: /login-page
+          path: /weco/health
           port: 8000
         initialDelaySeconds: 10
         periodSeconds: 30
