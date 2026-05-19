@@ -168,7 +168,7 @@
     {% for section in sections %}
     <div class="weco-sidebar-section">
       <h5>{{ section.title }}</h5>
-      {% for item in section.items %}
+      {% for item in section.articles %}
       <a href="/weco/docs/{{ item.slug }}" class="{{ 'active' if item.slug == slug else '' }}">{{ item.title }}</a>
       {% endfor %}
     </div>

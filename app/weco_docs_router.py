@@ -36,7 +36,7 @@ _WECO_DOC_SECTIONS: list[dict] = [
     # ── User Guide ────────────────────────────────────────────────────
     {
         "title": "User Guide",
-        "items": [
+        "articles": [
             {
                 "slug": "geology-primer",
                 "file": "geology_primer.md",
@@ -78,7 +78,7 @@ _WECO_DOC_SECTIONS: list[dict] = [
     # ── Tutorials ─────────────────────────────────────────────────────
     {
         "title": "Tutorials",
-        "items": [
+        "articles": [
             {
                 "slug": "hierarchical",
                 "file": "hierarchical_tutorial.md",
@@ -108,7 +108,7 @@ _WECO_DOC_SECTIONS: list[dict] = [
     # ── Technical Reference ───────────────────────────────────────────
     {
         "title": "Technical Reference",
-        "items": [
+        "articles": [
             {
                 "slug": "architecture",
                 "file": "architecture.md",
@@ -146,7 +146,7 @@ _WECO_DOC_SECTIONS: list[dict] = [
 # Flat lookup: slug → (filename, title)
 _WECO_DOC_FLAT: dict[str, tuple[str, str]] = {}
 for _sec in _WECO_DOC_SECTIONS:
-    for _item in _sec["items"]:
+    for _item in _sec["articles"]:
         _WECO_DOC_FLAT[_item["slug"]] = (_item["file"], _item["title"])
 
 _md_extensions = [
