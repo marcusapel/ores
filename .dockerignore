@@ -1,0 +1,29 @@
+# Docker build context exclusions
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+.venv
+.pytest_cache
+out.txt
+todo.txt
+auth.md
+security.md
+catalog-info.yaml
+ores.code-workspace
+ores_tokens.db*
+k8s/secret.yaml
+k8s/secret-backup/
+
+# weco_engine: exclude non-build files
+weco_engine/.git
+weco_engine/doc/
+weco_engine/doc_src/
+weco_engine/examples/
+weco_engine/output/
+weco_engine/tmp/
+weco_engine/bin/
+weco_engine/pytest/
+weco_engine/data/
+weco_engine/.github/
