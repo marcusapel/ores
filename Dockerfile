@@ -50,6 +50,9 @@ COPY md/           ./md/
 # Copy WeCo demo datasets (for /demos API endpoint)
 COPY weco_engine/demo/data/ ./demo/data/
 
+# Copy WeCo documentation (for /weco/docs pages)
+COPY weco_engine/doc/ ./weco_engine/doc/
+
 # Own everything by the non-root user
 RUN mkdir -p /data && chown -R ores:ores /app /data
 

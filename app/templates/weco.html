@@ -39,6 +39,10 @@
 .wc-status.info { display:block; background:#e3f2fd; color:#1565c0; }
 .wc-status.warn { display:block; background:#fff8e1; color:#e65100; }
 
+/* Context help links */
+.ctx-help { font-size:11px; color:#0d6efd; text-decoration:none; margin-left:.5rem; opacity:.7; vertical-align:middle; }
+.ctx-help:hover { opacity:1; text-decoration:underline; }
+
 /* Layout */
 .row { display:grid; grid-template-columns:200px 1fr; gap:.3rem .6rem; align-items:center; }
 .row label { font-size:13px; font-weight:500; }
@@ -141,6 +145,7 @@
     <span class="wc-tab" data-tab="run">4. Run</span>
     <span class="wc-tab disabled" data-tab="results">5. Results</span>
     <span class="wc-tab disabled" data-tab="export">6. Export</span>
+    <a class="ctx-help" id="tab-help-link" href="/weco/docs/formats" target="_blank" title="Help for this tab">&#10068; Help</a>
   </div>
 
   <!-- Tab 1: Data -->
@@ -392,6 +397,16 @@
   </div>
 </div>
 
-<script>window.WECO_CONFIG = { defaultDataspace: "{{ dataspace }}" };</script>
+<script>window.WECO_CONFIG = {
+  defaultDataspace: "{{ dataspace }}",
+  tabHelp: {
+    data:    "/weco/docs/formats",
+    logs:    "/weco/docs/geology-primer",
+    params:  "/weco/docs/parameters",
+    run:     "/weco/docs/decision-tree",
+    results: "/weco/docs/examples",
+    export:  "/weco/docs/export"
+  }
+};</script>
 <script src="/static/weco.js"></script>
 {% endblock %}

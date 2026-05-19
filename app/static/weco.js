@@ -82,6 +82,9 @@
   const exportStatus = $('#export-status');
 
   // ── Tab switching ─────────────────────────────────────────────────
+  const tabHelpLink = $('#tab-help-link');
+  const tabHelpMap = (window.WECO_CONFIG && window.WECO_CONFIG.tabHelp) || {};
+
   function switchTab(name) {
     tabs.forEach(t => {
       const isTarget = t.dataset.tab === name;
@@ -89,6 +92,10 @@
       if (isTarget) t.classList.remove('disabled');
     });
     bodies.forEach(b => b.classList.toggle('active', b.id === 'tab-' + name));
+    // Update context-specific help link
+    if (tabHelpLink && tabHelpMap[name]) {
+      tabHelpLink.href = tabHelpMap[name];
+    }
   }
   tabs.forEach(t => t.addEventListener('click', () => {
     if (!t.classList.contains('disabled')) switchTab(t.dataset.tab);

@@ -23,7 +23,12 @@ templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "templates")
 )
 
+# In Docker: /app/weco_engine/doc/ ; locally: <repo>/weco_engine/doc/
 _WECO_DOC_DIR = _Path(__file__).resolve().parent.parent / "weco_engine" / "doc"
+if not _WECO_DOC_DIR.is_dir():
+    # Fallback: check relative to CWD (Docker WORKDIR=/app)
+    _WECO_DOC_DIR = _Path("/app/weco_engine/doc")
+
 
 # ── WeCo Documentation Catalog ───────────────────────────────────────────
 # Organized as: User Guide → Tutorials → Technical Reference
