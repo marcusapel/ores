@@ -18,7 +18,6 @@ k8s/secret-backup/
 
 # weco_engine: exclude non-build files
 weco_engine/.git
-weco_engine/doc/
 weco_engine/doc_src/
 weco_engine/examples/
 weco_engine/output/
