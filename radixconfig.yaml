@@ -134,14 +134,21 @@ spec:
                 cpu:
                   value: 70
 
-      # Secrets - set via Radix Console when OSDU access is needed.
-      # Uncomment entries below after setting values in Console.
-      # secrets:
-      #   - SECRET_KEY
-      #   - INSTANCE_EQNDEV_TENANT_ID
-      #   - INSTANCE_EQNDEV_CLIENT_ID
-      #   - INSTANCE_EQNDEV_CLIENT_SECRET
-      #   - INSTANCE_EQNDEV_SCOPE
+      # Secrets - set via Radix Console
+      secrets:
+        - SECRET_KEY
+        - INSTANCE_EQNDEV_TENANT_ID
+        - INSTANCE_EQNDEV_CLIENT_ID
+        - INSTANCE_EQNDEV_CLIENT_SECRET
+        - INSTANCE_EQNDEV_SCOPE
+        - INSTANCE_PRESHIP_TENANT_ID
+        - INSTANCE_PRESHIP_CLIENT_ID
+        - INSTANCE_PRESHIP_CLIENT_SECRET
+        - INSTANCE_PRESHIP_SCOPE
+        - INSTANCE_INTEROP_TENANT_ID
+        - INSTANCE_INTEROP_CLIENT_ID
+        - INSTANCE_INTEROP_CLIENT_SECRET
+        - INSTANCE_INTEROP_SCOPE
 
       # Health probes
       readinessProbe:
