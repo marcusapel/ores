@@ -134,6 +134,7 @@
   checkHealth();
 
   // ── Dataspace list ────────────────────────────────────────────────
+  const _defaultDs = (window.WECO_CONFIG && window.WECO_CONFIG.defaultDataspace) || 'maap/weco';
   let allDataspaces = [];
   let selectedWells = new Set(); // well names currently selected
 
@@ -148,6 +149,17 @@
     } catch(e) {
       dsSel.innerHTML = '<option disabled>Could not load dataspaces</option>';
     }
+  }
+
+  function selectDataspace(dsPath) {
+    // Try to select the given dataspace in the dropdown
+    for (let i = 0; i < dsSel.options.length; i++) {
+      if (dsSel.options[i].value === dsPath) {
+        dsSel.selectedIndex = i;
+        return true;
+      }
+    }
+    return false;
   }
 
   function applyDsFilter() {
@@ -169,8 +181,8 @@
       matched++;
     });
     dsCount.textContent = (q1 || q2) ? `${matched}/${allDataspaces.length}` : `${allDataspaces.length}`;
-    // Auto-select first available dataspace
-    if (dsSel.options.length > 0 && !dsSel.value) {
+    // Auto-select default dataspace (demo dataspace), fall back to first
+    if (!selectDataspace(_defaultDs) && dsSel.options.length > 0 && !dsSel.value) {
       dsSel.selectedIndex = 0;
     }
   }
@@ -355,6 +367,9 @@
     currentDemoId = selectedDemo;
     btnRunDemo.style.display = 'inline-block';
     btnRunDemo.textContent = `\u25B6 Run "${selectedDemo}"`;
+
+    // Auto-select the demo dataspace
+    selectDataspace(_defaultDs);
 
     // Also check if this can be imported from RDDMS
     const btnRddms = $('#btn-import-demo-rddms');
@@ -647,7 +662,7 @@
   async function importDemoFromRddms(demoId) {
     importSpin.style.display = 'inline';
     setStatus(importStat, 'info', `Importing "${demoId}" from RDDMS...`);
-    const ds = dsSel.value || 'maap/weco';
+    const ds = dsSel.value || _defaultDs;
     try {
       const data = await api('POST', `/import/demo?demo_id=${encodeURIComponent(demoId)}&dataspace=${encodeURIComponent(ds)}`);
       importedWells = data;
