@@ -355,6 +355,25 @@ class WellList:
                 ok = False
         return ok
 
+    def to_dict(self) -> dict:
+        """Serialize WellList to a JSON-friendly dict (for job dispatch / caching)."""
+        from .json_format import welllist_to_json
+        return welllist_to_json(self, include_meta=True)
+
+    def from_dict(self, d: dict) -> "WellList":
+        """Populate this WellList from a dict produced by :meth:`to_dict`.
+
+        Can be called on an existing instance (mutates in place and returns self)
+        or used as a quasi-constructor::
+
+            wl = WellList()
+            wl.from_dict(data)
+        """
+        from .json_format import json_to_welllist
+        other = json_to_welllist(d)
+        self.wells = other.wells
+        return self
+
 
 class _CorrelationView:
     """Lightweight proxy exposing a single n-best path from a :class:`ResFile`.
