@@ -23,22 +23,22 @@ tmp/
 *.epc
 *.h5
 *.xml 
+*.bak
 test/_pg_vs_rest_output
-demo/epc/demo_records
-demo/epc/drogon_demo_records.json
+demo/drogonresqml/demo_records
+demo/drogonresqml/drogon_demo_records.json
 demo/drogon_dg2/records
 demo/drogon/records
-demo/seisint/records
 demo/preship
-demo/epc/drogon
-demo/epc/drogon_osdu
-demo/epc/drogon_dg_export
-demo/epc/structural_records
-demo/epc/.etp_token
-demo/epc/*_records.json
+demo/drogonresqml/drogon
+demo/drogonresqml/drogon_osdu
+demo/drogonresqml/drogon_dg_export
+demo/drogonresqml/structural_records
+demo/drogonresqml/.etp_token
+demo/drogonresqml/*_records.json
 
 # ── Generated manifests (instance-specific, rebuilt by scripts) ──
-demo/epc/manifest_*.json
+demo/drogonresqml/manifest_*.json
 ores_tokens.db-shm
 ores_tokens.db-wal
 log.txt

@@ -9,7 +9,6 @@ so the same script works against any registered backend.
 Datasets
   dg1       Drogon DG1 - business-decision, risks, volumes, master data
   dg2       Drogon DG2 - development concepts, seismic, documents, …
-  seisint   Seismic interpretation demo
 
 Usage
   python demo/ingest_preship.py                          # all → preship
@@ -40,8 +39,6 @@ REPO_ROOT  = SCRIPT_DIR.parent
 
 DG1_RECORDS       = SCRIPT_DIR / "drogon" / "records"
 DG2_RECORDS       = SCRIPT_DIR / "drogon_dg2" / "records"
-SEISINT_RECORDS   = SCRIPT_DIR / "seisint" / "records"
-SEISINT_SCHEMAS   = SCRIPT_DIR / "seisint" / "schemas" / "resolved"
 DEVCONCEPT_SCHEMA = SCRIPT_DIR / "drogon" / "schema_devconcept.json"
 CHRONOSTRAT_ZIP   = SCRIPT_DIR / "strat" / "chronostrat_records.zip"
 STRATCOLUMN_ZIP   = SCRIPT_DIR / "strat" / "stratcolumn_records.zip"
@@ -52,7 +49,7 @@ TARGET: Dict[str, Any] = {}
 # Source partition (auto-detected from records, fallback)
 SRC_PARTITION = "dev"
 
-# ── kind string parser (from seisint/register_m27_schemas.py) ────────
+# ── kind string parser ────────────────────────────────────────────────
 KIND_RE = re.compile(
     r"^(?P<authority>[^:]+)"
     r":(?P<source>[^:]+)"
@@ -227,14 +224,19 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
         else:
             print(f"    ≈ {missing_kind} exists")
 
-    # 4. LocalBoundaryFeature - from seisint unresloved schemas
-    lbf_schema = SCRIPT_DIR / "seisint" / "schemas" / "LocalBoundaryFeature.1.1.0.json"
+    # 4. LocalBoundaryFeature
     lbf_kind = "osdu:wks:master-data--LocalBoundaryFeature:1.1.0"
-    if lbf_schema.exists() and not check_schema_exists(client, lbf_kind):
-        body = json.loads(lbf_schema.read_text(encoding="utf-8"))
-        register_schema(client, body, dry_run=dry_run)
+    if not check_schema_exists(client, lbf_kind):
+        minimal = {
+            "x-osdu-schema-source": lbf_kind,
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "LocalBoundaryFeature",
+            "type": "object",
+            "additionalProperties": True,
+        }
+        register_schema(client, minimal, dry_run=dry_run)
     else:
-        print(f"    ≈ {lbf_kind} exists (or no source)")
+        print(f"    ≈ {lbf_kind} exists")
 
 
 # ── Record transformation ────────────────────────────────────────────
@@ -418,7 +420,7 @@ def ingest_records_chunked(client: httpx.Client, records: List[dict],
 
 # ── Main ──────────────────────────────────────────────────────────────
 
-DATASETS = ["dg1", "dg2", "seisint", "strat"]
+DATASETS = ["dg1", "dg2", "strat"]
 
 
 def main():
@@ -479,18 +481,7 @@ def main():
                 print(f"\n⚠ DG2 records not found at {DG2_RECORDS}")
                 print("  Run: python demo/run_pipeline.py demo/drogon_dg2")
 
-        # 4. Ingest seisint records
-        if "seisint" in selected:
-            if SEISINT_RECORDS.is_dir() and any(SEISINT_RECORDS.glob("*.json")):
-                recs = load_and_transform(SEISINT_RECORDS)
-                result = ingest_records(client, recs, "seisint", dry_run=args.dry_run)
-                for k in totals:
-                    totals[k] += result[k]
-            else:
-                print(f"\n⚠ SeisInt records not found at {SEISINT_RECORDS}")
-                print("  Run the seisint pipeline first.")
-
-        # 5. Ingest stratigraphy records (from zips)
+        # 4. Ingest stratigraphy records (from zips)
         if "strat" in selected:
             for zip_path, label in [
                 (CHRONOSTRAT_ZIP,  "chronostrat"),

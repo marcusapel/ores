@@ -119,12 +119,12 @@ graph LR
 ### Relationships (Graph Traversal)
 
 ```graphql
-# Forward refs (targets): what does Simgrid reference?
+# Forward refs (targets): what does Geogrid reference?
 {
   objectRelations(
     dataspace: "maap/drogon"
     typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
+    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
     direction: "targets"
   ) { uuid name typeName direction contentType }
 }
@@ -136,7 +136,7 @@ graph LR
   objectRelations(
     dataspace: "maap/drogon"
     typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "0bc36994-2032-4e08-bad8-60ce0871002a"
+    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
     direction: "sources"
   ) { uuid name typeName direction contentType }
 }
@@ -301,7 +301,7 @@ The `federatedSearch` resolver combines **three independent sources** in a singl
 # RDDMS-only with enrichment (relations + property statistics)
 {
   federatedSearch(
-    text: "Simgrid"
+    text: "Geogrid"
     searchCatalog: false
     searchRddms: true
     dataspaces: ["maap/drogon"]
@@ -387,10 +387,10 @@ Works with any object type - swap `typeName` + `uuid` for IjkGrids, WellboreFram
 
 ```bash
 # 1. Start Docker (PG on 5433, ETP on 9002)
-cd demo/epc && docker compose up -d
+cd demo/drogonresqml && docker compose up -d
 
 # 2. Import Drogon
-./demo/epc/ingest.sh
+./demo/drogonresqml/ingest.sh
 
 # 3. Set env var (add to ~/.bashrc)
 export GRAPHQL_PG_CONN_STRING="host=localhost port=5433 dbname=rddms user=foo password=bar"

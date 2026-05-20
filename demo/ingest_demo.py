@@ -3,7 +3,7 @@
 """
 ingest_demo.py - Unified ingestion pipeline for the full ORES demo dataset.
 
-Ingests Drogon DG1, DG2, SeisInt, and Strat data into **any** OSDU instance.
+Ingests Drogon DG1, DG2, and Strat data into **any** OSDU instance.
 Records are generated with the ``dev`` partition prefix; this script rewrites
 IDs, ACL, legal tags, and all embedded references at runtime to match the
 target instance.
@@ -15,8 +15,8 @@ Supports two ingestion modes (tried in order):
 Data sources (read from the repo, nothing pre-shipped):
   demo/drogon/          DG1 manifests  (13 manifests, 22 records)
   demo/drogon_dg2/      DG2 manifests  (11 manifests, 110+ records)
-  demo/seisint/         Seismic interpretation manifests (5 manifests)
   demo/strat/           Stratigraphic manifests (3 manifests, 300+ records)
+  demo/drogonresqml/             RESQML + full manifest (ingest_drogon.py)
 
 Usage:
   # Ingest everything into eqndev (our default instance):
@@ -65,10 +65,8 @@ SCRIPT_DIR    = Path(__file__).resolve().parent          # demo/
 REPO_ROOT     = SCRIPT_DIR.parent
 DG1_DIR       = SCRIPT_DIR / "drogon"
 DG2_DIR       = SCRIPT_DIR / "drogon_dg2"
-SEISINT_DIR   = SCRIPT_DIR / "seisint"
 STRAT_DIR     = SCRIPT_DIR / "strat"
 
-SEISINT_SCHEMAS_DIR = SEISINT_DIR / "schemas" / "resolved"
 DEVCONCEPT_SCHEMA   = DG1_DIR / "schema_devconcept.json"
 
 # Source partition (all generators produce records with this prefix)
@@ -289,16 +287,6 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
     """Register non-standard schemas that may be missing on the target."""
     print("\n── Registering missing schemas ──")
 
-    # SeisInt resolved schemas
-    if SEISINT_SCHEMAS_DIR.is_dir():
-        for f in sorted(SEISINT_SCHEMAS_DIR.glob("*.json")):
-            body = json.loads(f.read_text(encoding="utf-8"))
-            kind = body.get("x-osdu-schema-source", "")
-            if kind and not _schema_exists(client, kind):
-                _register_schema(client, body, dry_run=dry_run)
-            else:
-                print(f"    ≈ {kind or f.name} ok")
-
     # DevelopmentConcept custom schema
     if DEVCONCEPT_SCHEMA.exists():
         body = json.loads(DEVCONCEPT_SCHEMA.read_text(encoding="utf-8"))
@@ -328,10 +316,16 @@ def register_missing_schemas(client: httpx.Client, dry_run: bool = False) -> Non
             print(f"    ≈ {missing_kind} ok")
 
     # LocalBoundaryFeature
-    lbf = SEISINT_DIR / "schemas" / "LocalBoundaryFeature.1.1.0.json"
     lbf_kind = "osdu:wks:master-data--LocalBoundaryFeature:1.1.0"
-    if lbf.exists() and not _schema_exists(client, lbf_kind):
-        _register_schema(client, json.loads(lbf.read_text(encoding="utf-8")), dry_run=dry_run)
+    if not _schema_exists(client, lbf_kind):
+        minimal = {
+            "x-osdu-schema-source": lbf_kind,
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "LocalBoundaryFeature",
+            "type": "object",
+            "additionalProperties": True,
+        }
+        _register_schema(client, minimal, dry_run=dry_run)
     else:
         print(f"    ≈ {lbf_kind} ok")
 
@@ -607,15 +601,6 @@ DG2_MANIFESTS = [
     "manifest_bd_dg2.json",
 ]
 
-# SeisInt – seismic interpretation
-SEISINT_MANIFESTS = [
-    "manifest_rddms_catalog.json",
-    "manifest_rddms_drogon_dg_seismic.json",
-    "manifest_volantis_interp.json",
-    "manifest_horizon_controlpoints.json",
-    "manifest_fault_polylines.json",
-]
-
 # Strat – stratigraphic columns (ICS2017 chronostratigraphy)
 STRAT_MANIFESTS = [
     "manifest_chronostratics.json",
@@ -626,7 +611,6 @@ STRAT_MANIFESTS = [
 DATASETS: Dict[str, Tuple[Path, List[str]]] = {
     "dg1":     (DG1_DIR,     DG1_MANIFESTS),
     "dg2":     (DG2_DIR,     DG2_MANIFESTS),
-    "seisint": (SEISINT_DIR, SEISINT_MANIFESTS),
     "strat":   (STRAT_DIR,   STRAT_MANIFESTS),
 }
 
@@ -758,8 +742,8 @@ Examples:
         totals = {"created": 0, "skipped": 0, "failed": 0}
         manifest_idx = 0
 
-        # Process datasets in dependency order: dg1 → dg2 → seisint → strat
-        for ds_name in ["dg1", "dg2", "seisint", "strat"]:
+        # Process datasets in dependency order: dg1 → dg2 → strat
+        for ds_name in ["dg1", "dg2", "strat"]:
             if ds_name not in selected:
                 continue
 

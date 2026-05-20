@@ -8,7 +8,7 @@ Reuses:
   - resqml_viz.fetch_grid2d_surface()  - fetch object + z-values + CRS
   - resqml_viz._parse_lattice()        - RESQML 2.0.1 lattice geometry parsing
   - osdu.list_resources()        - enumerate objects by type
-  - Conversion logic adapted from demo/seisint/gen_structuremap_from_resqml.py
+  - Conversion logic adapted from the seismic interpretation pipeline
 
 Architecture note:
   The RDDMS stores RESQML 2.0.1 objects (Grid2dPatch, Offset[], Spacing etc.)
@@ -28,7 +28,7 @@ from . import resqml_viz
 
 log = logging.getLogger("rddms-admin.structuremap")
 
-# ── Deterministic UUID namespace (same as demo/seisint/_shared.py) ────
+# ── Deterministic UUID namespace ────────────────────────────────────────────
 NS_SMAP = uuid.UUID("d1e2f3a4-b5c6-7890-abcd-ef0123456789")
 
 

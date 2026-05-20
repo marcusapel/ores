@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-COMPOSE_FILE="$REPO_ROOT/demo/epc/docker-compose.yaml"
+COMPOSE_FILE="$REPO_ROOT/demo/drogonresqml/docker-compose.yaml"
 
 # ─── Ensure local RDDMS Docker services are running ──────────────────────── #
 

@@ -2,7 +2,7 @@
 demo/_auth.py - Single auth & env helper for all demo scripts.
 
 Replaces the scattered inline ``httpx.post`` / ``requests.post`` token
-flows found across drogon/, seisint/, strat/, and top-level demo scripts
+flows found across drogon/, strat/, and top-level demo scripts
 with **one** function: ``get_token()``.
 
 Secret sources (tried in order):

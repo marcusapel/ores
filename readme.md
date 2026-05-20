@@ -152,9 +152,9 @@ Without this variable, queries fall back to the RDDMS REST API (always works wit
 For local testing with Docker:
 
 ```bash
-cd demo/epc && docker compose up -d   # PostgreSQL + OpenETPServer
-./demo/epc/ingest.sh                   # Import Volve surfaces EPC
-python demo/epc/test_graphql.py        # Verify all queries
+cd demo/drogonresqml && docker compose up -d   # PostgreSQL + OpenETPServer
+./demo/drogonresqml/ingest.sh                   # Import Volve surfaces EPC
+python demo/drogonresqml/test_graphql.py        # Verify all queries
 ```
 
 See [md/Query.md](md/Query.md) for the full query guide.

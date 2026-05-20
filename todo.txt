@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════════════════════════════════
-OSDU RDDMS: Pitfalls, TODOs & Admin Requests
-Updated: 2026-05-11  
+ORES: TODOs & Known Limitations
+Updated: 2026-05-20
 ═══════════════════════════════════════════════════════════════════════
 
 ───────────────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ Updated: 2026-05-11
      Fix: Unwrap [obj] → obj in _rest_get_resource().
 
 1.3  Underscore in dataspace name → manifest/build 500
-     Server-side bug. Use names without underscore. See §3.2.
+     Server-side bug. Use names without underscore.
 
 1.4  EPC XML ↔ RDDMS JSON schema divergence
      ETP --import-epc is the safest path. REST PUT needs hand-crafted
@@ -28,11 +28,7 @@ Updated: 2026-05-11
      LocalPropertyKind: {"LocalPropertyKind": {"Title": "..."}}
      Fix: _extract_property_kind() handles both.
 
-1.6  Manifest builder omits WPC DatasetIDs
-     POST /manifests/build produces WPCs without DatasetIDs.
-     Fix: manifest_ingest.py auto-patches DatasetIDs after build.
-
-1.7  Local RDDMS stack - architecture
+1.6  Local RDDMS stack - architecture
      open-etp-client image (840 MB) = NestJS REST API, NOT a CLI.
      Includes manifest builder at POST /manifests/build.
      Env vars: RDMS_ETP_PROTOCOL, RDMS_ETP_HOST, RDMS_ETP_PORT,
@@ -43,52 +39,17 @@ Updated: 2026-05-11
      Auth: any non-empty Bearer token accepted (authN=none).
      Manifest builder returns HTTP 201 (not 200) on success.
 
-1.8  POST /dataspaces returns 400 with HTML body (M26?)
-     ───────────────────────────────────────────────────
-     Problem:  Create Dataspace (POST /api/reservoir-ddms/v2/dataspaces)
-               returns HTTP 400 with an HTML page body ("OsduUi - Home"
-               with Equinor design tokens) instead of JSON.
-     Observed: 2026-05-10 on swedev. Was working before.
-     Likely:   OSDU M26 API gateway change - the gateway intercepts
-               the POST and returns its own error page before the
-               request reaches the RDDMS service.
-     Payload sent (known-good format):
-               [{"DataspaceId":"maap/olympus","Path":"maap/olympus",
-                 "CustomData":{"legaltags":[...],"owners":[...],...}}]
-     Impact:   "Create a dataspace" form in /admin is broken.
-     See also: §3.7.
-
-1.9  ETP Authorize timeout (M26?)
-     ─────────────────────────────
-     wss://equinorswedev.energy.azure.com/api/reservoir-ddms-etp/v2/
-     ETP Core(0).Authorize(6) times out. App registration ebd2bfee
-     had access before M26. Now the WebSocket connection opens but
-     the Authorize handshake never completes.
-     See also: §3.8.
-
-1.10 Radix ingress routes to wrong app
+1.7  Radix ingress routes to wrong app
      ──────────────────────────────────
      https://web-ores-dev.c3.radix.equinor.com shows "OsduUi - Home"
      in the browser tab instead of ORES. The Radix ingress is
      routing to the OSDU UI container instead of the ORES pod.
-     Same root cause suspected as §1.8 - M26 gateway/routing change.
-     See also: §3.9.
+     Likely M26 gateway/routing change.
 
 
 ───────────────────────────────────────────────────────────────────────
 2. TODO / IMPROVEMENTS (code)
 ───────────────────────────────────────────────────────────────────────
-
-2.0  Code review / refactoring  (branch: refactor/code-review)
-     ──────────────────────────────────────────────────────────
-       ✓ P6b graphql_router 1707→450 lines  (graphql_search.py extracted)
-       ✓ P9  PG/REST geometry dedup in resqml_viz via _build_geometry_result
-       ✓ P12 _KIND_CACHE replaced with cached_call utility
-       ✓ P13 asyncio.Lock on get_pool / get_rddms_pool (double-checked)
-       ✓ P14 Removed dead request.app.state.last_manifest writes
-       - P16 PG→REST fallback cascade: deferred (each site has distinct
-             fallback logic; abstracting hurts readability more than it
-             saves code)
 
 2.1  DatasetIDs patch in GUI ingest flow
      ────────────────────────────────────
@@ -107,11 +68,11 @@ Updated: 2026-05-11
 2.4  deep_search performance - server-side bulk query
      ─────────────────────────────────────────────────
      Client-side property cache done. Need server-side "typeSearch"
-     or "bulkGet" endpoint (see §3.4).
+     or "bulkGet" endpoint (requested: see MANIFEST_BUILDER_DEFICIENCIES.md §15).
 
 
 ───────────────────────────────────────────────────────────────────────
-3. RDDMS ADMIN REQUESTS
+3. ADMIN REQUESTS (ORES deployment)
 ───────────────────────────────────────────────────────────────────────
 
 3.1  Delete stale dataspaces
@@ -119,29 +80,7 @@ Updated: 2026-05-11
      Delete: maap/drogon_osdu, maap/drogon2
      Keep:   maap/drogon (1302 obj), maap/drogon_dg (656 obj)
 
-3.2  Fix manifest/build for underscored dataspace names
-     Confirmed broken 2026-05-10. Workaround: avoid underscores.
-
-3.3  Consistent REST response format
-     Add explicit top-level keys (uuid, contentType, title).
-
-3.4  Bulk query / filtered listing API
-     Server-side filtering to avoid N+1 roundtrips in deep_search.
-
-3.5  Dataspace metadata / description field
-
-3.6  CORS / WebSocket for browser-based ETP  (low priority)
-
-3.7  POST /dataspaces returns 400 HTML after M26 upgrade
-     Was working before. Now the OSDU API gateway returns an HTML
-     error page instead of forwarding to the RDDMS service.
-     Needs investigation: gateway routing change or payload format.
-
-3.8  ETP Authorize timeout (M26 regression)
-     wss endpoint opens but Core(0).Authorize(6) never completes.
-     App ebd2bfee had working access before M26.
-
-3.9  Radix ingress routes to OSDU UI instead of ORES
+3.2  Radix ingress routes to OSDU UI instead of ORES
      web-ores-dev.c3.radix shows OsduUi tab title. Likely the
      ingress backend was inadvertently changed during M26 deploy.
 
@@ -158,7 +97,7 @@ Updated: 2026-05-11
        │    ETP --export-epc       │     search / PG query        │
        └───────────────────────────┘     ◄────────────────────────┘
 
-  Local stack (demo/epc/docker-compose.yaml):
+  Local stack (demo/drogonresqml/docker-compose.yaml):
   ┌─────────┐   ETP import    ┌──────────┐  manifest/build  ┌──────────┐
   │  .epc   │ ──────────────► │  local   │ ───────────────► │ manifest │
   │  file   │     ingest.sh   │  RDDMS   │  manifest_ingest │  .json   │
@@ -167,10 +106,6 @@ Updated: 2026-05-11
                                                     push to     │
                                                     remote  ────┘
                                                     OSDU catalog
-
-  Remaining gaps:
-  - manifest/build underscore bug (§3.2)
-  - DatasetIDs patch in GUI ingest flow (§2.1)
 
 
 ───────────────────────────────────────────────────────────────────────
@@ -205,5 +140,3 @@ Updated: 2026-05-11
   /search - wildcard kind queries
      ADME rejects kind:*. Auto-resolves via probe; results cached
      5 min to avoid repeated round-trips.
-
-───────────────────────────────────────────────────────────────────────

@@ -2964,7 +2964,7 @@
 # Uses deepSearch on features, then relations reveal the full tree.
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_GeneticBoundaryFeature"
     includeRelations: true
     limit: 12
@@ -2991,7 +2991,7 @@
 # may not know about.
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_HorizonInterpretation"
     includeRelations: true
     limit: 10
@@ -3014,7 +3014,7 @@
 # Expected for Drogon: 6 faults × (1 Feature + 1 Interpretation + 1 PolylineSet)
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_FaultInterpretation"
     includeRelations: true
     limit: 10
@@ -3035,7 +3035,7 @@
 # points to (FaultInterpretation, HorizonInterpretation, etc.)
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_StructuralOrganizationInterpretation"
     includeRelations: true
     limit: 5
@@ -3056,7 +3056,7 @@
 # Expected for Drogon: 9 Grid2D surfaces (7 depth + 2 time)
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_Grid2dRepresentation"
     includeRelations: true
     limit: 20
@@ -3104,7 +3104,7 @@
 #       → GeneticBoundaryFeature (horizons bounding each unit)
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_StratigraphicColumn"
     includeRelations: true
     limit: 5
@@ -3128,7 +3128,7 @@
 # Expected for Drogon: 1 grid → 32 properties (189 continuous + 65 discrete)
 {
   deepSearch(
-    dataspace: "$DS_NAME"
+    dataspace: "$DS"
     typeName: "resqml20.obj_IjkGridRepresentation"
     includeRelations: true
     includeStatistics: true

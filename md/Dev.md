@@ -101,9 +101,8 @@ demo/
   ingest_demo.py       # Batch record ingestion helper
   drogon/              # Drogon DG1 pipeline
   drogon_dg2/          # Drogon DG2 pipeline
-  seisint/             # Volantis seismic interpretation pipeline
   strat/               # Stratigraphic column manifests and tools
-  epc/                 # Local OpenETPServer Docker + test data
+  drogonresqml/        # RESQML EPC data + OSDU manifest + ingest scripts
 
 test/                  # pytest test suite (368 tests)
 md/                    # Documentation guides (rendered via /howto)
@@ -209,7 +208,7 @@ The Drogon pipeline (`demo/drogon/`) generates ~19 OSDU records from a single FM
 |---------|----------|---------|---------|
 | **Drogon DG1** | `demo/drogon/` | ~19 | Identify & Assess (7 segments, 3 facies) |
 | **Drogon DG2** | `demo/drogon_dg2/` | ~31 | Concept Select (porosity scenario, PersistedCollection) |
-| **Volantis SeisInt** | `demo/seisint/` | 66 | Seismic interpretation (faults, HCP, StructureMaps via RDDMS) |
+| **Drogon RESQML** | `demo/drogonresqml/` | 161 | Full structural model, grid, wells, properties (RDDMS + catalog) |
 
 ### Token tools
 
@@ -338,9 +337,9 @@ Without this variable, queries fall back to the RDDMS REST API (always works wit
 For local testing with Docker:
 
 ```bash
-cd demo/epc && docker compose up -d   # PostgreSQL + OpenETPServer
-./demo/epc/ingest.sh                   # Import Volve surfaces EPC
-python demo/epc/test_graphql.py        # Verify all queries
+cd demo/drogonresqml && docker compose up -d   # PostgreSQL + OpenETPServer
+./demo/drogonresqml/ingest.sh                   # Import Volve surfaces EPC
+python demo/drogonresqml/test_graphql.py        # Verify all queries
 ```
 
 See [Query.md](Query.md) for the full query guide.
