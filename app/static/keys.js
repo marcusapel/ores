@@ -2948,6 +2948,204 @@
       }
     }
   }
+}`,
+      // ─── Structural Model Relationships (FIRP hierarchy) ─────────────────
+      // Queries that navigate the Feature→Interpretation→Representation→Property
+      // graph for structural models across RDDMS and catalog.
+      struct_features_to_reps: `# STRUCTURAL: Feature → Interpretation → all Representations
+#
+# Traverses the RESQML FIRP hierarchy from boundary features downward:
+#   LocalBoundaryFeature (horizon/fault)
+#     → HorizonInterpretation / FaultInterpretation
+#       → Grid2dRepresentation (depth surface, time surface)
+#       → PolylineSetRepresentation (fault sticks)
+#       → PointSetRepresentation (well markers)
+#
+# Uses deepSearch on features, then relations reveal the full tree.
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_GeneticBoundaryFeature"
+    includeRelations: true
+    limit: 12
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      struct_interp_to_surfaces: `# STRUCTURAL: HorizonInterpretation → which surfaces reference it?
+#
+# Direction "sources" = reverse traversal: find all objects that point TO
+# each HorizonInterpretation. Expected for Drogon:
+#   - Grid2dRepresentation (depth maps, time maps)
+#   - PointSetRepresentation (well picks projected onto horizon)
+#   - WellboreMarkerFrameRepresentation (markers that reference this horizon)
+#
+# This is the RDDMS-only equivalent of the catalog's InterpretedHorizonID
+# cross-reference, but richer: it includes representations the catalog
+# may not know about.
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_HorizonInterpretation"
+    includeRelations: true
+    limit: 10
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      struct_faults_graph: `# STRUCTURAL: Fault hierarchy - Feature → Interpretation → PolylineSet
+#
+# The fault representation chain in RESQML:
+#   TectonicBoundaryFeature → FaultInterpretation → PolylineSetRepresentation
+# Plus the StructuralOrganizationInterpretation that aggregates all faults.
+#
+# Expected for Drogon: 6 faults × (1 Feature + 1 Interpretation + 1 PolylineSet)
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_FaultInterpretation"
+    includeRelations: true
+    limit: 10
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      struct_org_model: `# STRUCTURAL: StructuralOrganizationInterpretation → all members
+#
+# The top-level structural model object that references ALL faults and
+# horizons in the interpretation. Direction "targets" shows what it
+# points to (FaultInterpretation, HorizonInterpretation, etc.)
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_StructuralOrganizationInterpretation"
+    includeRelations: true
+    limit: 5
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      struct_grid2d_all: `# STRUCTURAL: All Grid2D surfaces with their parent horizon + CRS
+#
+# Lists every depth/time surface (Grid2dRepresentation) and shows
+# which HorizonInterpretation and CRS each references.
+# Expected for Drogon: 9 Grid2D surfaces (7 depth + 2 time)
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    includeRelations: true
+    limit: 20
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      struct_catalog_vs_rddms: `# STRUCTURAL: Compare catalog StructureMap records with RDDMS Grid2D objects
+#
+# Federated query that finds StructureMap WPCs in the OSDU catalog
+# and cross-references them with Grid2dRepresentation in RDDMS.
+# Hits with both foundInCatalog=true and foundInLocalRddms=true are
+# fully synchronized. Missing on either side indicates a gap.
+{
+  federatedSearch(
+    text: "*"
+    kind: "osdu:wks:work-product-component--StructureMap:*"
+    dataspaces: $DS_LIST
+    typeName: "resqml20.obj_Grid2dRepresentation"
+    searchCatalog: true
+    searchRddms: true
+    includeRelations: true
+    limit: 20
+  ) {
+    totalCatalog totalLocalRddms totalMerged sources
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
+      relations { uuid name typeName direction }
+    }
+  }
+}`,
+      struct_strat_column: `# STRUCTURAL: Stratigraphic column → units → boundary features
+#
+# Traverses the stratigraphic framework:
+#   StratigraphicColumn → StratigraphicColumnRankInterpretation
+#     → StratigraphicUnitInterpretation (5 units in Drogon)
+#       → GeneticBoundaryFeature (horizons bounding each unit)
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_StratigraphicColumn"
+    includeRelations: true
+    limit: 5
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}`,
+      struct_grid_to_props: `# STRUCTURAL: IjkGrid → all cell properties (porosity, perm, facies, etc.)
+#
+# Direction "sources" on the grid finds everything that references it:
+#   - ContinuousProperty (porosity, permeability, Sw, NTG, ...)
+#   - DiscreteProperty (facies, region, zone)
+#
+# With includeStatistics: get min/max/mean for each property array.
+# Expected for Drogon: 1 grid → 32 properties (189 continuous + 65 discrete)
+{
+  deepSearch(
+    dataspace: "$DS_NAME"
+    typeName: "resqml20.obj_IjkGridRepresentation"
+    includeRelations: true
+    includeStatistics: true
+    limit: 3
+  ) {
+    total
+    hits {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+      properties {
+        uuid title kind uom
+        statistics { count minValue maxValue mean stdDev }
+      }
+    }
+  }
 }`
     };
 

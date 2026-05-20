@@ -326,6 +326,16 @@
               <option value="xref_well_chain">Well chain: catalog → RDDMS graph</option>
               <option value="xref_grid_full">Full lineage + property filter</option>
             </optgroup>
+            <optgroup label="Structural Model (FIRP)">
+              <option value="struct_features_to_reps">Features → Interpretations → Reps</option>
+              <option value="struct_interp_to_surfaces">HorizonInterp → surfaces (reverse)</option>
+              <option value="struct_faults_graph">Faults: Feature → Interp → PolylineSet</option>
+              <option value="struct_org_model">StructuralOrg → all members</option>
+              <option value="struct_grid2d_all">All Grid2D surfaces + parents</option>
+              <option value="struct_catalog_vs_rddms">Catalog StructureMap ↔ RDDMS Grid2D</option>
+              <option value="struct_strat_column">Strat column → units → boundaries</option>
+              <option value="struct_grid_to_props">IjkGrid → all cell properties</option>
+            </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>
           <span class="btn" id="gql-save-query" style="font-size:12px;padding:3px 10px;" title="Save current query">💾 Save</span>
