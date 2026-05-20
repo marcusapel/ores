@@ -1,0 +1,667 @@
+# Drogon Structural / Seismic Interpretation Archive
+
+Technical inventory and data model description for the Drogon seismic
+interpretation dataset as archived from the OSDU interop instance.
+
+---
+
+## 1. Archive Contents
+
+### 1.1 Demo EPC (all types, pruned maps)
+
+| Component | Path | Size | Description |
+|---|---|---|---|
+| **RESQML EPC** | `demo/epc/drogon_demo.epc` | 0.8 MB | 404 objects (ZIP/OPC) |
+| **RESQML H5** | `demo/epc/drogon_demo.h5` | 217 MB | HDF5 arrays (grids, wells, properties) |
+| **JSON Records** | `demo/epc/drogon_demo_records.json` | 320 MB | All objects with embedded base64 arrays |
+| **Individual JSON** | `demo/epc/demo_records/` | 400 files | One file per object for OpenETPClient PUT |
+| **OSDU Manifest** | `demo/epc/manifest_full_interop.json` | 0.3 MB | 144 OSDU records (comprehensive, manual) |
+| **RDDMS Manifest** | `demo/epc/manifest_demo_drogon_interop.json` | — | 102 records (remote builder output, incomplete) |
+
+### 1.2 Structural-only EPC (interpretation framework)
+
+| Component | Path | Size | Description |
+|---|---|---|---|
+| **RESQML EPC** | `demo/epc/drogon_structural.epc` | 161 KB | 69 objects (interpretation only) |
+| **RESQML H5** | `demo/epc/drogon_structural.h5` | 11.8 MB | Arrays (fault sticks, horizon picks) |
+| **JSON Records** | `demo/epc/drogon_structural_records.json` | 37 MB | 68 objects as JSON |
+
+### 1.3 OSDU Catalog Records (DG2 / interop instance)
+
+| Component | Path | Count | Description |
+|---|---|---|---|
+| **OSDU StructureMaps** | `demo/drogon_dg2/records/025-036` | 12 JSON | Grid-extracted depth surfaces (DG2) |
+| **OSDU Seismic Grids** | `demo/drogon_dg2/records/037-046` | 10 JSON | Amplitude extractions on 2D grids |
+| **OSDU Polygons** | `demo/drogon_dg2/records/079-085` | 7 JSON | Fault lines, fluid contacts |
+| **OSDU Dataspace** | `demo/drogon_dg2/records/086` | 1 JSON | ETPDataspace link |
+| **SeisInt Manifests** | `demo/seisint/manifest_*.json` | 5 files | Features, interpretations, bin grids |
+| **Strat Column** | `demo/strat/manifest_stratcolumn.json` | 1 file | Chronostratigraphic column |
+| **Strat Horizons** | `demo/strat/manifest_horizons.json` | 1 file | Boundary horizons for the ICS scheme |
+
+---
+
+## 2. RESQML Object Inventory (Demo EPC)
+
+Dataspace: `demo/drogon` · RESQML version: 2.0.1
+
+| Type | Count | Description |
+|---|---|---|
+| **Structural Framework** | | |
+| GeneticBoundaryFeature | 6 | Horizons: TopVolantis, BaseVolantis, TopTherys, TopVolon, BaseVelmodel, MSL |
+| HorizonInterpretation | 6 | Geologic meaning for each horizon |
+| TectonicBoundaryFeature | 6 | Faults: F1–F6 |
+| FaultInterpretation | 6 | Geologic meaning for each fault |
+| StructuralOrganizationInterpretation | 1 | Drogon Structural Framework (6 horizons + 6 faults, age-ordered) |
+| OrganizationFeature | 1 | Earth model for Geogrid |
+| StratigraphicColumn | 1 | Vertical succession (Geogrid) |
+| StratigraphicColumnRankInterpretation | 1 | 5 units: Above TopVolantis, Valysar, Therys, Volon, Below BaseVolantis |
+| StratigraphicUnitFeature | 5 | Formation features |
+| StratigraphicUnitInterpretation | 5 | Formation meanings |
+| **Representations** | | |
+| PolylineSetRepresentation | 6 | Fault sticks in TWT (F1–F6) |
+| PointSetRepresentation | 13 | Interpreted picks (depth+time) + fault extractions |
+| Grid2dRepresentation | 9 | 3 Interpreted depth + 2 Interpreted time + 4 Velocity Model |
+| IjkGridRepresentation | 1 | Geogrid 92×146×69 (925,668 cells) |
+| **Wells** | | |
+| WellboreFeature | 12 | 55/33-1, -2, -3, A-1 to A-6, OP5_Y1, OP5_Y2, OP6 |
+| WellboreInterpretation | 12 | Well interpretations |
+| WellboreTrajectoryRepresentation | 12 | Well paths (XYZ + MD) |
+| DeviationSurveyRepresentation | 12 | Directional surveys |
+| MdDatum | 12 | Measured depth reference points |
+| WellboreFrameRepresentation | 9 | Log sampling frames |
+| WellboreMarkerFrameRepresentation | 9 | Stratigraphic marker sets |
+| **Properties** | | |
+| ContinuousProperty | 189 | 32 grid (geo+sim) + 157 log curves (9 wells) |
+| DiscreteProperty | 65 | 1 grid (Facies) + 64 log (facies indicators, zones) |
+| **Support** | | |
+| LocalDepth3dCrs | 1 | ED50 / UTM zone 37S, vertical MSL, Z increasing down |
+| LocalTime3dCrs | 1 | ED50 / UTM zone 37S, vertical in ms TWT |
+| EpcExternalPartReference | 1 | H5 file link |
+| Activity | 1 | Provenance record (build activity) |
+| ActivityTemplate | 1 | Activity template definition |
+| **Total** | **404** | |
+
+### What Was Pruned (16 objects)
+
+| Excluded | Count | Reason |
+|---|---|---|
+| Grid2d "Geogrid Extract" | 6 | Redundant with IjkGrid corner-point geometry |
+| PointSet "HUM Geophysics" | 4 | Workflow intermediate (model input from HUM) |
+| PointSet "HUM Post-Iterate" | 4 | Workflow intermediate (model output) |
+| PointSet "Depth Points (Filtered)" | 2 | QC pass of depth picks (time equivalents kept) |
+
+### Grid Properties (32 on IjkGrid – geo + sim static)
+
+| Property | Category |
+|---|---|
+| Total Porosity | Geo-model |
+| Horizontal Permeability | Geo-model |
+| Vertical Permeability | Geo-model |
+| Phyllosilicate Volume Fraction | Geo-model |
+| Shale Volume | Geo-model |
+| Carbonate/Coal Volume Fraction | Geo-model |
+| Net Sand Fraction | Geo-model |
+| Facies | Geo-model (discrete) |
+| Fault Block Index, Fault Distance | Structure |
+| Region Index, Saturation Region (SATNUM) | Sim init |
+| Water/Oil/Gas Saturation | Sim init |
+| Free Water Level, Gas-Oil Contact Depth | Contacts |
+| Net-to-Gross Ratio (PEM) | Petro-elastic |
+| Temperature | Sim |
+| Pore/Bulk Volumes, Zone Index | Sim derived |
+
+### Log Properties (25 curve types × 9 wells = 222)
+
+| Property | Type |
+|---|---|
+| Total Porosity, Horizontal Permeability | Reservoir |
+| Acoustic/Shear Impedance, Vp/Vs | Elastic |
+| P-Wave/S-Wave Velocity, Bulk Density | Petrophysics |
+| Seismic Near Amplitude, Relative AI Near | Seismic |
+| Facies, Coal/Calcite Indicator | Discrete |
+| Shale Volume, Phyllosilicate Volume | Clay |
+| Measured Depth, Fault Distance | Geometry |
+| Water Saturation, Zone Index | Sim |
+| Perforation Interval | Completion |
+
+### Wells (12)
+
+| Name | Type |
+|---|---|
+| 55/33-1, 55/33-2, 55/33-3 | Exploration |
+| 55/33-A-1 to A-6 | Appraisal/Development |
+| OP5_Y1, OP5_Y2, OP6 | Production |
+
+### Canonical Metadata and Units
+
+All objects carry OSDU-aligned metadata via RESQML ExtraMetadata:
+
+| ExtraMetadata Key | Value | OSDU Equivalent |
+|---|---|---|
+| `osdu:FieldName` | Drogon | `data.FieldNames[]` |
+| `osdu:Basin` | Norwegian Continental Shelf | `data.BasinNames[]` |
+| `osdu:DataSource` | Drogon Demo (Equinor) | `data.Source` |
+| `osdu:HorizonName` | TopVolantis, etc. | `data.HorizonName` |
+
+**Units of Measure (UOM)** – Energistics standard abbreviations:
+
+| UOM | Meaning | Used By |
+|---|---|---|
+| `v/v` | Volume fraction (dimensionless) | Porosity, saturation, NTG, shale volume |
+| `m3` | Cubic metres | Pore volume, bulk volume |
+| `m` | Metres | CRS, depths, well MD |
+| `mD` | Millidarcy | Permeability |
+| `degC` | Degrees Celsius | Temperature |
+| `dega` | Degrees (angle) | CRS areal rotation |
+| `Euc` | Dimensionless (Euclidean) | Facies index, zone index |
+| `m/s` | Metres per second | P-wave, S-wave velocity |
+| `kg/m3` | Kilograms per cubic metre | Bulk density |
+| `Pa` | Pascals (stress) | Acoustic/shear impedance |
+
+**CRS** – Both depth and time systems defined:
+
+| CRS Object | Projected | Vertical | Z Convention |
+|---|---|---|---|
+| LocalDepth3dCrs | ED50 / UTM 37S (m) | MSL (m) | Z increasing downward |
+| LocalTime3dCrs | ED50 / UTM 37S (m) | TWT (ms) | Z increasing downward |
+
+### Relationship Preservation
+
+The EPC maintains the full RESQML relationship graph via OPC `.rels` files
+and inline `DataObjectReference` elements:
+
+```
+Feature ←─── Interpretation ←─── Representation ←─── Property
+   │                │                    │                │
+   │                │                    ├── LocalCrs     ├── SupportingRep
+   │                │                    └── HdfProxy     └── HdfProxy
+   │                │
+   │                └── InterpretedFeature (back-ref to Feature)
+   │
+   └── (GeneticBoundary / TectonicBoundary / StratigraphicUnit)
+```
+
+**Key relationships preserved in this archive:**
+
+| From | Relationship | To |
+|---|---|---|
+| HorizonInterpretation | InterpretedFeature | GeneticBoundaryFeature |
+| FaultInterpretation | InterpretedFeature | TectonicBoundaryFeature |
+| StructuralOrganizationInterpretation | InterpretedFeature | OrganizationFeature |
+| StructuralOrganizationInterpretation | Horizons[] | HorizonInterpretation (×6) |
+| StructuralOrganizationInterpretation | Faults[] | FaultInterpretation (×6) |
+| Grid2dRepresentation | RepresentedInterpretation | HorizonInterpretation |
+| PointSetRepresentation | RepresentedInterpretation | Horizon/FaultInterpretation |
+| PolylineSetRepresentation | RepresentedInterpretation | FaultInterpretation |
+| IjkGridRepresentation | StratigraphicOrganization | StratigraphicColumnRankInterpretation |
+| StratigraphicColumn | Ranks | StratigraphicColumnRankInterpretation |
+| StratigraphicColumnRank | StratigraphicUnits | StratigraphicUnitInterpretation |
+| StratigraphicUnitInterpretation | InterpretedFeature | StratigraphicUnitFeature |
+| ContinuousProperty | SupportingRepresentation | IjkGrid / WellboreFrame |
+| WellboreTrajectory | MdDatum | MdDatum |
+| WellboreInterpretation | InterpretedFeature | WellboreFeature |
+| All representations | LocalCrs | LocalDepth3dCrs / LocalTime3dCrs |
+| All array holders | HdfProxy | EpcExternalPartReference |
+
+---
+
+## 3. OSDU Catalog Records (DG2 / Interop)
+
+Dataspace: `maap/drogon_dg` · Partition: `opendes` · Legal: `opendes-default-legal-tag`
+
+### 3.1 StructureMap Records (12)
+
+Grid-extracted depth surfaces from the DG2 reservoir model. Each references a
+`Grid2dRepresentation` in RDDMS via `DDMSDatasets[]`.
+
+| Horizon | Variant | Grid | Nodes |
+|---|---|---|---|
+| TopVolantis | ds_extract_geogrid | 280×440 @ 25 m | 123,200 |
+| TopVolantis | ds_extract_postprocess | 280×440 @ 25 m | 123,200 |
+| BaseVolantis | ds_extract_geogrid | 280×440 @ 25 m | 123,200 |
+| BaseVolantis | ds_extract_postprocess | 280×440 @ 25 m | 123,200 |
+| TopTherys | ds_extract_geogrid | 280×440 @ 25 m | 123,200 |
+| TopTherys | ds_extract_postprocess | 280×440 @ 25 m | 123,200 |
+| TopVolon | ds_extract_geogrid | 280×440 @ 25 m | 123,200 |
+| TopVolon | ds_extract_postprocess | 280×440 @ 25 m | 123,200 |
+| MSL | ds_extract_geogrid | 280×440 @ 25 m | 123,200 |
+| MSL | ds_extract_postprocess | 280×440 @ 25 m | 123,200 |
+| BaseVelmodel | ds_extract_geogrid | 280×440 @ 25 m | 123,200 |
+| BaseVelmodel | ds_extract_postprocess | 280×440 @ 25 m | 123,200 |
+
+All use **Pattern A** (inline grid geometry) with identical lattice parameters.
+CRS: UTM37N (EPSG:32637). DomainType: Depth.
+
+### 3.2 Seismic Amplitude Grids (10)
+
+Amplitude extractions at horizons. Stored as `GenericRepresentation` with
+`FMU.Content: "seismic"`. Same 280×440 @ 25 m lattice.
+
+| Horizon | Offset | Vintage |
+|---|---|---|
+| TopVolantis | near | 2018 |
+| TopVolantis | far | 2018 |
+| TopTherys | near | 2018 |
+| TopTherys | far | 2018 |
+| TopVolon | near | 2018 |
+| TopVolon | far | 2018 |
+| BaseVolantis | near | 2018 |
+| BaseVolantis | far | 2018 |
+| MSL | near | 2018 |
+| MSL | far | 2018 |
+
+### 3.3 Structural Polygons (7)
+
+Stored as `GenericRepresentation` with `FMU.Content: "polygons"`.
+
+| Name | Content |
+|---|---|
+| Fault Lines at TopVolantis | Fault line polygons |
+| Fault Lines at TopTherys | Fault line polygons |
+| Fault Lines at TopVolon | Fault line polygons |
+| Fault Lines at BaseVolantis | Fault line polygons |
+| Field Outline | License area boundary |
+| Fluid Contact Outline (GOC) | Gas-oil contact |
+| Fluid Contact Outline (FWL) | Free water level |
+
+---
+
+## 4. SeisInt Manifest Objects
+
+From `demo/seisint/manifest_volantis_interp.json` – the interpretation
+framework linking features → interpretations → representations.
+
+### 4.1 Features (MasterData)
+
+| Kind | Name | Role |
+|---|---|---|
+| LocalBoundaryFeature | Top Volantis | Reservoir top |
+| LocalBoundaryFeature | Base Volantis | Reservoir base |
+| LocalBoundaryFeature | Top Therys | Source rock top |
+
+### 4.2 Interpretations
+
+| Kind | Name | Domain |
+|---|---|---|
+| HorizonInterpretation | TopVolantis Interpretation | Mixed |
+| HorizonInterpretation | BaseVolantis Interpretation | Mixed |
+| HorizonInterpretation | TopTherys Interpretation | Mixed |
+
+### 4.3 Bin Grids
+
+| Kind | Name | Spacing | Nodes | Bearing |
+|---|---|---|---|---|
+| SeismicBinGrid | Volantis3D | 12.5 m × 12.5 m | – | P6 vectors |
+| GenericBinGrid | Volantis Depth 25m | 25 m × 25 m | 300×200 | 90° |
+| GenericBinGrid | Therys Depth 20m | 20 m × 20 m | 350×550 | 150° |
+
+### 4.4 Surfaces & Horizons
+
+| Kind | Name | Grid Reference |
+|---|---|---|
+| SeismicHorizon | TopVolantis TWT | (acquisition grid) |
+| SeismicHorizon | BaseVolantis TWT | (acquisition grid) |
+| SeismicHorizon | TopTherys TWT | (acquisition grid) |
+| StructureMap | TopVolantis Depth Map (shared grid ref) | → GenericBinGrid "Volantis Depth 25m" |
+| StructureMap | BaseVolantis Depth Map (shared grid ref) | → GenericBinGrid "Volantis Depth 25m" |
+| StructureMap | TopTherys Depth Map (own 20 m grid) | → GenericBinGrid "Therys Depth 20m" |
+| StructureMap | TopVolantis Depth Map (inline 25 m grid) | ← inline geometry |
+| StructureMap | BaseVolantis Depth Map (inline 25 m grid) | ← inline geometry |
+
+### 4.5 RDDMS Catalog Entries (GenericRepresentation)
+
+| Name | RESQML Type |
+|---|---|
+| TopVolantis Depth - Grid2dRepresentation | Grid2dRepresentation |
+| BaseVolantis Depth - Grid2dRepresentation | Grid2dRepresentation |
+| TopTherys Depth - Grid2dRepresentation | Grid2dRepresentation |
+| TopVolantis TWT - Grid2dRepresentation | Grid2dRepresentation |
+| BaseVolantis TWT - Grid2dRepresentation | Grid2dRepresentation |
+
+---
+
+## 5. Data Model – Object Relationships
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         RESQML 2.0.1 (EPC)                          │
+│                                                                     │
+│  GeneticBoundaryFeature ◄──── HorizonInterpretation                 │
+│  (TopVolantis, etc.)          │                                     │
+│                               ├──► PointSetRepresentation (picks)   │
+│                               │        └── H5: points_patch0        │
+│                               │                                     │
+│  TectonicBoundaryFeature ◄── FaultInterpretation                    │
+│  (F1–F6)                      │                                     │
+│                               └──► PolylineSetRepresentation        │
+│                                        ├── H5: points_patch0        │
+│                                        └── H5: NodeCountPerPolyline │
+│                                                                     │
+│  StratigraphicColumn ──► StratigraphicColumnRankInterpretation      │
+│                               └──► StratigraphicUnitInterpretation  │
+│                                        └──► StratigraphicUnitFeature│
+│                                                                     │
+│  OrganizationFeature (Earth model)                                  │
+│        └──► StructuralOrganizationInterpretation                    │
+│                  ├── Horizons[] → HorizonInterpretation (×6)        │
+│                  └── Faults[]  → FaultInterpretation (×6)           │
+│                                                                     │
+│  LocalDepth3dCrs / LocalTime3dCrs (shared by all representations)   │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    OSDU Catalog (JSON Records)                       │
+│                                                                     │
+│  LocalBoundaryFeature ◄──── HorizonInterpretation                   │
+│        (FeatureID)                │                                  │
+│                                   ├── InterpretationID              │
+│                                   ▼                                  │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  SeismicHorizon (TWT grid on SeismicBinGrid)                 │   │
+│  │  StructureMap (depth grid - Pattern A or B)                  │   │
+│  │  HorizonControlPoints (seed picks)                           │   │
+│  │  GenericRepresentation (universal RDDMS catalog)             │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                    │                                                 │
+│                    └── DDMSDatasets[] ──► RDDMS (Grid2d / Points)    │
+│                                                                     │
+│  GenericBinGrid / SeismicBinGrid ◄── BinGridID (from StructureMap)  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. BinGrid Storage Options
+
+Three patterns for how a 2D gridded surface (depth map, amplitude map) relates
+to its XY lattice definition.
+
+### Pattern A – Inline Grid (self-contained)
+
+The `StructureMap` record carries its own grid geometry:
+
+```json
+{
+  "kind": "work-product-component--StructureMap:1.0.0",
+  "data": {
+    "OriginEasting": 456000.0,
+    "OriginNorthing": 5926000.0,
+    "BinWidthOnIaxis": 25.0,
+    "BinWidthOnJaxis": 25.0,
+    "NodeCountOnIAxis": 280,
+    "NodeCountOnJAxis": 440,
+    "DDMSDatasets": ["eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('...')"]
+  }
+}
+```
+
+**Pros**: No external dependencies. Record is self-describing.
+**Cons**: Grid parameters duplicated across every surface sharing the same lattice.
+**Used by**: All 12 DG2 StructureMap records, DG2 seismic amplitude grids.
+
+### Pattern B – External BinGrid Reference
+
+The `StructureMap` references a standalone `GenericBinGrid` record:
+
+```json
+{
+  "kind": "work-product-component--StructureMap:1.0.0",
+  "data": {
+    "BinGridID": "dev:work-product-component--GenericBinGrid:58dabc49-d7cd-5b93-ae74-59c9d5210f16:1",
+    "DDMSDatasets": ["eml:///dataspace('maap/drogon_dg')/resqml22.Grid2dRepresentation('...')"]
+  }
+}
+```
+
+The `GenericBinGrid` record defines the reusable lattice:
+
+```json
+{
+  "kind": "work-product-component--GenericBinGrid:1.0.0",
+  "data": {
+    "BinGridName": "Volantis Depth 25m",
+    "OriginEasting": 461000.0,
+    "OriginNorthing": 6782000.0,
+    "BinWidthOnIaxis": 25.0,
+    "BinWidthOnJaxis": 25.0,
+    "NodeCountOnIAxis": 300,
+    "NodeCountOnJAxis": 200,
+    "MapGridBearingOfBinGridJaxis": 90.0
+  }
+}
+```
+
+**Pros**: Single definition for a shared lattice. Multiple surfaces reference
+one grid. Matches subsurface convention of "interpretation grid".
+**Cons**: Extra record to manage. Consumers must resolve the reference.
+**Used by**: SeisInt StructureMaps (TopVolantis, BaseVolantis on "Volantis Depth 25m").
+
+### Pattern C – SeismicBinGrid (acquisition)
+
+For TWT horizons tied to a seismic acquisition survey:
+
+```json
+{
+  "kind": "work-product-component--SeismicBinGrid:1.3.0",
+  "data": {
+    "Name": "Volantis3D",
+    "P6BinGridOriginEasting": 461256.0,
+    "P6BinGridOriginNorthing": 6782100.0,
+    "P6BinNodeIncrementOnIaxis": {"X": 0.0, "Y": 12.5},
+    "P6BinNodeIncrementOnJaxis": {"X": 12.5, "Y": 0.0},
+    "P6BinGridOriginI": 1000,
+    "P6BinGridOriginJ": 2000
+  }
+}
+```
+
+**Pros**: Full P6 definition with inline/crossline numbering. Matches SEG-Y
+bin geometry. Supports non-orthogonal grids via vector increments.
+**Cons**: Seismic-specific; cannot represent arbitrary depth grids.
+**Used by**: SeisInt `SeismicHorizon` records (TWT picks on Volantis3D survey).
+
+### Comparison
+
+| Aspect | Pattern A (inline) | Pattern B (GenericBinGrid) | Pattern C (SeismicBinGrid) |
+|---|---|---|---|
+| Grid definition | In StructureMap record | Separate GenericBinGrid WPC | Separate SeismicBinGrid WPC |
+| Reusable | No | Yes (many surfaces → one grid) | Yes (many horizons → one survey) |
+| Rotation support | Via bearing field | `MapGridBearingOfBinGridJaxis` | P6 vector increments (arbitrary) |
+| Inline/crossline | Not applicable | Not applicable | P6BinGridOriginI/J + increments |
+| Domain | Depth or Time | Depth (typically) | Time (acquisition grid) |
+| Schema | StructureMap:1.0.0 | GenericBinGrid:1.0.0 | SeismicBinGrid:1.3.0 |
+| Inheritance | AbstractGenericBinGrid | AbstractGenericBinGrid | AbstractBinGrid (different!) |
+
+---
+
+## 7. RDDMS Storage – RESQML Representation Types
+
+In RDDMS, the actual array data lives in RESQML objects. The OSDU catalog record
+points here via `DDMSDatasets[]`.
+
+| OSDU Type | RDDMS RESQML Type | Arrays Stored |
+|---|---|---|
+| StructureMap | Grid2dRepresentation | Z-values (Nx×Ny float64) |
+| SeismicHorizon | Grid2dRepresentation | TWT values (Nx×Ny float64) |
+| GenericRepresentation (amplitude) | Grid2dRepresentation | Amplitude values |
+| HorizonControlPoints | PointSetRepresentation | XYZ array (N×3 float64) |
+| GenericRepresentation (fault) | PolylineSetRepresentation | XYZ + NodeCountPerPolyline |
+| – | LocalDepth3dCrs / LocalTime3dCrs | No arrays (XML-only) |
+
+### EPC H5 Path Convention
+
+```
+/RESQML/{uuid}/points_patch0              ← XYZ coordinates (N×3 or Nx×Ny×3)
+/RESQML/{uuid}/NodeCountPerPolyline_patch0 ← polyline segmentation
+/RESQML/{uuid}/ClosedPolylines_patch0     ← closure flag per polyline
+```
+
+---
+
+## 8. Ingestion Options
+
+### 8.1 EPC Import (OpenETPServer CLI)
+
+Direct EPC import into a dataspace. No ACL/legal/partition needed for local docker:
+
+```bash
+# Structural-only (69 objects, 36 arrays, 12 MB, 2s)
+openETPServer space -S ws://localhost:9002 --auth none \
+  -s "maap/drogon_structural" --import-epc /data/drogon_structural.epc
+
+# Full demo (404 objects, 387 arrays, 218 MB, 14s)
+docker run --rm --network host -v $(pwd)/demo/epc:/data \
+  community.opengroup.org:5555/.../open-etp-server-main:latest \
+  openETPServer space -S ws://localhost:9002 --auth none \
+  -s "demo/drogon" --import-epc /data/drogon_demo.epc
+```
+
+Last validated: 2026-05-20 – 404 objects, 387 arrays, 14s import time.
+Dataspace `demo/drogon` contains all types including StructuralOrganizationInterpretation.
+
+### 8.2 JSON RESQML via OpenETPClient REST (local docker)
+
+PUT individual objects via the RDDMS REST API. No partition header needed
+for local single-partition mode:
+
+```bash
+curl -X PUT http://localhost:3000/api/reservoir-ddms/v2/dataspaces/maap%2Fdrogon_structural/resources \
+  -H "Content-Type: application/json" \
+  -d @structural_records/001_HorizonInterpretation_011ae8ee.json
+```
+
+The JSON records in `structural_records/` contain:
+- `uri`: EML dataspace URI for the object
+- `dataObjectType`: RESQML type identifier (e.g. `resqml20.obj_HorizonInterpretation`)
+- `xml`: Full RESQML XML content
+- `blobData`: Base64-encoded arrays (keyed by H5 path)
+
+### 8.3 OSDU Catalog Ingestion (remote instance)
+
+For the interop instance (`opendes` partition):
+
+```python
+headers = {
+    "data-partition-id": "opendes",
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <token>"
+}
+# PUT records to Storage API
+requests.put(
+    "https://admeinterop.energy.azure.com/api/storage/v2/records",
+    json=[record],
+    headers=headers
+)
+```
+
+Records use:
+- Legal: `opendes-default-legal-tag`
+- Owners: `data.default.owners@opendes.dataservices.energy`
+- Viewers: `data.default.viewers@opendes.dataservices.energy`
+
+### 8.4 OSDU Manifest Ingestion (ADME Interop)
+
+Comprehensive OSDU manifest built manually from EPC (covers all 404 objects):
+
+```bash
+python demo/epc/ingest_interop.py --local-manifest --skip-etp
+```
+
+**Manifest:** `demo/epc/manifest_full_interop.json` (144 records)
+
+| Section | Kind | Count |
+|---|---|---|
+| **Datasets** | ETPDataspace | 1 |
+| **MasterData** | Wellbore:1.3.0 | 12 |
+| | LocalBoundaryFeature:1.1.0 | 12 |
+| **WPCs** | GenericProperty:1.2.0 | 32 |
+| | GenericRepresentation:1.2.0 | 19 |
+| | WellboreTrajectory:1.3.0 | 12 |
+| | WellLog:1.2.0 | 9 |
+| | WellboreMarkerSet:1.2.0 | 9 |
+| | StructureMap:1.0.0 | 7 |
+| | HorizonInterpretation:1.2.0 | 6 |
+| | FaultInterpretation:1.3.0 | 6 |
+| | LocalRockVolumeFeature:1.2.0 | 5 |
+| | StratigraphicUnitInterpretation:1.3.0 | 5 |
+| | LocalModelCompoundCrs:1.2.0 | 2 |
+| | SeismicHorizon:2.1.0 | 2 |
+| | StructuralModel:1.0.0 | 1 |
+| | IjkGridRepresentation:1.1.0 | 1 |
+| | StratigraphicColumn:1.2.0 | 1 |
+| | StratigraphicColumnRankInterpretation:1.3.0 | 1 |
+| | LocalModelFeature:1.2.0 | 1 |
+
+**Cross-references populated:**
+
+| Reference Type | Count | Example |
+|---|---|---|
+| InterpretedFeature/BoundaryFeature | 46 | FaultInterpretation → LocalBoundaryFeature |
+| CoordinateReferenceSystemID | 41 | StructureMap → LocalModelCompoundCrs |
+| SupportingRepresentationID | 32 | GenericProperty → IjkGridRepresentation |
+| WellboreID | 30 | WellLog/Trajectory/Markers → Wellbore |
+| RepresentationIDs | 12 | Interpretation → its representations |
+| FaultInterpretationIDs | 6 | StructuralModel → all faults |
+| HorizonInterpretationIDs | 6 | StructuralModel → all horizons |
+
+**Target instance:** `admeinterop.energy.azure.com` (partition `opendes`)
+
+**vs. RDDMS manifest builder output** (`manifest_demo_drogon_interop.json`):
+- Builder produces 102 records (0 master-data, 101 WPCs)
+- Missing: all wells, well logs, StructureMap kinds, StructuralModel
+- Missing: all cross-references (PropertyUoM, SpatialArea, WellboreID)
+- See `MANIFEST_BUILDER_DEFICIENCIES.md` for full issue list
+
+---
+
+## 9. What Is Excluded
+
+| Category | Examples | Reason |
+|---|---|---|
+| IjkGridRepresentation | 3D reservoir grid (11 realizations) | Geo-model, not seismic interpretation |
+| ContinuousProperty | Porosity, permeability, NTG (189) | Cell properties on 3D grid |
+| DiscreteProperty | Facies, regions (65) | Cell properties on 3D grid |
+| Well objects | Trajectories, markers, frames (66) | Well data, not seismic surfaces |
+| BusinessDecision | DG1/DG2 decision gates | Project management |
+| Risk | Porosity uncertainty, fault compartment | Risk register |
+| ReservoirEstimatedVolumes | STOIIP, recoverable volumes | Volumetrics |
+| ColumnBasedTable | Rel-perm, production forecast | Simulation input/output |
+| Documents | SRA, CRA, PDO reports | Deliverables |
+| DevelopmentConcept | FPSO concept selection | Engineering |
+| Property maps (FMU) | Permeability, thickness, facies probability | Derived from geo-model |
+
+---
+
+## 10. File Generation
+
+Scripts that produce the EPC archives and manifests:
+
+```
+demo/epc/build_structural_epc.py    → structural-only (interpretation framework)
+demo/epc/build_drogon_demo_epc.py   → full demo (all types, pruned maps)
+demo/epc/build_full_manifest.py     → comprehensive OSDU manifest from EPC
+demo/epc/ingest_interop.py          → end-to-end pipeline (auth → ETP → manifest → push)
+```
+
+`build_drogon_demo_epc.py`:
+1. Reads `drogon.epc` + `drogon.h5`
+2. Includes all types unconditionally (wells, grid, properties, strat, faults, SOI)
+3. Filters Grid2d to only "Interpreted" variants (drops Geogrid Extract, Velocity Model)
+4. Filters PointSet to "Interpreted" + fault extractions (drops HUM/Filtered)
+5. Writes `drogon_demo.epc` + `drogon_demo.h5`
+6. Produces JSON records with embedded base64 arrays for OpenETPClient
+
+`build_structural_epc.py`:
+1. Extracts only the interpretation framework (features, horizons, faults, strat)
+2. Writes `drogon_structural.epc` + `drogon_structural.h5`
+3. Produces JSON records (smaller, for testing interpretation chain only)
+
+`build_full_manifest.py`:
+1. Parses all objects from `drogon_demo.epc` (404 objects, 26 types)
+2. Maps each RESQML type to the correct OSDU kind (StructureMap, WellLog, etc.)
+3. Builds FIRP cross-references (InterpretedFeature, CRS, SupportingRep, WellboreID)
+4. Groups well-log properties as curves inside WellLog WPCs
+5. Outputs `manifest_full_interop.json` (144 records, 0.3 MB)
+
+Validation: EPC imported to local OpenETPServer (404 objects, 387 arrays, 14s).
+Manifest ready for ADME Interop push via Storage API.
