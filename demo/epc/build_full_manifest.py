@@ -46,14 +46,18 @@ DDMS_URI = f"eml://reservoir-ddms1/dataspace('{DATASPACE}')"
 
 
 def _configure(partition: str, legal_tag: str, owners: list[str],
-               viewers: list[str], countries: list[str]):
+               viewers: list[str], countries: list[str],
+               dataspace: str | None = None):
     """Override module-level config (called from argparse)."""
-    global PARTITION, LEGAL_TAG, OWNERS, VIEWERS, COUNTRIES
+    global PARTITION, LEGAL_TAG, OWNERS, VIEWERS, COUNTRIES, DATASPACE, DDMS_URI
     PARTITION = partition
     LEGAL_TAG = legal_tag
     OWNERS = owners
     VIEWERS = viewers
     COUNTRIES = countries
+    if dataspace:
+        DATASPACE = dataspace
+        DDMS_URI = f"eml://reservoir-ddms1/dataspace('{DATASPACE}')"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -592,6 +596,7 @@ def main():
     ap.add_argument("--epc", type=Path, default=EPC_FILE, help="EPC file to parse")
     ap.add_argument("-o", "--output", type=Path, default=None, help="Output manifest path")
     ap.add_argument("--partition", default="opendes", help="OSDU partition for record IDs")
+    ap.add_argument("--dataspace", default=None, help="RDDMS dataspace name (default: demo/drogon)")
     ap.add_argument("--legal-tag", default=None, help="Legal tag (default: <partition>-default-legal-tag)")
     ap.add_argument("--owners", default=None, help="Owners ACL group")
     ap.add_argument("--viewers", default=None, help="Viewers ACL group")
@@ -605,7 +610,8 @@ def main():
     owners = [args.owners] if args.owners else [f"data.default.owners@{partition}.dataservices.energy"]
     viewers = [args.viewers] if args.viewers else [f"data.default.viewers@{partition}.dataservices.energy"]
     countries = [c.strip() for c in args.countries.split(",")]
-    _configure(partition, legal_tag, owners, viewers, countries)
+    _configure(partition, legal_tag, owners, viewers, countries,
+               dataspace=args.dataspace)
 
     output = args.output or SCRIPT_DIR / f"manifest_full_{partition}.json"
 

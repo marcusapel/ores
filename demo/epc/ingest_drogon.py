@@ -43,7 +43,10 @@ sys.path.insert(0, str(DEMO_DIR))
 from _auth import get_token, load_instance  # noqa: E402
 
 # ── Constants ─────────────────────────────────────────────────────────────
-DATASPACE = "demo/drogon"
+DATASPACE_DEFAULT = "demo/drogon"
+DATASPACE_OVERRIDE = {
+    "eqndev": "maap/drogon",
+}
 EPC_FILE = SCRIPT_DIR / "drogon_demo.epc"
 IMAGE_SSL = "osdu-etp-sslclient"
 
@@ -67,6 +70,7 @@ class InstanceConfig:
         self.viewers = viewers if isinstance(viewers, list) else [viewers] if viewers else [f"data.default.viewers@{self.partition}.dataservices.energy"]
         countries = inst.get("countries")
         self.countries = countries if isinstance(countries, list) else [countries] if countries else ["NO"]
+        self.dataspace = DATASPACE_OVERRIDE.get(name, DATASPACE_DEFAULT)
         self.base_rddms = f"https://{self.host}/api/reservoir-ddms/v2"
         self.base_osdu = f"https://{self.host}"
         self.etp_url = f"wss://{self.host}/api/reservoir-ddms-etp/v2/"
@@ -102,10 +106,10 @@ def authenticate(cfg: InstanceConfig) -> str:
 
 def create_dataspace(token: str, cfg: InstanceConfig) -> bool:
     """Create demo/drogon dataspace on remote RDDMS via REST."""
-    print(f"\n=== 2. Create dataspace ({DATASPACE}) ===")
+    print(f"\n=== 2. Create dataspace ({cfg.dataspace}) ===")
     payload = [{
-        "DataspaceId": DATASPACE,
-        "Path": DATASPACE,
+        "DataspaceId": cfg.dataspace,
+        "Path": cfg.dataspace,
         "CustomData": {
             "legaltags": [cfg.legal_tag],
             "otherRelevantDataCountries": cfg.countries,
@@ -116,10 +120,10 @@ def create_dataspace(token: str, cfg: InstanceConfig) -> bool:
     r = httpx.post(f"{cfg.base_rddms}/dataspaces", headers=cfg.headers(token),
                    json=payload, timeout=30)
     if r.status_code in (200, 201):
-        print(f"  ✓ Created dataspace {DATASPACE}")
+        print(f"  ✓ Created dataspace {cfg.dataspace}")
         return True
     if r.status_code in (400, 409):
-        print(f"  ✓ Dataspace {DATASPACE} already exists ({r.status_code})")
+        print(f"  ✓ Dataspace {cfg.dataspace} already exists ({r.status_code})")
         return True
     if r.status_code in (401, 403):
         print(f"  ⚠ REST create failed ({r.status_code}), trying ETP...")
@@ -146,7 +150,7 @@ def create_dataspace_etp(token: str, cfg: InstanceConfig) -> bool:
         f"--server-url {cfg.etp_url} "
         f"--data-partition-id {cfg.partition} "
         f"--auth bearer --jwt-token $JWT "
-        f"--new -s {DATASPACE} "
+        f"--new -s {cfg.dataspace} "
         f"--xdata '{xdata}'"
     )
     cmd = [
@@ -159,10 +163,10 @@ def create_dataspace_etp(token: str, cfg: InstanceConfig) -> bool:
 
     combined = result.stdout + result.stderr
     if result.returncode == 0:
-        print(f"  ✓ Created dataspace {DATASPACE} via ETP")
+        print(f"  ✓ Created dataspace {cfg.dataspace} via ETP")
         return True
     if "already exist" in combined.lower():
-        print(f"  ✓ Dataspace {DATASPACE} already exists")
+        print(f"  ✓ Dataspace {cfg.dataspace} already exists")
         return True
     print(f"  ✗ ETP create failed (rc={result.returncode})")
     print(f"    {combined[-300:]}")
@@ -186,7 +190,7 @@ def import_epc(token: str, cfg: InstanceConfig) -> bool:
         f"--server-url {cfg.etp_url} "
         f"--data-partition-id {cfg.partition} "
         f"--auth bearer --jwt-token $JWT "
-        f"-s {DATASPACE} "
+        f"-s {cfg.dataspace} "
         f"--import-epc /data/{EPC_FILE.name} -j"
     )
     cmd = [
@@ -194,7 +198,7 @@ def import_epc(token: str, cfg: InstanceConfig) -> bool:
         "-v", f"{SCRIPT_DIR}:/data",
         "--entrypoint=sh", IMAGE_SSL, "-c", inner,
     ]
-    print(f"  Importing {EPC_FILE.name} → {DATASPACE}")
+    print(f"  Importing {EPC_FILE.name} → {cfg.dataspace}")
     print(f"  ETP URL: {cfg.etp_url}")
     result = subprocess.run(cmd, text=True, timeout=600)
     tok_file.unlink(missing_ok=True)
@@ -213,7 +217,7 @@ def import_epc(token: str, cfg: InstanceConfig) -> bool:
 def verify_import(token: str, cfg: InstanceConfig) -> bool:
     """Check resources in the remote dataspace."""
     print(f"\n=== 4. Verify import ===")
-    ds_enc = DATASPACE.replace("/", "%2F")
+    ds_enc = cfg.dataspace.replace("/", "%2F")
     r = httpx.get(f"{cfg.base_rddms}/dataspaces/{ds_enc}/resources",
                   headers=cfg.headers(token), timeout=30)
     if not r.is_success:
@@ -253,24 +257,32 @@ def load_manifest(cfg: InstanceConfig) -> dict:
 
 
 def _repartition(manifest: dict, cfg: InstanceConfig) -> dict:
-    """Replace partition prefix in all record IDs and cross-references."""
-    data = manifest.get("Data", {})
+    """Replace partition prefix and dataspace in all record IDs and cross-references."""
     old_partition = "opendes"  # base manifest uses opendes
+    old_dataspace = "demo/drogon"  # base manifest uses demo/drogon
 
-    if cfg.partition == old_partition:
+    need_partition = cfg.partition != old_partition
+    need_dataspace = cfg.dataspace != old_dataspace
+
+    if not need_partition and not need_dataspace:
         return manifest  # no change needed
 
-    def _replace_partition(obj):
-        """Recursively replace partition in string values."""
+    def _replace(obj):
+        """Recursively replace partition and dataspace in string values."""
         if isinstance(obj, str):
-            return obj.replace(f"{old_partition}:", f"{cfg.partition}:")
+            s = obj
+            if need_partition:
+                s = s.replace(f"{old_partition}:", f"{cfg.partition}:")
+            if need_dataspace:
+                s = s.replace(old_dataspace, cfg.dataspace)
+            return s
         if isinstance(obj, list):
-            return [_replace_partition(v) for v in obj]
+            return [_replace(v) for v in obj]
         if isinstance(obj, dict):
-            return {k: _replace_partition(v) for k, v in obj.items()}
+            return {k: _replace(v) for k, v in obj.items()}
         return obj
 
-    manifest = _replace_partition(manifest)
+    manifest = _replace(manifest)
     return manifest
 
 
@@ -279,7 +291,7 @@ def build_manifest_remote(token: str, cfg: InstanceConfig) -> dict:
     print(f"\n=== 5. Build manifest (remote) ===")
     url = f"{cfg.base_rddms}/manifests/build"
     body = {
-        "uris": [f"eml:///dataspace('{DATASPACE}')"],
+        "uris": [f"eml:///dataspace('{cfg.dataspace}')"],
         "createMissingReferences": True,
     }
     print(f"  POST {url}")
@@ -439,7 +451,7 @@ def main():
 
     print(f"{'═' * 60}")
     print(f"  Drogon Demo → {cfg.name} ({cfg.host})")
-    print(f"  Dataspace:  {DATASPACE}")
+    print(f"  Dataspace:  {cfg.dataspace}")
     print(f"  Partition:  {cfg.partition}")
     print(f"  Legal:      {cfg.legal_tag}")
     print(f"  EPC:        {EPC_FILE.name} (404 objects)")

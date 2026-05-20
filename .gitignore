@@ -35,6 +35,7 @@ demo/epc/drogon_osdu
 demo/epc/drogon_dg_export
 demo/epc/structural_records
 demo/epc/.etp_token
+demo/epc/*_records.json
 
 # ── Generated manifests (instance-specific, rebuilt by scripts) ──
 demo/epc/manifest_*.json
