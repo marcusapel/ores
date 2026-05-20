@@ -399,6 +399,8 @@
       });
       // Show per-well log availability
       wellDetails = data.wells;
+      // Apply demo-specific recommended options to Parameters form
+      if (data.recommended_options) applyOptionsToForm(data.recommended_options);
       enableAfterImport();
       setStatus(importStat, 'ok', `${data.n_wells} wells loaded from demo "${selectedDemo}" — select wells & logs, then Run`);
     } catch(e) {
@@ -683,6 +685,24 @@
     }
   }
 
+  function applyOptionsToForm(opts) {
+    /**Apply recommended/demo-specific options to the Parameters form fields.*/
+    const set = (sel, v) => { const el = $(sel); if (el && v != null) el.value = v; };
+    set('#p-var-data', opts['var-data']);
+    set('#p-var-weight', opts['var-weight'] != null ? opts['var-weight'] : 0.5);
+    set('#p-var-data2', opts['var-data2'] || '');
+    set('#p-var-weight2', opts['var-weight2'] != null ? opts['var-weight2'] : '');
+    set('#p-no-crossing', opts['no-crossing'] || '');
+    set('#p-same-region', opts['same-region'] || '');
+    set('#p-gap-cost', opts['const-gap-cost'] != null ? opts['const-gap-cost'] : '');
+    set('#p-polarity-region', opts['polarity-region'] || '');
+    set('#p-dist-distal', opts['dist-distal'] || '');
+    set('#p-dist-facies', opts['dist-facies'] || '');
+    set('#p-band-width', opts['band-width'] != null ? opts['band-width'] : '');
+    set('#p-max-cor', opts['max-cor'] != null ? opts['max-cor'] : '');
+    set('#p-n-best', opts['nbr-cor'] || 5);
+  }
+
   function gatherOptions() {
     const opts = {};
     const val = (sel) => { const el = $(sel); return el ? el.value : ''; };
@@ -712,6 +732,75 @@
     tabs.forEach(t => {
       if (['results', 'export'].includes(t.dataset.tab)) t.classList.remove('disabled');
     });
+  }
+
+  // ── Plot controls toolbar (injected above canvas) ─────────────────
+  function ensurePlotControls() {
+    if ($('#corr-plot-controls')) return;
+    const container = corrCanvas.parentElement;
+    const bar = document.createElement('div');
+    bar.id = 'corr-plot-controls';
+    bar.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 8px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:4px;margin-bottom:4px;font-size:11px;';
+    bar.innerHTML = `
+      <label style="font-weight:600;">Align:</label>
+      <select id="ctrl-align" style="font-size:11px;padding:1px 4px;">
+        <option value="marker">By marker (fill view)</option>
+        <option value="absolute">Absolute depth</option>
+      </select>
+      <label style="font-weight:600;margin-left:8px;">Logs:</label>
+      <select id="ctrl-logs" multiple style="font-size:10px;min-width:100px;max-height:50px;"></select>
+      <label><input type="checkbox" id="ctrl-discrete" checked> Discrete</label>
+      <label><input type="checkbox" id="ctrl-strat"> StratCol</label>
+      <label><input type="checkbox" id="ctrl-md" checked> MD</label>
+      <label><input type="checkbox" id="ctrl-tvdss"> TVDSS</label>
+    `;
+    container.insertBefore(bar, corrCanvas);
+
+    // Wire up controls
+    const ctrlAlign = bar.querySelector('#ctrl-align');
+    ctrlAlign.addEventListener('change', () => {
+      corrPlotConfig.alignMode = ctrlAlign.value;
+      window.redrawCorrelationPlot();
+    });
+    bar.querySelector('#ctrl-discrete').addEventListener('change', (e) => {
+      corrPlotConfig.showDiscrete = e.target.checked;
+      window.redrawCorrelationPlot();
+    });
+    bar.querySelector('#ctrl-strat').addEventListener('change', (e) => {
+      corrPlotConfig.showStratColumn = e.target.checked;
+      window.redrawCorrelationPlot();
+    });
+    bar.querySelector('#ctrl-md').addEventListener('change', (e) => {
+      corrPlotConfig.showMD = e.target.checked;
+      window.redrawCorrelationPlot();
+    });
+    bar.querySelector('#ctrl-tvdss').addEventListener('change', (e) => {
+      corrPlotConfig.showTVDSS = e.target.checked;
+      window.redrawCorrelationPlot();
+    });
+
+    // Log multi-select
+    const logSelect = bar.querySelector('#ctrl-logs');
+    logSelect.addEventListener('change', () => {
+      const selected = [...logSelect.selectedOptions].map(o => o.value);
+      corrPlotConfig.showLogs = selected.length > 0 ? selected : null;
+      window.redrawCorrelationPlot();
+    });
+  }
+
+  function updateLogSelector(plotData) {
+    const logSelect = $('#ctrl-logs');
+    if (!logSelect) return;
+    const allLogs = new Set();
+    for (const wd of plotData) {
+      const names = wd.log_names || Object.keys(wd.logs || {});
+      for (const n of names) allLogs.add(n);
+    }
+    const skip = new Set(['Depth', 'DEPTH', 'depth', 'MD', 'TVD', 'TVDSS']);
+    logSelect.innerHTML = [...allLogs]
+      .filter(n => !skip.has(n))
+      .map(n => `<option value="${n}">${n}</option>`)
+      .join('');
   }
 
   // ── Results display ───────────────────────────────────────────────
@@ -838,6 +927,29 @@
     resCards.innerHTML = html;
   }
 
+  // ── Correlation Plot Configuration ──────────────────────────────
+  // Plot display options (can be toggled via UI controls)
+  const corrPlotConfig = {
+    alignMode: 'marker',     // 'absolute' | 'marker' (align by top marker/log start)
+    alignMarker: 'top',      // 'top' = first boundary marker or log start
+    showLogs: null,          // null = auto-select, or array of log names
+    showDiscrete: true,      // show discrete logs (biozones) as separate track
+    showStratColumn: false,  // render stratcolumn strip
+    showMD: true,            // show MD depth ticks per well
+    showTVDSS: false,        // show TVDSS if available
+    maxContinuousLogs: 3,    // max continuous log traces per well
+    maxDiscreteLogs: 2,      // max discrete/zone tracks per well
+  };
+
+  // Expose config for external UI controls
+  window.corrPlotConfig = corrPlotConfig;
+  window.redrawCorrelationPlot = () => {
+    if (correlationResult) {
+      const idx = parseInt(resSelector.value) || 0;
+      drawCorrelationPlot(correlationResult, idx);
+    }
+  };
+
   // ── Correlation Plot (canvas-based) ───────────────────────────────
   async function drawCorrelationPlot(data, resultIdx) {
     const canvas = corrCanvas;
@@ -846,7 +958,7 @@
     const rect = canvas.getBoundingClientRect();
     // Fallback if canvas not yet laid out (tab just became visible)
     const cw = rect.width > 0 ? rect.width : canvas.parentElement.clientWidth || 800;
-    const ch = rect.height > 0 ? rect.height : 420;
+    const ch = rect.height > 0 ? rect.height : 560;
     canvas.width = cw * dpr;
     canvas.height = ch * dpr;
     ctx.scale(dpr, dpr);
@@ -872,30 +984,171 @@
       }
     }
 
-    // Layout
-    const margin = {top: 35, bottom: 25, left: 40, right: 15};
+    // Inject plot controls toolbar and populate log selector
+    ensurePlotControls();
+    updateLogSelector(plotData);
+
+    // ── Classify logs into continuous vs discrete ───────────────────
+    const discreteLogNames = new Set();
+    const continuousLogNames = [];
+    const allLogNames = new Set();
+
+    for (const wd of plotData) {
+      const logs = wd.logs || {};
+      const names = wd.log_names || Object.keys(logs);
+      for (const n of names) allLogNames.add(n);
+    }
+
+    // Heuristic: discrete if values are integers only or few unique values
+    for (const lname of allLogNames) {
+      let isDiscrete = false;
+      for (const wd of plotData) {
+        const vals = (wd.logs || {})[lname];
+        if (!vals || vals.length < 2) continue;
+        const valid = vals.filter(v => v != null);
+        if (valid.length === 0) continue;
+        const unique = new Set(valid);
+        // Discrete: few unique values relative to count, or name suggests it
+        const discreteNames = ['FACIES', 'LITH', 'ZONE', 'BIOZONE', 'BIOSTRAT',
+                               'SEQUENCE', 'STRAT', 'FORMATION', 'REGION', 'CLASS'];
+        if (discreteNames.some(dn => lname.toUpperCase().includes(dn))) {
+          isDiscrete = true; break;
+        }
+        if (unique.size <= 20 && unique.size < valid.length * 0.1) {
+          isDiscrete = true; break;
+        }
+      }
+      if (isDiscrete) discreteLogNames.add(lname);
+      else continuousLogNames.push(lname);
+    }
+
+    // Select which logs to show
+    let showContinuous = corrPlotConfig.showLogs;
+    if (!showContinuous) {
+      const priority = ['GR', 'RT', 'DEN', 'SPT', 'CAL', 'SON', 'NEU', 'COND', 'MS', 'WC'];
+      showContinuous = priority.filter(l => continuousLogNames.includes(l));
+      for (const l of continuousLogNames) {
+        if (!showContinuous.includes(l)) showContinuous.push(l);
+      }
+      showContinuous = showContinuous.slice(0, corrPlotConfig.maxContinuousLogs);
+    }
+
+    const showDiscrete = corrPlotConfig.showDiscrete
+      ? [...discreteLogNames].slice(0, corrPlotConfig.maxDiscreteLogs)
+      : [];
+
+    // ── Layout calculation ──────────────────────────────────────────
+    const margin = {top: 52, bottom: 30, left: 50, right: 15};
     const W = cw - margin.left - margin.right;
     const H = ch - margin.top - margin.bottom;
-    const wellWidth = 70;
-    const wellSpacing = Math.min((W - wellWidth) / Math.max(nWells - 1, 1), 200);
-    const totalWidth = wellSpacing * (nWells - 1) + wellWidth;
-    const offsetX = margin.left + (W - totalWidth) / 2;
 
-    // Find global depth range
-    let minDepth = Infinity, maxDepth = -Infinity;
-    for (const wd of plotData) {
-      if (wd.depth && wd.depth.length) {
-        minDepth = Math.min(minDepth, wd.depth[0]);
-        maxDepth = Math.max(maxDepth, wd.depth[wd.depth.length-1]);
-      } else {
-        minDepth = Math.min(minDepth, 0);
-        maxDepth = Math.max(maxDepth, wd.size);
+    // Each well gets: [discrete tracks] [gap] [continuous tracks] [gap between wells for corr lines]
+    const nContTracks = Math.max(showContinuous.length, 1);
+    const nDiscTracks = showDiscrete.length;
+    const nStratTrack = (corrPlotConfig.showStratColumn && plotData[0] && plotData[0].region_names) ? 1 : 0;
+    const trackWidth = 50;  // pixels per log track
+    const discreteTrackWidth = 25;  // narrower for discrete
+    const stratTrackWidth = 20;
+    const gapWidth = 40;  // gap between wells for correlation lines
+
+    const wellTotalWidth = nContTracks * trackWidth + nDiscTracks * discreteTrackWidth + nStratTrack * stratTrackWidth;
+    const wellBlockWidth = wellTotalWidth + gapWidth;
+    const totalPlotWidth = nWells * wellTotalWidth + (nWells - 1) * gapWidth;
+
+    // Scale if doesn't fit
+    let scale = 1.0;
+    if (totalPlotWidth > W) {
+      scale = W / totalPlotWidth;
+    }
+    const sTrackW = trackWidth * scale;
+    const sDiscW = discreteTrackWidth * scale;
+    const sStratW = stratTrackWidth * scale;
+    const sGapW = gapWidth * scale;
+    const sWellW = wellTotalWidth * scale;
+    const sTotalW = totalPlotWidth * scale;
+    const offsetX = margin.left + (W - sTotalW) / 2;
+
+    // Compute X positions for each well and its tracks
+    const wellLayout = [];  // {x, contTracks: [{x, w}], discTracks: [{x, w}], stratTrack: {x, w}}
+    let curX = offsetX;
+    for (let i = 0; i < nWells; i++) {
+      const wl = {x: curX, contTracks: [], discTracks: [], stratTrack: null, centerX: 0, rightEdge: 0};
+      // Strat column first (leftmost)
+      if (nStratTrack) {
+        wl.stratTrack = {x: curX, w: sStratW};
+        curX += sStratW;
+      }
+      // Discrete tracks
+      for (let d = 0; d < nDiscTracks; d++) {
+        wl.discTracks.push({x: curX, w: sDiscW});
+        curX += sDiscW;
+      }
+      // Continuous log tracks
+      for (let c = 0; c < nContTracks; c++) {
+        wl.contTracks.push({x: curX, w: sTrackW});
+        curX += sTrackW;
+      }
+      wl.rightEdge = curX;
+      wl.centerX = wl.x + (curX - wl.x) / 2;
+      wellLayout.push(wl);
+      // Gap for correlation lines (except after last well)
+      if (i < nWells - 1) curX += sGapW;
+    }
+
+    // ── Depth alignment ─────────────────────────────────────────────
+    // Compute per-well depth offset for marker-based alignment
+    const wellDepthOffset = new Array(nWells).fill(0);
+    const wellDepthArrays = plotData.map(wd => wd.depth || null);
+
+    if (corrPlotConfig.alignMode === 'marker') {
+      // Find alignment reference: first boundary line marker depth, or top of log
+      const lines = result.lines || [];
+      const firstBoundary = lines.find(l => (l.line_type || 'framework') === 'boundary');
+
+      for (let i = 0; i < nWells; i++) {
+        const wd = plotData[i];
+        const depth = wd.depth;
+        if (!depth || depth.length === 0) continue;
+
+        let alignDepth = depth[0]; // default: start of log
+        if (firstBoundary) {
+          const markers = firstBoundary.markers || firstBoundary;
+          const mIdx = Array.isArray(markers) ? markers[i] : null;
+          if (mIdx != null && mIdx >= 0 && mIdx < depth.length) {
+            alignDepth = depth[mIdx];
+          }
+        }
+        wellDepthOffset[i] = alignDepth;
       }
     }
-    if (!isFinite(minDepth)) { minDepth = 0; maxDepth = 100; }
 
-    const depthToY = (d) => margin.top + ((d - minDepth) / (maxDepth - minDepth)) * H;
-    const wellX = (i) => offsetX + i * wellSpacing + wellWidth / 2;
+    // Compute aligned depth ranges per well, then global visible range
+    let alignedMin = Infinity, alignedMax = -Infinity;
+    for (let i = 0; i < nWells; i++) {
+      const wd = plotData[i];
+      const depth = wd.depth;
+      if (!depth || depth.length === 0) {
+        alignedMin = Math.min(alignedMin, 0);
+        alignedMax = Math.max(alignedMax, wd.size || 100);
+        continue;
+      }
+      const first = depth[0] - wellDepthOffset[i];
+      const last = depth[depth.length - 1] - wellDepthOffset[i];
+      alignedMin = Math.min(alignedMin, first);
+      alignedMax = Math.max(alignedMax, last);
+    }
+    if (!isFinite(alignedMin)) { alignedMin = 0; alignedMax = 100; }
+    // Add small padding
+    const depthRange = alignedMax - alignedMin;
+    const pad = depthRange * 0.03;
+    alignedMin -= pad;
+    alignedMax += pad;
+
+    // Depth-to-Y: maps aligned depth to pixel Y
+    const depthToY = (d, wellIdx) => {
+      const aligned = d - wellDepthOffset[wellIdx];
+      return margin.top + ((aligned - alignedMin) / (alignedMax - alignedMin)) * H;
+    };
 
     // Zone color palette (Set3-like pastels)
     const zonePalette = [
@@ -903,114 +1156,205 @@
       '#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f'
     ];
 
-    // Log trace colors
-    const logColors = ['#1565c0', '#c62828', '#2e7d32', '#6a1b9a', '#e65100'];
+    // Log trace colors for continuous logs
+    const logColors = ['#1565c0', '#c62828', '#2e7d32', '#6a1b9a', '#e65100', '#00695c', '#bf360c'];
 
-    // ── Draw each well column ───────────────────────────────────────
+    // ── Draw each well ──────────────────────────────────────────────
     for (let i = 0; i < nWells; i++) {
       const wd = plotData[i];
-      const cx = wellX(i);
-      const halfW = wellWidth / 2;
+      const wl = wellLayout[i];
+      const depth = wd.depth;
 
       // Well name header
       ctx.fillStyle = '#333';
-      ctx.font = 'bold 11px sans-serif';
+      ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(wd.name, cx, margin.top - 10);
+      ctx.fillText(wd.name, wl.centerX, margin.top - 22);
 
-      // Draw well column border
-      const y0 = depthToY(wd.depth ? wd.depth[0] : 0);
-      const y1 = depthToY(wd.depth ? wd.depth[wd.depth.length-1] : wd.size);
-      ctx.strokeStyle = '#ccc';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - halfW, y0, wellWidth, y1 - y0);
+      // MD / TVDSS labels
+      if (corrPlotConfig.showMD && depth && depth.length > 0) {
+        ctx.font = '7px sans-serif';
+        ctx.fillStyle = '#888';
+        const topD = depth[0];
+        const botD = depth[depth.length - 1];
+        ctx.textAlign = 'center';
+        ctx.fillText(`MD: ${topD.toFixed(0)}-${botD.toFixed(0)}`, wl.centerX, margin.top - 12);
+      }
+      if (corrPlotConfig.showTVDSS && wd.tvdss && wd.tvdss.length > 0) {
+        ctx.font = '7px sans-serif';
+        ctx.fillStyle = '#668';
+        const topT = wd.tvdss[0];
+        const botT = wd.tvdss[wd.tvdss.length - 1];
+        ctx.textAlign = 'center';
+        ctx.fillText(`TVDSS: ${topT.toFixed(0)}-${botT.toFixed(0)}`, wl.centerX, margin.top - 4);
+      }
 
-      // ── Zone/region background bands ─────────────────────────────
-      const regions = wd.regions || {};
-      const regionNames = wd.region_names || Object.keys(regions);
-      if (regionNames.length > 0) {
-        const rname = regionNames[0];  // primary region for bands
-        const rvals = regions[rname];
-        if (rvals && rvals.length) {
-          // Build unique zone list for color mapping
-          const uniqueZones = [...new Set(rvals.filter(v => v != null && v !== ''))];
-          const zoneColorMap = {};
-          uniqueZones.forEach((z, zi) => { zoneColorMap[z] = zonePalette[zi % zonePalette.length]; });
+      // Well column border (covers all tracks)
+      const y0 = depth ? depthToY(depth[0], i) : depthToY(0, i);
+      const y1 = depth ? depthToY(depth[depth.length - 1], i) : depthToY(wd.size, i);
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(wl.x, y0, wl.rightEdge - wl.x, y1 - y0);
 
-          // Draw contiguous zone spans
-          let prevVal = rvals[0], startIdx = 0;
-          for (let s = 1; s <= rvals.length; s++) {
-            if (s === rvals.length || rvals[s] !== prevVal) {
-              if (prevVal && zoneColorMap[prevVal]) {
-                const yt = depthToY(wd.depth ? wd.depth[startIdx] : startIdx);
-                const yb = depthToY(wd.depth ? (wd.depth[Math.min(s-1, wd.depth.length-1)]) : s-1);
-                ctx.fillStyle = zoneColorMap[prevVal];
-                ctx.globalAlpha = 0.3;
-                ctx.fillRect(cx - halfW, yt, wellWidth, yb - yt);
-                ctx.globalAlpha = 1.0;
+      // ── Stratcolumn strip ────────────────────────────────────────
+      if (wl.stratTrack && corrPlotConfig.showStratColumn) {
+        const st = wl.stratTrack;
+        const regions = wd.regions || {};
+        const regionNames = wd.region_names || Object.keys(regions);
+        if (regionNames.length > 0) {
+          const rname = regionNames[0];
+          const rvals = regions[rname];
+          if (rvals && rvals.length) {
+            const uniqueZones = [...new Set(rvals.filter(v => v != null && v !== ''))];
+            const zoneColorMap = {};
+            uniqueZones.forEach((z, zi) => { zoneColorMap[z] = zonePalette[zi % zonePalette.length]; });
 
-                // Zone label
-                const ymid = (yt + yb) / 2;
-                if (yb - yt > 12) {
-                  ctx.fillStyle = '#444';
-                  ctx.font = '8px sans-serif';
-                  ctx.textAlign = 'left';
-                  ctx.fillText(String(prevVal).slice(0, 10), cx - halfW + 2, ymid + 3);
+            let prevVal = rvals[0], startIdx = 0;
+            for (let s = 1; s <= rvals.length; s++) {
+              if (s === rvals.length || rvals[s] !== prevVal) {
+                if (prevVal && zoneColorMap[prevVal]) {
+                  const yt = depthToY(depth ? depth[startIdx] : startIdx, i);
+                  const yb = depthToY(depth ? depth[Math.min(s - 1, (depth || []).length - 1)] : s - 1, i);
+                  ctx.fillStyle = zoneColorMap[prevVal];
+                  ctx.globalAlpha = 0.8;
+                  ctx.fillRect(st.x, yt, st.w, yb - yt);
+                  ctx.globalAlpha = 1.0;
+                  // Thin border between zones
+                  ctx.strokeStyle = '#999';
+                  ctx.lineWidth = 0.3;
+                  ctx.strokeRect(st.x, yt, st.w, yb - yt);
                 }
+                if (s < rvals.length) { prevVal = rvals[s]; startIdx = s; }
               }
-              if (s < rvals.length) { prevVal = rvals[s]; startIdx = s; }
             }
           }
         }
       }
 
-      // ── Multi-log traces ─────────────────────────────────────────
+      // ── Discrete log tracks (biozones, facies) ───────────────────
       const logs = wd.logs || {};
-      const logNames = wd.log_names || Object.keys(logs);
-      const maxLogs = Math.min(logNames.length, 3);  // show up to 3 logs
+      for (let di = 0; di < showDiscrete.length; di++) {
+        const dtrack = wl.discTracks[di];
+        if (!dtrack) continue;
+        const lname = showDiscrete[di];
+        const vals = logs[lname];
+        if (!vals || vals.length === 0) continue;
 
-      for (let li = 0; li < maxLogs; li++) {
-        const lname = logNames[li];
-        const logVals = logs[lname] || (li === 0 ? wd.log_values : null);
-        if (!logVals || logVals.length < 2) continue;
+        // Build unique value → color mapping
+        const unique = [...new Set(vals.filter(v => v != null && v !== ''))];
+        const colorMap = {};
+        unique.forEach((v, vi) => { colorMap[v] = zonePalette[vi % zonePalette.length]; });
 
-        let lMin = Infinity, lMax = -Infinity;
-        for (const v of logVals) { if (v != null) { lMin = Math.min(lMin, v); lMax = Math.max(lMax, v); } }
+        // Draw as colour strips (contiguous runs)
+        let prevVal = vals[0], startIdx = 0;
+        for (let s = 1; s <= vals.length; s++) {
+          if (s === vals.length || vals[s] !== prevVal) {
+            if (prevVal != null && prevVal !== '' && colorMap[prevVal]) {
+              const yt = depthToY(depth ? depth[startIdx] : startIdx, i);
+              const yb = depthToY(depth ? depth[Math.min(s - 1, (depth || []).length - 1)] : s - 1, i);
+              ctx.fillStyle = colorMap[prevVal];
+              ctx.globalAlpha = 0.7;
+              ctx.fillRect(dtrack.x, yt, dtrack.w, yb - yt);
+              ctx.globalAlpha = 1.0;
+            }
+            if (s < vals.length) { prevVal = vals[s]; startIdx = s; }
+          }
+        }
+
+        // Track header
+        ctx.font = '6px sans-serif';
+        ctx.fillStyle = '#555';
+        ctx.textAlign = 'center';
+        ctx.fillText(lname.slice(0, 6), dtrack.x + dtrack.w / 2, y0 - 2);
+      }
+
+      // ── Continuous log tracks ────────────────────────────────────
+      for (let ci = 0; ci < showContinuous.length; ci++) {
+        const ctrack = wl.contTracks[ci];
+        if (!ctrack) continue;
+        const lname = showContinuous[ci];
+        const logVals = logs[lname] || (ci === 0 ? wd.log_values : null);
+        if (!logVals || logVals.length < 2) {
+          // No data label
+          ctx.font = '7px sans-serif';
+          ctx.fillStyle = '#ccc';
+          ctx.textAlign = 'center';
+          ctx.save();
+          ctx.translate(ctrack.x + ctrack.w / 2, (y0 + y1) / 2);
+          ctx.rotate(-Math.PI / 2);
+          ctx.fillText(`no ${lname}`, 0, 0);
+          ctx.restore();
+          continue;
+        }
+
+        // Compute value range (1st-99th percentile)
+        const valid = logVals.filter(v => v != null);
+        if (valid.length === 0) continue;
+        valid.sort((a, b) => a - b);
+        let lMin = valid[Math.floor(valid.length * 0.01)];
+        let lMax = valid[Math.floor(valid.length * 0.99)];
         if (lMax === lMin) lMax = lMin + 1;
 
+        // Track background (subtle)
+        ctx.fillStyle = '#fafafa';
+        ctx.fillRect(ctrack.x, y0, ctrack.w, y1 - y0);
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 0.3;
+        ctx.strokeRect(ctrack.x, y0, ctrack.w, y1 - y0);
+
+        // Draw log trace
+        const lcolor = logColors[ci % logColors.length];
         ctx.beginPath();
-        ctx.strokeStyle = logColors[li % logColors.length];
-        ctx.lineWidth = li === 0 ? 1.4 : 0.9;
-        ctx.globalAlpha = li === 0 ? 1.0 : 0.6;
+        ctx.strokeStyle = lcolor;
+        ctx.lineWidth = 1.2;
         let started = false;
-        for (let s = 0; s < wd.size && s < logVals.length; s++) {
-          if (logVals[s] == null) continue;
-          const y = depthToY(wd.depth ? wd.depth[s] : s);
-          const x = cx - halfW + ((logVals[s] - lMin) / (lMax - lMin)) * wellWidth;
+        for (let s = 0; s < (wd.size || logVals.length) && s < logVals.length; s++) {
+          if (logVals[s] == null) { started = false; continue; }
+          const y = depthToY(depth ? depth[s] : s, i);
+          const normV = Math.max(0, Math.min(1, (logVals[s] - lMin) / (lMax - lMin)));
+          const x = ctrack.x + normV * ctrack.w;
           if (!started) { ctx.moveTo(x, y); started = true; }
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
-        ctx.globalAlpha = 1.0;
+
+        // Track header (log name + range)
+        ctx.font = '7px sans-serif';
+        ctx.fillStyle = lcolor;
+        ctx.textAlign = 'center';
+        ctx.fillText(lname, ctrack.x + ctrack.w / 2, y0 - 2);
       }
 
-      // Log legend below well name
-      if (maxLogs > 0) {
-        ctx.font = '8px sans-serif';
-        ctx.textAlign = 'center';
-        const legendY = margin.top - 2;
-        let legendText = logNames.slice(0, maxLogs).map((n, li) => n).join(' / ');
-        ctx.fillStyle = '#666';
-        ctx.fillText(legendText.slice(0, 20), cx, legendY);
+      // ── Per-well depth ticks ─────────────────────────────────────
+      if (corrPlotConfig.showMD && depth && depth.length > 0) {
+        const wellH = y1 - y0;
+        const nTicks = Math.max(2, Math.min(8, Math.floor(wellH / 40)));
+        ctx.font = '7px sans-serif';
+        ctx.fillStyle = '#aaa';
+        ctx.textAlign = 'right';
+        for (let t = 0; t <= nTicks; t++) {
+          const frac = t / nTicks;
+          const dIdx = Math.floor(frac * (depth.length - 1));
+          const d = depth[dIdx];
+          const y = depthToY(d, i);
+          ctx.fillText(d.toFixed(0), wl.x - 2, y + 3);
+          // Tick mark
+          ctx.strokeStyle = '#e8e8e8';
+          ctx.lineWidth = 0.3;
+          ctx.beginPath();
+          ctx.moveTo(wl.x, y);
+          ctx.lineTo(wl.rightEdge, y);
+          ctx.stroke();
+        }
       }
     }
 
-    // ── Draw correlation lines (typed: boundary/gap/framework) ────────
+    // ── Draw correlation lines in gaps between wells ────────────────
     const lines = result.lines || [];
     const lineStyles = {
       boundary: { color: '#D32F2F', width: 1.8, alpha: 0.85, dash: [] },
       gap:      { color: '#1565C0', width: 1.2, alpha: 0.6, dash: [4, 3] },
-      framework:{ color: '#999999', width: 0.6, alpha: 0.3, dash: [] },
+      framework:{ color: '#888888', width: 0.5, alpha: 0.25, dash: [] },
     };
 
     for (let li = 0; li < lines.length; li++) {
@@ -1025,34 +1369,50 @@
       ctx.globalAlpha = style.alpha;
       ctx.setLineDash(style.dash);
 
-      ctx.beginPath();
-      let first = true;
-      for (let w = 0; w < nWells && w < markers.length; w++) {
-        const markerIdx = markers[w];
-        if (markerIdx == null || markerIdx < 0) continue;
-        const wd = plotData[w];
-        const depth = wd.depth ? (wd.depth[markerIdx] || markerIdx) : markerIdx;
-        const y = depthToY(depth);
-        const x = wellX(w);
-        if (first) { ctx.moveTo(x, y); first = false; }
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
+      // Draw line segments ONLY in gaps between adjacent wells
+      for (let w = 0; w < nWells - 1 && w < markers.length - 1; w++) {
+        const mL = markers[w];
+        const mR = markers[w + 1];
+        if (mL == null || mL < 0 || mR == null || mR < 0) continue;
 
-      // Marker dots only for boundary lines
+        const wdL = plotData[w];
+        const wdR = plotData[w + 1];
+        const depthL = wdL.depth ? (wdL.depth[mL] != null ? wdL.depth[mL] : mL) : mL;
+        const depthR = wdR.depth ? (wdR.depth[mR] != null ? wdR.depth[mR] : mR) : mR;
+
+        const yL = depthToY(depthL, w);
+        const yR = depthToY(depthR, w + 1);
+
+        // X coords: right edge of left well → left edge of right well
+        const xL = wellLayout[w].rightEdge;
+        const xR = wellLayout[w + 1].x;
+
+        ctx.beginPath();
+        ctx.moveTo(xL, yL);
+        ctx.lineTo(xR, yR);
+        ctx.stroke();
+      }
+
+      // Marker dots for boundary lines at well edges
       if (lt === 'boundary') {
         ctx.globalAlpha = 1.0;
         ctx.setLineDash([]);
         for (let w = 0; w < nWells && w < markers.length; w++) {
-          const markerIdx = markers[w];
-          if (markerIdx == null || markerIdx < 0) continue;
+          const mIdx = markers[w];
+          if (mIdx == null || mIdx < 0) continue;
           const wd = plotData[w];
-          const depth = wd.depth ? (wd.depth[markerIdx] || markerIdx) : markerIdx;
-          const y = depthToY(depth);
-          const x = wellX(w);
+          const d = wd.depth ? (wd.depth[mIdx] != null ? wd.depth[mIdx] : mIdx) : mIdx;
+          const y = depthToY(d, w);
+          // Dot at right edge of well (for left-to-right reading)
+          const x = wellLayout[w].rightEdge;
           ctx.beginPath();
           ctx.arc(x, y, 2.5, 0, 2 * Math.PI);
           ctx.fillStyle = style.color;
+          ctx.fill();
+          // Also at left edge
+          const xL = wellLayout[w].x;
+          ctx.beginPath();
+          ctx.arc(xL, y, 2.5, 0, 2 * Math.PI);
           ctx.fill();
         }
       }
@@ -1061,49 +1421,68 @@
     ctx.globalAlpha = 1.0;
     ctx.setLineDash([]);
 
-    // ── Depth axis labels ───────────────────────────────────────────
+    // ── Aligned depth axis labels (left side) ───────────────────────
     ctx.fillStyle = '#605e5c';
-    ctx.font = '10px sans-serif';
+    ctx.font = '9px sans-serif';
     ctx.textAlign = 'right';
-    const nTicks = 6;
+    const nTicks = 8;
     for (let t = 0; t <= nTicks; t++) {
-      const d = minDepth + (maxDepth - minDepth) * t / nTicks;
-      const y = depthToY(d);
-      ctx.fillText(d.toFixed(1), margin.left - 4, y + 3);
+      const alignedD = alignedMin + (alignedMax - alignedMin) * t / nTicks;
+      const y = margin.top + (t / nTicks) * H;
+      // Show as relative offset if marker-aligned
+      if (corrPlotConfig.alignMode === 'marker') {
+        ctx.fillText((alignedD >= 0 ? '+' : '') + alignedD.toFixed(0), margin.left - 4, y + 3);
+      } else {
+        ctx.fillText(alignedD.toFixed(1), margin.left - 4, y + 3);
+      }
       ctx.strokeStyle = '#f3f2f1';
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 0.4;
       ctx.beginPath();
       ctx.moveTo(margin.left, y);
       ctx.lineTo(cw - margin.right, y);
       ctx.stroke();
     }
 
-    // ── Region legend (bottom) ──────────────────────────────────────
-    if (plotData[0] && plotData[0].region_names && plotData[0].region_names.length) {
-      ctx.font = '9px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#555';
-      ctx.fillText('Zones: ' + plotData[0].region_names.join(', '), margin.left, ch - 6);
-    }
-
-    // ── Correlation line legend ─────────────────────────────────────
-    const legendY = ch - 6;
-    const legendX = cw / 2;
+    // ── Legend (bottom) ──────────────────────────────────────────────
+    const legendY = ch - 8;
+    let legendX = margin.left;
     ctx.font = '9px sans-serif';
     ctx.textAlign = 'left';
-    // Boundary
+
+    // Log legend
+    for (let ci = 0; ci < showContinuous.length; ci++) {
+      const lcolor = logColors[ci % logColors.length];
+      ctx.strokeStyle = lcolor; ctx.lineWidth = 2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(legendX, legendY - 3); ctx.lineTo(legendX + 15, legendY - 3); ctx.stroke();
+      ctx.fillStyle = lcolor;
+      ctx.fillText(showContinuous[ci], legendX + 18, legendY);
+      legendX += ctx.measureText(showContinuous[ci]).width + 28;
+    }
+
+    // Separator
+    legendX += 10;
+
+    // Correlation line legend
     ctx.strokeStyle = '#D32F2F'; ctx.lineWidth = 2; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(legendX, legendY - 3); ctx.lineTo(legendX + 20, legendY - 3); ctx.stroke();
-    ctx.fillStyle = '#D32F2F'; ctx.fillText('Boundary', legendX + 23, legendY);
-    // Gap
+    ctx.beginPath(); ctx.moveTo(legendX, legendY - 3); ctx.lineTo(legendX + 15, legendY - 3); ctx.stroke();
+    ctx.fillStyle = '#D32F2F'; ctx.fillText('Boundary', legendX + 18, legendY);
+    legendX += 75;
+
     ctx.strokeStyle = '#1565C0'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
-    ctx.beginPath(); ctx.moveTo(legendX + 85, legendY - 3); ctx.lineTo(legendX + 105, legendY - 3); ctx.stroke();
-    ctx.fillStyle = '#1565C0'; ctx.fillText('Gap/hiatus', legendX + 108, legendY);
-    // Framework
-    ctx.strokeStyle = '#999'; ctx.lineWidth = 0.8; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(legendX + 180, legendY - 3); ctx.lineTo(legendX + 200, legendY - 3); ctx.stroke();
-    ctx.fillStyle = '#999'; ctx.fillText('Framework', legendX + 203, legendY);
+    ctx.beginPath(); ctx.moveTo(legendX, legendY - 3); ctx.lineTo(legendX + 15, legendY - 3); ctx.stroke();
+    ctx.fillStyle = '#1565C0'; ctx.fillText('Gap', legendX + 18, legendY);
+    legendX += 45;
+
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 0.8; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(legendX, legendY - 3); ctx.lineTo(legendX + 15, legendY - 3); ctx.stroke();
+    ctx.fillStyle = '#888'; ctx.fillText('Framework', legendX + 18, legendY);
     ctx.setLineDash([]);
+
+    // Alignment mode indicator (top-right)
+    ctx.font = '8px sans-serif';
+    ctx.fillStyle = '#999';
+    ctx.textAlign = 'right';
+    ctx.fillText(`Align: ${corrPlotConfig.alignMode === 'marker' ? 'by marker' : 'absolute depth'}`, cw - 10, 12);
   }
 
   // ── Export ────────────────────────────────────────────────────────

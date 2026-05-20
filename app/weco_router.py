@@ -718,7 +718,7 @@ async def weco_run(req: WecoRunRequest, request: Request):
     # Auto-route large datasets to job component
     if n_wells > _JOB_WELL_THRESHOLD:
         log.info(f"Auto-routing {n_wells} wells to job component (threshold={_JOB_WELL_THRESHOLD})")
-        return await weco_run_job(req, request)
+        return await weco_run_job(req, request, well_list=wl)
 
     try:
         from weco.api import _run_engine, _extract_results
@@ -764,7 +764,7 @@ _JOB_WELL_THRESHOLD = int(os.getenv("WECO_JOB_WELL_THRESHOLD", "15"))
 
 
 @router.post("/run-job")
-async def weco_run_job(req: WecoRunRequest, request: Request):
+async def weco_run_job(req: WecoRunRequest, request: Request, well_list=None):
     """Submit correlation to the Radix job component (async, for large datasets).
 
     Automatically used when well count exceeds threshold, or can be called
@@ -772,17 +772,18 @@ async def weco_run_job(req: WecoRunRequest, request: Request):
     """
     global _cached_well_list
 
-    if _cached_well_list is None:
+    wl = well_list or _cached_well_list
+    if wl is None:
         raise HTTPException(400, "No wells loaded. Call /weco/import first.")
 
-    n_wells = len(_cached_well_list.wells)
+    n_wells = len(wl.wells)
 
     try:
         import json
         import httpx
 
         # Serialize well data for the job
-        wells_json = json.dumps(_cached_well_list.to_dict())
+        wells_json = json.dumps(wl.to_dict())
 
         payload = {
             "wells_json": wells_json,
@@ -813,8 +814,9 @@ async def weco_run_job(req: WecoRunRequest, request: Request):
         log.warning(f"Job scheduler unavailable ({e}), falling back to in-process")
         from weco.api import _run_engine, _extract_results
         safe_opts = _apply_memory_guards(req.options, n_wells)
-        rf, data, elapsed = _run_engine(_cached_well_list, safe_opts)
+        rf, data, elapsed = _run_engine(wl, safe_opts)
         results = _extract_results(rf, data, req.n_best)
+        wells_plot_data = _build_wells_plot_data(wl)
         return {
             "status": "ok",
             "mode": "in-process-fallback",
@@ -824,6 +826,8 @@ async def weco_run_job(req: WecoRunRequest, request: Request):
             "results": [r.model_dump() if hasattr(r, "model_dump") else r.dict()
                         for r in results],
             "options_used": safe_opts,
+            "wells_plot_data": wells_plot_data,
+            "well_names": [w.name for w in wl.wells],
         }
     except HTTPException:
         raise
@@ -960,10 +964,12 @@ def weco_demo_wells(demo_id: str):
 
     Returns wells with their available logs, regions, sizes — so the UI can
     present a well/log selection matrix before running.
+    Also returns demo-specific recommended options for the Parameters form.
     """
     global _cached_well_list
     try:
-        from weco.api import list_demos, _load_well_list
+        from weco.api import list_demos, _load_well_list, _get_demo_opts
+        from weco.api import _suggest_defaults_for_wells
 
         demo_list = list_demos().demos
         demo = None
@@ -995,6 +1001,11 @@ def weco_demo_wells(demo_id: str):
                 "region_names": sorted(w.region.keys()),
             })
 
+        # Get demo-specific recommended options (or auto-suggest)
+        recommended_options = _get_demo_opts(demo_id)
+        if not recommended_options:
+            recommended_options, _ = _suggest_defaults_for_wells(wl)
+
         return {
             "demo_id": demo_id,
             "title": demo.title,
@@ -1002,6 +1013,7 @@ def weco_demo_wells(demo_id: str):
             "wells": wells,
             "all_data_names": all_data_names,
             "all_region_names": all_region_names,
+            "recommended_options": recommended_options,
         }
     except HTTPException:
         raise
@@ -1019,6 +1031,7 @@ def weco_run_demo(demo_id: str, n_best: int = 5):
     try:
         from weco.api import run_demo, DemoRunRequest, _load_well_list, list_demos
         from weco.api import _suggest_defaults_for_wells, _run_engine, _extract_results
+        from weco.api import _get_demo_opts
 
         # Find the demo
         demo_list = list_demos().demos
@@ -1034,8 +1047,11 @@ def weco_run_demo(demo_id: str, n_best: int = 5):
         wl = _load_well_list(demo.wells)
         _cached_well_list = wl  # cache for subsequent operations
 
-        # Suggest + run
-        options, reasoning = _suggest_defaults_for_wells(wl)
+        # Use per-demo tested options first, fallback to auto-suggest
+        options = _get_demo_opts(demo_id)
+        if not options:
+            options, reasoning = _suggest_defaults_for_wells(wl)
+
         rf, data, elapsed = _run_engine(wl, options)
         results = _extract_results(rf, data, n_best)
 
