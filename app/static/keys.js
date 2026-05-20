@@ -2969,8 +2969,8 @@
     includeRelations: true
     limit: 12
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
@@ -2996,8 +2996,8 @@
     includeRelations: true
     limit: 10
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
@@ -3019,8 +3019,8 @@
     includeRelations: true
     limit: 10
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
@@ -3040,8 +3040,8 @@
     includeRelations: true
     limit: 5
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
@@ -3061,8 +3061,8 @@
     includeRelations: true
     limit: 20
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
@@ -3109,8 +3109,8 @@
     includeRelations: true
     limit: 5
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
@@ -3134,8 +3134,8 @@
     includeStatistics: true
     limit: 3
   ) {
-    total
-    hits {
+    totalMatched
+    objects {
       uuid title typeName
       relations {
         uuid name typeName direction
