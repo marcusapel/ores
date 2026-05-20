@@ -43,10 +43,8 @@ sys.path.insert(0, str(DEMO_DIR))
 from _auth import get_token, load_instance  # noqa: E402
 
 # ── Constants ─────────────────────────────────────────────────────────────
-DATASPACE_DEFAULT = "demo/drogon"
-DATASPACE_OVERRIDE = {
-    "eqndev": "maap/drogon",
-}
+DATASPACE_DEFAULT = "maap/drogon"
+DATASPACE_OVERRIDE = {}
 EPC_FILE = SCRIPT_DIR / "drogon_demo.epc"
 IMAGE_SSL = "osdu-etp-sslclient"
 
@@ -241,7 +239,7 @@ def verify_import(token: str, cfg: InstanceConfig) -> bool:
 def load_manifest(cfg: InstanceConfig) -> dict:
     """Load the pre-built comprehensive manifest and re-partition it."""
     print(f"\n=== 5. Load manifest ===")
-    src = SCRIPT_DIR / "manifest_full_interop.json"
+    src = SCRIPT_DIR / "manifest_full_opendes.json"
     if not src.exists():
         print(f"  ⚠ {src.name} not found, running build_full_manifest.py...")
         subprocess.run([sys.executable, str(SCRIPT_DIR / "build_full_manifest.py")],
@@ -259,7 +257,7 @@ def load_manifest(cfg: InstanceConfig) -> dict:
 def _repartition(manifest: dict, cfg: InstanceConfig) -> dict:
     """Replace partition prefix and dataspace in all record IDs and cross-references."""
     old_partition = "opendes"  # base manifest uses opendes
-    old_dataspace = "demo/drogon"  # base manifest uses demo/drogon
+    old_dataspace = "maap/drogon"  # base manifest uses maap/drogon
 
     need_partition = cfg.partition != old_partition
     need_dataspace = cfg.dataspace != old_dataspace

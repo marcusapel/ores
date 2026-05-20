@@ -34,7 +34,7 @@ EPC_FILE = SCRIPT_DIR / "drogon_demo.epc"
 OUT_FILE = SCRIPT_DIR / "manifest_full_interop.json"
 
 # ── Default config (interop / opendes) ────────────────────────────────────
-DATASPACE = "demo/drogon"
+DATASPACE = "maap/drogon"
 PARTITION = "opendes"
 LEGAL_TAG = "opendes-default-legal-tag"
 OWNERS = ["data.default.owners@opendes.dataservices.energy"]
@@ -596,7 +596,7 @@ def main():
     ap.add_argument("--epc", type=Path, default=EPC_FILE, help="EPC file to parse")
     ap.add_argument("-o", "--output", type=Path, default=None, help="Output manifest path")
     ap.add_argument("--partition", default="opendes", help="OSDU partition for record IDs")
-    ap.add_argument("--dataspace", default=None, help="RDDMS dataspace name (default: demo/drogon)")
+    ap.add_argument("--dataspace", default=None, help="RDDMS dataspace name (default: maap/drogon)")
     ap.add_argument("--legal-tag", default=None, help="Legal tag (default: <partition>-default-legal-tag)")
     ap.add_argument("--owners", default=None, help="Owners ACL group")
     ap.add_argument("--viewers", default=None, help="Viewers ACL group")

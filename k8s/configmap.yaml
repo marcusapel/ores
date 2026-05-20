@@ -86,7 +86,7 @@ data:
   INSTANCE_INTEROP_DATA_PARTITION_ID: "opendes"
   INSTANCE_INTEROP_AUTHORITY: "osdu"
   INSTANCE_INTEROP_SCHEMA_SOURCE: "wks"
-  INSTANCE_INTEROP_DEFAULT_LEGAL_TAG: "opendes-default-legal-tag"
+  INSTANCE_INTEROP_DEFAULT_LEGAL_TAG: "opendes-ReservoirDDMS-Legal-Tag"
   INSTANCE_INTEROP_DEFAULT_OWNERS: "data.default.owners@opendes.dataservices.energy"
   INSTANCE_INTEROP_DEFAULT_VIEWERS: "data.default.viewers@opendes.dataservices.energy"
   INSTANCE_INTEROP_DEFAULT_COUNTRIES: "US"
