@@ -407,7 +407,9 @@
       if (data.recommended_options) applyOptionsToForm(data.recommended_options);
       if (data.ai_settings) _setAiSettings(data.ai_settings);
       enableAfterImport();
-      setStatus(importStat, 'ok', `${data.n_wells} wells loaded from demo "${selectedDemo}" — select wells & logs, then Run`);
+      setStatus(importStat, 'ok', `${data.n_wells} wells loaded from demo "${selectedDemo}" — running auto-correlation...`);
+      // W2: Auto-run on demo select — immediately trigger Quick Run
+      quickRun();
     } catch(e) {
       setStatus(importStat, 'warn', `Could not pre-load demo wells: ${e.message}`);
     }
@@ -789,6 +791,7 @@
       <select id="ctrl-logs" multiple style="font-size:10px;min-width:100px;max-height:50px;"></select>
       <label><input type="checkbox" id="ctrl-discrete" checked> Discrete</label>
       <label><input type="checkbox" id="ctrl-strat"> StratCol</label>
+      <label><input type="checkbox" id="ctrl-global-strat"> Global</label>
       <label><input type="checkbox" id="ctrl-md" checked> MD</label>
       <label><input type="checkbox" id="ctrl-tvdss"> TVDSS</label>
       <button id="btn-download-png" style="margin-left:auto;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid #ccc;border-radius:3px;background:#fff;" title="Download plot as PNG">📥 PNG</button>
@@ -807,6 +810,16 @@
     });
     bar.querySelector('#ctrl-strat').addEventListener('change', (e) => {
       corrPlotConfig.showStratColumn = e.target.checked;
+      window.redrawCorrelationPlot();
+    });
+    bar.querySelector('#ctrl-global-strat').addEventListener('change', async (e) => {
+      corrPlotConfig.showGlobalStrat = e.target.checked;
+      if (e.target.checked && !cachedGlobalStrat) {
+        try {
+          const sc = await api('GET', '/strat-column');
+          if (sc.loaded) cachedGlobalStrat = sc;
+        } catch(err) { /* no strat column loaded */ }
+      }
       window.redrawCorrelationPlot();
     });
     bar.querySelector('#ctrl-md').addEventListener('change', (e) => {
@@ -1064,12 +1077,16 @@
     showLogs: null,          // null = auto-select, or array of log names
     showDiscrete: true,      // show discrete logs (biozones) as separate track
     showStratColumn: false,  // render stratcolumn strip
+    showGlobalStrat: false,  // render global strat column reference strip (left side)
     showMD: true,            // show MD depth ticks per well
     showTVDSS: false,        // show TVDSS if available
     logScaleLogs: ['RT', 'RDEEP', 'RSHAL', 'RES', 'RLLD', 'RLLS'],  // logs drawn with log10 scale
     maxContinuousLogs: 3,    // max continuous log traces per well
     maxDiscreteLogs: 2,      // max discrete/zone tracks per well
   };
+
+  // Cached global strat column data
+  let cachedGlobalStrat = null;
 
   // Expose config for external UI controls
   window.corrPlotConfig = corrPlotConfig;
@@ -1519,6 +1536,43 @@
           ctx.lineTo(wl.rightEdge, y);
           ctx.stroke();
         }
+      }
+    }
+
+    // ── Global Stratigraphic Column reference strip (left margin) ───
+    if (corrPlotConfig.showGlobalStrat && cachedGlobalStrat && cachedGlobalStrat.ranks) {
+      const gsX = 4;  // left edge
+      const gsW = margin.left - 10;  // fill the left margin
+      const gsY0 = margin.top;
+      const gsH = H;
+      // Use first rank's units (typically Formation level)
+      const rank = cachedGlobalStrat.ranks[0];
+      if (rank && rank.units && rank.units.length > 0) {
+        const units = rank.units;
+        const unitH = gsH / units.length;
+        ctx.font = '8px sans-serif';
+        ctx.textAlign = 'center';
+        for (let u = 0; u < units.length; u++) {
+          const unit = units[u];
+          const uy = gsY0 + u * unitH;
+          // Colored band
+          ctx.fillStyle = unit.color || '#CCCCCC';
+          ctx.globalAlpha = 0.7;
+          ctx.fillRect(gsX, uy, gsW, unitH);
+          ctx.globalAlpha = 1.0;
+          // Border
+          ctx.strokeStyle = '#666';
+          ctx.lineWidth = 0.4;
+          ctx.strokeRect(gsX, uy, gsW, unitH);
+          // Unit name (truncated)
+          ctx.fillStyle = '#222';
+          const label = unit.name.length > 8 ? unit.name.slice(0, 7) + '…' : unit.name;
+          ctx.fillText(label, gsX + gsW / 2, uy + unitH / 2 + 3);
+        }
+        // Rank title at top
+        ctx.font = 'bold 8px sans-serif';
+        ctx.fillStyle = '#444';
+        ctx.fillText(rank.name || 'Strat', gsX + gsW / 2, gsY0 - 4);
       }
     }
 
