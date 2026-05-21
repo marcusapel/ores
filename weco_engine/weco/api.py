@@ -1446,7 +1446,7 @@ def _get_demo_opts(demo_id: str) -> dict:
         "fluvial": {"var-data": "GR", "var-weight": 1.0,
                     "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
                     "min-dist": 0.15, "out-min-dist": 0.05,
-                    "const-gap-cost": 0.5, "band-width": 20},
+                    "const-gap-cost": 0.5, "band-width": 60},
         "delta": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "DEN", "var-weight2": 0.4,
                   "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
