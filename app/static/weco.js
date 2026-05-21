@@ -114,6 +114,14 @@
     return resp.json();
   }
 
+  function _contextLabel() {
+    const parts = [];
+    if (selectedDemo) parts.push(`Demo: ${selectedDemo}`);
+    const ds = dsSel.value;
+    if (ds) parts.push(`[${ds}]`);
+    return parts.length ? parts.join(' ') + ' —' : '';
+  }
+
   function setStatus(el, cls, msg) {
     el.className = 'wc-status ' + cls;
     el.textContent = msg;
@@ -230,7 +238,7 @@
     populateDropdowns(data.data_names || [], data.region_names || []);
     populateLogSelectors(data.data_names || [], data.region_names || []);
     updateLogWellList(names);
-    runSummary.textContent = `${names.length} wells loaded | Logs: ${(data.data_names||[]).join(', ')} | Regions: ${(data.region_names||[]).join(', ')}`;
+    runSummary.textContent = `${_contextLabel()} ${names.length} wells loaded | Logs: ${(data.data_names||[]).join(', ')} | Regions: ${(data.region_names||[]).join(', ')}`;
   }
 
   function renderWellChips(names) {
@@ -378,8 +386,10 @@
     card.classList.add('active');
     selectedDemo = card.dataset.id;
     currentDemoId = selectedDemo;
-    btnRunDemo.style.display = 'inline-block';
-    btnRunDemo.textContent = `\u25B6 Run "${selectedDemo}"`;
+    if (btnRunDemo) {
+      btnRunDemo.style.display = 'inline-block';
+      btnRunDemo.textContent = `\u25B6 Run "${selectedDemo}"`;
+    }
 
     // Also check if this can be imported from RDDMS
     const btnRddms = $('#btn-import-demo-rddms');
@@ -599,7 +609,7 @@
 
   // ── Run correlation ───────────────────────────────────────────────
   btnRun.addEventListener('click', () => runCorrelation());
-  btnRunDemo.addEventListener('click', () => runDemo());
+  if (btnRunDemo) btnRunDemo.addEventListener('click', () => runDemo());
   btnQuickRun.addEventListener('click', () => quickRun());
 
   async function quickRun() {

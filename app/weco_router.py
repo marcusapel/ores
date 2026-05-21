@@ -1082,9 +1082,15 @@ async def weco_auto(request: Request):
                 log.exception(f"Auto-correlate: fallback also failed: {fallback_exc}")
                 raise HTTPException(500, f"Correlation failed: {engine_error} (fallback: {fallback_exc})")
 
-        # 5. Extract diverse results via multi-config force-diverse run
+        # 5. Extract diverse results
+        # For small datasets (≤5 wells), use multi-config force-diverse for
+        # structural diversity. For larger datasets, use single-run diversity
+        # to avoid timeouts (force-diverse would run 4 extra engine calls).
         from weco.api import _force_diverse_run
-        force_diverse = _force_diverse_run(wl, options, n_diverse=5)
+        if n_wells <= 5:
+            force_diverse = _force_diverse_run(wl, options, n_diverse=5)
+        else:
+            force_diverse = None
 
         if force_diverse:
             # _force_diverse_run returns [(RunResult, config_name, topology_sig), ...]
