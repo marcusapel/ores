@@ -492,3 +492,90 @@ def detect_environment_from_logs(well_list) -> Optional[str]:
         return "shallow_marine"  # safe default for large projects
 
     return None
+
+
+def detect_environment_from_metadata(well_list) -> Optional[str]:
+    """Detect depositional environment from well metadata (formation names, strat info).
+
+    Checks well.meta for:
+    - 'formations': list of formation names → match against known patterns
+    - 'strat_column': StratColumn object → use detect_environment()
+    - 'environment': direct environment string → normalise and return
+
+    Parameters
+    ----------
+    well_list : WellList
+        Well data with .wells[].meta dict
+
+    Returns
+    -------
+    str or None
+        Normalised depenv key.
+    """
+    wells = well_list.wells
+    if not wells:
+        return None
+
+    # Check direct environment metadata
+    for w in wells:
+        meta = getattr(w, 'meta', None) or {}
+        env = meta.get('environment') or meta.get('depositional_environment')
+        if env:
+            key = normalise_depenv(str(env))
+            if key:
+                return key
+
+    # Check strat_column metadata
+    for w in wells:
+        meta = getattr(w, 'meta', None) or {}
+        sc = meta.get('strat_column')
+        if sc and hasattr(sc, 'ranks'):
+            env = detect_environment(sc)
+            if env:
+                return env
+
+    # Check formation names against known environment patterns
+    _FORMATION_ENV_HINTS = {
+        "draupne": "deep_marine",
+        "heather": "shallow_marine",
+        "brent": "delta",
+        "ness": "delta",
+        "tarbert": "shallow_marine",
+        "etive": "shallow_marine",
+        "statfjord": "fluvial",
+        "coal": "coal_swamp",
+        "lunde": "fluvial",
+        "skagerrak": "fluvial",
+        "åre": "coal_swamp",
+        "dunlin": "deep_marine",
+        "shetland": "deep_marine",
+        "chalk": "carbonate",
+        "ekofisk": "carbonate",
+        "tor": "carbonate",
+        "arab": "carbonate",
+        "nile": "delta",
+        "niger": "delta",
+    }
+
+    formation_names = []
+    for w in wells:
+        meta = getattr(w, 'meta', None) or {}
+        fms = meta.get('formations') or meta.get('formation_names') or []
+        formation_names.extend(fms)
+        # Also scan region names that look like formations
+        if hasattr(w, 'region') and w.region:
+            for rname in w.region.keys():
+                if rname.upper() not in ('FACIES', 'LITH', 'SEAM', 'DISTAL', 'BIOZONE'):
+                    formation_names.append(rname)
+
+    if formation_names:
+        from collections import Counter
+        env_hits: Counter = Counter()
+        for fname in formation_names:
+            for pattern, env_key in _FORMATION_ENV_HINTS.items():
+                if pattern in fname.lower():
+                    env_hits[env_key] += 1
+        if env_hits:
+            return env_hits.most_common(1)[0][0]
+
+    return None
