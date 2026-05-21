@@ -272,40 +272,40 @@
       </div>
       <div id="params-form" class="row" style="max-width:600px;">
         <div class="row-section">Variance (cost function)</div>
-        <label for="p-var-data">Primary Log</label>
-        <select id="p-var-data"><option value="">-- select --</option></select>
-        <label for="p-var-weight">Weight</label>
-        <input id="p-var-weight" type="number" value="1.0" step="0.1" min="0" />
-        <label for="p-var-data2" class="adv" style="display:none;">Secondary Log</label>
-        <select id="p-var-data2" class="adv" style="display:none;"><option value="">-- none --</option></select>
-        <label for="p-var-weight2" class="adv" style="display:none;">Weight 2</label>
-        <input id="p-var-weight2" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" />
+        <label for="p-var-data" title="Primary log curve for correlation cost (e.g. GR, DEN, NPHI). The engine computes variance-based DTW cost from this curve.">Primary Log</label>
+        <select id="p-var-data" title="Primary log curve for correlation cost"><option value="">-- select --</option></select>
+        <label for="p-var-weight" title="Weight [0–5] for primary log. Higher = more influence on cost. 1.0 = standard.">Weight</label>
+        <input id="p-var-weight" type="number" value="1.0" step="0.1" min="0" title="Weight for primary log (1.0 = standard)" />
+        <label for="p-var-data2" class="adv" style="display:none;" title="Second log curve for multi-log correlation. Combined with Weight 2.">Secondary Log</label>
+        <select id="p-var-data2" class="adv" style="display:none;" title="Second log curve (multi-log correlation)"><option value="">-- none --</option></select>
+        <label for="p-var-weight2" class="adv" style="display:none;" title="Weight for second log curve.">Weight 2</label>
+        <input id="p-var-weight2" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" title="Weight for second log curve" />
 
         <div class="row-section">Constraints</div>
-        <label for="p-no-crossing">No-Crossing Region</label>
-        <select id="p-no-crossing"><option value="">-- none --</option></select>
-        <label for="p-same-region">Same-Region</label>
-        <select id="p-same-region"><option value="">-- none --</option></select>
+        <label for="p-no-crossing" title="Region name for no-crossing constraint. Correlation lines cannot cross boundaries of this region. Useful for biozones, sequence boundaries, dated markers.">No-Crossing Region</label>
+        <select id="p-no-crossing" title="Correlation lines cannot cross this region's boundaries"><option value="">-- none --</option></select>
+        <label for="p-same-region" title="Region where correlated points must share the same label. Forces correlation within same litho/bio unit.">Same-Region</label>
+        <select id="p-same-region" title="Correlated points must be in same region label"><option value="">-- none --</option></select>
 
         <div class="row-section adv" style="display:none;">Distality</div>
-        <label for="p-dist-distal" class="adv" style="display:none;">Distality Region</label>
-        <select id="p-dist-distal" class="adv" style="display:none;"><option value="">-- none --</option></select>
-        <label for="p-dist-facies" class="adv" style="display:none;">Facies Region</label>
-        <select id="p-dist-facies" class="adv" style="display:none;"><option value="">-- none --</option></select>
+        <label for="p-dist-distal" class="adv" style="display:none;" title="Region containing distality labels (e.g. DISTAL). Used by Walther's Law cost — penalises correlating unlike facies belts.">Distality Region</label>
+        <select id="p-dist-distal" class="adv" style="display:none;" title="Region with distality labels for Walther's Law cost"><option value="">-- none --</option></select>
+        <label for="p-dist-facies" class="adv" style="display:none;" title="Region containing facies for distality cost. Facies identity determines the cost penalty across wells.">Facies Region</label>
+        <select id="p-dist-facies" class="adv" style="display:none;" title="Region with facies labels for distality cost"><option value="">-- none --</option></select>
 
         <div class="row-section adv" style="display:none;">Advanced</div>
-        <label for="p-gap-cost" class="adv" style="display:none;">Gap Cost</label>
-        <input id="p-gap-cost" class="adv" style="display:none;" type="number" value="0" step="0.1" />
-        <label for="p-polarity-region" class="adv" style="display:none;">Polarity Region</label>
-        <select id="p-polarity-region" class="adv" style="display:none;"><option value="">-- none --</option></select>
-        <label for="p-band-width" class="adv" style="display:none;">Band Width</label>
-        <input id="p-band-width" class="adv" style="display:none;" type="number" value="0" min="0" placeholder="0=full" />
-        <label for="p-max-cor" class="adv" style="display:none;">Max Correlations</label>
-        <input id="p-max-cor" class="adv" style="display:none;" type="number" value="50" min="1" max="200" />
+        <label for="p-gap-cost" class="adv" style="display:none;" title="Penalty for introducing a gap (hiatus/non-deposition). 0 = gaps are free → many hiatuses. Higher (3–8) = penalise gaps → more 1:1 matching. Low for fluvial, high for marine/layer-cake.">Gap Cost</label>
+        <input id="p-gap-cost" class="adv" style="display:none;" type="number" value="0" step="0.1" title="Gap penalty: 0=free gaps, 3-8=penalise hiatuses" />
+        <label for="p-polarity-region" class="adv" style="display:none;" title="Region for polarity cost. Penalises correlating intervals with opposite log polarity (e.g. fining-up vs coarsening-up).">Polarity Region</label>
+        <select id="p-polarity-region" class="adv" style="display:none;" title="Penalises correlating intervals with opposite polarity"><option value="">-- none --</option></select>
+        <label for="p-band-width" class="adv" style="display:none;" title="DTW band-width constraint (% of well length). Limits how far correlation can deviate from diagonal. 10–30 typical. Narrow = faster but may miss large thickness changes.">Band Width</label>
+        <input id="p-band-width" class="adv" style="display:none;" type="number" value="0" min="0" placeholder="0=full" title="DTW band-width (% of well length). 0=no limit, 10-30 typical" />
+        <label for="p-max-cor" class="adv" style="display:none;" title="Maximum correlation lines allowed. Safety cap for memory. 100–500 typical.">Max Correlations</label>
+        <input id="p-max-cor" class="adv" style="display:none;" type="number" value="50" min="1" max="200" title="Max correlation lines (memory safety cap)" />
 
         <div class="row-section">Output</div>
-        <label for="p-n-best">N-Best Results</label>
-        <input id="p-n-best" type="number" value="5" min="1" max="100" />
+        <label for="p-n-best" title="Number of k-best results to return. Multiple results capture geological uncertainty. 5–20 for exploration, 1 for production.">N-Best Results</label>
+        <input id="p-n-best" type="number" value="5" min="1" max="100" title="k-best results (captures geological uncertainty)" />
       </div>
     </section>
   </div>
