@@ -164,7 +164,7 @@ User uploads wells (or selects demo)
 - ~~W3: Iterative auto-refinement~~ ✅ Done — built into `/auto` endpoint quality-gate logic
 - ~~D3: Diversity score column~~ ✅ Done — `diversity_score` field in RunResult (topology distance)
 - ~~V2: Zone name labels~~ ✅ Done — `from_region_auto()` + get_label() shows lithology names in facies strip
-- V4: Composite 3-result view
+- ~~V4: Composite 3-result view~~ ✅ Done — "Composite (3)" button shows 3 diverse results side-by-side on canvas
 - ~~F3: Auto-detect facies from region values~~ ✅ Done — `from_region_auto()` matches NPD/CGD/simple code tables
 - ~~F4: OSDU facies lookup~~ ✅ Done — `/facies-dict/{region}` endpoint + `from_osdu_units()` classmethod ready
 - ~~A1: Unified `/auto` endpoint~~ ✅ Done — suggest→run→quality-gate→diversify pipeline
@@ -173,14 +173,14 @@ User uploads wells (or selects demo)
 
 ### P2 — Roadmap
 - W4: Deposit environment detection from strat metadata
-- D4: Force-diverse mode
-- D5: Interpretation scenario naming
-- V6: Log-scale for RT
-- V8: Well spacing from coordinates
+- ~~D4: Force-diverse mode~~ ✅ Done — `_force_diverse_run()` runs 3 gap-cost configs, deduplicates by topology
+- ~~D5: Interpretation scenario naming~~ ✅ Done — `_label_scenario()` classifies as Layer-cake/Pinch-out/Unconformity/etc.
+- ~~V6: Log-scale for RT~~ ✅ Done — auto-applies log10 to RT/RDEEP/RSHAL logs in web client canvas
+- ~~V8: Well spacing from coordinates~~ ✅ Done — gap widths proportional to well X/Y distance
 - F5: Global StratColumn integration
 - F6: Lithostratigraphic column from OSDU
 - F7: SingleWell→Global gap display
-- A3: Scenario labelling
+- ~~A3: Scenario labelling~~ ✅ Done — `/auto` endpoint returns "scenario" field per result
 
 ---
 
