@@ -795,15 +795,21 @@ class DemoRunnerWindow(QMainWindow):
         results_vlayout = QVBoxLayout(results_widget)
         results_vlayout.setContentsMargins(4, 4, 4, 4)
 
-        # ─ Paging controls (top bar) ─
+        # ─ Paging controls (single compact row) ─
         paging_bar = QHBoxLayout()
         self.run_selector = QComboBox()
-        self.run_selector.setMinimumWidth(200)
+        self.run_selector.setMinimumWidth(120)
+        self.run_selector.setMaximumWidth(260)
         self.run_selector.currentIndexChanged.connect(self._on_run_selector_changed)
         paging_bar.addWidget(QLabel("Run:"))
-        paging_bar.addWidget(self.run_selector, 1)
+        paging_bar.addWidget(self.run_selector)
 
-        paging_bar.addSpacing(20)
+        paging_bar.addSpacing(10)
+        self.btn_prev = QPushButton("◀")
+        self.btn_prev.setFixedWidth(28)
+        self.btn_prev.clicked.connect(self._page_prev)
+        paging_bar.addWidget(self.btn_prev)
+
         self.result_spin = QSpinBox()
         self.result_spin.setPrefix("Result #")
         self.result_spin.setMinimum(0)
@@ -811,9 +817,14 @@ class DemoRunnerWindow(QMainWindow):
         self.result_spin.valueChanged.connect(self._on_result_spin_changed)
         paging_bar.addWidget(self.result_spin)
 
+        self.btn_next = QPushButton("▶")
+        self.btn_next.setFixedWidth(28)
+        self.btn_next.clicked.connect(self._page_next)
+        paging_bar.addWidget(self.btn_next)
+
+        paging_bar.addSpacing(10)
         self.result_cost_label = QLabel("")
         self.result_cost_label.setFont(QFont("Monospace", 9))
-        paging_bar.addSpacing(10)
         paging_bar.addWidget(self.result_cost_label)
         paging_bar.addStretch()
 
@@ -898,18 +909,6 @@ class DemoRunnerWindow(QMainWindow):
         self.ranking_label.setWordWrap(True)
         self.ranking_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         results_vlayout.addWidget(self.ranking_label)
-
-        # ─ Prev/Next navigation (below ranking) ─
-        nav_bar = QHBoxLayout()
-        nav_bar.addStretch()
-        self.btn_prev = QPushButton("◀ Prev")
-        self.btn_prev.clicked.connect(self._page_prev)
-        nav_bar.addWidget(self.btn_prev)
-        self.btn_next = QPushButton("Next ▶")
-        self.btn_next.clicked.connect(self._page_next)
-        nav_bar.addWidget(self.btn_next)
-        nav_bar.addStretch()
-        results_vlayout.addLayout(nav_bar)
 
         # ─ Well selection and ordering ─
         well_group = QGroupBox("Wells (select and reorder)")
