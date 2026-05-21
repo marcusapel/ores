@@ -93,6 +93,7 @@
 .progress-bar .fill { height:100%; background:#4BB748; transition:width .3s; }
 .progress-bar.indeterminate .fill { width:30%; animation:indeterminate 1.5s infinite linear; }
 @keyframes indeterminate { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
 /* Engine log */
 .engine-log { font-family:monospace; font-size:11.5px; background:#1e1e1e; color:#d4d4d4;
@@ -165,6 +166,9 @@
             <span id="ds-count" style="font-size:11px; color:#999; white-space:nowrap;"></span>
           </div>
           <select id="ds-select" size="6" aria-label="Dataspace list" style="width:100%; font-size:12.5px; border:1px solid #ccc; border-radius:3px;"></select>
+          <div id="ds-loading-status" style="display:none; font-size:12px; color:#666; animation:pulse 1.5s ease-in-out infinite;">
+            ⏳ Loading dataspaces from RDDMS… <span id="ds-loading-elapsed">0</span>s
+          </div>
           <div style="margin-top:.3rem; display:flex; gap:.4rem; align-items:center;">
             <button class="btn btn-sm" id="btn-import">Import Wells</button>
             <button class="btn btn-outline btn-sm" id="btn-refresh-ds">Refresh</button>

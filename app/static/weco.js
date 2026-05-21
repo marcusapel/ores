@@ -155,6 +155,11 @@
   let selectedWells = new Set(); // well names currently selected
 
   async function loadDataspaces() {
+    const dsStatus = $('#ds-loading-status');
+    const dsElapsed = $('#ds-loading-elapsed');
+    let elapsed = 0;
+    if (dsStatus) dsStatus.style.display = 'block';
+    const timer = setInterval(() => { elapsed++; if (dsElapsed) dsElapsed.textContent = elapsed; }, 1000);
     try {
       const d = await api('GET', '/dataspaces');
       allDataspaces = (d.dataspaces || []).map(ds => {
@@ -164,6 +169,9 @@
       applyDsFilter();
     } catch(e) {
       dsSel.innerHTML = '<option disabled>Could not load dataspaces</option>';
+    } finally {
+      clearInterval(timer);
+      if (dsStatus) dsStatus.style.display = 'none';
     }
   }
 
@@ -725,8 +733,8 @@
   // ── Import demo from RDDMS ─────────────────────────────────────────
   async function importDemoFromRddms(demoId) {
     importSpin.style.display = 'inline';
-    setStatus(importStat, 'info', `Importing "${demoId}" from RDDMS...`);
     const ds = dsSel.value || _defaultDs;
+    setStatus(importStat, 'info', `Importing "${demoId}" from RDDMS (${ds})...`);
     try {
       const data = await api('POST', `/import/demo?demo_id=${encodeURIComponent(demoId)}&dataspace=${encodeURIComponent(ds)}`);
       importedWells = data;
@@ -734,7 +742,12 @@
       setStatus(importStat, 'ok', `Imported ${data.well_count} wells from RDDMS (demo: ${demoId})`);
       enableAfterImport();
     } catch(e) {
-      setStatus(importStat, 'err', `RDDMS import failed: ${e.message}. Try running local demo instead.`);
+      const msg = e.message || '';
+      if (msg.includes('no healthy upstream') || msg.includes('502') || msg.includes('503') || msg.includes('No wells')) {
+        setStatus(importStat, 'err', `Dataspace "${ds}" not available. Try running local demo instead.`);
+      } else {
+        setStatus(importStat, 'err', `RDDMS import failed: ${msg}. Try running local demo instead.`);
+      }
     } finally {
       importSpin.style.display = 'none';
     }
