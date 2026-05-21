@@ -50,6 +50,7 @@
   // Run tab
   const runSummary = $('#run-summary');
   const btnRun = $('#btn-run');
+  const btnQuickRun = $('#btn-quick-run');
   const btnRunDemo = $('#btn-run-demo');
   const runSpin = $('#run-spinner');
   const runProgress = $('#run-progress');
@@ -300,6 +301,9 @@
 
   function enableAfterImport() {
     btnRun.disabled = false;
+    btnQuickRun.disabled = false;
+    const qrInfo = $('#quick-run-info');
+    if (qrInfo) qrInfo.style.display = 'block';
     tabs.forEach(t => {
       if (['logs', 'params', 'run'].includes(t.dataset.tab)) t.classList.remove('disabled');
     });
@@ -595,6 +599,39 @@
   // ── Run correlation ───────────────────────────────────────────────
   btnRun.addEventListener('click', () => runCorrelation());
   btnRunDemo.addEventListener('click', () => runDemo());
+  btnQuickRun.addEventListener('click', () => quickRun());
+
+  async function quickRun() {
+    switchTab('run');
+    runSpin.style.display = 'inline';
+    runProgress.style.display = 'block';
+    runProgress.classList.add('indeterminate');
+    setStatus(runError, '', '');
+    btnQuickRun.disabled = true;
+    btnRun.disabled = true;
+    engineLog.textContent = '⚡ Quick Run: auto-detecting parameters...\n';
+
+    try {
+      const data = await api('POST', '/auto', {});
+      correlationResult = data;
+      if (data.wells_plot_data) wellDetails = data.wells_plot_data;
+      engineLog.textContent += `\nEnvironment: ${data.reasoning?.detected_environment || 'auto'}\n`;
+      engineLog.textContent += `Options: ${JSON.stringify(data.suggested_options)}\n`;
+      engineLog.textContent += `Completed: ${data.n_results} diverse solutions in ${data.elapsed_ms} ms\n`;
+      showResults(data);
+      enableResultsTabs();
+      switchTab('results');
+    } catch(e) {
+      setStatus(runError, 'err', 'Quick Run failed: ' + e.message);
+      engineLog.textContent += `\nERROR: ${e.message}\n`;
+    } finally {
+      runSpin.style.display = 'none';
+      runProgress.style.display = 'none';
+      runProgress.classList.remove('indeterminate');
+      btnQuickRun.disabled = false;
+      btnRun.disabled = false;
+    }
+  }
 
   async function runCorrelation() {
     runSpin.style.display = 'inline';

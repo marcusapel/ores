@@ -317,9 +317,13 @@
       <div style="margin-bottom:.5rem; font-size:13px; color:#605e5c;" id="run-summary">No wells loaded.</div>
       <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
         <button class="btn btn-run" id="btn-run" disabled>&#9654; Run Correlation</button>
+        <button class="btn btn-sm" id="btn-quick-run" disabled style="background:#0078d4;border-color:#0078d4;color:#fff;font-weight:600;">&#9889; Quick Run</button>
         <button class="btn btn-demo btn-sm" id="btn-run-demo" style="display:none;">&#9654; Run Demo</button>
         <button class="btn btn-outline btn-sm" id="btn-import-demo-rddms" style="display:none;">Import from RDDMS</button>
         <span id="run-spinner" style="display:none; font-size:13px;">&#9203; Running...</span>
+      </div>
+      <div id="quick-run-info" style="display:none; margin-top:.4rem; font-size:12px; color:#605e5c; background:#f3f2f1; border-radius:4px; padding:6px 10px;">
+        <strong>Quick Run</strong> auto-detects parameters, runs correlation, and selects diverse results — no configuration needed.
       </div>
       <div class="progress-bar" id="run-progress" style="display:none;"><div class="fill"></div></div>
       <div id="run-error" class="wc-status"></div>

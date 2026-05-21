@@ -752,6 +752,91 @@ async def weco_run(req: WecoRunRequest, request: Request):
     }
 
 
+@router.post("/auto")
+async def weco_auto(request: Request):
+    """Quick Run: auto-suggest params → run → quality-gate → diverse results.
+
+    Uses cached wells from /import or a demo selection. Zero-config correlation.
+    """
+    global _cached_well_list, _cached_res_file
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    wl = _cached_well_list
+    n_wells = len(wl.wells)
+
+    try:
+        from weco.api import (_suggest_defaults_for_wells, _run_engine,
+                              _extract_results, _diverse_results, _topology_signature)
+        from weco.depenv import detect_environment_from_logs, suggest_options
+
+        # 1. Suggest defaults
+        options, reasoning = _suggest_defaults_for_wells(wl)
+
+        # 2. Detect environment and apply preset
+        try:
+            env_key = detect_environment_from_logs(wl)
+            if env_key:
+                env_opts = suggest_options(env_key, data_names=wl.get_data_names())
+                for k, v in env_opts.items():
+                    norm_k = k.replace("_", "-")
+                    if norm_k not in options:
+                        options[norm_k] = v
+                reasoning["detected_environment"] = env_key
+        except Exception:
+            pass
+
+        # 3. Memory guards + ensure diversity
+        options = _apply_memory_guards(options, n_wells)
+        options.setdefault("min-dist", 0.1)
+        options.setdefault("out-min-dist", 0.05)
+        options.setdefault("nbr-cor", 100)
+        options.setdefault("out-nbr-cor", 20)
+
+        log.info(f"Auto-correlate: {n_wells} wells, env={reasoning.get('detected_environment','?')}")
+
+        # 4. Run engine
+        rf, data, elapsed = _run_engine(wl, options)
+        _cached_res_file = rf
+
+        # 5. Extract diverse results
+        diverse_indices = _diverse_results(rf, data, n_best=50, n_diverse=5)
+        results = _extract_results(rf, data, 50)
+        result_map = {r.index: r for r in results}
+
+        diverse_results = []
+        for idx in diverse_indices:
+            r = result_map.get(idx)
+            if r:
+                sig = _topology_signature(rf, idx, rf.nbr_well())
+                diverse_results.append({
+                    **(r.model_dump() if hasattr(r, "model_dump") else r.dict()),
+                    "topology": "-".join(str(s) for s in sig),
+                })
+
+        wells_plot_data = _build_wells_plot_data(wl)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception(f"Auto-correlate error: {e}")
+        raise HTTPException(500, f"Auto-correlate error: {e}")
+
+    return {
+        "status": "ok",
+        "elapsed_ms": round(elapsed, 2),
+        "iterations": 1,
+        "n_wells": n_wells,
+        "well_names": [w.name for w in wl.wells],
+        "suggested_options": options,
+        "reasoning": reasoning,
+        "n_results": len(diverse_results),
+        "results": diverse_results,
+        "wells_plot_data": wells_plot_data,
+    }
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  Radix Job dispatch (heavy correlations → dedicated 8Gi pod)
 # ═══════════════════════════════════════════════════════════════════════════
