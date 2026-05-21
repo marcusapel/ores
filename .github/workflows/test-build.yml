@@ -2,6 +2,9 @@ name: build-test
 
 on: push
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   linux-build:
     name: Linux Build Py${{ matrix.pyver }}
@@ -24,7 +27,7 @@ jobs:
           sudo apt-get install -y cmake ninja-build g++
       - name: linux-build
         run: |
-          python -m pip install build pytest pytest-timeout scikit-build-core pybind11 fastapi httpx
+          python -m pip install build pytest pytest-timeout scikit-build-core pybind11 fastapi httpx python-multipart
           python -m pip install -e .
           WeCoCheck -g
           pytest --ignore=pytest/test_rddms.py --timeout=120
@@ -56,7 +59,7 @@ jobs:
       - name: window-build
         shell: bash
         run: |
-          python -m pip install build pytest pytest-timeout scikit-build-core pybind11 fastapi httpx
+          python -m pip install build pytest pytest-timeout scikit-build-core pybind11 fastapi httpx python-multipart
           python -m pip install -e .
           WeCoCheck -g
           pytest --ignore=pytest/test_rddms.py --timeout=120

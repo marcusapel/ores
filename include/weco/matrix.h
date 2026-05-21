@@ -34,10 +34,10 @@ public :
 		{};
 	Matrix(unsigned xsize,unsigned ysize):
 		xsize_(xsize),ysize_(ysize),data_(xsize_*ysize_)
-		{assert (xsize>0 &&xsize >0);};
+		{assert (xsize>0 && ysize >0);};
 	Matrix(unsigned xsize,unsigned ysize,const T&value):
 		xsize_(xsize),ysize_(ysize),data_(xsize_*ysize_,value)
-		{assert (xsize>0 &&xsize >0);};
+		{assert (xsize>0 && ysize >0);};
 	~Matrix(){};
 
 	const T& operator() (unsigned x,unsigned y) const {

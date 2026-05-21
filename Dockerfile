@@ -1,5 +1,5 @@
 # ============================================================
-#  WeCo — Multi-well Correlation Engine
+#  WeCo (ORES) — Multi-well Correlation Engine
 #  Docker build for headless (server / API / batch) usage
 # ============================================================
 #
@@ -28,12 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy only what's needed for the build (maximise layer cache)
-COPY VERSION CMakeLists.txt pyproject.toml setup.cfg MANIFEST.in ReadMe.md ./
-COPY cmake/       cmake/
+COPY CMakeLists.txt pyproject.toml MANIFEST.in ReadMe.md ./
+COPY doc/license.txt doc/license.txt
 COPY include/     include/
 COPY src/         src/
 COPY binding/     binding/
-COPY pybind11/    pybind11/
 COPY weco/        weco/
 COPY demo/        demo/
 COPY pytest/      pytest/
@@ -61,7 +60,7 @@ COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/*.whl && \
     pip install --no-cache-dir \
         scikit-learn>=1.3 \
-        fastapi uvicorn[standard] && \
+        fastapi uvicorn[standard] python-multipart && \
     rm -rf /wheels
 
 # Copy demo data, scripts, and tests
@@ -71,8 +70,12 @@ COPY pytest/ pytest/
 # Smoke test: import the engine
 RUN python -c "import weco.engine; print('WeCo engine OK — version', open('VERSION').read().strip() if False else 'built')"
 
-# Default entrypoint: run tests
-CMD ["pytest", "-v", "pytest/"]
+# Create non-root user (required by Radix runAsNonRoot policy)
+RUN useradd --create-home --uid 1000 weco
+USER 1000
 
 # Expose API port
 EXPOSE 8000
+
+# Default: start the REST API
+CMD ["python", "-m", "uvicorn", "weco.api:app", "--host", "0.0.0.0", "--port", "8000"]

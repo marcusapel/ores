@@ -74,11 +74,14 @@ FACIES = {
 FACIES_GROUPS = "1,2,7;3,8,9;4,5,6"
 
 UNITS = {
-    1: ("Holocene",     2.0, 1.5, 0,  5, 0.20),
-    2: ("Weichselian", 15.0, 5.0, 5, 25, 0.00),
-    3: ("Eemian",       4.0, 2.5, 0,  8, 0.30),
-    4: ("Saalian",     12.0, 4.0, 3, 20, 0.05),
-    5: ("Elsterian",    8.0, 3.0, 0, 30, 0.15),
+    # (name, base_h, sigma, h_min, h_max, p_missing)
+    # Higher p_missing and thickness variability → "is this aquifer connected
+    # to the next well's sand, or is it a different stratigraphic unit entirely?"
+    1: ("Holocene",     2.0, 1.8, 0,  6, 0.25),
+    2: ("Weichselian", 14.0, 6.0, 4, 28, 0.05),
+    3: ("Eemian",       3.5, 2.5, 0,  8, 0.40),   # often eroded by Weichselian
+    4: ("Saalian",     11.0, 5.0, 2, 22, 0.10),
+    5: ("Elsterian",    7.0, 4.0, 0, 30, 0.20),
 }
 
 SAMPLE_DZ = 0.5
@@ -152,7 +155,8 @@ def _insert_ice_wedge(rng, seq, n_samples, x, y):
     if rng.random() < 0.10:
         n_wedges = 2
     for _ in range(n_wedges):
-        wedge_len = rng.randint(2, min(7, n_samples // 3))
+        max_len = max(3, min(7, n_samples // 3))
+        wedge_len = rng.randint(2, max_len)
         wedge_start = rng.randint(1, max(2, n_samples // 2))
         for k in range(wedge_start, min(wedge_start + wedge_len, n_samples)):
             seq[k] = 7

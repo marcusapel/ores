@@ -169,18 +169,6 @@ bool Project::option_check() const{
 
 bool Project::project_parse_args(int argc, char * argv[],std::string & data) {
 	int arg_num = 1;
-	#ifdef GEN_PLUGIN
-	while (arg_num < argc) {
-		if(arg_num+1 < argc && !strcmp(argv[arg_num],"-P") ) {
-			if(!load_plugin(argv[arg_num+1])){
-				return false;
-			};
-			arg_num+=2;
-			continue;
-		}
-		break;
-	};
-	#endif
 
 	std::vector<std::string >args;
 	if(!OptionParser::parse_args(argc,argv,args,1,arg_num)) return false;
@@ -224,7 +212,10 @@ bool Project::run_() {
 	}
 
 	cost_function_ = CostFunction::from_name(option_cost_function());
-	assert(cost_function_!=nullptr);
+	if (!cost_function_) {
+		LOG << "*ERR* Unknown cost function: " << option_cost_function() << std::endl;
+		return false;
+	}
 
 
 	if(!cost_function_->check_param(*this))

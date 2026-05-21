@@ -244,9 +244,16 @@ def roundtrip_test(
     opts = {
         "cost-function": "composite",
         "order": "pyramidal",
-        "nbr-cor": str(max(k * 5, 50)),
-        "out-nbr-cor": str(max(k, 10)),
-        "max-cor": str(max(len(model.truth) * 2, 100)),
+        "nbr-cor": str(max(k * 3, 15)),
+        "out-nbr-cor": str(max(k, 5)),
+        "max-cor": str(max(len(model.truth) * 2, 30)),
+        "no-crossing": "",
+        "var-data2": "",
+        "var-weight2": "0",
+        "var-data3": "",
+        "var-weight3": "0",
+        "const-gap-cost": "0",
+        "band-width": "0",
     }
     opts.update(model.options)
     if extra_options:
