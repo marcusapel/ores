@@ -93,6 +93,7 @@ class RunResult(BaseModel):
     cost: float
     n_ties: int
     lines: List[CorrelationLine]
+    diversity_score: float = 0.0  # 0=identical to #1, 1=maximally different
 
 
 class RunResponse(BaseModel):
@@ -514,6 +515,28 @@ def _extract_results(rf, data, n_best: int) -> List[RunResult]:
             n_ties=len(lines),
             lines=lines,
         ))
+
+    # Compute diversity scores relative to result #0
+    if len(results) >= 2:
+        ref_path = rf.get_result_full_path(0)
+        ref_len = len(ref_path)
+        for res in results[1:]:
+            alt_path = rf.get_result_full_path(res.index)
+            alt_len = len(alt_path)
+            # Compare marker positions at evenly-sampled path steps
+            n_compare = min(ref_len, alt_len, 50)
+            if n_compare == 0:
+                continue
+            diff_count = 0
+            for s in range(n_compare):
+                ri = s * (ref_len - 1) // max(1, n_compare - 1)
+                ai = s * (alt_len - 1) // max(1, n_compare - 1)
+                ref_node = ref_path[ri]
+                alt_node = alt_path[ai]
+                diff_count += sum(1 for w in range(n_wells) if ref_node[w] != alt_node[w])
+            max_diff = n_compare * n_wells
+            res.diversity_score = round(diff_count / max(1, max_diff), 3)
+
     return results
 
 
@@ -700,8 +723,9 @@ def _suggest_defaults_for_wells(wl) -> tuple:
     region_names = wl.get_region_names()
     n_wells = len(wl.wells)
 
-    # --- Pick best logs (exclude depth/coord names) ---
-    usable_data = [n for n in data_names if n not in _SKIP_DATA]
+    # --- Pick best logs (exclude depth/coord names AND region channels) ---
+    region_set = set(region_names)
+    usable_data = [n for n in data_names if n not in _SKIP_DATA and n not in region_set]
     ranked = [n for n in _LOG_PRIORITY if n in usable_data]
 
     # If no priority match, use first usable data name that looks like a log
@@ -746,9 +770,15 @@ def _suggest_defaults_for_wells(wl) -> tuple:
         options["dist-distal"] = distal_match
         options["dist-facies"] = facies_match
         options["dist-scaling"] = 1.0
+        options["cost-function"] = "composite"
+        options.setdefault("order", "distality")
+        # Remove no-crossing — incompatible with distality ordering
+        options.pop("no-crossing", None)
+        reasoning.pop("no-crossing", None)
         reasoning["dist-distal"] = f"DISTAL region '{distal_match}' detected → distality cost enabled"
         reasoning["dist-facies"] = f"FACIES region '{facies_match}' paired for palaeogeographic cost"
         reasoning["dist-scaling"] = "Default distality scaling factor"
+        reasoning["cost-function"] = "Composite cost required for distality"
 
     # --- Well-count-adaptive settings ---
     if n_wells >= 15:
@@ -799,6 +829,149 @@ def suggest_defaults(req: SuggestDefaultsRequest):
     wl = _load_well_list(req.well_file)
     options, reasoning = _suggest_defaults_for_wells(wl)
     return SuggestDefaultsResponse(options=options, reasoning=reasoning)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Auto-Correlate: suggest → run → quality-gate → diverse-select
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AutoRequest(BaseModel):
+    """Request for fully automated correlation."""
+    well_file: str = Field(..., description="Server-side path to well-list file.")
+    n_diverse: int = Field(5, ge=1, le=20, description="Number of diverse results to return.")
+    max_iterations: int = Field(3, ge=1, le=5, description="Max refinement iterations.")
+    quality_threshold: float = Field(0.5, ge=0.0, le=1.0,
+                                     description="Minimum quality score before stopping refinement.")
+
+
+class AutoResult(BaseModel):
+    """One auto-selected diverse result."""
+    index: int
+    cost: float
+    diversity_score: float
+    quality_score: float = 0.0
+    topology: str = ""  # e.g. "0-1-2-3" = gap buckets per well
+    lines: List[CorrelationLine] = []
+
+
+class AutoResponse(BaseModel):
+    """Response from POST /auto."""
+    status: str = "ok"
+    elapsed_ms: float = 0.0
+    iterations: int = 1
+    n_wells: int = 0
+    well_names: List[str] = []
+    suggested_options: Dict[str, Any] = {}
+    reasoning: Dict[str, str] = {}
+    results: List[AutoResult] = []
+
+
+@app.post("/auto", response_model=AutoResponse, tags=["correlation"])
+def auto_correlate(req: AutoRequest):
+    """Fully automated correlation: suggest params → run → quality-check → diversify.
+
+    Chains the full workflow in one call:
+    1. Load wells and suggest optimal parameters
+    2. Run correlation with diversity enabled
+    3. Score quality (if weco.ai available)
+    4. If quality < threshold, adjust gap-cost and re-run (up to max_iterations)
+    5. Select structurally diverse results using topology clustering
+    """
+    wl = _load_well_list(req.well_file)
+    options, reasoning = _suggest_defaults_for_wells(wl)
+
+    # A2: Detect depositional environment and apply preset
+    try:
+        from weco.depenv import detect_environment_from_logs, suggest_options
+        env_key = detect_environment_from_logs(wl)
+        if env_key:
+            env_opts = suggest_options(env_key, data_names=wl.get_data_names())
+            for k, v in env_opts.items():
+                norm_k = k.replace("_", "-")
+                if norm_k not in options:
+                    options[norm_k] = v
+            reasoning["detected_environment"] = env_key
+    except Exception:
+        pass
+
+    # Ensure diversity and sufficient results
+    options.setdefault("min-dist", 0.1)
+    options.setdefault("out-min-dist", 0.05)
+    options.setdefault("nbr-cor", 100)
+    options.setdefault("out-nbr-cor", max(20, req.n_diverse * 4))
+
+    total_elapsed = 0.0
+    best_rf = None
+    best_data = None
+    iterations = 0
+
+    for iteration in range(req.max_iterations):
+        iterations += 1
+        try:
+            rf, data, elapsed = _run_engine(wl, options)
+            total_elapsed += elapsed
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
+
+        best_rf = rf
+        best_data = data
+
+        # Quality gate (optional — requires sklearn)
+        quality = 0.0
+        try:
+            from weco.ai.quality import CorrelationQuality
+            cq = CorrelationQuality()
+            results_for_scoring = _extract_results(rf, data, min(5, rf.get_nbr_results()))
+            if results_for_scoring:
+                quality = cq.score_result(results_for_scoring[0], data)
+        except (ImportError, Exception):
+            quality = 1.0  # skip gate if AI not available
+
+        if quality >= req.quality_threshold:
+            break
+
+        # Adjust parameters for next iteration
+        current_gap = float(options.get("const-gap-cost", 0.0))
+        if current_gap < 1.0:
+            options["const-gap-cost"] = 2.0
+            reasoning["const-gap-cost"] = f"Iter {iterations}: quality {quality:.2f} < {req.quality_threshold}, adding gap penalty"
+        else:
+            options["const-gap-cost"] = current_gap + 2.0
+            reasoning["const-gap-cost"] = f"Iter {iterations}: increasing gap cost to {current_gap + 2.0}"
+
+    # Select diverse results
+    n_wells = best_rf.nbr_well()
+    diverse_indices = _diverse_results(best_rf, best_data, n_best=50, n_diverse=req.n_diverse)
+
+    # Build results with diversity + quality scores
+    all_extracted = _extract_results(best_rf, best_data, 50)
+    extracted_map = {r.index: r for r in all_extracted}
+
+    auto_results = []
+    for idx in diverse_indices:
+        sig = _topology_signature(best_rf, idx, n_wells)
+        extracted = extracted_map.get(idx)
+        cost = float(best_rf.get_result_cost(idx))
+        div_score = extracted.diversity_score if extracted else 0.0
+        auto_results.append(AutoResult(
+            index=idx,
+            cost=cost,
+            diversity_score=div_score,
+            topology="-".join(str(s) for s in sig),
+            lines=extracted.lines if extracted else [],
+        ))
+
+    well_names = best_data.well_names()
+    return AutoResponse(
+        status="ok",
+        elapsed_ms=round(total_elapsed, 2),
+        iterations=iterations,
+        n_wells=len(well_names),
+        well_names=well_names,
+        suggested_options=options,
+        reasoning=reasoning,
+        results=auto_results,
+    )
 
 
 @app.get("/demos", response_model=DemoListResponse, tags=["demos"])

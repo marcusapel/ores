@@ -409,3 +409,86 @@ def suggest_options(
                     opts.pop(wkey, None)
 
     return opts
+
+
+def detect_environment_from_logs(well_list) -> Optional[str]:
+    """Infer depositional environment from log statistics and region names.
+
+    Heuristics:
+    - Region named FACIES/LITH with many unique values → heterogeneous (fluvial/delta)
+    - Region named SEAM/COAL → coal_swamp
+    - GR mean > 80 and low variability → deep marine (shale-dominated)
+    - GR bimodal (high std, mean ~60) → shallow marine or delta
+    - Presence of DISTAL region → already classified (use suggest from regions)
+    - High DEN variability + named LITH → carbonate or mixed
+
+    Parameters
+    ----------
+    well_list : WellList
+        Loaded well data with .wells[].data and .wells[].region
+
+    Returns
+    -------
+    str or None
+        Normalised depenv key (e.g. "fluvial", "shallow_marine").
+    """
+    import numpy as np
+
+    wells = well_list.wells
+    if not wells:
+        return None
+
+    # Check region names for direct hints
+    all_regions = set()
+    for w in wells:
+        if hasattr(w, 'region') and w.region:
+            all_regions.update(w.region.keys())
+
+    region_upper = {r.upper() for r in all_regions}
+
+    # Direct region-name heuristics
+    if "SEAM" in region_upper or "COAL" in region_upper:
+        return "coal_swamp"
+    if "DISTAL" in region_upper:
+        return "shallow_marine"  # distality implies proximal-distal gradient
+
+    # Count unique facies values
+    facies_values = set()
+    for r in all_regions:
+        if r.upper() in ("FACIES", "LITH", "LITHOLOGY", "FACIES_1"):
+            for w in wells:
+                if hasattr(w, 'region') and r in w.region:
+                    for entry in w.region[r]:
+                        if isinstance(entry, (list, tuple)) and entry[0] is not None:
+                            facies_values.add(entry[0])
+
+    # GR statistics
+    gr_values = []
+    for w in wells:
+        if hasattr(w, 'data'):
+            for key in ("GR", "gr", "Gr"):
+                if key in w.data:
+                    gr_values.extend([v for v in w.data[key] if v is not None and v > 0])
+                    break
+
+    gr_mean = float(np.mean(gr_values)) if gr_values else 50.0
+    gr_std = float(np.std(gr_values)) if gr_values else 20.0
+
+    # Decision logic
+    if len(facies_values) >= 6:
+        # Many facies → heterogeneous environment
+        if gr_std > 30:
+            return "fluvial"
+        return "delta"
+    elif gr_mean > 90 and gr_std < 20:
+        return "deep_marine"
+    elif 50 < gr_mean < 80 and gr_std > 25:
+        return "shallow_marine"
+    elif gr_mean < 40:
+        return "carbonate"
+
+    # Fallback — check well count pattern
+    if len(wells) >= 10:
+        return "shallow_marine"  # safe default for large projects
+
+    return None
