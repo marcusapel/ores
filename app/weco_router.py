@@ -1140,23 +1140,126 @@ async def weco_run_job(req: WecoRunRequest, request: Request, well_list=None):
 async def weco_export(request: Request):
     """Export last correlation results back to RDDMS as WellboreMarkerFrame.
 
-    Uses ORES's native osdu.py (no gocad dependency).
+    Uses ORES's native osdu.py transactional API.
+    Exports boundary lines from result #0 (best) as marker frames per well.
     """
-    global _cached_well_list
+    global _cached_well_list, _cached_res_file
 
     token = _get_token(request)
     if not token:
         raise HTTPException(400, "No auth token. Log in first.")
 
-    if _cached_well_list is None:
+    if _cached_well_list is None or _cached_res_file is None:
         raise HTTPException(400, "No correlation results. Run correlation first.")
 
-    # TODO: implement RDDMS export using app/osdu.py put_resources()
-    # For now, return a placeholder acknowledging the limitation
+    import uuid as _uuid
+    from weco.api import _extract_results
+
+    # Get the best result (index 0)
+    results = _extract_results(_cached_res_file, None, 1)
+    if not results:
+        raise HTTPException(400, "No results to export.")
+    result = results[0]
+
+    wells = _cached_well_list.wells
+    well_names = [w.name for w in wells]
+
+    # Extract boundary lines only (these are the stratigraphic correlations)
+    boundary_lines = [l for l in result.lines if l.line_type == "boundary"]
+    if not boundary_lines:
+        # Fall back to all lines if no boundaries classified
+        boundary_lines = result.lines
+
+    # Determine dataspace from well metadata
+    dataspace = None
+    for w in wells:
+        if hasattr(w, "meta") and w.meta and w.meta.get("dataspace"):
+            dataspace = w.meta["dataspace"]
+            break
+    if not dataspace:
+        dataspace = os.environ.get("DEFAULT_DATASPACE", "maap/drogon")
+
+    # Build WellboreMarkerFrame RESQML objects per well
+    marker_frames = []
+    for wi, well in enumerate(wells):
+        rddms_id = ""
+        if hasattr(well, "meta") and well.meta:
+            rddms_id = well.meta.get("rddms_id", "")
+
+        depth_array = well.data.get("Depth") or well.data.get("MD")
+        if not depth_array:
+            continue
+
+        # Collect marker depths for this well from all boundary lines
+        markers = []
+        for li, line in enumerate(boundary_lines):
+            if wi < len(line.markers):
+                idx = line.markers[wi]
+                if 0 <= idx < len(depth_array):
+                    markers.append({
+                        "MdValue": depth_array[idx],
+                        "Label": f"H{li + 1}",
+                        "Interpretation": "WeCo boundary",
+                    })
+
+        if not markers:
+            continue
+
+        frame_uuid = str(_uuid.uuid4())
+        frame_obj = {
+            "Uuid": frame_uuid,
+            "SchemaVersion": "2.0",
+            "ObjectType": "resqml20.obj_WellboreMarkerFrameRepresentation",
+            "Citation": {
+                "Title": f"WeCo Correlation - {well.name}",
+                "Originator": "WeCo Engine",
+                "Description": f"Exported from WeCo correlation (cost={result.cost:.4f})",
+            },
+            "WellboreName": well.name,
+            "WellboreId": rddms_id,
+            "WellboreMarker": [
+                {
+                    "Uuid": str(_uuid.uuid4()),
+                    "FluidContact": None,
+                    "GeologicBoundaryKind": "horizon",
+                    "Interpretation": m["Interpretation"],
+                    "Label": m["Label"],
+                }
+                for m in markers
+            ],
+            "NodeMd": {
+                "Values": [m["MdValue"] for m in markers],
+                "UOM": "m",
+            },
+        }
+        marker_frames.append(frame_obj)
+
+    if not marker_frames:
+        raise HTTPException(400, "No marker data to export (wells have no depth data).")
+
+    # Write to RDDMS via transactional API
+    from app.osdu import begin_transaction, put_resources, commit_transaction, cancel_transaction
+    try:
+        tx_id = await begin_transaction(token, dataspace)
+        await put_resources(token, dataspace, marker_frames, tx_id)
+        await commit_transaction(token, dataspace, tx_id)
+    except Exception as e:
+        # Attempt rollback
+        try:
+            await cancel_transaction(token, dataspace, tx_id)
+        except Exception:
+            pass
+        log.error(f"RDDMS export failed: {e}")
+        raise HTTPException(500, f"RDDMS export failed: {e}")
+
     return {
-        "status": "pending",
-        "message": "Export to RDDMS not yet implemented via native client. "
-                   "Results are available in the response of /weco/run.",
+        "status": "ok",
+        "n_wells_exported": len(marker_frames),
+        "n_markers_per_well": len(boundary_lines),
+        "dataspace": dataspace,
+        "well_names": [w.name for w in wells if any(
+            f["WellboreName"] == w.name for f in marker_frames
+        )],
     }
 
 

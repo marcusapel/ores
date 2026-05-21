@@ -1717,7 +1717,10 @@
     setStatus(exportStatus, 'info', 'Exporting to RDDMS...');
     try {
       const data = await api('POST', '/export');
-      if (data.status === 'pending') {
+      if (data.status === 'ok') {
+        setStatus(exportStatus, 'ok',
+          `Exported ${data.n_wells_exported} wells × ${data.n_markers_per_well} markers to ${data.dataspace}`);
+      } else if (data.status === 'pending') {
         setStatus(exportStatus, 'warn', data.message);
       } else {
         setStatus(exportStatus, 'ok', 'Exported to RDDMS');
