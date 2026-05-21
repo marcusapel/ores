@@ -458,34 +458,55 @@ class CorrelationWorker(QThread):
 
 def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
                   cor_index=0, plot_settings=None):
-    """Generate a correlation plot with wells in narrow columns and correlation
-    lines drawn in dedicated gap corridors between them.  Includes a legend."""
+    """Generate a correlation plot with narrow well columns, clear log headers
+    with units, depth labels, and correlation lines drawn ONLY in dedicated
+    gap corridors between wells."""
     if res_file is None or res_file.get_nbr_results() == 0:
         return None
 
+    ps = plot_settings or {}
     n_wells = len(res_file.well_id)
     wells = [well_list.wells[wid] for wid in res_file.well_id]
 
     SKIP_DATA = {"Depth", "DEPTH", "MD", "TVD", "TVDSS", "X", "Y", "Z"}
     ZONE_CMAP = plt.cm.Set3.colors  # 12 distinct pastel colors
 
-    def get_depth(well):
-        for dn in ("Depth", "DEPTH", "MD"):
-            if dn in well.data and well.data[dn]:
-                return list(well.data[dn])
-        return list(range(well.size))
+    # Known log units (fallback when meta not available)
+    KNOWN_UNITS = {
+        "GR": "API", "RT": "ohm.m", "RESD": "ohm.m", "RESS": "ohm.m",
+        "DEN": "g/cc", "RHOB": "g/cc", "DT": "us/ft", "SP": "mV",
+        "SPT": "mV", "NPHI": "v/v", "NEU": "v/v", "CALI": "in",
+        "ILD": "ohm.m", "ILM": "ohm.m", "PHIE": "v/v", "SW": "v/v",
+        "VSH": "v/v", "PERM": "mD",
+    }
 
-    depths = [get_depth(w) for w in wells]
+    def get_depth(well):
+        for dn in ("TVDSS", "TVD", "Depth", "DEPTH", "MD"):
+            if dn in well.data and well.data[dn]:
+                return list(well.data[dn]), dn
+        return list(range(well.size)), "Index"
+
+    depth_info = [get_depth(w) for w in wells]
+    depths = [d[0] for d in depth_info]
+    depth_labels = [d[1] for d in depth_info]
 
     # Identify log channels (up to 3) for display
-    def get_log_names(well, max_logs=3):
+    max_logs = ps.get('max_logs', 3)
+
+    def get_log_names(well, n=3):
         names = []
         for k in well.data:
-            if k not in SKIP_DATA and len(names) < max_logs:
+            if k not in SKIP_DATA and len(names) < n:
                 names.append(k)
         return names
 
-    log_names = get_log_names(wells[0])
+    log_names = get_log_names(wells[0], max_logs)
+
+    # Get unit for a log name
+    def get_unit(well, lname):
+        if hasattr(well, 'meta') and lname in well.meta:
+            return well.meta[lname].get('uom', KNOWN_UNITS.get(lname.upper(), ''))
+        return KNOWN_UNITS.get(lname.upper(), '')
 
     # Identify regions for zone bands (up to 2)
     def get_region_names(well, max_regions=2):
@@ -495,22 +516,24 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
     has_zones = bool(region_names)
 
     # ── GridSpec layout: [well | gap | well | gap | ... | well] ───────
-    # Width ratios: well columns narrow, gap columns for correlation lines
+    # Narrow well columns, WIDE gap corridors for correlation lines
     n_gaps = n_wells - 1
-    well_ratio = 1.0
-    gap_ratio = 0.4 if n_wells <= 5 else 0.25
+    log_width = ps.get('log_width', 0.5)   # user-adjustable well column width
+    gap_width = ps.get('gap_width', 1.2)   # gap corridor width (where lines go)
     width_ratios = []
     for i in range(n_wells):
-        width_ratios.append(well_ratio)
+        width_ratios.append(log_width)
         if i < n_gaps:
-            width_ratios.append(gap_ratio)
+            width_ratios.append(gap_width)
     total_cols = n_wells + n_gaps
 
-    fig_width = max(10, 1.8 * n_wells + 1.0 * n_gaps + 2)
-    fig_height = 8
+    fig_width = max(10, log_width * n_wells * 2.0 + gap_width * n_gaps * 1.5 + 2)
+    fig_width = min(fig_width, 28)  # cap to prevent memory overflow
+    fig_height = ps.get('fig_height', 9)
+    fig_height = min(fig_height, 14)
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(1, total_cols, width_ratios=width_ratios,
-                          wspace=0.05, left=0.04, right=0.96, top=0.90, bottom=0.08)
+                          wspace=0.02, left=0.05, right=0.97, top=0.86, bottom=0.07)
 
     fig.suptitle(title, fontsize=11, fontweight="bold", y=0.96)
 
@@ -531,13 +554,34 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
 
     # ── Draw wells ────────────────────────────────────────────────────
     for i, (well, ax, depth) in enumerate(zip(wells, axes, depths)):
-        ax.set_title(well.name, fontsize=8, fontweight="bold",
-                     color=WELL_COLORS[i % 10], pad=3)
         ax.invert_yaxis()
+
+        # ── Header: well name + log names with units ──────────────────
+        header_lines = [well.name]
+        log_header_parts = []
+        for li, lname in enumerate(log_names):
+            if lname in well.data:
+                unit = get_unit(well, lname)
+                color = LOG_COLORS[li % len(LOG_COLORS)]
+                label = f"{lname}" + (f" [{unit}]" if unit else "")
+                log_header_parts.append((label, color))
+        # Well name at top, log names above it (stacked upward)
+        ax.set_title(well.name, fontsize=8, fontweight="bold",
+                     color=WELL_COLORS[i % 10],
+                     pad=4 + len(log_header_parts) * 10)
+        # Log names above well title
+        for li, (label, color) in enumerate(log_header_parts):
+            ax.text(0.5, 1.02 + li * 0.04, label, transform=ax.transAxes,
+                    fontsize=7, ha='center', va='bottom', color=color,
+                    fontweight='medium')
+
+        # ── Depth axis (y-axis) ───────────────────────────────────────
         if i == 0:
-            ax.set_ylabel("Depth", fontsize=8)
-        else:
-            ax.set_yticklabels([])
+            ax.set_ylabel(depth_labels[i], fontsize=7, labelpad=2)
+        ax.tick_params(axis='y', labelsize=6, length=2, pad=1)
+        # Show depth ticks on all wells for readability
+        ax.tick_params(axis='y', labelleft=True)
+        ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=8, integer=True))
 
         # ── Zone/region background bands ──────────────────────────────
         if has_zones:
@@ -560,7 +604,7 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
                                        alpha=alpha, zorder=0)
                             if ri == 0 and (y_bot - y_top) > 0:
                                 y_mid = (y_top + y_bot) / 2
-                                ax.text(0.03, y_mid, str(val)[:10],
+                                ax.text(0.05, y_mid, str(val)[:8],
                                         transform=ax.get_yaxis_transform(),
                                         fontsize=5, va='center', ha='left',
                                         color='#333', alpha=0.7,
@@ -575,19 +619,23 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
                 if vals:
                     color = LOG_COLORS[li % len(LOG_COLORS)]
                     ax.plot(vals, depth[:len(vals)], color=color,
-                            linewidth=1.0 if li > 0 else 1.2,
+                            linewidth=0.8 if li > 0 else 1.0,
                             alpha=0.9 if li == 0 else 0.6,
-                            label=lname)
+                            label=lname, clip_on=True)
                     plotted_logs.append(lname)
 
         if not plotted_logs:
             ax.set_xlim(-0.5, 0.5)
             ax.axvline(0, color=WELL_COLORS[i % 10], linewidth=2)
 
-        ax.tick_params(labelsize=6, length=2)
-        ax.grid(True, alpha=0.15, linewidth=0.3)
-        # Remove x-tick labels to save space
-        ax.set_xticklabels([])
+        # Show only min/max x-tick to avoid clutter
+        ax.xaxis.set_major_locator(plt.MaxNLocator(nbins=3))
+        ax.tick_params(axis='x', labelsize=5, length=2, rotation=0)
+        ax.grid(True, alpha=0.12, linewidth=0.3)
+        # Clip log traces tightly within the axes
+        ax.set_clip_on(True)
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.5)
 
     # ── Compute correlation line positions ────────────────────────────
     cid = min(cor_index, res_file.get_nbr_results() - 1)
@@ -665,8 +713,7 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
     framework_steps -= boundary_steps
     framework_steps -= gap_steps
 
-    # ── Draw correlation lines in gap corridors ───────────────────────
-    ps = plot_settings or {}
+    # ── Draw correlation lines ONLY in gap corridors ────────────────
     clr_boundary = ps.get('boundary', '#D32F2F')
     clr_gap = ps.get('gap', '#1565C0')
     clr_framework = ps.get('framework', '#999999')
@@ -678,7 +725,7 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
         elif step_idx in gap_steps:
             color, alpha, lw = clr_gap, 0.6, 1.0
         else:
-            color, alpha, lw = clr_framework, 0.3, 0.4
+            color, alpha, lw = clr_framework, 0.25, 0.4
 
         ls = ":" if step_idx in gap_steps else "-"
 
@@ -688,21 +735,36 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
             if ml < len(depths[j]) and mr < len(depths[j + 1]):
                 yl = depths[j][ml]
                 yr = depths[j + 1][mr]
-                # Draw from right edge of well_axes[j] to left edge of well_axes[j+1]
-                con = matplotlib.patches.ConnectionPatch(
-                    xyA=(1.0, yl), coordsA=axes[j].get_yaxis_transform(),
-                    xyB=(0.0, yr), coordsB=axes[j + 1].get_yaxis_transform(),
-                    color=color, alpha=alpha, linewidth=lw, linestyle=ls,
-                    zorder=5)
-                fig.add_artist(con)
+                # Draw ONLY in gap corridor: from right edge of well to left edge of next
+                gap_ax = gap_axes[j]
+                # Use blended transform: x in axes coords [0,1], y shared with adjacent wells
+                # Map y values to [0,1] range using adjacent well depth ranges
+                y_range_l = (min(depths[j]), max(depths[j]))
+                y_range_r = (min(depths[j + 1]), max(depths[j + 1]))
+                y_min = min(y_range_l[0], y_range_r[0])
+                y_max = max(y_range_l[1], y_range_r[1])
+                if y_max > y_min:
+                    # transAxes: (0,0)=bottom-left, (0,1)=top-left
+                    # depth: shallow=small value at TOP → map to 1.0
+                    yl_norm = 1.0 - (yl - y_min) / (y_max - y_min)
+                    yr_norm = 1.0 - (yr - y_min) / (y_max - y_min)
+                else:
+                    yl_norm = yr_norm = 0.5
+                gap_ax.plot([0, 1], [yl_norm, yr_norm], color=color,
+                            alpha=alpha, linewidth=lw, linestyle=ls,
+                            clip_on=True, transform=gap_ax.transAxes)
+
+    # Gap axes are display-only with transAxes lines — no ylim inversion needed
 
     # ── Legend ─────────────────────────────────────────────────────────
     from matplotlib.lines import Line2D
     legend_elements = []
     # Log legend entries
     for li, lname in enumerate(log_names):
+        unit = get_unit(wells[0], lname)
+        label = f"{lname}" + (f" [{unit}]" if unit else "")
         legend_elements.append(Line2D([0], [0], color=LOG_COLORS[li % len(LOG_COLORS)],
-                                      linewidth=1.2, label=lname))
+                                      linewidth=1.2, label=label))
     # Correlation line legend
     n_boundaries = len(boundary_steps)
     n_gaps_count = len(gap_steps)
@@ -714,9 +776,9 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
                                       linestyle=':', label=f'Gap/hiatus ({n_gaps_count})'))
     legend_elements.append(Line2D([0], [0], color=clr_framework, linewidth=0.5,
                                   label='Framework'))
-    fig.legend(handles=legend_elements, loc='lower center', ncol=len(legend_elements),
+    fig.legend(handles=legend_elements, loc='lower center', ncol=min(len(legend_elements), 6),
                fontsize=7, framealpha=0.8, edgecolor='#ccc',
-               bbox_to_anchor=(0.5, 0.005))
+               bbox_to_anchor=(0.5, 0.002))
 
     # ── Title subtitle ────────────────────────────────────────────────
     subtitle_parts = [f"Correlation #{cid}", f"Cost: {cost:.4f}",
