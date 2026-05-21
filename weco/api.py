@@ -885,6 +885,10 @@ def _check_facies_independence(wl, facies_region: str, var_data: str) -> bool:
                     var_at_transitions.append(var_vals[start_idx])
                     transition_count += 1
 
+    # If no facies data was found at all → no circularity possible
+    if not n_facies_values:
+        return True
+
     # Heuristic 1: Many unique facies values → likely independent
     if len(n_facies_values) >= 4:
         return True
