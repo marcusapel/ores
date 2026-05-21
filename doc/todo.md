@@ -244,6 +244,19 @@ Adding WAI-ARIA to an existing HTML/JS app requires:
 Key: the `pointer-events:none` CSS for disabled tabs blocks mouse but not keyboard —
 also needs `aria-disabled="true"` and `tabindex="-1"`.
 
+### AI Module API Mismatch (bugfix 2026-05-21)
+
+The web router (`weco_router.py`) was calling AI classes with wrong APIs:
+- `CorrelationQuality(rf, wl).score_all()` → class takes no positional args;
+  correct: `CorrelationQuality().score_correlations(rf, wl)` → returns list of dicts
+- `CorrelationAnomalyDetector(rf, wl).flag(idx)` → correct: `CorrelationAnomalyDetector().flag_anomalies(rf, wl)` → returns list of dicts
+- `CorrelationUncertainty(rf, wl).summary()` → correct: `CorrelationUncertainty.from_n_best(rf)` → returns dict of numpy arrays
+
+**Lesson:** AI modules were developed separately from the web router. The router
+code assumed a different (OOP/attribute-based) API while the actual modules use
+function-call / static-method patterns returning plain dicts. Always verify
+actual class signatures when integrating.
+
 ---
 
 ## 8. P3 — Quality & Robustness

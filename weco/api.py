@@ -342,32 +342,43 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
 def _force_diverse_run(well_list, base_options: dict, n_diverse: int = 3):
     """Run engine with multiple configurations to guarantee structural diversity.
 
-    Runs up to 3 configurations:
+    Runs up to 4 configurations:
       1. Base options (user/auto-suggested)
-      2. High gap-cost (forces results with fewer/no gaps)
-      3. Zero gap-cost (forces results with more gaps)
+      2. Low gap-cost (allows/encourages gaps → unconformity-style results)
+      3. High gap-cost (discourages gaps → layer-cake-style results)
+      4. Relaxed constraints (remove no-crossing → allows pinch-out/onlap)
 
-    Returns merged diverse results sorted by cost.
+    Returns merged diverse results sorted by cost, deduplicated by topology.
     """
     configs = [
         ("base", dict(base_options)),
     ]
 
-    # Config 2: encourage gaps (lower gap cost)
+    # Config 2: encourage gaps (low but non-zero gap cost to avoid degenerate solutions)
+    base_gap = float(base_options.get("const-gap-cost", 0.5))
     gap_opts = dict(base_options)
-    gap_opts["const-gap-cost"] = 0.0
+    gap_opts["const-gap-cost"] = max(base_gap * 0.2, 0.05)
+    gap_opts.pop("gap-cost-func", None)
     gap_opts.setdefault("nbr-cor", 30)
-    configs.append(("low-gap-cost", gap_opts))
+    configs.append(("gap-permissive", gap_opts))
 
-    # Config 3: discourage gaps (higher gap cost)
+    # Config 3: discourage gaps (high gap cost → layer-cake)
     nogap_opts = dict(base_options)
-    nogap_opts["const-gap-cost"] = max(
-        float(base_options.get("const-gap-cost", 0.5)) * 3, 1.5
-    )
+    nogap_opts["const-gap-cost"] = max(base_gap * 5, 2.0)
     nogap_opts.setdefault("nbr-cor", 30)
-    configs.append(("high-gap-cost", nogap_opts))
+    configs.append(("layer-cake", nogap_opts))
+
+    # Config 4: remove constraints (no no-crossing → allows structural freedom)
+    relaxed = dict(base_options)
+    relaxed.pop("no-crossing", None)
+    relaxed.pop("no-crossing2", None)
+    relaxed.pop("no-crossing3", None)
+    relaxed["const-gap-cost"] = max(base_gap * 0.6, 0.3)
+    relaxed.setdefault("nbr-cor", 30)
+    configs.append(("relaxed", relaxed))
 
     all_results = []  # (cost, result_dict, config_name, topology)
+    fallback_result = None  # keep one result even if all are "degenerate"
 
     for config_name, opts in configs:
         try:
@@ -377,12 +388,18 @@ def _force_diverse_run(well_list, base_options: dict, n_diverse: int = 3):
             results = _extract_results(rf, data, n_res)
             for r in results:
                 sig = _topology_signature(rf, r.index, n_wells)
+                # Skip degenerate all-gap solutions (cost=0 with all wells at max bucket)
+                if r.cost <= 0.0 and sig and all(s >= 5 for s in sig):
+                    if fallback_result is None:
+                        fallback_result = (r, config_name, sig)
+                    continue
                 all_results.append((r.cost, r, config_name, sig))
         except Exception:
             continue
 
     if not all_results:
-        return []
+        # Return fallback if available (dataset without meaningful log data)
+        return [fallback_result] if fallback_result else []
 
     # Deduplicate by topology, keep lowest cost per signature
     seen_sigs: dict = {}
@@ -392,7 +409,7 @@ def _force_diverse_run(well_list, base_options: dict, n_diverse: int = 3):
             if len(seen_sigs) >= n_diverse:
                 break
 
-    return [(r, cname) for r, cname in seen_sigs.values()]
+    return [(r, cname, sig) for sig, (r, cname) in seen_sigs.items()]
 
 
 def _topology_signature(rf, result_idx: int, n_wells: int) -> tuple:
@@ -401,23 +418,36 @@ def _topology_signature(rf, result_idx: int, n_wells: int) -> tuple:
     The signature captures the structural pattern (gap positions, boundary
     positions) independent of exact depth values. Two results with the same
     signature are structurally identical even if depths differ slightly.
+
+    Uses finer buckets (0-5) to discriminate between subtly different gap
+    patterns across wells.
     """
     path = rf.get_result_full_path(result_idx)
     n_path = len(path)
     if n_path == 0:
         return ()
 
-    # For each well-pair, count how many steps each well stays stationary
-    # (gap indicator) and bucket into coarse categories
+    # For each well, count how many steps it stays stationary (= gap indicator)
     sig_parts = []
     for wi in range(n_wells):
         stays = 0
         for s in range(1, n_path):
             if path[s][wi] == path[s - 1][wi]:
                 stays += 1
-        # Bucket: 0=no gaps, 1=few, 2=moderate, 3=many
+        # Finer buckets: 0=none, 1=tiny, 2=few, 3=moderate, 4=many, 5=mostly gaps
         frac = stays / max(1, n_path)
-        bucket = 0 if frac < 0.05 else (1 if frac < 0.15 else (2 if frac < 0.3 else 3))
+        if frac < 0.02:
+            bucket = 0
+        elif frac < 0.08:
+            bucket = 1
+        elif frac < 0.15:
+            bucket = 2
+        elif frac < 0.25:
+            bucket = 3
+        elif frac < 0.40:
+            bucket = 4
+        else:
+            bucket = 5
         sig_parts.append(bucket)
     return tuple(sig_parts)
 
@@ -428,34 +458,55 @@ def _label_scenario(sig: tuple) -> str:
     Returns a human-readable scenario label based on the gap pattern:
     - "Layer-cake": all wells track together (no/minimal gaps)
     - "Pinch-out": one or few wells have significant gaps (sediment thinning)
-    - "Unconformity": most wells have gaps (erosional surface)
-    - "Condensed": all wells have moderate gaps (low sedimentation)
+    - "Onlap": progressive increase in gaps from one side
+    - "Unconformity": most wells have very many gaps (erosional surface)
+    - "Condensed": all wells have similar moderate gaps (low sedimentation)
+    - "Wedge": moderate variation in gap intensity across wells
     - "Complex": mixed/irregular pattern
     """
     if not sig:
         return "Unknown"
 
     n_wells = len(sig)
-    n_no_gap = sum(1 for s in sig if s == 0)
-    n_few_gap = sum(1 for s in sig if s == 1)
-    n_mod_gap = sum(1 for s in sig if s == 2)
-    n_many_gap = sum(1 for s in sig if s == 3)
     max_gap = max(sig)
+    min_gap = min(sig)
     mean_gap = sum(sig) / n_wells
+    spread = max_gap - min_gap
+    n_low = sum(1 for s in sig if s <= 1)       # no/tiny gaps
+    n_high = sum(1 for s in sig if s >= 5)      # very many gaps
 
-    if max_gap <= 0:
+    # Layer-cake: everything tracks (max bucket ≤ 1)
+    if max_gap <= 1:
         return "Layer-cake"
-    elif n_no_gap >= n_wells - 1 and max_gap >= 2:
+
+    # Pinch-out: most wells have few/no gaps, but 1-2 have larger gaps
+    if n_low >= max(n_wells - 2, n_wells * 0.6) and max_gap >= 2 and spread >= 2:
         return "Pinch-out"
-    elif n_many_gap >= n_wells * 0.6:
+
+    # Onlap: progressive increase from one side (gradient pattern)
+    if n_wells >= 3 and spread >= 2:
+        diffs = [sig[i+1] - sig[i] for i in range(n_wells - 1)]
+        if all(d >= 0 for d in diffs) or all(d <= 0 for d in diffs):
+            return "Onlap"
+
+    # Unconformity: most wells have high gaps (bucket >= 4)
+    n_high_or_very = sum(1 for s in sig if s >= 4)
+    if n_high_or_very >= n_wells * 0.6:
         return "Unconformity"
-    elif n_no_gap >= n_wells * 0.5 and n_few_gap + n_mod_gap >= 1 and max_gap <= 1:
-        return "Onlap"
-    elif mean_gap >= 1.5 and max_gap - min(sig) <= 1:
+
+    # Condensed: uniform moderate gaps (spread ≤ 1, mean in moderate range 2-3.5)
+    if spread <= 1 and 1.5 <= mean_gap <= 3.5:
         return "Condensed"
-        return "Onlap"
-    else:
-        return "Complex"
+
+    # Wedge: significant variation in gap intensity (geological thinning)
+    if spread >= 2 and mean_gap >= 2:
+        return "Wedge"
+
+    # Low overall but some variation
+    if max_gap <= 3:
+        return "Layer-cake"
+
+    return "Complex"
 
 
 def _wheeler_gap_analysis(result: "RunResult", well_names: List[str]) -> dict:
