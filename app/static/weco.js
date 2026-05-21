@@ -415,7 +415,7 @@
       btnRddms.onclick = () => importDemoFromRddms(selectedDemo);
     }
 
-    // Load wells for this demo (new: shows well/log matrix before running)
+    // Load wells for this demo — show data summary, apply options, but DON'T auto-run
     setStatus(importStat, 'info', `Loading wells for "${selectedDemo}"...`);
     try {
       const data = await api('GET', `/demos/${encodeURIComponent(selectedDemo)}/wells`);
@@ -432,12 +432,14 @@
       if (data.recommended_options) applyOptionsToForm(data.recommended_options);
       if (data.ai_settings) _setAiSettings(data.ai_settings);
       enableAfterImport();
-      setStatus(importStat, 'ok', `${data.n_wells} wells loaded from demo "${selectedDemo}" — running auto-correlation...`);
+      setStatus(importStat, 'ok',
+        `${data.n_wells} wells loaded (${(data.all_data_names||[]).join(', ')}). ` +
+        `Review logs/parameters or click \u26A1 Quick Run.`);
+      // Switch to Logs tab so user can inspect data before deciding to run
+      switchTab('logs');
     } catch(e) {
       setStatus(importStat, 'warn', `Could not pre-load demo wells: ${e.message}`);
     }
-    // Always trigger Quick Run after demo select (works even without pre-load)
-    quickRun();
   });
   loadDemos();
 
