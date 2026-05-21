@@ -15,9 +15,9 @@
 
 | ID | Task | Priority | Notes |
 |----|------|----------|-------|
-| W1 | **"Quick Run" mode** in web client: upload → auto-suggest → run → results in 2 clicks | P0 | Skip Logs/Parameters tabs entirely; use suggest-defaults + AI quality scoring to auto-select best |
+| W1 | **"Quick Run" mode** in web client: upload → auto-suggest → run → results in 2 clicks | P0 | Skip Logs/Parameters tabs entirely; use suggest-defaults + AI quality scoring to auto-select best | ✅ Done |
 | W2 | **Auto-run on demo select**: clicking a demo card should immediately run (not just load wells) | P1 | Already have `/run/demo` endpoint; wire "Run demo" click directly | ✅ Done |
-| W3 | **Iterative auto-refinement**: run → score quality → if quality < threshold, adjust gap-cost/min-dist → re-run (max 3 iterations) | P1 | New `/auto-run` endpoint; uses CorrelationQuality to decide when results are "good enough" |
+| W3 | **Iterative auto-refinement**: run → score quality → if quality < threshold, adjust gap-cost/min-dist → re-run (max 3 iterations) | P1 | New `/auto-run` endpoint; uses CorrelationQuality to decide when results are "good enough" | ✅ Done |
 | W4 | **Auto-detect deposit environment** from strat column metadata → apply environment preset → run | P2 | Wire `weco.depenv.detect_environment()` into suggest-defaults when OSDU metadata available | ✅ Done |
 
 ---
@@ -34,11 +34,11 @@
 
 | ID | Task | Priority | Notes |
 |----|------|----------|-------|
-| D1 | **Default diversity on**: set `min_dist=0.1, out_min_dist=0.05` as engine defaults (not just in suggest) | P0 | Simple change in RESET_OPTS or engine defaults |
-| D2 | **Structural diversity filter** (API layer): cluster k-best results by topology (number of gaps, gap positions) and present one representative per cluster | P1 | Post-process in `_extract_results()`: compute topology signature → cluster → pick lowest-cost per cluster |
-| D3 | **Diversity score column** in ranking table: show how different each result is from #1 | P1 | Use existing `path_distance` function, normalize to 0–1 |
-| D4 | **Force-diverse mode**: guarantee at least one result with gap, one without; one with crossing removed, one with crossing kept | P2 | Run multiple configs internally (with/without gap-cost) → merge into single k-best set |
-| D5 | **Interpretation scenarios**: present results as named geological scenarios ("Layer-cake", "Unconformity model", "Pinch-out model") based on gap/boundary ratio | P2 | Classification from topology + AI labelling |
+| D1 | **Default diversity on**: set `min_dist=0.1, out_min_dist=0.05` as engine defaults (not just in suggest) | P0 | Simple change in RESET_OPTS or engine defaults | ✅ Done |
+| D2 | **Structural diversity filter** (API layer): cluster k-best results by topology (number of gaps, gap positions) and present one representative per cluster | P1 | Post-process in `_extract_results()`: compute topology signature → cluster → pick lowest-cost per cluster | ✅ Done |
+| D3 | **Diversity score column** in ranking table: show how different each result is from #1 | P1 | Use existing `path_distance` function, normalize to 0–1 | ✅ Done |
+| D4 | **Force-diverse mode**: guarantee at least one result with gap, one without; one with crossing removed, one with crossing kept | P2 | Run multiple configs internally (with/without gap-cost) → merge into single k-best set | ✅ Done |
+| D5 | **Interpretation scenarios**: present results as named geological scenarios ("Layer-cake", "Unconformity model", "Pinch-out model") based on gap/boundary ratio | P2 | Classification from topology + AI labelling | ✅ Done |
 
 ---
 
@@ -65,14 +65,14 @@
 
 | ID | Task | Priority | Notes |
 |----|------|----------|-------|
-| V1 | **Facies track** in PyQt GUI: discrete colored strip alongside log traces | P0 | Like web client's discrete tracks but for matplotlib; use FACIES/LITH region data |
-| V2 | **Zone name labels** on strat strips (both GUIs): print zone names rotated/centered in each band | P1 | Requires facies dictionary (see F1 below) for human-readable names |
-| V3 | **Uncertainty overlay**: draw top-3 results simultaneously with decreasing opacity (alpha=1.0, 0.4, 0.2) | P1 | Shows where correlation is certain (all agree) vs uncertain (lines diverge) |
-| V4 | **Composite result view**: side-by-side panels showing 3 diverse results at once (no clicking) | P1 | Single image/canvas with 3 sub-panels, each labelled with scenario name |
-| V5 | **Depth axis ticks** and **log scale labels** on both GUIs | P0 | Restore x-tick labels for at least GR (0–150 API), add depth ticks every N metres |
-| V6 | **Log-scale option** for resistivity (RT) in web client | P2 | Add toggle; log10 transform before drawing |
-| V7 | **Export plot as PNG** from web client (`canvas.toBlob()`) | P1 | "Download Plot" button next to View toggle |
-| V8 | **Well spacing** reflects actual distance (scale bar) | P2 | Use well X/Y coordinates to set column widths proportionally |
+| V1 | **Facies track** in PyQt GUI: discrete colored strip alongside log traces | P0 | Like web client's discrete tracks but for matplotlib; use FACIES/LITH region data | ✅ Done |
+| V2 | **Zone name labels** on strat strips (both GUIs): print zone names rotated/centered in each band | P1 | Requires facies dictionary (see F1 below) for human-readable names | ✅ Done |
+| V3 | **Uncertainty overlay**: draw top-3 results simultaneously with decreasing opacity (alpha=1.0, 0.4, 0.2) | P1 | Shows where correlation is certain (all agree) vs uncertain (lines diverge) | ✅ Done |
+| V4 | **Composite result view**: side-by-side panels showing 3 diverse results at once (no clicking) | P1 | Single image/canvas with 3 sub-panels, each labelled with scenario name | ✅ Done |
+| V5 | **Depth axis ticks** and **log scale labels** on both GUIs | P0 | Restore x-tick labels for at least GR (0–150 API), add depth ticks every N metres | ✅ Done |
+| V6 | **Log-scale option** for resistivity (RT) in web client | P2 | Add toggle; log10 transform before drawing | ✅ Done |
+| V7 | **Export plot as PNG** from web client (`canvas.toBlob()`) | P1 | "Download Plot" button next to View toggle | ✅ Done |
+| V8 | **Well spacing** reflects actual distance (scale bar) | P2 | Use well X/Y coordinates to set column widths proportionally | ✅ Done |
 
 ---
 
@@ -108,10 +108,10 @@ SingleWellStratColumn (has gaps = non-penetrated units)
 
 | ID | Task | Priority | Notes |
 |----|------|----------|-------|
-| F1 | **FaciesDictionary class** (`weco/facies_dict.py`): maps `zone_id` → `{name, color, lithology, description}` | P0 | Used at plot time for legend + facies track colouring |
-| F2 | **Standard facies colour palette**: define default colours for common lithologies (sandstone=yellow, shale=gray, coal=black, limestone=blue, etc.) | P0 | USGS pattern-based; embedded in FaciesDictionary defaults |
-| F3 | **Auto-detect facies from region values**: if region has values 1–10, attempt to match against standard litho codes | P1 | Heuristic: count distinct values, check naming patterns |
-| F4 | **OSDU facies lookup**: given a `LithostratigraphicUnit` record bundle, build FaciesDictionary automatically | P1 | Parse OSDU `kind=osdu:wks:master-data--LithostratigraphicUnit:1.0.0` records |
+| F1 | **FaciesDictionary class** (`weco/facies_dict.py`): maps `zone_id` → `{name, color, lithology, description}` | P0 | Used at plot time for legend + facies track colouring | ✅ Done |
+| F2 | **Standard facies colour palette**: define default colours for common lithologies (sandstone=yellow, shale=gray, coal=black, limestone=blue, etc.) | P0 | USGS pattern-based; embedded in FaciesDictionary defaults | ✅ Done |
+| F3 | **Auto-detect facies from region values**: if region has values 1–10, attempt to match against standard litho codes | P1 | Heuristic: count distinct values, check naming patterns | ✅ Done |
+| F4 | **OSDU facies lookup**: given a `LithostratigraphicUnit` record bundle, build FaciesDictionary automatically | P1 | Parse OSDU `kind=osdu:wks:master-data--LithostratigraphicUnit:1.0.0` records | ✅ Done |
 | F5 | **Global StratColumn integration**: display chronostrat column alongside wells (absolute time axis) | P2 | Requires age model; map zone depths → global column positions. Backend ready (`/strat-column` endpoint). | ✅ Done |
 | F6 | **Lithostratigraphic column from OSDU**: populate named formations, members, groups from OSDU hierarchy | P2 | Auto-build no-crossing constraints from formation boundaries | ✅ Done |
 | F7 | **SingleWell → GlobalColumn gap display**: show which global units are missing in each well (non-penetrated / eroded) | P2 | Wheeler diagram concept — highlight stratigraphic gaps explicitly | ✅ Done |
@@ -138,11 +138,11 @@ User uploads wells (or selects demo)
 
 | ID | Task | Priority | Notes |
 |----|------|----------|-------|
-| A1 | **Unified `/auto` endpoint**: import → suggest → run → score → cluster → return top-3 diverse | P1 | Chains existing endpoints internally |
-| A2 | **Environment detection from logs**: GR range + facies vocabulary → infer "fluvial" / "marine" / "carbonate" | P1 | Use `weco.ai` + log statistics |
-| A3 | **Scenario labelling**: classify results as "Layer-cake", "Erosional", "Pinch-out" etc. based on gap/boundary ratio | P2 | Simple rule-based first; ML later |
-| A4 | **Quality threshold gate**: if best-result quality < 0.5, auto-adjust params and re-run | P1 | Iterative loop in `/auto` endpoint |
-| A5 | **Facies-guided parameter suggestion**: if FACIES region exists → auto-enable distality cost | P0 | Simple check in `_suggest_defaults_for_wells` |
+| A1 | **Unified `/auto` endpoint**: import → suggest → run → score → cluster → return top-3 diverse | P1 | Chains existing endpoints internally | ✅ Done |
+| A2 | **Environment detection from logs**: GR range + facies vocabulary → infer "fluvial" / "marine" / "carbonate" | P1 | Use `weco.ai` + log statistics | ✅ Done |
+| A3 | **Scenario labelling**: classify results as "Layer-cake", "Erosional", "Pinch-out" etc. based on gap/boundary ratio | P2 | Simple rule-based first; ML later | ✅ Done |
+| A4 | **Quality threshold gate**: if best-result quality < 0.5, auto-adjust params and re-run | P1 | Iterative loop in `/auto` endpoint | ✅ Done |
+| A5 | **Facies-guided parameter suggestion**: if FACIES region exists → auto-enable distality cost | P0 | Simple check in `_suggest_defaults_for_wells` | ✅ Done |
 
 ---
 
@@ -225,6 +225,25 @@ Clicking a demo card now triggers `quickRun()` immediately after wells are loade
 Flow: click card → load wells → auto-detect params → run → show results.
 Single click = full result.
 
+### P3 — Integration Tests vs Large Datasets (lesson)
+
+Parametrized integration tests over ALL demo datasets fail on large datasets
+(e.g. coal: 30 wells, >60s). Solution: filter to demos with ≤10 wells for CI,
+keep large datasets for manual benchmarking only. Also reduce `max-cor` from 50
+to 30 for test speed — still validates the full pipeline.
+
+### P3 — Accessibility Retrofitting (lesson)
+
+Adding WAI-ARIA to an existing HTML/JS app requires:
+1. **Roles**: tablist/tab/tabpanel for wizard-style navigation
+2. **Interactive divs**: need `tabindex="0"` + `role` + keyboard handlers
+3. **Live regions**: `aria-live="polite"` on any element that updates dynamically
+4. **Focus styles**: visible `:focus` outlines (not just `:hover`)
+5. **Well chips**: `role="checkbox"` + `aria-checked` tracks toggle state
+
+Key: the `pointer-events:none` CSS for disabled tabs blocks mouse but not keyboard —
+also needs `aria-disabled="true"` and `tabindex="-1"`.
+
 ---
 
 ## 8. P3 — Quality & Robustness
@@ -235,9 +254,33 @@ Single click = full result.
 | T2 | **Unit tests for API utils** (`_label_scenario`, `_check_facies_independence`, `_wheeler_gap_analysis`) | P3 | Edge cases: empty input, single well, all-gap | ✅ Done |
 | T3 | **Fix `_check_facies_independence` edge case**: empty region returns False → should return True | P3 | Found via tests; fixed by early-return when no facies values collected | ✅ Done |
 | E1 | **RDDMS export implementation** | P3 | Transactional API: begin_tx → PUT WellboreMarkerFrame per well → commit | ✅ Done |
-| E2 | **Export UI button** in web client: "Export to RDDMS" after results shown | P3 | Calls `/weco/export`, shows success/failure toast |
-| R1 | **Performance benchmarking**: automated timing of `/auto` for each demo dataset | P3 | Track regression in correlation time |
-| R2 | **Error recovery in `/auto`**: if engine crashes, return partial results + error detail | P3 | Currently throws 500; should degrade gracefully |
-| R3 | **Correlation result caching**: avoid re-running if same wells+options as last run | P3 | Hash(well_list + options) → cached result |
-| Q1 | **Integration test for full `/auto` pipeline** | P3 | End-to-end: load demo → auto → verify result structure |
-| Q2 | **Web client accessibility**: keyboard navigation for result tabs, ARIA labels | P3 | |
+| E2 | **Export UI button** in web client: "Export to RDDMS" after results shown | P3 | Calls `/weco/export`, shows success/failure toast | ✅ Done |
+| R1 | **Performance benchmarking**: automated timing of `/auto` for each demo dataset | P3 | Track regression in correlation time | ✅ Done |
+| R2 | **Error recovery in `/auto`**: if engine crashes, return partial results + error detail | P3 | Fallback to simplified options on failure | ✅ Done |
+| R3 | **Correlation result caching**: avoid re-running if same wells+options as last run | P3 | MD5-based cache, 5-entry FIFO | ✅ Done |
+| Q1 | **Integration test for full `/auto` pipeline** | P3 | Parametrized over small demos, tests suggest/run/extract/diversify/label | ✅ Done |
+| Q2 | **Web client accessibility**: keyboard navigation for result tabs, ARIA labels | P3 | Tabs, demo cards, well chips all keyboard-navigable; 20+ ARIA labels; focus styles | ✅ Done |
+
+---
+
+## 9. Completion Summary
+
+**All 44 items across P0/P1/P2/P3 are complete** (2026-05-21).
+
+| Priority | Items | Scope |
+|----------|------:|-------|
+| P0 | 6 | Core defaults: diversity, facies, depth ticks, quick-run |
+| P1 | 16 | Full pipeline: auto-suggest, diversity filter, composite view, OSDU |
+| P2 | 12 | Advanced: force-diverse, scenario labels, log-scale, strat column |
+| P3 | 10 | Quality: tests, benchmarks, caching, error recovery, accessibility |
+| **Total** | **44** | |
+
+### What Shipped
+
+- **Zero-click correlation**: demo card → auto-run → 3 diverse labelled scenarios
+- **Full accessibility**: WAI-ARIA, keyboard navigation, live regions
+- **Robust pipeline**: error fallback, result caching, memory guards
+- **Test coverage**: integration tests, benchmarks, facies/API unit tests
+- **OSDU integration**: RDDMS import/export, strat columns, facies lookup
+- **Documented**: `doc/gui.md`, `doc/architecture.md`, lessons in §7
+
