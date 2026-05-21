@@ -1987,29 +1987,29 @@ def weco_ai_analyse(req: AiAnalysisRequest):
 
         if req.quality:
             from weco.ai.quality import CorrelationQuality
-            cq = CorrelationQuality(_cached_res_file, _cached_well_list)
-            scores = cq.score_all()
+            cq = CorrelationQuality()
+            scores = cq.score_correlations(_cached_res_file, _cached_well_list)
             if req.cor_index < len(scores):
                 s = scores[req.cor_index]
                 result["quality"] = {
-                    "overall": round(s.overall, 4),
-                    "cost_score": round(s.cost_score, 4),
-                    "gap_score": round(s.gap_score, 4),
-                    "similarity_score": round(s.similarity_score, 4),
+                    "overall": round(s["total"], 4),
+                    "cost_score": round(1.0 - s.get("gap_fraction", 0), 4),
+                    "gap_score": round(1.0 - s.get("gap_fraction", 0), 4),
+                    "similarity_score": round(s.get("similarity", 0), 4),
                 }
             # Include ranking of all results
             result["quality_ranking"] = [
-                {"index": i, "overall": round(sc.overall, 4)}
-                for i, sc in enumerate(scores[:20])
+                {"index": sc["index"], "overall": round(sc["total"], 4)}
+                for sc in scores[:20]
             ]
 
         if req.anomaly:
             from weco.ai.anomaly import CorrelationAnomalyDetector
-            det = CorrelationAnomalyDetector(_cached_res_file, _cached_well_list)
-            flags = det.flag(req.cor_index)
+            det = CorrelationAnomalyDetector()
+            flags = det.flag_anomalies(_cached_res_file, _cached_well_list)
             anomalies = [
-                {"line_idx": f.line_idx, "score": round(f.score, 4), "reason": f.reason}
-                for f in flags if f.is_anomaly
+                {"line_idx": f["index"], "score": round(f["score"], 4), "reason": "anomaly" if f["anomaly"] else "normal"}
+                for f in flags if f.get("anomaly")
             ]
             result["anomaly"] = {
                 "n_flagged": len(anomalies),
@@ -2018,12 +2018,15 @@ def weco_ai_analyse(req: AiAnalysisRequest):
 
         if req.uncertainty and n_cor > 1:
             from weco.ai.uncertainty import CorrelationUncertainty
-            cu = CorrelationUncertainty(_cached_res_file, _cached_well_list)
-            summary = cu.summary(top_n=min(n_cor, 10))
-            result["uncertainty"] = {
-                "mean_spread": round(summary.mean_spread, 4),
-                "max_spread": round(summary.max_spread, 4),
-            }
+            unc_map = CorrelationUncertainty.from_n_best(_cached_res_file, n_paths=min(n_cor, 10))
+            if unc_map:
+                all_stds = np.concatenate([v for v in unc_map.values() if len(v) > 0])
+                result["uncertainty"] = {
+                    "mean_spread": round(float(np.nanmean(all_stds)), 4),
+                    "max_spread": round(float(np.nanmax(all_stds)), 4),
+                }
+            else:
+                result["uncertainty"] = {"mean_spread": 0.0, "max_spread": 0.0}
 
     except HTTPException:
         raise
