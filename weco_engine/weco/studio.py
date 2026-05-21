@@ -84,7 +84,7 @@ except ImportError:
 # ═══════════════════════════════════════════════════════════════════════════
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent  # weco/ package → project root
-DATA_DIR = SCRIPT_DIR / "data"
+DATA_DIR = SCRIPT_DIR / "demo" / "data"
 OUTPUT_DIR = SCRIPT_DIR / "tmp" / "img"
 
 VERSION = get_version()
@@ -2730,13 +2730,25 @@ class DataPage(QWidget):
         btn_rddms_browse = QPushButton("Browse EPC…")
         btn_rddms_browse.clicked.connect(self._browse_epc)
         rddms_import_row.addWidget(btn_rddms_browse)
+        rddms_lo.addLayout(rddms_import_row)
+
+        # Dataspace row
+        ds_row = QHBoxLayout()
+        ds_row.addWidget(QLabel("Dataspace:"))
+        self._rddms_dataspace = QLineEdit()
+        _default_ds = os.environ.get(
+            "RDDMS_DATASPACE",
+            os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+        self._rddms_dataspace.setText(_default_ds)
+        self._rddms_dataspace.setPlaceholderText("e.g. maap/weco")
+        ds_row.addWidget(self._rddms_dataspace, 1)
         btn_rddms_import = QPushButton("Import from RDDMS")
         btn_rddms_import.setStyleSheet(
             "QPushButton {font-weight:bold; padding:6px 14px; "
             "background-color:#8e44ad; color:white; border-radius:4px;}")
         btn_rddms_import.clicked.connect(self._import_rddms)
-        rddms_import_row.addWidget(btn_rddms_import)
-        rddms_lo.addLayout(rddms_import_row)
+        ds_row.addWidget(btn_rddms_import)
+        rddms_lo.addLayout(ds_row)
 
         rddms_lo.addWidget(HLine())
 
@@ -2950,8 +2962,7 @@ class DataPage(QWidget):
                 self._rddms_status.setText(
                     "Set OSDU_TOKEN environment variable for RDDMS access.")
                 return
-            dataspace = os.environ.get("RDDMS_DATASPACE",
-                                       os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+            dataspace = self._rddms_dataspace.text().strip() or "maap/weco"
             # Start elapsed timer
             self._rddms_elapsed = 0
             self._rddms_timer = QTimer(self)
@@ -2967,8 +2978,7 @@ class DataPage(QWidget):
 
     def _rddms_tick(self):
         self._rddms_elapsed += 1
-        ds = os.environ.get("RDDMS_DATASPACE",
-                            os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+        ds = self._rddms_dataspace.text().strip() or "maap/weco"
         self._rddms_status.setText(
             f"⏳ Loading dataspace \"{ds}\" from RDDMS… {self._rddms_elapsed}s")
 
@@ -2979,8 +2989,7 @@ class DataPage(QWidget):
 
     def _rddms_worker_error(self, msg):
         self._rddms_timer.stop()
-        ds = os.environ.get("RDDMS_DATASPACE",
-                            os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+        ds = self._rddms_dataspace.text().strip() or "maap/weco"
         if "No wells" in msg or "not found" in msg.lower() or "404" in msg:
             self._rddms_status.setText(
                 f"Dataspace \"{ds}\" not available: {msg}")
@@ -2990,7 +2999,7 @@ class DataPage(QWidget):
     def _rddms_import_done(self, wl, source):
         self._well_list = wl
         self._well_path = source
-        self._update_ui()
+        self._populate(wl)
         self.wells_loaded.emit(wl, source)
         self._rddms_status.setText(
             f"Imported {wl.nbr_wells()} wells, "
@@ -3089,8 +3098,8 @@ class DataPage(QWidget):
             # Emit via parent's preset signal if available
             parent = self.parent()
             while parent:
-                if hasattr(parent, "_apply_preset_opts"):
-                    parent._apply_preset_opts(GEO_PRESETS[geo_key])
+                if hasattr(parent, "_apply_preset"):
+                    parent._apply_preset(GEO_PRESETS[geo_key])
                     break
                 parent = parent.parent()
         else:
@@ -3100,8 +3109,8 @@ class DataPage(QWidget):
                 f"Applied depenv preset '{preset['label']}' ({len(opts)} options).")
             parent = self.parent()
             while parent:
-                if hasattr(parent, "_apply_preset_opts"):
-                    parent._apply_preset_opts({"recommended_opts": opts})
+                if hasattr(parent, "_apply_preset"):
+                    parent._apply_preset({"recommended_opts": opts})
                     break
                 parent = parent.parent()
 
