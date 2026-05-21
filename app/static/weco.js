@@ -252,7 +252,7 @@
         if (wd.uuid) tip += `\nUUID: ${wd.uuid}`;
         if (wd.demo) tip += `\nDemo: ${wd.demo}`;
       }
-      return `<span class="well-chip ${sel ? 'selected' : 'excluded'}" data-name="${esc(n)}" title="${esc(tip)}">${esc(n)} ${logBadge}</span>`;
+      return `<span class="well-chip ${sel ? 'selected' : 'excluded'}" data-name="${esc(n)}" title="${esc(tip)}" tabindex="0" role="checkbox" aria-checked="${sel}">${esc(n)} ${logBadge}</span>`;
     }).join('');
     // Click to toggle selection
     wellChips.querySelectorAll('.well-chip').forEach(chip => {
@@ -262,10 +262,12 @@
           selectedWells.delete(name);
           chip.classList.remove('selected');
           chip.classList.add('excluded');
+          chip.setAttribute('aria-checked', 'false');
         } else {
           selectedWells.add(name);
           chip.classList.add('selected');
           chip.classList.remove('excluded');
+          chip.setAttribute('aria-checked', 'true');
         }
         wellCount.textContent = selectedWells.size;
       });
@@ -1986,6 +1988,94 @@
       row.querySelector('input[type="checkbox"]').checked = false;
     });
     updateObjSelectedCount();
+  });
+
+  // ── Accessibility: Keyboard Navigation (Q2) ──────────────────────
+  // Tab keyboard navigation (Arrow Left/Right, Home, End)
+  const tabBar = document.querySelector('.wc-tabs');
+  if (tabBar) {
+    tabBar.addEventListener('keydown', e => {
+      const enabledTabs = tabs.filter(t => !t.classList.contains('disabled'));
+      const currentIdx = enabledTabs.indexOf(document.activeElement);
+      if (currentIdx < 0) return;
+      let nextIdx = -1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIdx = (currentIdx + 1) % enabledTabs.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIdx = (currentIdx - 1 + enabledTabs.length) % enabledTabs.length;
+      } else if (e.key === 'Home') {
+        nextIdx = 0;
+      } else if (e.key === 'End') {
+        nextIdx = enabledTabs.length - 1;
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        enabledTabs[currentIdx].click();
+        return;
+      }
+      if (nextIdx >= 0) {
+        e.preventDefault();
+        enabledTabs[nextIdx].focus();
+        enabledTabs[nextIdx].click();
+      }
+    });
+  }
+
+  // Update ARIA attributes on tab switch
+  const origSwitchTab = switchTab;
+  switchTab = function(name) {
+    origSwitchTab(name);
+    tabs.forEach(t => {
+      const isTarget = t.dataset.tab === name;
+      t.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+      t.setAttribute('tabindex', isTarget ? '0' : '-1');
+      if (t.classList.contains('disabled')) {
+        t.setAttribute('aria-disabled', 'true');
+      } else {
+        t.removeAttribute('aria-disabled');
+      }
+    });
+  };
+
+  // Demo card keyboard navigation (Enter/Space to activate, arrows to move)
+  demoGrid.addEventListener('keydown', e => {
+    const cards = $$('.demo-card', demoGrid);
+    if (!cards.length) return;
+    const currentIdx = cards.indexOf(document.activeElement);
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (document.activeElement.classList.contains('demo-card')) {
+        document.activeElement.click();
+      }
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = Math.min(currentIdx + 1, cards.length - 1);
+      cards[next].focus();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = Math.max(currentIdx - 1, 0);
+      cards[prev].focus();
+    }
+  });
+
+  // Make demo cards focusable and add ARIA roles when rendered
+  const demoObserver = new MutationObserver(() => {
+    $$('.demo-card', demoGrid).forEach(card => {
+      if (!card.hasAttribute('tabindex')) {
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+      }
+    });
+  });
+  demoObserver.observe(demoGrid, { childList: true });
+
+  // Well chip keyboard support
+  wellChips.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (e.target.classList.contains('well-chip')) {
+        e.target.click();
+      }
+    }
   });
 
 })();

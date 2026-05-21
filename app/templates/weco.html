@@ -27,6 +27,7 @@
   border:none; border-bottom:2px solid transparent;
   color:#605e5c; background:transparent; margin-bottom:-2px; transition:all .15s; }
 .wc-tab:hover { background:#f3f2f1; }
+.wc-tab:focus { outline:2px solid #0078d4; outline-offset:-2px; border-radius:3px; }
 .wc-tab.active { color:var(--eq-red); font-weight:600; border-bottom-color:var(--eq-red); }
 .wc-tab.disabled { opacity:.4; pointer-events:none; }
 .wc-body { display:none; }
@@ -57,6 +58,7 @@
   background:#e3f2fd; color:#1565c0; font-size:12px; cursor:pointer; }
 .well-chip.selected { background:#1565c0; color:#fff; }
 .well-chip:hover { opacity:.8; }
+.well-chip:focus { outline:2px solid #0078d4; outline-offset:1px; }
 
 /* Log preview */
 .log-canvas-wrap { border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; }
@@ -75,6 +77,7 @@
 .demo-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:.5rem; }
 .demo-card { border:1px solid #e1dfdd; border-radius:6px; padding:.6rem; cursor:pointer; transition:all .15s; }
 .demo-card:hover { border-color:#0d6efd; background:#f8faff; }
+.demo-card:focus { outline:2px solid #0078d4; outline-offset:2px; }
 .demo-card.active { border-color:#4BB748; background:#f6fff6; }
 .demo-card h4 { margin:0 0 .3rem; font-size:13.5px; }
 .demo-card p { margin:0; font-size:12px; color:#605e5c; }
@@ -138,30 +141,30 @@
 
 <!-- Main tabs -->
 <div class="wc-wrap">
-  <div class="wc-tabs">
-    <span class="wc-tab active" data-tab="data">1. Data</span>
-    <span class="wc-tab" data-tab="logs">2. Logs</span>
-    <span class="wc-tab" data-tab="params">3. Parameters</span>
-    <span class="wc-tab" data-tab="run">4. Run</span>
-    <span class="wc-tab disabled" data-tab="results">5. Results</span>
-    <span class="wc-tab disabled" data-tab="export">6. Export</span>
-    <a class="ctx-help" id="tab-help-link" href="/weco/docs/formats" target="_blank" title="Help for this tab">&#10068; Help</a>
+  <div class="wc-tabs" role="tablist" aria-label="Correlation workflow steps">
+    <span class="wc-tab active" data-tab="data" role="tab" tabindex="0" aria-selected="true" aria-controls="tab-data" id="wc-tab-data">1. Data</span>
+    <span class="wc-tab" data-tab="logs" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-logs" id="wc-tab-logs">2. Logs</span>
+    <span class="wc-tab" data-tab="params" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-params" id="wc-tab-params">3. Parameters</span>
+    <span class="wc-tab" data-tab="run" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-run" id="wc-tab-run">4. Run</span>
+    <span class="wc-tab disabled" data-tab="results" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-results" aria-disabled="true" id="wc-tab-results">5. Results</span>
+    <span class="wc-tab disabled" data-tab="export" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-export" aria-disabled="true" id="wc-tab-export">6. Export</span>
+    <a class="ctx-help" id="tab-help-link" href="/weco/docs/formats" target="_blank" title="Help for this tab" aria-label="Help for current tab">&#10068; Help</a>
   </div>
 
   <!-- Tab 1: Data -->
-  <div class="wc-body active" id="tab-data">
+  <div class="wc-body active" id="tab-data" role="tabpanel" aria-labelledby="wc-tab-data">
     <section class="wc-panel">
       <h3 style="margin:0 0 .5rem;">Import Wells from RDDMS</h3>
       <div class="cols">
         <div class="col-half">
           <div style="font-weight:600; font-size:12.5px; margin-bottom:.3rem;">Dataspace</div>
           <div style="display:flex; gap:.3rem; align-items:center; margin-bottom:.3rem;">
-            <input id="ds-f1" type="text" placeholder="First segment..." style="flex:1; font-size:12px; padding:3px 6px; border:1px solid #ccc; border-radius:3px;">
+            <input id="ds-f1" type="text" placeholder="First segment..." aria-label="Dataspace filter: first segment" style="flex:1; font-size:12px; padding:3px 6px; border:1px solid #ccc; border-radius:3px;">
             <span style="color:#999;">/</span>
-            <input id="ds-f2" type="text" placeholder="Second segment..." style="flex:1; font-size:12px; padding:3px 6px; border:1px solid #ccc; border-radius:3px;">
+            <input id="ds-f2" type="text" placeholder="Second segment..." aria-label="Dataspace filter: second segment" style="flex:1; font-size:12px; padding:3px 6px; border:1px solid #ccc; border-radius:3px;">
             <span id="ds-count" style="font-size:11px; color:#999; white-space:nowrap;"></span>
           </div>
-          <select id="ds-select" size="6" style="width:100%; font-size:12.5px; border:1px solid #ccc; border-radius:3px;"></select>
+          <select id="ds-select" size="6" aria-label="Dataspace list" style="width:100%; font-size:12.5px; border:1px solid #ccc; border-radius:3px;"></select>
           <div style="margin-top:.3rem; display:flex; gap:.4rem; align-items:center;">
             <button class="btn btn-sm" id="btn-import">Import Wells</button>
             <button class="btn btn-outline btn-sm" id="btn-refresh-ds">Refresh</button>
@@ -169,14 +172,14 @@
           </div>
         </div>
         <div class="col-half">
-          <div id="import-status" class="wc-status"></div>
+          <div id="import-status" class="wc-status" aria-live="polite"></div>
           <div id="wells-summary" style="display:none; margin-top:.5rem;">
             <div style="font-weight:600; font-size:13px; margin-bottom:.3rem;">
               Loaded Wells (<span id="well-count">0</span>)
               <button class="btn btn-outline btn-sm" id="btn-select-all-wells" style="margin-left:.4rem;">All</button>
               <button class="btn btn-outline btn-sm" id="btn-select-none-wells">None</button>
             </div>
-            <input type="text" id="well-filter" placeholder="Filter wells by name..." style="width:100%; font-size:12px; padding:3px 6px; border:1px solid #ccc; border-radius:3px; margin-bottom:.3rem;">
+            <input type="text" id="well-filter" placeholder="Filter wells by name..." aria-label="Filter wells by name" style="width:100%; font-size:12px; padding:3px 6px; border:1px solid #ccc; border-radius:3px; margin-bottom:.3rem;">
             <div id="well-chips" class="well-list"></div>
             <div style="margin-top:.4rem; font-size:12px; color:#605e5c;">
               <span>Logs: <strong id="data-names">-</strong></span> |
@@ -224,7 +227,7 @@
   </div>
 
   <!-- Tab 2: Logs -->
-  <div class="wc-body" id="tab-logs">
+  <div class="wc-body" id="tab-logs" role="tabpanel" aria-labelledby="wc-tab-logs">
     <section class="wc-panel">
       <h3 style="margin:0 0 .5rem;">Well Log Preview</h3>
       <div class="cols">
@@ -251,7 +254,7 @@
   </div>
 
   <!-- Tab 3: Parameters -->
-  <div class="wc-body" id="tab-params">
+  <div class="wc-body" id="tab-params" role="tabpanel" aria-labelledby="wc-tab-params">
     <section class="wc-panel">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
         <h3 style="margin:0;">Correlation Parameters</h3>
@@ -311,7 +314,7 @@
   </div>
 
   <!-- Tab 4: Run -->
-  <div class="wc-body" id="tab-run">
+  <div class="wc-body" id="tab-run" role="tabpanel" aria-labelledby="wc-tab-run">
     <section class="wc-panel">
       <h3 style="margin:0 0 .5rem;">Run Correlation</h3>
       <div style="margin-bottom:.5rem; font-size:13px; color:#605e5c;" id="run-summary">No wells loaded.</div>
@@ -339,13 +342,13 @@
       </div>
       <div style="margin-top:.5rem;">
         <div style="font-weight:600; font-size:12.5px; margin-bottom:.2rem;">Engine Log</div>
-        <div class="engine-log" id="engine-log">Waiting for run...</div>
+        <div class="engine-log" id="engine-log" role="log" aria-label="Engine output log" aria-live="polite">Waiting for run...</div>
       </div>
     </section>
   </div>
 
   <!-- Tab 5: Results -->
-  <div class="wc-body" id="tab-results">
+  <div class="wc-body" id="tab-results" role="tabpanel" aria-labelledby="wc-tab-results">
     <section class="wc-panel">
       <h3 style="margin:0 0 .5rem;">Correlation Results</h3>
       <div id="results-empty" class="muted">No results yet.</div>
@@ -358,10 +361,10 @@
         </div>
         <div style="margin-bottom:.5rem; display:flex; gap:.5rem; align-items:center;">
           <label style="font-size:12.5px; font-weight:500; white-space:nowrap;">Solution:</label>
-          <button class="btn btn-sm btn-outline" id="btn-res-prev" title="Previous (lower rank)">◀</button>
-          <select id="res-selector" style="font-size:12.5px; padding:2px 6px; max-width:220px;"></select>
-          <button class="btn btn-sm btn-outline" id="btn-res-next" title="Next (higher rank)">▶</button>
-          <span id="res-cost-label" style="font-size:12px; color:#605e5c; white-space:nowrap;"></span>
+          <button class="btn btn-sm btn-outline" id="btn-res-prev" title="Previous (lower rank)" aria-label="Previous solution">◀</button>
+          <select id="res-selector" style="font-size:12.5px; padding:2px 6px; max-width:220px;" aria-label="Solution selector"></select>
+          <button class="btn btn-sm btn-outline" id="btn-res-next" title="Next (higher rank)" aria-label="Next solution">▶</button>
+          <span id="res-cost-label" style="font-size:12px; color:#605e5c; white-space:nowrap;" aria-live="polite"></span>
           <span style="margin-left:auto; display:flex; gap:.3rem; align-items:center;">
             <label style="font-size:12.5px; font-weight:500; white-space:nowrap;">View:</label>
             <button class="btn btn-sm btn-outline" id="btn-view-plot">Correlation Plot</button>
@@ -376,20 +379,20 @@
         <!-- Correlation Plot -->
         <div id="results-plot" style="margin-bottom:.5rem;">
           <div style="border:1px solid #e1dfdd; border-radius:4px; overflow-x:auto; background:#fff;">
-            <canvas id="corr-canvas" style="display:block; width:100%; height:420px;"></canvas>
+            <canvas id="corr-canvas" style="display:block; width:100%; height:420px;" role="img" aria-label="Correlation plot showing well log traces and correlation lines between wells"></canvas>
           </div>
         </div>
         <!-- Composite 3-result view -->
         <div id="results-composite" style="margin-bottom:.5rem; display:none;">
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px;">
             <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
-              <canvas id="comp-canvas-0" style="display:block; width:100%; height:320px;"></canvas>
+              <canvas id="comp-canvas-0" style="display:block; width:100%; height:320px;" role="img" aria-label="Composite view: solution 1"></canvas>
             </div>
             <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
-              <canvas id="comp-canvas-1" style="display:block; width:100%; height:320px;"></canvas>
+              <canvas id="comp-canvas-1" style="display:block; width:100%; height:320px;" role="img" aria-label="Composite view: solution 2"></canvas>
             </div>
             <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
-              <canvas id="comp-canvas-2" style="display:block; width:100%; height:320px;"></canvas>
+              <canvas id="comp-canvas-2" style="display:block; width:100%; height:320px;" role="img" aria-label="Composite view: solution 3"></canvas>
             </div>
           </div>
         </div>
@@ -400,7 +403,7 @@
   </div>
 
   <!-- Tab 6: Export -->
-  <div class="wc-body" id="tab-export">
+  <div class="wc-body" id="tab-export" role="tabpanel" aria-labelledby="wc-tab-export">
     <section class="wc-panel">
       <h3 style="margin:0 0 .5rem;">Export Results</h3>
       <div class="export-option">
@@ -415,7 +418,7 @@
         <button class="btn btn-outline" id="btn-export-csv">Download CSV</button>
         <span class="muted" style="font-size:12px;">Marker table as CSV</span>
       </div>
-      <div id="export-status" class="wc-status"></div>
+      <div id="export-status" class="wc-status" aria-live="polite"></div>
     </section>
   </div>
 </div>
