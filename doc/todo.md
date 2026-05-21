@@ -160,16 +160,16 @@ User uploads wells (or selects demo)
 - ~~V3: Uncertainty overlay~~ ✅ Done — top-N results drawn with decreasing alpha (show_uncertainty=True)
 - ~~V7: Export plot as PNG~~ ✅ Done — "📥 PNG" button on web client toolbar (canvas.toBlob)
 - ~~D2: Structural diversity filter~~ ✅ Done — `_diverse_results()` clusters by topology signature
-- W1: Quick Run mode
-- W3: Iterative auto-refinement
-- D3: Diversity score column
+- ~~W1: Quick Run mode~~ ✅ Done — "⚡ Quick Run" button calls `/auto` endpoint, skips Params tab
+- ~~W3: Iterative auto-refinement~~ ✅ Done — built into `/auto` endpoint quality-gate logic
+- ~~D3: Diversity score column~~ ✅ Done — `diversity_score` field in RunResult (topology distance)
 - V2: Zone name labels
 - V4: Composite 3-result view
 - F3: Auto-detect facies from region values
 - F4: OSDU facies lookup
-- A1: Unified `/auto` endpoint
-- A2: Environment detection from logs
-- A4: Quality threshold gate
+- ~~A1: Unified `/auto` endpoint~~ ✅ Done — suggest→run→quality-gate→diversify pipeline
+- ~~A2: Environment detection from logs~~ ✅ Done — `detect_environment_from_logs()` in depenv.py
+- ~~A4: Quality threshold gate~~ ✅ Done — integrated in `/auto` endpoint
 
 ### P2 — Roadmap
 - W4: Deposit environment detection from strat metadata
