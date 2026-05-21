@@ -634,6 +634,36 @@ def weco_suggest_defaults(request: Request):
         return {"options": {}, "reasoning": {"error": str(e)}}
 
 
+@router.get("/facies-dict/{region_name}")
+def weco_facies_dict(region_name: str):
+    """Get auto-detected facies dictionary for a region channel.
+
+    Returns zone→colour/label mappings based on values observed in the
+    loaded wells. Uses standard lithology code tables for auto-detection.
+    """
+    global _cached_well_list
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    try:
+        from weco.facies_dict import FaciesDictionary
+        fd = FaciesDictionary.from_region_auto(region_name, _cached_well_list.wells)
+        return {
+            "region_name": fd.region_name,
+            "entries": {
+                str(zid): {
+                    "name": e.name,
+                    "color": e.color,
+                    "lithology": e.lithology,
+                }
+                for zid, e in fd.entries.items()
+            },
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Facies dict error: {e}")
+
+
 def _apply_memory_guards(options: dict, n_wells: int) -> dict:
     """Enforce safe parameter limits to prevent OOM on Radix (2Gi container)."""
     opts = dict(options)
