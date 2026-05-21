@@ -62,6 +62,7 @@ RESET_OPTS = {
     "gap_cost_func": "", "const_gap_cost": 0.0,
     "const_gap_cost_start": -1.0, "const_gap_cost_end": -1.0,
     "multi_dist_distal": "", "multi_dist_facies": "",
+    "min_dist": 0.1, "out_min_dist": 0.05,  # diversity always on
 }
 
 # Default AI feature settings per demo
@@ -515,19 +516,30 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
     region_names = get_region_names(wells[0])
     has_zones = bool(region_names)
 
-    # ── GridSpec layout: [well | gap | well | gap | ... | well] ───────
-    # Narrow well columns, WIDE gap corridors for correlation lines
+    # Build facies dictionary for primary region (used for facies strip)
+    from weco.facies_dict import FaciesDictionary
+    facies_dict = None
+    facies_region = None
+    if has_zones:
+        facies_region = region_names[0]
+        facies_dict = FaciesDictionary.from_region_data(facies_region, wells)
+
+    # ── GridSpec layout: [facies|log | gap | facies|log | gap | ...] ──
+    # Each well = thin facies strip + log track; gap corridors between
     n_gaps = n_wells - 1
     log_width = ps.get('log_width', 0.5)   # user-adjustable well column width
     gap_width = ps.get('gap_width', 1.2)   # gap corridor width (where lines go)
+    facies_width = ps.get('facies_width', 0.12) if has_zones else 0.0
     width_ratios = []
     for i in range(n_wells):
-        width_ratios.append(log_width)
+        if has_zones:
+            width_ratios.append(facies_width)  # facies strip
+        width_ratios.append(log_width)         # log track
         if i < n_gaps:
-            width_ratios.append(gap_width)
-    total_cols = n_wells + n_gaps
+            width_ratios.append(gap_width)     # gap corridor
+    total_cols = len(width_ratios)
 
-    fig_width = max(10, log_width * n_wells * 2.0 + gap_width * n_gaps * 1.5 + 2)
+    fig_width = max(10, (log_width + facies_width) * n_wells * 2.0 + gap_width * n_gaps * 1.5 + 2)
     fig_width = min(fig_width, 28)  # cap to prevent memory overflow
     fig_height = ps.get('fig_height', 9)
     fig_height = min(fig_height, 14)
@@ -537,18 +549,29 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
 
     fig.suptitle(title, fontsize=11, fontweight="bold", y=0.96)
 
-    # Create well axes (even indices in gridspec) and gap axes (odd indices)
+    # Create well axes, facies axes, and gap axes
     well_axes = []
+    facies_axes = []
     gap_axes = []
-    for col_idx in range(total_cols):
-        if col_idx % 2 == 0:
-            ax = fig.add_subplot(gs[0, col_idx])
-            well_axes.append(ax)
-        else:
-            ax = fig.add_subplot(gs[0, col_idx])
-            ax.set_xlim(0, 1)
-            ax.axis('off')  # invisible — just a corridor for lines
-            gap_axes.append(ax)
+    col_idx = 0
+    for i in range(n_wells):
+        if has_zones:
+            fax = fig.add_subplot(gs[0, col_idx])
+            fax.set_xlim(0, 1)
+            fax.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False)
+            for spine in fax.spines.values():
+                spine.set_linewidth(0.3)
+            facies_axes.append(fax)
+            col_idx += 1
+        ax = fig.add_subplot(gs[0, col_idx])
+        well_axes.append(ax)
+        col_idx += 1
+        if i < n_gaps:
+            gax = fig.add_subplot(gs[0, col_idx])
+            gax.set_xlim(0, 1)
+            gax.axis('off')
+            gap_axes.append(gax)
+            col_idx += 1
 
     axes = well_axes  # for compatibility
 
@@ -583,33 +606,53 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
         ax.tick_params(axis='y', labelleft=True)
         ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=8, integer=True))
 
-        # ── Zone/region background bands ──────────────────────────────
+        # ── Zone/region background bands (light tint on log axis) ─────
         if has_zones:
             for ri, rname in enumerate(region_names):
                 if hasattr(well, 'region') and rname in well.region:
                     raw_region = list(well.region[rname])
                     if raw_region and isinstance(raw_region[0], (list, tuple)) and len(raw_region[0]) >= 3:
-                        unique_zones = sorted(set(e[0] for e in raw_region if e[0] is not None))
-                        zone_color_map = {z: ZONE_CMAP[j % len(ZONE_CMAP)]
-                                          for j, z in enumerate(unique_zones)}
                         for entry in raw_region:
                             val, start, count = entry[0], entry[1], entry[2]
-                            if val is None or val not in zone_color_map:
+                            if val is None:
                                 continue
                             end = start + count - 1
                             y_top = depth[start] if start < len(depth) else start
                             y_bot = depth[min(end, len(depth)-1)] if end < len(depth) else end
-                            alpha = 0.25 if ri == 0 else 0.15
-                            ax.axhspan(y_top, y_bot, color=zone_color_map[val],
+                            color = facies_dict.get_color(int(val)) if facies_dict else ZONE_CMAP[int(val) % len(ZONE_CMAP)]
+                            alpha = 0.15 if ri == 0 else 0.08
+                            ax.axhspan(y_top, y_bot, color=color,
                                        alpha=alpha, zorder=0)
-                            if ri == 0 and (y_bot - y_top) > 0:
-                                y_mid = (y_top + y_bot) / 2
-                                ax.text(0.05, y_mid, str(val)[:8],
-                                        transform=ax.get_yaxis_transform(),
-                                        fontsize=5, va='center', ha='left',
-                                        color='#333', alpha=0.7,
-                                        bbox=dict(boxstyle='round,pad=0.1',
-                                                  fc='white', alpha=0.5, lw=0))
+
+        # ── Facies strip (discrete coloured column left of logs) ──────
+        if has_zones and facies_axes:
+            fax = facies_axes[i]
+            fax.invert_yaxis()
+            fax.set_ylim(ax.get_ylim())
+            if facies_region and hasattr(well, 'region') and facies_region in well.region:
+                raw_region = list(well.region[facies_region])
+                if raw_region and isinstance(raw_region[0], (list, tuple)) and len(raw_region[0]) >= 3:
+                    for entry in raw_region:
+                        val, start, count = entry[0], entry[1], entry[2]
+                        if val is None:
+                            continue
+                        end = start + count - 1
+                        y_top = depth[start] if start < len(depth) else start
+                        y_bot = depth[min(end, len(depth)-1)] if end < len(depth) else end
+                        color = facies_dict.get_color(int(val))
+                        fax.axhspan(y_top, y_bot, color=color, alpha=0.85)
+                        # Label if band is tall enough
+                        band_h = abs(y_bot - y_top)
+                        total_h = abs(depth[-1] - depth[0]) if len(depth) > 1 else 1
+                        if band_h / total_h > 0.04:
+                            y_mid = (y_top + y_bot) / 2
+                            label = facies_dict.get_label(int(val))
+                            fax.text(0.5, y_mid, label[:6], fontsize=4.5,
+                                     ha='center', va='center', color='#222',
+                                     rotation=90 if band_h / total_h < 0.08 else 0,
+                                     clip_on=True)
+            if i == 0:
+                fax.set_title(facies_region, fontsize=6, pad=2)
 
         # ── Log traces ────────────────────────────────────────────────
         plotted_logs = []
@@ -637,9 +680,12 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
         for spine in ax.spines.values():
             spine.set_linewidth(0.5)
 
-    # ── Compute correlation line positions ────────────────────────────
+    # ── Draw correlation lines ────────────────────────────────────────
+    # Supports uncertainty overlay: draw top-N results with decreasing alpha
+    show_uncertainty = ps.get('show_uncertainty', True)
+    n_overlay = min(ps.get('uncertainty_n', 3), res_file.get_nbr_results()) if show_uncertainty else 1
+
     cid = min(cor_index, res_file.get_nbr_results() - 1)
-    path = res_file.get_result_full_path(cid)
     cost = res_file.get_result_cost(cid)
 
     # Build boundary indices from primary (coarsest) region
@@ -664,95 +710,107 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
                 for entry in rlist:
                     boundary_indices[wi].add(entry[1])
 
-    # Classify steps
-    boundary_steps = set()
-    boundary_scores = {}
-    gap_steps = set()
-    min_gap_run = max(3, len(path) // 80)
-
-    for step_idx in range(1, len(path)):
-        node = path[step_idx]
-        prev = path[step_idx - 1]
-        score = 0
-        for wi in range(n_wells):
-            if node[wi] in boundary_indices[wi] and node[wi] != prev[wi]:
-                score += 1
-        if score > 0:
-            boundary_steps.add(step_idx)
-            boundary_scores[step_idx] = score
-
-    MAX_BOUNDARY_LINES = (plot_settings or {}).get('max_boundaries', 30)
-    if len(boundary_steps) > MAX_BOUNDARY_LINES:
-        ranked = sorted(boundary_steps, key=lambda s: boundary_scores.get(s, 0), reverse=True)
-        boundary_steps = set(ranked[:MAX_BOUNDARY_LINES])
-
-    for wi in range(n_wells):
-        run_start = None
-        for step_idx in range(1, len(path)):
-            stayed = (path[step_idx][wi] == path[step_idx - 1][wi])
-            if stayed:
-                if run_start is None:
-                    run_start = step_idx
-            else:
-                if run_start is not None and (step_idx - run_start) >= min_gap_run:
-                    gap_steps.add((run_start + step_idx) // 2)
-                run_start = None
-        if run_start is not None and (len(path) - run_start) >= min_gap_run:
-            gap_steps.add((run_start + len(path) - 1) // 2)
-
-    gap_steps -= boundary_steps
-    MAX_GAP_LINES = (plot_settings or {}).get('max_gaps', 20)
-    if len(gap_steps) > MAX_GAP_LINES:
-        gap_steps = set(sorted(gap_steps)[:MAX_GAP_LINES])
-
-    n_path = len(path)
-    framework_interval = max(1, n_path // 6)
-    framework_steps = {s for s in range(0, n_path, framework_interval)}
-    framework_steps.add(0)
-    framework_steps.add(n_path - 1)
-    framework_steps -= boundary_steps
-    framework_steps -= gap_steps
-
-    # ── Draw correlation lines ONLY in gap corridors ────────────────
     clr_boundary = ps.get('boundary', '#D32F2F')
     clr_gap = ps.get('gap', '#1565C0')
     clr_framework = ps.get('framework', '#999999')
 
-    for step_idx in sorted(boundary_steps | gap_steps | framework_steps):
-        node = path[step_idx]
-        if step_idx in boundary_steps:
-            color, alpha, lw = clr_boundary, 0.85, 1.4
-        elif step_idx in gap_steps:
-            color, alpha, lw = clr_gap, 0.6, 1.0
-        else:
-            color, alpha, lw = clr_framework, 0.25, 0.4
+    # Alpha scaling for overlay: primary=1.0, secondary fading
+    overlay_alphas = [1.0, 0.3, 0.15, 0.08][:n_overlay]
+    overlay_indices = [cid]
+    # Add other results for uncertainty overlay (skip duplicates)
+    if n_overlay > 1:
+        for alt in range(res_file.get_nbr_results()):
+            if alt != cid and len(overlay_indices) < n_overlay:
+                overlay_indices.append(alt)
 
-        ls = ":" if step_idx in gap_steps else "-"
+    for ov_idx, result_idx in enumerate(overlay_indices):
+        alpha_scale = overlay_alphas[ov_idx]
+        path = res_file.get_result_full_path(result_idx)
 
-        for j in range(n_wells - 1):
-            ml = node[j]
-            mr = node[j + 1]
-            if ml < len(depths[j]) and mr < len(depths[j + 1]):
-                yl = depths[j][ml]
-                yr = depths[j + 1][mr]
-                # Draw ONLY in gap corridor: from right edge of well to left edge of next
-                gap_ax = gap_axes[j]
-                # Use blended transform: x in axes coords [0,1], y shared with adjacent wells
-                # Map y values to [0,1] range using adjacent well depth ranges
-                y_range_l = (min(depths[j]), max(depths[j]))
-                y_range_r = (min(depths[j + 1]), max(depths[j + 1]))
-                y_min = min(y_range_l[0], y_range_r[0])
-                y_max = max(y_range_l[1], y_range_r[1])
-                if y_max > y_min:
-                    # transAxes: (0,0)=bottom-left, (0,1)=top-left
-                    # depth: shallow=small value at TOP → map to 1.0
-                    yl_norm = 1.0 - (yl - y_min) / (y_max - y_min)
-                    yr_norm = 1.0 - (yr - y_min) / (y_max - y_min)
+        # Classify steps for this result
+        boundary_steps = set()
+        boundary_scores = {}
+        gap_steps = set()
+        min_gap_run = max(3, len(path) // 80)
+
+        for step_idx in range(1, len(path)):
+            node = path[step_idx]
+            prev = path[step_idx - 1]
+            score = 0
+            for wi in range(n_wells):
+                if node[wi] in boundary_indices[wi] and node[wi] != prev[wi]:
+                    score += 1
+            if score > 0:
+                boundary_steps.add(step_idx)
+                boundary_scores[step_idx] = score
+
+        MAX_BOUNDARY_LINES = ps.get('max_boundaries', 30)
+        if len(boundary_steps) > MAX_BOUNDARY_LINES:
+            ranked = sorted(boundary_steps, key=lambda s: boundary_scores.get(s, 0), reverse=True)
+            boundary_steps = set(ranked[:MAX_BOUNDARY_LINES])
+
+        for wi in range(n_wells):
+            run_start = None
+            for step_idx in range(1, len(path)):
+                stayed = (path[step_idx][wi] == path[step_idx - 1][wi])
+                if stayed:
+                    if run_start is None:
+                        run_start = step_idx
                 else:
-                    yl_norm = yr_norm = 0.5
-                gap_ax.plot([0, 1], [yl_norm, yr_norm], color=color,
-                            alpha=alpha, linewidth=lw, linestyle=ls,
-                            clip_on=True, transform=gap_ax.transAxes)
+                    if run_start is not None and (step_idx - run_start) >= min_gap_run:
+                        gap_steps.add((run_start + step_idx) // 2)
+                    run_start = None
+            if run_start is not None and (len(path) - run_start) >= min_gap_run:
+                gap_steps.add((run_start + len(path) - 1) // 2)
+
+        gap_steps -= boundary_steps
+        MAX_GAP_LINES = ps.get('max_gaps', 20)
+        if len(gap_steps) > MAX_GAP_LINES:
+            gap_steps = set(sorted(gap_steps)[:MAX_GAP_LINES])
+
+        n_path = len(path)
+        # Framework lines only for primary result
+        if ov_idx == 0:
+            framework_interval = max(1, n_path // 6)
+            framework_steps = {s for s in range(0, n_path, framework_interval)}
+            framework_steps.add(0)
+            framework_steps.add(n_path - 1)
+            framework_steps -= boundary_steps
+            framework_steps -= gap_steps
+        else:
+            framework_steps = set()  # no framework for overlay results
+
+        # Draw lines in gap corridors
+        for step_idx in sorted(boundary_steps | gap_steps | framework_steps):
+            node = path[step_idx]
+            if step_idx in boundary_steps:
+                color, alpha, lw = clr_boundary, 0.85 * alpha_scale, 1.4 * alpha_scale + 0.3
+            elif step_idx in gap_steps:
+                color, alpha, lw = clr_gap, 0.6 * alpha_scale, 1.0 * alpha_scale + 0.2
+            else:
+                color, alpha, lw = clr_framework, 0.25, 0.4
+
+            ls = ":" if step_idx in gap_steps else "-"
+
+            for j in range(n_wells - 1):
+                ml = node[j]
+                mr = node[j + 1]
+                if ml < len(depths[j]) and mr < len(depths[j + 1]):
+                    yl = depths[j][ml]
+                    yr = depths[j + 1][mr]
+                    gap_ax = gap_axes[j]
+                    y_range_l = (min(depths[j]), max(depths[j]))
+                    y_range_r = (min(depths[j + 1]), max(depths[j + 1]))
+                    y_min = min(y_range_l[0], y_range_r[0])
+                    y_max = max(y_range_l[1], y_range_r[1])
+                    if y_max > y_min:
+                        yl_norm = 1.0 - (yl - y_min) / (y_max - y_min)
+                        yr_norm = 1.0 - (yr - y_min) / (y_max - y_min)
+                    else:
+                        yl_norm = yr_norm = 0.5
+                    gap_ax.plot([0, 1], [yl_norm, yr_norm], color=color,
+                                alpha=alpha, linewidth=lw, linestyle=ls,
+                                clip_on=True, transform=gap_ax.transAxes)
 
     # Gap axes are display-only with transAxes lines — no ylim inversion needed
 
@@ -766,17 +824,16 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
         legend_elements.append(Line2D([0], [0], color=LOG_COLORS[li % len(LOG_COLORS)],
                                       linewidth=1.2, label=label))
     # Correlation line legend
-    n_boundaries = len(boundary_steps)
-    n_gaps_count = len(gap_steps)
-    if n_boundaries:
-        legend_elements.append(Line2D([0], [0], color=clr_boundary, linewidth=1.4,
-                                      label=f'Unit boundary ({n_boundaries})'))
-    if n_gaps_count:
-        legend_elements.append(Line2D([0], [0], color=clr_gap, linewidth=1.0,
-                                      linestyle=':', label=f'Gap/hiatus ({n_gaps_count})'))
+    legend_elements.append(Line2D([0], [0], color=clr_boundary, linewidth=1.4,
+                                  label='Unit boundary'))
+    legend_elements.append(Line2D([0], [0], color=clr_gap, linewidth=1.0,
+                                  linestyle=':', label='Gap/hiatus'))
     legend_elements.append(Line2D([0], [0], color=clr_framework, linewidth=0.5,
                                   label='Framework'))
-    fig.legend(handles=legend_elements, loc='lower center', ncol=min(len(legend_elements), 6),
+    if n_overlay > 1:
+        legend_elements.append(Line2D([0], [0], color='#999', linewidth=0.8,
+                                      alpha=0.3, label=f'Uncertainty (top-{n_overlay})'))
+    fig.legend(handles=legend_elements, loc='lower center', ncol=min(len(legend_elements), 7),
                fontsize=7, framealpha=0.8, edgecolor='#ccc',
                bbox_to_anchor=(0.5, 0.002))
 

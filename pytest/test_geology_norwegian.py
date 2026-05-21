@@ -264,6 +264,8 @@ def _run_engine_subprocess(
     """
     opts = options or {}
     opts_json = json.dumps(opts)
+    # Use forward slashes so Windows paths don't become unicode escapes
+    safe_path = wells_path.replace("\\", "/")
 
     script = f"""
 import sys, json
@@ -271,7 +273,7 @@ sys.path.insert(0, ".")
 from weco.data import WellList
 from weco.ext import ProjectExt
 
-wl = WellList("{wells_path}")
+wl = WellList("{safe_path}")
 proj = ProjectExt()
 proj.reset_options()
 
@@ -1191,13 +1193,14 @@ class TestNBestAndCosts:
         _write_wells_file(wells, path)
 
         # Request multiple n-best
+        safe_path = path.replace("\\", "/")
         script = f"""
 import sys, json
 sys.path.insert(0, ".")
 from weco.data import WellList
 from weco.ext import ProjectExt
 
-wl = WellList("{path}")
+wl = WellList("{safe_path}")
 proj = ProjectExt()
 proj.reset_options()
 proj.set_options_ext(**{{

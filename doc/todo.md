@@ -149,22 +149,22 @@ User uploads wells (or selects demo)
 ## 6. Priority Summary
 
 ### P0 — Immediate (this week)
-- D1: Default diversity on (`min_dist=0.1` always)
-- V1: Facies track in PyQt GUI
-- V5: Depth axis ticks + log labels
-- F1: FaciesDictionary class
-- F2: Standard facies colour palette
-- A5: Auto-enable distality when FACIES region present
+- ~~D1: Default diversity on (`min_dist=0.1` always)~~ ✅ Done — RESET_OPTS + suggest-defaults
+- ~~V1: Facies track in PyQt GUI~~ ✅ Done — discrete coloured strip from FaciesDictionary
+- ~~V5: Depth axis ticks + log labels~~ ✅ Done — MaxNLocator + log name headers with units
+- ~~F1: FaciesDictionary class~~ ✅ Done — `weco/facies_dict.py`
+- ~~F2: Standard facies colour palette~~ ✅ Done — STANDARD_LITHO_PALETTE + ZONE_COLORS
+- ~~A5: Auto-enable distality when FACIES region present~~ ✅ Done — in `_suggest_defaults_for_wells`
 
 ### P1 — Next Sprint
+- ~~V3: Uncertainty overlay~~ ✅ Done — top-N results drawn with decreasing alpha (show_uncertainty=True)
+- ~~V7: Export plot as PNG~~ ✅ Done — "📥 PNG" button on web client toolbar (canvas.toBlob)
+- ~~D2: Structural diversity filter~~ ✅ Done — `_diverse_results()` clusters by topology signature
 - W1: Quick Run mode
 - W3: Iterative auto-refinement
-- D2: Structural diversity filter (cluster by topology)
 - D3: Diversity score column
 - V2: Zone name labels
-- V3: Uncertainty overlay
 - V4: Composite 3-result view
-- V7: Export plot as PNG
 - F3: Auto-detect facies from region values
 - F4: OSDU facies lookup
 - A1: Unified `/auto` endpoint

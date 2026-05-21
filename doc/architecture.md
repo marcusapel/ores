@@ -1,7 +1,5 @@
 # WeCo Architecture
 
-> Extracted from the improvement plan. See also `developer.md` for build instructions.
-
 ## System Overview
 
 ```mermaid

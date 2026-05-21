@@ -674,7 +674,7 @@ if __name__ == "__main__":
     print("Import complete. Check the wells panel for new data.")
 '''
 
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(script)
 
     return output_path

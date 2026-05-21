@@ -1,25 +1,18 @@
 # WeCo — Multi-Well Stratigraphic Correlation
 
-**Authors:** Christophe Antoine, Guillaume Caumon, Paul Baville  
-**Affiliation:** ASGA — Université de Lorraine  
-**Version:** 0.9.31  
-**License:** [ASGA Proprietary](doc/license.txt)
-
 WeCo is a stratigraphic correlation engine that finds the *n*-best correlation
 scenarios between wells using graph-based Dynamic Time Warping (DTW).
 Unlike single-answer approaches, WeCo explores the full solution space —
 honouring log similarity, facies architecture, structural dip, biostratigraphy,
 and depositional constraints simultaneously.
 
-The C++ engine is exposed to Python via pybind11 and can run headless (API/CLI),
-inside a PyQt6 desktop GUI (WeCo Studio), or deployed as a cloud service on
-Equinor Radix integrated with [ORES](https://github.com/equinor/ores).
+The C++ engine is exposed to Python via pybind11 and can run headless (API/CLI), inside a PyQt6 desktop GUI (WeCo Studio), or deployed as a cloud service on Radix integrated with [ORES](https://github.com/equinor/ores).
 
 ---
 
 ## Installation
 
-**Requirements:** Python ≥ 3.8, C++ compiler (g++ ≥ 7 / MSVC 2017+ / Apple Clang 12+), CMake ≥ 3.15
+**Requirements:** Python ≥ 3.12, C++ compiler (g++ ≥ 7 / MSVC 2017+ / Apple Clang 12+), CMake ≥ 3.15
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -270,12 +263,15 @@ git subtree pull --prefix weco_engine https://github.com/equinor/weco.git main -
 
 If you use WeCo in academic work, please cite:
 
-> Antoine, C., Caumon, G., & Baville, P. (2024). *WeCo: Graph-based dynamic time
-> warping for multi-well stratigraphic correlation.* ASGA, Université de Lorraine.
+> Antoine, C., Caumon, G., & Baville, P. (2024). *WeCo: Graph-based dynamic time warping for multi-well stratigraphic correlation.* ASGA, Université de Lorraine.
 
 ---
 
 ## License
 
-© ASGA — Université de Lorraine. See [doc/license.txt](doc/license.txt).
+© Copyright (c) 2018 Association Scientifique pour la Geologie et ses Applications (ASGA) and Universite de Lorraine. All Rights Reserved. This program is a Trade Secret of the ASGA and it is not to be:
+ * reproduced, published, or disclosed to other,
+ * distributed or displayed,
+ * used for purposes or on Sites other than described in the GOCAD Advancement Agreement, without the prior written authorization of the ASGA. Licencee agrees to attach or embed this Notice on all copies of the program, including partial copies or modified versions thereof.
+
 

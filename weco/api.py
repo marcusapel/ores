@@ -338,6 +338,68 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
     return rf, data, elapsed
 
 
+def _topology_signature(rf, result_idx: int, n_wells: int) -> tuple:
+    """Compute a compact topology signature for a correlation result.
+
+    The signature captures the structural pattern (gap positions, boundary
+    positions) independent of exact depth values. Two results with the same
+    signature are structurally identical even if depths differ slightly.
+    """
+    path = rf.get_result_full_path(result_idx)
+    n_path = len(path)
+    if n_path == 0:
+        return ()
+
+    # For each well-pair, count how many steps each well stays stationary
+    # (gap indicator) and bucket into coarse categories
+    sig_parts = []
+    for wi in range(n_wells):
+        stays = 0
+        for s in range(1, n_path):
+            if path[s][wi] == path[s - 1][wi]:
+                stays += 1
+        # Bucket: 0=no gaps, 1=few, 2=moderate, 3=many
+        frac = stays / max(1, n_path)
+        bucket = 0 if frac < 0.05 else (1 if frac < 0.15 else (2 if frac < 0.3 else 3))
+        sig_parts.append(bucket)
+    return tuple(sig_parts)
+
+
+def _diverse_results(rf, data, n_best: int, n_diverse: int = None) -> List:
+    """Select structurally diverse results from the full k-best set.
+
+    Groups results by topology signature, then picks the lowest-cost
+    representative from each cluster. Returns at most n_diverse results.
+    """
+    if n_diverse is None:
+        n_diverse = n_best
+
+    n_total = min(n_best, rf.get_nbr_results())
+    n_wells = rf.nbr_well()
+
+    # Group by topology
+    clusters: Dict[tuple, int] = {}  # signature → first (lowest-cost) index
+    selected = []
+
+    for i in range(n_total):
+        sig = _topology_signature(rf, i, n_wells)
+        if sig not in clusters:
+            clusters[sig] = i
+            selected.append(i)
+            if len(selected) >= n_diverse:
+                break
+
+    # If we didn't fill n_diverse from unique clusters, add remaining by cost
+    if len(selected) < n_diverse:
+        for i in range(n_total):
+            if i not in selected:
+                selected.append(i)
+                if len(selected) >= n_diverse:
+                    break
+
+    return selected
+
+
 def _extract_results(rf, data, n_best: int) -> List[RunResult]:
     """Convert engine results to response objects.
     
@@ -673,6 +735,20 @@ def _suggest_defaults_for_wells(wl) -> tuple:
     # NOTE: same-region is NOT auto-applied — it is too restrictive and
     # causes "no correlation possible" when facies zones don't align.
     # Users can enable it manually if their data supports it.
+
+    # --- Auto-enable distality cost if FACIES-like regions present ---
+    _DIST_DISTAL_HINTS = {"DISTAL", "DISTALITY", "DIST"}
+    _DIST_FACIES_HINTS = {"FACIES", "FACIES_1", "LITHO_FACIES", "DEP_FACIES",
+                          "DEPOSITIONAL_FACIES", "LITH_FACIES"}
+    distal_match = next((r for r in region_names if r.upper() in _DIST_DISTAL_HINTS), None)
+    facies_match = next((r for r in region_names if r.upper() in _DIST_FACIES_HINTS), None)
+    if distal_match and facies_match:
+        options["dist-distal"] = distal_match
+        options["dist-facies"] = facies_match
+        options["dist-scaling"] = 1.0
+        reasoning["dist-distal"] = f"DISTAL region '{distal_match}' detected → distality cost enabled"
+        reasoning["dist-facies"] = f"FACIES region '{facies_match}' paired for palaeogeographic cost"
+        reasoning["dist-scaling"] = "Default distality scaling factor"
 
     # --- Well-count-adaptive settings ---
     if n_wells >= 15:
