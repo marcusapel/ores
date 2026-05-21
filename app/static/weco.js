@@ -754,6 +754,7 @@
       <label><input type="checkbox" id="ctrl-strat"> StratCol</label>
       <label><input type="checkbox" id="ctrl-md" checked> MD</label>
       <label><input type="checkbox" id="ctrl-tvdss"> TVDSS</label>
+      <button id="btn-download-png" style="margin-left:auto;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid #ccc;border-radius:3px;background:#fff;" title="Download plot as PNG">📥 PNG</button>
     `;
     container.insertBefore(bar, corrCanvas);
 
@@ -786,6 +787,19 @@
       const selected = [...logSelect.selectedOptions].map(o => o.value);
       corrPlotConfig.showLogs = selected.length > 0 ? selected : null;
       window.redrawCorrelationPlot();
+    });
+    // Download PNG button
+    bar.querySelector("#btn-download-png").addEventListener("click", () => {
+      const canvas = document.getElementById("corr-canvas");
+      if (!canvas) return;
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "weco_correlation_plot.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      }, "image/png");
     });
   }
 
