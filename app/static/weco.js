@@ -104,9 +104,14 @@
 
   // ── API helpers ───────────────────────────────────────────────────
   async function api(method, path, body) {
-    const opts = { method, headers: {'Content-Type': 'application/json'} };
+    const opts = { method, headers: {'Content-Type': 'application/json'}, credentials: 'same-origin' };
     if (body) opts.body = JSON.stringify(body);
     const resp = await fetch('/weco' + path, opts);
+    if (resp.status === 401) {
+      // Token expired — reload page to trigger seamless Entra ID SSO redirect
+      window.location.reload();
+      return new Promise(() => {}); // never resolves (page is reloading)
+    }
     if (!resp.ok) {
       const txt = await resp.text();
       throw new Error(txt || `HTTP ${resp.status}`);

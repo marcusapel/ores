@@ -307,15 +307,20 @@ async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
         instances = get_instances()
         inst = instances.get(instance_name) or get_active()
         client_id = inst.client_id
+        client_secret = inst.client_secret or ""
         scopes = (inst.scope or "openid offline_access").split()
         token_url = inst.token_url
     except Exception:
         client_id = CLIENT_ID
+        client_secret = _get_client_secret()
         scopes = SCOPES
         token_url = TOKEN_URL
 
     try:
-        async with AsyncOAuth2Client(client_id=client_id, scope=scopes) as cli:
+        oauth_kwargs: Dict[str, Any] = dict(client_id=client_id, scope=scopes)
+        if client_secret:
+            oauth_kwargs["client_secret"] = client_secret
+        async with AsyncOAuth2Client(**oauth_kwargs) as cli:
             token = await cli.fetch_token(
                 token_url,
                 grant_type="refresh_token",
