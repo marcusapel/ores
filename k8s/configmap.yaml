@@ -10,6 +10,7 @@ data:
   LOG_LEVEL: "INFO"
   DEBUG: "False"
   DEFAULT_DATASPACE: "maap/drogon"
+  WECO_DEFAULT_DATASPACE: "maap/weco"
   APP_KEY: "test-app"
 
   # Which instance to activate at startup

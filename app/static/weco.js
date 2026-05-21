@@ -381,9 +381,6 @@
     btnRunDemo.style.display = 'inline-block';
     btnRunDemo.textContent = `\u25B6 Run "${selectedDemo}"`;
 
-    // Auto-select the demo dataspace
-    selectDataspace(_defaultDs);
-
     // Also check if this can be imported from RDDMS
     const btnRddms = $('#btn-import-demo-rddms');
     if (btnRddms) {
@@ -410,11 +407,11 @@
       if (data.ai_settings) _setAiSettings(data.ai_settings);
       enableAfterImport();
       setStatus(importStat, 'ok', `${data.n_wells} wells loaded from demo "${selectedDemo}" — running auto-correlation...`);
-      // W2: Auto-run on demo select — immediately trigger Quick Run
-      quickRun();
     } catch(e) {
       setStatus(importStat, 'warn', `Could not pre-load demo wells: ${e.message}`);
     }
+    // Always trigger Quick Run after demo select (works even without pre-load)
+    quickRun();
   });
   loadDemos();
 

@@ -49,6 +49,7 @@ spec:
             DEBUG: "False"
             HTTPS_ONLY: "true"
             DEFAULT_DATASPACE: "maap/drogon"
+            WECO_DEFAULT_DATASPACE: "maap/weco"
             APP_KEY: "ores"
             DEFAULT_INSTANCE: "eqndev"
             # WeCo job routing: datasets above this well count → job pod
@@ -93,6 +94,7 @@ spec:
             DEBUG: "False"
             HTTPS_ONLY: "true"
             DEFAULT_DATASPACE: "maap/drogon"
+            WECO_DEFAULT_DATASPACE: "maap/weco"
             APP_KEY: "ores-prod"
             DEFAULT_INSTANCE: "eqndev"
             # eqndev - Equinor SWE dev, per-user PKCE (default)
