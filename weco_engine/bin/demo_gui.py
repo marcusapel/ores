@@ -64,6 +64,14 @@ RESET_OPTS = {
     "multi_dist_distal": "", "multi_dist_facies": "",
 }
 
+# Default AI feature settings per demo
+AI_DEFAULTS = {
+    "quality": True,       # CorrelationQuality scoring
+    "anomaly": False,      # CorrelationAnomalyDetector
+    "uncertainty": False,  # CorrelationUncertainty (requires nbr_cor > 1)
+    "log_qc": False,       # LogQC preprocessing (washout, impute, normalise)
+}
+
 DATASETS = {
     # ── Concept Demos (real data, teaching distality/gap cost) ────────
     "1_distality": {
@@ -82,6 +90,7 @@ DATASETS = {
         "common_opts": {"cost_function": "composite", "order": "distality",
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05},
+        "ai": {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False},
     },
     "2_gap_cost": {
         "title": "Gap Cost Exploration",
@@ -102,6 +111,7 @@ DATASETS = {
         "common_opts": {"cost_function": "composite", "order": "distality",
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05},
+        "ai": {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False},
     },
     # ── Domain Demos ──────────────────────────────────────────────────
     "3_coal_basin": {
@@ -144,6 +154,7 @@ DATASETS = {
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 15},
+        "ai": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": True},
     },
     "4_quaternary": {
         "title": "Quaternary – Gap Cost + Multi-Log (GR+RT)",
@@ -180,6 +191,7 @@ DATASETS = {
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 20},
+        "ai": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": True},
     },
     "5_shallow_marine": {
         "title": "Shallow Marine – 3-Log Variance (GR+RHOB+DT) + Gap Cost",
@@ -217,6 +229,7 @@ DATASETS = {
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 20},
+        "ai": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": False},
     },
     "6_fluvial": {
         "title": "Fluvial – Gap Cost + High Diversity",
@@ -250,6 +263,7 @@ DATASETS = {
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.15, "out_min_dist": 0.05,
                         "band_width": 20},
+        "ai": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": False},
     },
     "7_delta": {
         "title": "Delta – Multi-Log Variance (GR+DEN) + Band-Width",
@@ -279,6 +293,7 @@ DATASETS = {
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 20},
+        "ai": {"quality": True, "anomaly": False, "uncertainty": True, "log_qc": False},
     },
     "8_bryson": {
         "title": "Bryson – Zone-Constrained Categorical Facies",
@@ -308,6 +323,7 @@ DATASETS = {
         "common_opts": {"cost_function": "composite",
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05},
+        "ai": {"quality": True, "anomaly": True, "uncertainty": False, "log_qc": False},
     },
     "9_sigrun": {
         "title": "Sigrun – Multi-Log Well-Tie (GR+NPHI)",
@@ -338,6 +354,7 @@ DATASETS = {
         "common_opts": {"cost_function": "composite",
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05},
+        "ai": {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False},
     },
     "10_troll": {
         "title": "Troll – Categorical + Distality (Walther's Law)",
@@ -368,6 +385,7 @@ DATASETS = {
         "common_opts": {"cost_function": "composite",
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
                         "min_dist": 0.1, "out_min_dist": 0.05},
+        "ai": {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False},
     },
 }
 
@@ -787,6 +805,23 @@ class DemoRunnerWindow(QMainWindow):
         self.param_widgets = {}
         # We'll populate dynamically based on selection
         info_layout.addWidget(self.param_group)
+
+        # AI Features toggle area
+        self.ai_group = QGroupBox("AI Features")
+        ai_layout = QFormLayout(self.ai_group)
+        self.ai_quality_cb = QCheckBox("Quality scoring")
+        self.ai_quality_cb.setToolTip("Score and rank correlations by multi-criteria quality")
+        ai_layout.addRow(self.ai_quality_cb)
+        self.ai_anomaly_cb = QCheckBox("Anomaly detection")
+        self.ai_anomaly_cb.setToolTip("Flag suspicious correlation lines (Isolation Forest)")
+        ai_layout.addRow(self.ai_anomaly_cb)
+        self.ai_uncertainty_cb = QCheckBox("Uncertainty analysis")
+        self.ai_uncertainty_cb.setToolTip("N-best ensemble spread → per-marker confidence")
+        ai_layout.addRow(self.ai_uncertainty_cb)
+        self.ai_logqc_cb = QCheckBox("Log QC preprocessing")
+        self.ai_logqc_cb.setToolTip("Washout detection, imputation, cross-well normalisation")
+        ai_layout.addRow(self.ai_logqc_cb)
+        info_layout.addWidget(self.ai_group)
         info_layout.addStretch()
         self.tabs.addTab(self.info_widget, "Info && Params")
 
@@ -1001,6 +1036,7 @@ class DemoRunnerWindow(QMainWindow):
             self.info_wells.setText(f"Wells file not found: {wells_path}")
 
         self._populate_params(ds, None)
+        self._populate_ai_settings(ds)
         self.tabs.setCurrentIndex(0)
 
     def _show_run_info(self, ds_key, ds, run_name):
@@ -1018,7 +1054,16 @@ class DemoRunnerWindow(QMainWindow):
             self.info_wells.setText("")
 
         self._populate_params(ds, run)
+        self._populate_ai_settings(ds)
         self.tabs.setCurrentIndex(0)
+
+    def _populate_ai_settings(self, ds):
+        """Set AI checkboxes from per-demo settings."""
+        ai = {**AI_DEFAULTS, **ds.get("ai", {})}
+        self.ai_quality_cb.setChecked(ai["quality"])
+        self.ai_anomaly_cb.setChecked(ai["anomaly"])
+        self.ai_uncertainty_cb.setChecked(ai["uncertainty"])
+        self.ai_logqc_cb.setChecked(ai["log_qc"])
 
     def _populate_params(self, ds, run):
         """Show editable parameters for the selected dataset/run."""
@@ -1340,6 +1385,53 @@ class DemoRunnerWindow(QMainWindow):
         self._clear_plots()
         if plot_path:
             self._add_plot(title, plot_path, cost, n_cor)
+
+        # AI post-processing
+        self._run_ai_analysis(res_file, well_list, cor_index, n_cor)
+
+    # ─── AI Post-Processing ───────────────────────────────────────────
+
+    def _run_ai_analysis(self, res_file, well_list, cor_index, n_cor):
+        """Run enabled AI features and append results to ranking label."""
+        ai_lines = []
+
+        try:
+            if self.ai_quality_cb.isChecked():
+                from weco.ai.quality import CorrelationQuality
+                cq = CorrelationQuality(res_file, well_list)
+                scores = cq.score_all()
+                if cor_index < len(scores):
+                    s = scores[cor_index]
+                    ai_lines.append(
+                        f"  ★ Quality: {s.overall:.2f}  "
+                        f"(cost={s.cost_score:.2f}, gaps={s.gap_score:.2f}, "
+                        f"sim={s.similarity_score:.2f})")
+
+            if self.ai_anomaly_cb.isChecked():
+                from weco.ai.anomaly import CorrelationAnomalyDetector
+                det = CorrelationAnomalyDetector(res_file, well_list)
+                flags = det.flag(cor_index)
+                n_flagged = sum(1 for f in flags if f.is_anomaly)
+                if n_flagged > 0:
+                    ai_lines.append(
+                        f"  ⚠ Anomaly: {n_flagged} suspicious line(s) flagged")
+                else:
+                    ai_lines.append("  ✓ Anomaly: no suspicious lines detected")
+
+            if self.ai_uncertainty_cb.isChecked() and n_cor > 1:
+                from weco.ai.uncertainty import CorrelationUncertainty
+                cu = CorrelationUncertainty(res_file, well_list)
+                summary = cu.summary(top_n=min(n_cor, 10))
+                ai_lines.append(
+                    f"  ↔ Uncertainty: mean spread={summary.mean_spread:.2f}, "
+                    f"max={summary.max_spread:.2f}")
+        except Exception as e:
+            ai_lines.append(f"  [AI error: {e}]")
+
+        if ai_lines:
+            current = self.ranking_label.text()
+            self.ranking_label.setText(
+                current + "\n\n── AI Analysis ──\n" + "\n".join(ai_lines))
 
     # ─── Plot Display ─────────────────────────────────────────────────
 
