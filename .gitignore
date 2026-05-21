@@ -15,34 +15,44 @@ __pycache__/
 # ── Secrets & local config (NEVER commit) ──
 k8s/secret.yaml
 k8s/secret-backup/
+weco_deploy_key
+weco_deploy_key.pub
 
-# ── Project-specific ignores ──
-demo/eqn/
-tmp/
+# ── Binary / generated artifacts ──
 *.pptx
 *.epc
 *.h5
-*.xml 
+*.zip
+*.xml
 *.bak
+
+# ── Project-specific ignores ──
+demo/eqn/
+demo/preship
+tmp/
 test/_pg_vs_rest_output
+
+# ── Demo output directories ──
 demo/drogonresqml/demo_records
 demo/drogonresqml/drogon_demo_records.json
-demo/drogon_dg2/records
-demo/drogon/records
-demo/preship
 demo/drogonresqml/drogon
 demo/drogonresqml/drogon_osdu
 demo/drogonresqml/drogon_dg_export
 demo/drogonresqml/structural_records
-demo/drogonresqml/.etp_token
 demo/drogonresqml/*_records.json
+demo/drogon_dg2/records
+demo/drogon/records
 
-# ── Generated manifests (instance-specific, rebuilt by scripts) ──
+# ── Generated manifests & ETP tokens (instance-specific, rebuilt by scripts) ──
 demo/drogonresqml/manifest_*.json
+demo/drogonresqml/.etp_token
+demo/drogonresqml22/manifest_*.json
+demo/drogonresqml22/.etp_token
+
+# ── Local runtime artifacts ──
+ores_tokens.db
 ores_tokens.db-shm
 ores_tokens.db-wal
 log.txt
+out.txt
 Readme.comm.md
-# Deploy keys (never commit)
-weco_deploy_key
-weco_deploy_key.pub

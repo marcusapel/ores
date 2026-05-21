@@ -120,6 +120,9 @@ def _build_redirect_uri(request: Request) -> str:
     """Build callback URI from the incoming request (works behind proxies / Codespaces)."""
     proto = request.headers.get("x-forwarded-proto", request.url.scheme)
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.hostname
+    # Normalize 127.0.0.1 → localhost so Azure AD redirect URI always matches
+    if host and host.startswith("127.0.0.1"):
+        host = host.replace("127.0.0.1", "localhost", 1)
     return f"{proto}://{host}/auth/callback"
 
 
