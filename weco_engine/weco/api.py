@@ -339,6 +339,62 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
     return rf, data, elapsed
 
 
+def _force_diverse_run(well_list, base_options: dict, n_diverse: int = 3):
+    """Run engine with multiple configurations to guarantee structural diversity.
+
+    Runs up to 3 configurations:
+      1. Base options (user/auto-suggested)
+      2. High gap-cost (forces results with fewer/no gaps)
+      3. Zero gap-cost (forces results with more gaps)
+
+    Returns merged diverse results sorted by cost.
+    """
+    configs = [
+        ("base", dict(base_options)),
+    ]
+
+    # Config 2: encourage gaps (lower gap cost)
+    gap_opts = dict(base_options)
+    gap_opts["const-gap-cost"] = 0.0
+    gap_opts.setdefault("nbr-cor", 30)
+    configs.append(("low-gap-cost", gap_opts))
+
+    # Config 3: discourage gaps (higher gap cost)
+    nogap_opts = dict(base_options)
+    nogap_opts["const-gap-cost"] = max(
+        float(base_options.get("const-gap-cost", 0.5)) * 3, 1.5
+    )
+    nogap_opts.setdefault("nbr-cor", 30)
+    configs.append(("high-gap-cost", nogap_opts))
+
+    all_results = []  # (cost, result_dict, config_name, topology)
+
+    for config_name, opts in configs:
+        try:
+            rf, data, elapsed = _run_engine(well_list, opts)
+            n_wells = rf.nbr_well()
+            n_res = min(10, rf.get_nbr_results())
+            results = _extract_results(rf, data, n_res)
+            for r in results:
+                sig = _topology_signature(rf, r.index, n_wells)
+                all_results.append((r.cost, r, config_name, sig))
+        except Exception:
+            continue
+
+    if not all_results:
+        return []
+
+    # Deduplicate by topology, keep lowest cost per signature
+    seen_sigs: dict = {}
+    for cost, result, cname, sig in sorted(all_results, key=lambda x: x[0]):
+        if sig not in seen_sigs:
+            seen_sigs[sig] = (result, cname)
+            if len(seen_sigs) >= n_diverse:
+                break
+
+    return [(r, cname) for r, cname in seen_sigs.values()]
+
+
 def _topology_signature(rf, result_idx: int, n_wells: int) -> tuple:
     """Compute a compact topology signature for a correlation result.
 
@@ -364,6 +420,42 @@ def _topology_signature(rf, result_idx: int, n_wells: int) -> tuple:
         bucket = 0 if frac < 0.05 else (1 if frac < 0.15 else (2 if frac < 0.3 else 3))
         sig_parts.append(bucket)
     return tuple(sig_parts)
+
+
+def _label_scenario(sig: tuple) -> str:
+    """Classify a topology signature into a named geological scenario.
+
+    Returns a human-readable scenario label based on the gap pattern:
+    - "Layer-cake": all wells track together (no/minimal gaps)
+    - "Pinch-out": one or few wells have significant gaps (sediment thinning)
+    - "Unconformity": most wells have gaps (erosional surface)
+    - "Condensed": all wells have moderate gaps (low sedimentation)
+    - "Complex": mixed/irregular pattern
+    """
+    if not sig:
+        return "Unknown"
+
+    n_wells = len(sig)
+    n_no_gap = sum(1 for s in sig if s == 0)
+    n_few_gap = sum(1 for s in sig if s == 1)
+    n_mod_gap = sum(1 for s in sig if s == 2)
+    n_many_gap = sum(1 for s in sig if s == 3)
+    max_gap = max(sig)
+    mean_gap = sum(sig) / n_wells
+
+    if max_gap <= 0:
+        return "Layer-cake"
+    elif n_no_gap >= n_wells - 1 and max_gap >= 2:
+        return "Pinch-out"
+    elif n_many_gap >= n_wells * 0.6:
+        return "Unconformity"
+    elif n_no_gap >= n_wells * 0.5 and n_few_gap + n_mod_gap >= 1 and max_gap <= 1:
+        return "Onlap"
+    elif mean_gap >= 1.5 and max_gap - min(sig) <= 1:
+        return "Condensed"
+        return "Onlap"
+    else:
+        return "Complex"
 
 
 def _diverse_results(rf, data, n_best: int, n_diverse: int = None) -> List:
