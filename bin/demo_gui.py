@@ -522,7 +522,7 @@ def generate_plot(well_list, res_file, title, data_name=None, depth_name=None,
     facies_region = None
     if has_zones:
         facies_region = region_names[0]
-        facies_dict = FaciesDictionary.from_region_data(facies_region, wells)
+        facies_dict = FaciesDictionary.from_region_auto(facies_region, wells)
 
     # ── GridSpec layout: [facies|log | gap | facies|log | gap | ...] ──
     # Each well = thin facies strip + log track; gap corridors between

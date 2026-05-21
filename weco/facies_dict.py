@@ -87,6 +87,28 @@ REGION_LITHO_HINTS: Dict[str, Dict[int, str]] = {
     "HYDRO": {0: "shale", 1: "sandstone", 2: "limestone"},  # hydrostratigraphic
 }
 
+#: Standard lithology integer code tables used in well logs.
+#: Multiple conventions exist; we try each and pick the best match.
+_LITHO_CODE_TABLES: Dict[str, Dict[int, str]] = {
+    "npd": {  # Norwegian Petroleum Directorate / NPD convention
+        1: "sandstone", 2: "shale", 3: "limestone", 4: "dolomite",
+        5: "siltstone", 6: "marl", 7: "coal", 8: "conglomerate",
+        9: "chalk", 10: "anhydrite", 11: "halite", 12: "tuff",
+        13: "claystone", 14: "mudstone", 15: "basalt",
+    },
+    "cgd": {  # Common Geologic Data codes (North Sea convention)
+        0: "shale", 1: "sandstone", 2: "siltstone", 3: "limestone",
+        4: "dolomite", 5: "coal", 6: "marl", 7: "chalk",
+        8: "anhydrite", 9: "conglomerate", 10: "halite",
+    },
+    "simple": {  # Simplified 3-class (common in facies models)
+        0: "shale", 1: "sandstone", 2: "limestone",
+    },
+    "binary": {  # Sand/shale binary (common in net-to-gross)
+        0: "shale", 1: "sandstone",
+    },
+}
+
 
 @dataclass
 class FaciesEntry:
@@ -204,4 +226,69 @@ class FaciesDictionary:
             litho = data.get("LithologyType", data.get("lithology", ""))
             desc = data.get("Description", data.get("description", ""))
             fd.add(zid, name=name, color=color, lithology=litho, description=desc)
+        return fd
+
+    @classmethod
+    def from_region_auto(cls, region_name: str,
+                         wells) -> "FaciesDictionary":
+        """Auto-detect facies from region values by matching to code tables.
+
+        Scans all zone IDs across wells and tries to match them against known
+        lithology code conventions (NPD, CGD, simple, binary). Picks the table
+        that covers the most observed zone IDs.
+
+        Args:
+            region_name: Name of the region channel.
+            wells: Sequence of Well objects with .region attribute.
+
+        Returns:
+            FaciesDictionary with auto-detected lithology assignments.
+        """
+        # Collect all unique zone IDs
+        zone_ids: set = set()
+        for well in wells:
+            if hasattr(well, 'region') and region_name in well.region:
+                for entry in well.region[region_name]:
+                    if isinstance(entry, (list, tuple)) and len(entry) >= 1:
+                        if entry[0] is not None:
+                            zone_ids.add(int(entry[0]))
+
+        if not zone_ids:
+            return cls(region_name=region_name)
+
+        # Check explicit hints first
+        upper_name = region_name.upper()
+        for hint_key, hint_map in REGION_LITHO_HINTS.items():
+            if hint_key in upper_name and hint_map:
+                fd = cls(region_name=region_name)
+                for zid in sorted(zone_ids):
+                    litho = hint_map.get(zid, "")
+                    fd.add(zid, lithology=litho,
+                           name=litho.capitalize() if litho else str(zid))
+                return fd
+
+        # Try each code table, pick the one with best coverage
+        best_table = ""
+        best_coverage = 0.0
+        for table_name, table in _LITHO_CODE_TABLES.items():
+            matched = sum(1 for zid in zone_ids if zid in table)
+            coverage = matched / len(zone_ids) if zone_ids else 0
+            if coverage > best_coverage:
+                best_coverage = coverage
+                best_table = table_name
+
+        fd = cls(region_name=region_name)
+
+        if best_coverage >= 0.5 and best_table:
+            # Good enough match — apply the code table
+            table = _LITHO_CODE_TABLES[best_table]
+            for zid in sorted(zone_ids):
+                litho = table.get(zid, "")
+                name = litho.capitalize() if litho else f"Zone {zid}"
+                fd.add(zid, name=name, lithology=litho)
+        else:
+            # No good match — fall back to default colours
+            for zid in sorted(zone_ids):
+                fd.add(zid)
+
         return fd
