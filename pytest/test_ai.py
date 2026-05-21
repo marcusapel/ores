@@ -18,6 +18,8 @@ import tempfile
 import numpy as np
 import pytest
 
+sklearn = pytest.importorskip("sklearn", reason="scikit-learn not installed (pip install weco[ai])")
+
 from weco.data import Well, WellList
 
 

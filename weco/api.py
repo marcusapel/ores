@@ -929,6 +929,20 @@ def _get_demo_opts(demo_id: str) -> dict:
     return _DEMO_OPTS.get(demo_id, {})
 
 
+def _get_demo_ai_opts(demo_id: str) -> dict:
+    """Per-demo AI feature settings (which features to enable)."""
+    _AI_DEFAULTS = {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False}
+    _AI_DEMO_OPTS = {
+        "coal": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": True},
+        "quaternary": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": True},
+        "shallow_marine": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": False},
+        "fluvial": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": False},
+        "delta": {"quality": True, "anomaly": False, "uncertainty": True, "log_qc": False},
+        "bryson": {"quality": True, "anomaly": True, "uncertainty": False, "log_qc": False},
+    }
+    return {**_AI_DEFAULTS, **_AI_DEMO_OPTS.get(demo_id, {})}
+
+
 @app.post("/run/demo", response_model=RunResponse, tags=["demos"])
 def run_demo(req: DemoRunRequest):
     """Run a built-in demo dataset with geology-specific default options."""
