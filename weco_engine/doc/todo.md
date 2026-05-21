@@ -163,10 +163,10 @@ User uploads wells (or selects demo)
 - ~~W1: Quick Run mode~~ ✅ Done — "⚡ Quick Run" button calls `/auto` endpoint, skips Params tab
 - ~~W3: Iterative auto-refinement~~ ✅ Done — built into `/auto` endpoint quality-gate logic
 - ~~D3: Diversity score column~~ ✅ Done — `diversity_score` field in RunResult (topology distance)
-- V2: Zone name labels
+- ~~V2: Zone name labels~~ ✅ Done — `from_region_auto()` + get_label() shows lithology names in facies strip
 - V4: Composite 3-result view
-- F3: Auto-detect facies from region values
-- F4: OSDU facies lookup
+- ~~F3: Auto-detect facies from region values~~ ✅ Done — `from_region_auto()` matches NPD/CGD/simple code tables
+- ~~F4: OSDU facies lookup~~ ✅ Done — `/facies-dict/{region}` endpoint + `from_osdu_units()` classmethod ready
 - ~~A1: Unified `/auto` endpoint~~ ✅ Done — suggest→run→quality-gate→diversify pipeline
 - ~~A2: Environment detection from logs~~ ✅ Done — `detect_environment_from_logs()` in depenv.py
 - ~~A4: Quality threshold gate~~ ✅ Done — integrated in `/auto` endpoint
