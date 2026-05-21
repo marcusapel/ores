@@ -1056,22 +1056,37 @@ async def weco_auto(request: Request):
                 log.exception(f"Auto-correlate: fallback also failed: {fallback_exc}")
                 raise HTTPException(500, f"Correlation failed: {engine_error} (fallback: {fallback_exc})")
 
-        # 5. Extract diverse results with scenario labels
-        diverse_indices = _diverse_results(rf, data, n_best=50, n_diverse=5)
-        results = _extract_results(rf, data, 50)
-        result_map = {r.index: r for r in results}
+        # 5. Extract diverse results via multi-config force-diverse run
+        from weco.api import _force_diverse_run
+        force_diverse = _force_diverse_run(wl, options, n_diverse=5)
 
-        diverse_results = []
-        for idx in diverse_indices:
-            r = result_map.get(idx)
-            if r:
-                sig = _topology_signature(rf, idx, rf.nbr_well())
-                scenario = _label_scenario(sig)
-                diverse_results.append({
-                    **(r.model_dump() if hasattr(r, "model_dump") else r.dict()),
-                    "topology": "-".join(str(s) for s in sig),
-                    "scenario": scenario,
-                })
+        if force_diverse:
+            # _force_diverse_run returns [(RunResult, config_name, topology_sig), ...]
+            diverse_results = []
+            for r, config_name, sig in force_diverse:
+                scenario = _label_scenario(sig) if sig else config_name
+                entry = r.model_dump() if hasattr(r, "model_dump") else r.dict()
+                entry["topology"] = "-".join(str(s) for s in sig) if sig else config_name
+                entry["scenario"] = scenario
+                entry["config"] = config_name
+                diverse_results.append(entry)
+        else:
+            # Fallback: use single-run diversity
+            diverse_indices = _diverse_results(rf, data, n_best=50, n_diverse=5)
+            results = _extract_results(rf, data, 50)
+            result_map = {r.index: r for r in results}
+
+            diverse_results = []
+            for idx in diverse_indices:
+                r = result_map.get(idx)
+                if r:
+                    sig = _topology_signature(rf, idx, rf.nbr_well())
+                    scenario = _label_scenario(sig)
+                    diverse_results.append({
+                        **(r.model_dump() if hasattr(r, "model_dump") else r.dict()),
+                        "topology": "-".join(str(s) for s in sig),
+                        "scenario": scenario,
+                    })
 
         wells_plot_data = _build_wells_plot_data(wl)
 
