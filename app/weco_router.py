@@ -979,8 +979,25 @@ async def weco_auto(request: Request):
     """Quick Run: auto-suggest params → run → quality-gate → diverse results.
 
     Uses cached wells from /import or a demo selection. Zero-config correlation.
+    Accepts optional {demo_id: "..."} to apply demo-specific options.
     """
     global _cached_well_list, _cached_res_file
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    demo_id = body.get("demo_id") if body else None
+
+    # If a demo_id is provided and no wells are cached, load the demo wells
+    if demo_id and _cached_well_list is None:
+        from weco.api import list_demos, _load_well_list
+        demo_list = list_demos().demos
+        for d in demo_list:
+            if d.id == demo_id:
+                _cached_well_list = _load_well_list(d.wells)
+                break
 
     if _cached_well_list is None:
         raise HTTPException(400, "No wells loaded. Call /weco/import first.")
@@ -991,12 +1008,21 @@ async def weco_auto(request: Request):
     try:
         from weco.api import (_suggest_defaults_for_wells, _run_engine,
                               _extract_results, _diverse_results,
-                              _topology_signature, _label_scenario)
+                              _topology_signature, _label_scenario,
+                              _get_demo_opts)
         from weco.depenv import (detect_environment_from_logs,
                                  detect_environment_from_metadata, suggest_options)
 
-        # 1. Suggest defaults
-        options, reasoning = _suggest_defaults_for_wells(wl)
+        # 1. Suggest defaults — use demo-specific options if available
+        if demo_id:
+            demo_opts = _get_demo_opts(demo_id)
+            if demo_opts:
+                options = dict(demo_opts)
+                reasoning = {"source": "demo", "demo_id": demo_id}
+            else:
+                options, reasoning = _suggest_defaults_for_wells(wl)
+        else:
+            options, reasoning = _suggest_defaults_for_wells(wl)
 
         # 2. Detect environment: metadata first, then logs fallback
         try:

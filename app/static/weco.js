@@ -613,12 +613,15 @@
     engineLog.textContent = '⚡ Quick Run: auto-detecting parameters...\n';
 
     try {
-      const data = await api('POST', '/auto', {});
+      const payload = selectedDemo ? {demo_id: selectedDemo} : {};
+      const data = await api('POST', '/auto', payload);
       correlationResult = data;
       if (data.wells_plot_data) wellDetails = data.wells_plot_data;
-      engineLog.textContent += `\nEnvironment: ${data.reasoning?.detected_environment || 'auto'}\n`;
+      engineLog.textContent += `\nEnvironment: ${data.reasoning?.detected_environment || data.reasoning?.source || 'auto'}\n`;
       engineLog.textContent += `Options: ${JSON.stringify(data.suggested_options)}\n`;
       engineLog.textContent += `Completed: ${data.n_results} diverse solutions in ${data.elapsed_ms} ms\n`;
+      // Update parameters form to reflect actual options used
+      if (data.suggested_options) applyOptionsToForm(data.suggested_options);
       showResults(data);
       enableResultsTabs();
       switchTab('results');
