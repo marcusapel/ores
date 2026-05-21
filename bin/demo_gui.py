@@ -72,6 +72,37 @@ AI_DEFAULTS = {
     "log_qc": False,       # LogQC preprocessing (washout, impute, normalise)
 }
 
+# Parameter help text (tooltips) — geological context for each engine option
+PARAM_HELP = {
+    "var_data": "Primary log curve for correlation cost (e.g. GR, DEN, NPHI).\nThe engine computes variance-based DTW cost from this curve.",
+    "var_data2": "Second log curve (multi-log correlation). Combined with var_weight2.",
+    "var_data3": "Third log curve. Useful for multi-attribute correlation.",
+    "var_data4": "Fourth log curve (rarely needed).",
+    "var_data5": "Fifth log curve (rarely needed).",
+    "var_weight": "Weight [0–5] for primary log. Higher = more influence on cost.\n1.0 = standard. Use >1 for dominant logs (e.g. GR in clastic).",
+    "var_weight2": "Weight for second log curve.",
+    "var_weight3": "Weight for third log curve.",
+    "var_weight4": "Weight for fourth log curve.",
+    "var_weight5": "Weight for fifth log curve.",
+    "const_gap_cost": "Penalty for introducing a gap (hiatus/non-deposition).\n0 = gaps are free → many hiatuses.\nHigher (3–8) = penalise gaps → more 1:1 matching.\nGeology: use low for fluvial/discontinuous, high for marine/layer-cake.",
+    "band_width": "DTW band-width constraint (% of well length).\nLimits how far a correlation can deviate from diagonal.\n10–30 typical. Narrow = faster but may miss large thickness changes.",
+    "min_dist": "Minimum distance between consecutive correlation points (fraction).\nPrevents over-correlating thin beds. 0.05–0.2 typical.",
+    "out_min_dist": "Minimum distance for output correlation points.\nControls density of output markers. Usually ≤ min_dist.",
+    "nbr_cor": "Number of correlation lines to compute internally.\nHigher = more detail but slower. 50–200 typical.",
+    "out_nbr_cor": "Number of correlation lines to OUTPUT (k-best).\nk-best results capture geological uncertainty.\n5–20 typical for exploration; 1 for production.",
+    "max_cor": "Maximum correlation lines allowed.\nSafety cap for memory. 100–500 typical.",
+    "order": "Well ordering strategy for multi-well correlation.\n• linear: left-to-right as given\n• pyramidal: center-out (recommended for >4 wells)\n• position: by geographic X coordinate\n• distality: proximal→distal (requires distality data)\n• inverse: reverse of linear",
+    "no_crossing": "Region name for no-crossing constraint.\nCorrelation lines cannot cross boundaries of this region.\nUseful for biozones, sequence boundaries, dated markers.",
+    "no_crossing2": "Second no-crossing region (additional constraint).",
+    "no_crossing3": "Third no-crossing region.",
+    "same_region": "Region where correlated points must share the same label.\nForces correlation within same litho/bio unit.",
+    "dist_distal": "Region name containing distality labels (e.g. DISTAL).\nUsed by Walther's Law cost — penalises correlating unlike facies belts.",
+    "dist_facies": "Region name containing facies for distality cost.\nFacies identity determines the cost penalty across wells.",
+    "dist_scaling": "Scaling factor for distality cost contribution.\n0 = disabled, 1.0 = full weight. Controls how strongly\nfacies mismatch is penalised.",
+    "gap_cost_func": "Gap cost function shape: '' (constant), 'linear', 'sigmoid'.\nControls how gap penalty varies with gap size.",
+    "cost_floor": "Minimum cost value (floor). Prevents zero-cost matches\nfrom dominating. Useful when log values are very similar.",
+}
+
 DATASETS = {
     # ── Concept Demos (real data, teaching distality/gap cost) ────────
     "1_distality": {
@@ -1103,6 +1134,8 @@ class DemoRunnerWindow(QMainWindow):
                 w = QLineEdit(str(val))
 
             label = key.replace("_", " ").title()
+            if key in PARAM_HELP:
+                w.setToolTip(PARAM_HELP[key])
             layout.addRow(label + ":", w)
             self.param_widgets[key] = w
 

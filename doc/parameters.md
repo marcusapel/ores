@@ -648,6 +648,78 @@ wl.write("test_wells.txt")
 
 ---
 
+## 16. AI Features (optional — requires `pip install weco[ai]`)
+
+WeCo includes optional AI-powered preprocessing and postprocessing modules
+that enhance correlation quality and provide quantitative assessment.
+
+### Preprocessing
+
+| Feature | Module | Purpose |
+|---------|--------|---------|
+| **Log QC** | `weco.ai.log_qc.LogQC` | Detect washout zones, impute missing values, cross-well normalisation |
+| **Facies Prediction** | `weco.ai.facies_predict.FaciesPredictor` | GBM-based facies from logs — enables distality cost without manual picks |
+| **Auto-Tune** | `weco.ai.auto_tune.AutoTuner` | Differential-evolution optimisation of engine parameters against a reference |
+
+### Postprocessing
+
+| Feature | Module | Purpose |
+|---------|--------|---------|
+| **Quality Scoring** | `weco.ai.quality.CorrelationQuality` | Multi-criteria score (cost, gaps, similarity, density, geometry) per result |
+| **Anomaly Detection** | `weco.ai.anomaly.CorrelationAnomalyDetector` | Isolation-Forest flagging of suspicious correlation lines |
+| **Uncertainty** | `weco.ai.uncertainty.CorrelationUncertainty` | N-best ensemble spread / Monte Carlo perturbation → per-marker confidence |
+| **Learned Cost** | `weco.ai.learned_cost.LearnedCostModel` | Train custom cost function from expert-labelled picks |
+
+### Per-Demo AI Settings
+
+Each demo dataset ships with recommended AI settings:
+
+| Demo | Quality | Anomaly | Uncertainty | Log QC |
+|------|:-------:|:-------:|:-----------:|:------:|
+| Coal Basin (10 wells) | ✓ | ✓ | ✓ | ✓ |
+| Quaternary (20 wells) | ✓ | ✓ | ✓ | ✓ |
+| Shallow Marine (10 wells) | ✓ | ✓ | ✓ | — |
+| Fluvial (12 wells) | ✓ | ✓ | ✓ | — |
+| Delta (8 wells) | ✓ | — | ✓ | — |
+| Bryson (7 wells) | ✓ | ✓ | — | — |
+| Distality (2 wells) | ✓ | — | — | — |
+| Sigrun (2 wells) | ✓ | — | — | — |
+| Troll (5 wells) | ✓ | — | — | — |
+
+### API Usage
+
+```python
+from weco.ai.quality import CorrelationQuality
+from weco.ai.anomaly import CorrelationAnomalyDetector
+from weco.ai.uncertainty import CorrelationUncertainty
+
+# After running correlation:
+cq = CorrelationQuality(res_file, well_list)
+scores = cq.score_all()  # list of QualityScore for each result
+
+det = CorrelationAnomalyDetector(res_file, well_list)
+flags = det.flag(cor_index=0)  # list of AnomalyFlag per line
+
+cu = CorrelationUncertainty(res_file, well_list)
+summary = cu.summary(top_n=10)  # UncertaintySummary
+```
+
+### Web API
+
+```
+POST /weco/ai/analyse
+{
+  "quality": true,
+  "anomaly": true,
+  "uncertainty": true,
+  "cor_index": 0
+}
+```
+
+Returns structured JSON with quality scores, anomaly flags, and uncertainty metrics.
+
+---
+
 ## Appendix: Complete Parameter Table
 
 | Parameter | Type | Default | Category |
