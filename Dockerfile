@@ -17,7 +17,7 @@ RUN python -m venv /opt/venv \
 COPY weco_engine/pyproject.toml /build/weco_engine/pyproject.toml
 COPY weco_engine/ /build/weco_engine/
 RUN /opt/venv/bin/pip install --no-cache-dir scikit-build-core pybind11 \
-    && /opt/venv/bin/pip install --no-cache-dir /build/weco_engine/
+    && /opt/venv/bin/pip install --no-cache-dir "/build/weco_engine/[ai]"
 
 # ── Runtime stage ────────────────────────────────────────────────────
 FROM python:3.12-slim
