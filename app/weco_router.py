@@ -664,6 +664,180 @@ def weco_facies_dict(region_name: str):
         raise HTTPException(500, f"Facies dict error: {e}")
 
 
+# Cached strat column (loaded from JSON or OSDU)
+_cached_strat_column = None
+
+
+@router.post("/strat-column")
+def weco_load_strat_column(payload: dict):
+    """Load a stratigraphic column from JSON for rendering alongside wells.
+
+    Expected payload: {"name": "...", "ranks": [...], "horizons": [...]}
+    See StratColumn.from_dict() for format details.
+    """
+    global _cached_strat_column
+    try:
+        from weco.strat_column import StratColumn
+        col = StratColumn.from_dict(payload)
+        _cached_strat_column = col
+        # Return serialised for confirmation
+        units_count = sum(len(r.units) for r in col.ranks)
+        return {
+            "status": "ok",
+            "name": col.name,
+            "n_ranks": len(col.ranks),
+            "n_units": units_count,
+            "n_horizons": len(col.horizons),
+        }
+    except Exception as e:
+        raise HTTPException(400, f"Invalid strat column: {e}")
+
+
+@router.get("/strat-column")
+def weco_get_strat_column():
+    """Get the currently loaded strat column for plot rendering.
+
+    Returns units with colours and age ranges for canvas drawing.
+    """
+    global _cached_strat_column
+    if _cached_strat_column is None:
+        return {"loaded": False}
+
+    col = _cached_strat_column
+    ranks_data = []
+    for rank in col.ranks:
+        units_data = []
+        for u in rank.units:
+            units_data.append({
+                "name": u.name,
+                "color": u.color_html or "#CCCCCC",
+                "top_age_ma": u.top_age_ma,
+                "base_age_ma": u.base_age_ma,
+                "environment": u.depositional_environment,
+            })
+        ranks_data.append({
+            "name": rank.name,
+            "kind": rank.kind,
+            "units": units_data,
+        })
+    return {
+        "loaded": True,
+        "name": col.name,
+        "ranks": ranks_data,
+        "horizons": [{"name": h.name, "age_ma": h.age_ma} for h in col.horizons],
+    }
+
+
+@router.post("/strat-column/import")
+async def weco_import_strat_column(request: Request):
+    """Import a lithostratigraphic column from OSDU/RDDMS.
+
+    Queries for StratigraphicColumn or LocalStratigraphicColumn resources
+    in the active dataspace and builds a StratColumn.
+    """
+    global _cached_strat_column
+
+    token = _get_token(request)
+    if not token:
+        raise HTTPException(401, "No access token. Log in to OSDU first.")
+
+    dataspace = os.environ.get("DEFAULT_DATASPACE", "default")
+    ds_enc = dataspace.replace("/", "%2F")
+
+    try:
+        from . import osdu
+        from weco.strat_column import StratColumn, StratRank, StratUnit
+
+        # Try RESQML StratigraphicColumn type first
+        STRAT_TYPES = [
+            "resqml20.obj.StratigraphicColumn",
+            "resqml20.obj.StratigraphicColumnRankInterpretation",
+        ]
+
+        all_units = []
+        for stype in STRAT_TYPES:
+            try:
+                resources = await osdu.list_resources(token, ds_enc, stype)
+                for res in resources:
+                    data = res.get("data", res)
+                    name = data.get("Name", data.get("Citation", {}).get("Title", ""))
+                    age_top = data.get("OlderAge") or data.get("TopAge")
+                    age_base = data.get("YoungerAge") or data.get("BaseAge")
+                    color = data.get("ColorCode")
+                    env = data.get("DepositionEnvironment") or data.get("GeologicUnitComposition")
+                    all_units.append(StratUnit(
+                        name=name or "Unknown",
+                        top_age_ma=float(age_top) if age_top else None,
+                        base_age_ma=float(age_base) if age_base else None,
+                        color_html=color,
+                        depositional_environment=env,
+                    ))
+            except Exception:
+                continue
+
+        if not all_units:
+            return {"status": "empty", "message": "No stratigraphic column data found in RDDMS"}
+
+        # Build column
+        rank = StratRank(name="Lithostratigraphy", kind="litho", units=all_units)
+        col = StratColumn(name=f"OSDU ({dataspace})", ranks=[rank])
+        _cached_strat_column = col
+
+        return {
+            "status": "ok",
+            "name": col.name,
+            "n_units": len(all_units),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Strat column import error: {e}")
+
+
+@router.get("/wheeler/{result_idx}")
+def weco_wheeler(result_idx: int):
+    """Get Wheeler-style gap analysis for a correlation result.
+
+    Returns per-well gap/presence data for rendering a stratigraphic
+    gap diagram (which units are missing where).
+    """
+    global _cached_well_list, _cached_res_file
+
+    if _cached_well_list is None or _cached_res_file is None:
+        raise HTTPException(400, "No results available. Run correlation first.")
+
+    try:
+        from weco.api import _extract_results, _wheeler_gap_analysis
+
+        results = _extract_results(_cached_res_file, None, result_idx + 1)
+        if result_idx >= len(results):
+            raise HTTPException(404, f"Result #{result_idx} not found")
+
+        result = results[result_idx]
+        well_names = [w.name for w in _cached_well_list.wells]
+        analysis = _wheeler_gap_analysis(result, well_names)
+
+        # Include strat column if loaded
+        strat_info = None
+        if _cached_strat_column:
+            strat_info = {
+                "name": _cached_strat_column.name,
+                "horizons": [{"name": h.name, "age_ma": h.age_ma}
+                             for h in _cached_strat_column.horizons],
+            }
+
+        return {
+            "result_idx": result_idx,
+            "cost": result.cost,
+            **analysis,
+            "strat_column": strat_info,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Wheeler analysis error: {e}")
+
+
 def _apply_memory_guards(options: dict, n_wells: int) -> dict:
     """Enforce safe parameter limits to prevent OOM on Radix (2Gi container)."""
     opts = dict(options)
@@ -800,14 +974,21 @@ async def weco_auto(request: Request):
         from weco.api import (_suggest_defaults_for_wells, _run_engine,
                               _extract_results, _diverse_results,
                               _topology_signature, _label_scenario)
-        from weco.depenv import detect_environment_from_logs, suggest_options
+        from weco.depenv import (detect_environment_from_logs,
+                                 detect_environment_from_metadata, suggest_options)
 
         # 1. Suggest defaults
         options, reasoning = _suggest_defaults_for_wells(wl)
 
-        # 2. Detect environment and apply preset
+        # 2. Detect environment: metadata first, then logs fallback
         try:
-            env_key = detect_environment_from_logs(wl)
+            env_key = detect_environment_from_metadata(wl)
+            if env_key:
+                reasoning["env_source"] = "metadata"
+            else:
+                env_key = detect_environment_from_logs(wl)
+                if env_key:
+                    reasoning["env_source"] = "logs"
             if env_key:
                 env_opts = suggest_options(env_key, data_names=wl.get_data_names())
                 for k, v in env_opts.items():
