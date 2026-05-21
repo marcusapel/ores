@@ -224,3 +224,20 @@ Documented in `doc/parameters.md` §6 "⚠️ Circularity warning".
 Clicking a demo card now triggers `quickRun()` immediately after wells are loaded.
 Flow: click card → load wells → auto-detect params → run → show results.
 Single click = full result.
+
+---
+
+## 8. P3 — Quality & Robustness
+
+| ID | Task | Priority | Notes |
+|----|------|----------|-------|
+| T1 | **Unit tests for `facies_dict.py`** | P3 | FaciesDictionary, from_region_auto, from_osdu_units, palettes | ✅ Done |
+| T2 | **Unit tests for API utils** (`_label_scenario`, `_check_facies_independence`, `_wheeler_gap_analysis`) | P3 | Edge cases: empty input, single well, all-gap | ✅ Done |
+| T3 | **Fix `_check_facies_independence` edge case**: empty region returns False → should return True | P3 | Found via tests; fixed by early-return when no facies values collected | ✅ Done |
+| E1 | **RDDMS export implementation** | P3 | Transactional API: begin_tx → PUT WellboreMarkerFrame per well → commit | ✅ Done |
+| E2 | **Export UI button** in web client: "Export to RDDMS" after results shown | P3 | Calls `/weco/export`, shows success/failure toast |
+| R1 | **Performance benchmarking**: automated timing of `/auto` for each demo dataset | P3 | Track regression in correlation time |
+| R2 | **Error recovery in `/auto`**: if engine crashes, return partial results + error detail | P3 | Currently throws 500; should degrade gracefully |
+| R3 | **Correlation result caching**: avoid re-running if same wells+options as last run | P3 | Hash(well_list + options) → cached result |
+| Q1 | **Integration test for full `/auto` pipeline** | P3 | End-to-end: load demo → auto → verify result structure |
+| Q2 | **Web client accessibility**: keyboard navigation for result tabs, ARIA labels | P3 | |
