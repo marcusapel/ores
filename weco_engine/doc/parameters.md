@@ -354,6 +354,41 @@ palaeo-position are expected to be thinner.
 2. **Facies region:** Assign each sample an environment code from deepest (1) to shallowest (n).
    Example: 1=basinal, 2=outer shelf, 3=inner shelf, 4=coastal.
 
+### ⚠️ Circularity warning: facies derived from the correlation variable
+
+**Problem:** If the `dist-facies` region was created by thresholding or classifying
+the same log used as `var-data` (e.g., GR > 75 → "shale", GR ≤ 75 → "sand"),
+then the distality constraint introduces **circular reasoning**:
+
+1. The engine correlates on GR waveform similarity (primary cost).
+2. The distality cost penalises positions where GR-derived facies differ.
+3. Both signals contain the **same information** → double-counting.
+
+**Consequences:**
+- Over-constrained solution space (fewer valid paths explored)
+- Reduced diversity (topologically different solutions are penalised)
+- False confidence (seems like two independent evidence lines agree)
+- Noise amplification (if the facies classification has threshold artifacts,
+  those artifacts get reinforced in the correlation)
+
+**When `dist-facies` is valid (independent source):**
+- Core descriptions or thin-section analysis
+- Expert sedimentological interpretation
+- Multi-log facies classification (e.g., GR + DEN + NEU) when only GR is `var-data`
+- Biostratigraphic facies zones (biofacies)
+- Seismic facies interpretation
+
+**When to avoid `dist-facies` (dependent / circular):**
+- Binary sand/shale from a GR cutoff
+- Any single-log threshold classification using the same log as `var-data`
+- Automatically generated facies with no independent evidence
+
+**Auto-detection:** The `_suggest_defaults_for_wells()` function checks for
+circularity before enabling distality. It skips `dist-facies` when:
+- The facies region has ≤2 unique values AND `var-data` is GR (likely a cutoff)
+- Facies transitions cluster at a single `var-data` value (coefficient of
+  variation < 0.25 at transition points)
+
 ---
 
 ## 7. Polarity

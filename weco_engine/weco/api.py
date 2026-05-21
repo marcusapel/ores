@@ -458,6 +458,49 @@ def _label_scenario(sig: tuple) -> str:
         return "Complex"
 
 
+def _wheeler_gap_analysis(result: "RunResult", well_names: List[str]) -> dict:
+    """Compute Wheeler-style gap analysis from a correlation result.
+
+    For each well, identifies which correlation intervals are present (correlated)
+    and which are gaps (well stays stationary while others advance).
+
+    Returns a dict with per-well gap information suitable for rendering
+    a Wheeler diagram style visualization.
+    """
+    n_wells = len(well_names)
+    if not result.lines:
+        return {"wells": {name: {"gaps": [], "present": []} for name in well_names}}
+
+    # Sort lines by average marker index (depth order)
+    sorted_lines = sorted(result.lines, key=lambda l: sum(l.markers) / max(len(l.markers), 1))
+
+    # For each consecutive pair of correlation lines, determine if each well
+    # has a gap (markers are the same = well didn't advance)
+    well_analysis = {name: {"gaps": [], "present": [], "gap_fraction": 0.0}
+                     for name in well_names}
+
+    for li in range(len(sorted_lines) - 1):
+        top_line = sorted_lines[li]
+        base_line = sorted_lines[li + 1]
+
+        for wi in range(min(n_wells, len(top_line.markers), len(base_line.markers))):
+            interval = {"top_idx": top_line.markers[wi], "base_idx": base_line.markers[wi],
+                        "interval": li}
+            thickness = base_line.markers[wi] - top_line.markers[wi]
+            name = well_names[wi]
+            if thickness <= 0:
+                well_analysis[name]["gaps"].append(interval)
+            else:
+                well_analysis[name]["present"].append(interval)
+
+    # Compute gap fractions
+    n_intervals = max(1, len(sorted_lines) - 1)
+    for name in well_names:
+        well_analysis[name]["gap_fraction"] = len(well_analysis[name]["gaps"]) / n_intervals
+
+    return {"wells": well_analysis, "n_intervals": n_intervals}
+
+
 def _diverse_results(rf, data, n_best: int, n_diverse: int = None) -> List:
     """Select structurally diverse results from the full k-best set.
 
@@ -797,6 +840,76 @@ _CONSTRAINT_REGIONS = {
 }
 
 
+def _check_facies_independence(wl, facies_region: str, var_data: str) -> bool:
+    """Check whether a facies region is likely independent of the primary log.
+
+    Returns True if the facies data appears to be an independent interpretation
+    (safe to use as a constraint), False if it appears derived from the same
+    log being used for correlation (circular → skip).
+
+    Heuristic checks:
+    1. If var-data is empty or facies region not found → True (no circularity)
+    2. If facies has only 2 unique values and var-data is GR-like → likely a
+       sand/shale cutoff → False
+    3. If facies transitions correlate strongly with var-data threshold crossings
+       → derived → False
+    4. If facies has ≥4 unique values → likely expert/multi-source → True
+    """
+    if not var_data:
+        return True
+
+    wells = wl.wells
+    n_facies_values = set()
+    transition_count = 0
+    var_at_transitions = []
+
+    for w in wells:
+        if not hasattr(w, 'region') or facies_region not in w.region:
+            continue
+        if var_data not in w.data:
+            continue
+
+        # Count unique facies values
+        for entry in w.region[facies_region]:
+            if isinstance(entry, (list, tuple)) and len(entry) >= 1 and entry[0] is not None:
+                n_facies_values.add(int(entry[0]))
+
+        # Check if facies transitions align with var-data threshold crossings
+        var_vals = w.data[var_data]
+        regions = w.region[facies_region]
+
+        for entry in regions:
+            if isinstance(entry, (list, tuple)) and len(entry) >= 3:
+                start_idx = entry[1]
+                if 0 < start_idx < len(var_vals):
+                    var_at_transitions.append(var_vals[start_idx])
+                    transition_count += 1
+
+    # Heuristic 1: Many unique facies values → likely independent
+    if len(n_facies_values) >= 4:
+        return True
+
+    # Heuristic 2: Binary facies + GR-like var-data → probably a cutoff
+    _GR_NAMES = {"GR", "gr", "Gr", "GAMMA", "gamma", "SGR", "CGR"}
+    if len(n_facies_values) <= 2 and var_data in _GR_NAMES:
+        return False
+
+    # Heuristic 3: Check if facies transitions cluster at a single var-data value
+    # (indicating a simple threshold cutoff)
+    if var_at_transitions and transition_count >= 5:
+        import numpy as np
+        vals = np.array(var_at_transitions, dtype=float)
+        vals = vals[np.isfinite(vals)]
+        if len(vals) >= 5:
+            cv = np.std(vals) / max(abs(np.mean(vals)), 1e-6)
+            # Low coefficient of variation → transitions all at same threshold
+            if cv < 0.25:
+                return False
+
+    # Default: assume independent (conservative — don't suppress user's data)
+    return True
+
+
 def _suggest_defaults_for_wells(wl) -> tuple:
     """Analyse a WellList and suggest optimal defaults.
 
@@ -853,24 +966,49 @@ def _suggest_defaults_for_wells(wl) -> tuple:
     # Users can enable it manually if their data supports it.
 
     # --- Auto-enable distality cost if FACIES-like regions present ---
+    # IMPORTANT: Only enable if the facies data is plausibly INDEPENDENT of
+    # the primary correlation variable (var-data). If the facies are derived
+    # from the same log (e.g., GR threshold → sand/shale binary), enabling
+    # dist-facies creates circular reasoning: the engine correlates on GR
+    # waveform similarity AND penalises mismatched GR-derived facies, which
+    # double-counts the same signal. This over-constrains solutions and
+    # produces false confidence in results.
+    #
+    # Independence heuristic:
+    #   - If facies has ≤2 unique values AND var-data is GR → likely a cutoff
+    #   - If facies varies exactly at GR inflection points → derived
+    #   - If both DISTAL and FACIES regions exist → likely expert interpretation
+    #     (independent), safe to use
+    #   - If only FACIES exists without DISTAL → probably log-derived, skip
     _DIST_DISTAL_HINTS = {"DISTAL", "DISTALITY", "DIST"}
     _DIST_FACIES_HINTS = {"FACIES", "FACIES_1", "LITHO_FACIES", "DEP_FACIES",
                           "DEPOSITIONAL_FACIES", "LITH_FACIES"}
     distal_match = next((r for r in region_names if r.upper() in _DIST_DISTAL_HINTS), None)
     facies_match = next((r for r in region_names if r.upper() in _DIST_FACIES_HINTS), None)
+
     if distal_match and facies_match:
-        options["dist-distal"] = distal_match
-        options["dist-facies"] = facies_match
-        options["dist-scaling"] = 1.0
-        options["cost-function"] = "composite"
-        options.setdefault("order", "distality")
-        # Remove no-crossing — incompatible with distality ordering
-        options.pop("no-crossing", None)
-        reasoning.pop("no-crossing", None)
-        reasoning["dist-distal"] = f"DISTAL region '{distal_match}' detected → distality cost enabled"
-        reasoning["dist-facies"] = f"FACIES region '{facies_match}' paired for palaeogeographic cost"
-        reasoning["dist-scaling"] = "Default distality scaling factor"
-        reasoning["cost-function"] = "Composite cost required for distality"
+        # Both DISTAL and FACIES present → likely an expert interpretation
+        # (e.g., palaeogeographic model). Check independence before enabling.
+        facies_independent = _check_facies_independence(wl, facies_match, options.get("var-data", ""))
+
+        if facies_independent:
+            options["dist-distal"] = distal_match
+            options["dist-facies"] = facies_match
+            options["dist-scaling"] = 1.0
+            options["cost-function"] = "composite"
+            options.setdefault("order", "distality")
+            # Remove no-crossing — incompatible with distality ordering
+            options.pop("no-crossing", None)
+            reasoning.pop("no-crossing", None)
+            reasoning["dist-distal"] = f"DISTAL region '{distal_match}' detected → distality cost enabled"
+            reasoning["dist-facies"] = f"FACIES region '{facies_match}' paired for palaeogeographic cost"
+            reasoning["dist-scaling"] = "Default distality scaling factor"
+            reasoning["cost-function"] = "Composite cost required for distality"
+        else:
+            reasoning["dist-facies-skipped"] = (
+                f"FACIES region '{facies_match}' appears derived from var-data "
+                f"'{options.get('var-data', '?')}' — skipping to avoid circular constraint"
+            )
 
     # --- Well-count-adaptive settings ---
     if n_wells >= 15:
