@@ -401,6 +401,7 @@
       wellDetails = data.wells;
       // Apply demo-specific recommended options to Parameters form
       if (data.recommended_options) applyOptionsToForm(data.recommended_options);
+      if (data.ai_settings) _setAiSettings(data.ai_settings);
       enableAfterImport();
       setStatus(importStat, 'ok', `${data.n_wells} wells loaded from demo "${selectedDemo}" — select wells & logs, then Run`);
     } catch(e) {
@@ -893,6 +894,61 @@
     resRanking.querySelectorAll('.rank-row').forEach((row, i) => {
       row.style.background = i === idx ? '#e3f2fd' : '';
       row.style.fontWeight = i === idx ? 'bold' : '';
+    });
+    // AI analysis (if enabled)
+    _runAiAnalysis(idx);
+  }
+
+  // ── AI Analysis ─────────────────────────────────────────────────────
+  let _aiSettings = {quality: true, anomaly: false, uncertainty: false};
+
+  function _setAiSettings(settings) {
+    if (settings) Object.assign(_aiSettings, settings);
+  }
+
+  function _runAiAnalysis(corIndex) {
+    const panel = document.getElementById('ai-results-panel');
+    if (!panel) return;
+    if (!_aiSettings.quality && !_aiSettings.anomaly && !_aiSettings.uncertainty) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+    panel.innerHTML = '<em style="font-size:11px; color:#888;">Running AI analysis...</em>';
+
+    fetch('/weco/ai/analyse', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        quality: _aiSettings.quality,
+        anomaly: _aiSettings.anomaly,
+        uncertainty: _aiSettings.uncertainty,
+        cor_index: corIndex,
+      }),
+    })
+    .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.detail || 'AI error'); }))
+    .then(data => {
+      let html = '<div style="font-size:11px; padding:4px 8px; background:#f3e5f5; border:1px solid #ce93d8; border-radius:4px;">';
+      html += '<strong>AI Analysis</strong><br>';
+      if (data.quality) {
+        html += `★ Quality: <b>${data.quality.overall.toFixed(2)}</b> `;
+        html += `(cost=${data.quality.cost_score.toFixed(2)}, gaps=${data.quality.gap_score.toFixed(2)}, sim=${data.quality.similarity_score.toFixed(2)})<br>`;
+      }
+      if (data.anomaly) {
+        if (data.anomaly.n_flagged > 0) {
+          html += `⚠ Anomaly: <b>${data.anomaly.n_flagged}</b> suspicious line(s) flagged<br>`;
+        } else {
+          html += `✓ No anomalous lines detected<br>`;
+        }
+      }
+      if (data.uncertainty) {
+        html += `↔ Uncertainty: mean spread=${data.uncertainty.mean_spread.toFixed(2)}, max=${data.uncertainty.max_spread.toFixed(2)}<br>`;
+      }
+      html += '</div>';
+      panel.innerHTML = html;
+    })
+    .catch(err => {
+      panel.innerHTML = `<span style="font-size:11px; color:#c62828;">[AI: ${err.message}]</span>`;
     });
   }
 

@@ -95,8 +95,9 @@ def _session_well_file() -> str:
     return os.path.join(WECO_SESSION_DIR, "wells.txt")
 
 
-# Cached well list (server process memory — single worker)
+# Cached well list and result file (server process memory — single worker)
 _cached_well_list = None
+_cached_res_file = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -697,7 +698,7 @@ async def weco_run(req: WecoRunRequest, request: Request):
 
     Auto-routes to Radix job component for large datasets (>WECO_JOB_WELL_THRESHOLD wells).
     """
-    global _cached_well_list
+    global _cached_well_list, _cached_res_file
 
     if _cached_well_list is None:
         raise HTTPException(400, "No wells loaded. Call /weco/import first.")
@@ -725,6 +726,7 @@ async def weco_run(req: WecoRunRequest, request: Request):
         safe_opts = _apply_memory_guards(req.options, n_wells)
         log.info(f"Running correlation: {n_wells} wells, options={safe_opts}, n_best={req.n_best}")
         rf, data, elapsed = _run_engine(wl, safe_opts)
+        _cached_res_file = rf
         results = _extract_results(rf, data, req.n_best)
     except HTTPException:
         raise
@@ -969,7 +971,7 @@ def weco_demo_wells(demo_id: str):
     global _cached_well_list
     try:
         from weco.api import list_demos, _load_well_list, _get_demo_opts
-        from weco.api import _suggest_defaults_for_wells
+        from weco.api import _suggest_defaults_for_wells, _get_demo_ai_opts
 
         demo_list = list_demos().demos
         demo = None
@@ -1014,6 +1016,7 @@ def weco_demo_wells(demo_id: str):
             "all_data_names": all_data_names,
             "all_region_names": all_region_names,
             "recommended_options": recommended_options,
+            "ai_settings": _get_demo_ai_opts(demo_id),
         }
     except HTTPException:
         raise
@@ -1027,7 +1030,7 @@ def weco_run_demo(demo_id: str, n_best: int = 5):
 
     Returns full correlation results including well data for plotting.
     """
-    global _cached_well_list
+    global _cached_well_list, _cached_res_file
     try:
         from weco.api import run_demo, DemoRunRequest, _load_well_list, list_demos
         from weco.api import _suggest_defaults_for_wells, _run_engine, _extract_results
@@ -1053,6 +1056,7 @@ def weco_run_demo(demo_id: str, n_best: int = 5):
             options, reasoning = _suggest_defaults_for_wells(wl)
 
         rf, data, elapsed = _run_engine(wl, options)
+        _cached_res_file = rf
         results = _extract_results(rf, data, n_best)
 
         well_names = [w.name for w in wl.wells]
@@ -1503,3 +1507,83 @@ async def weco_delete_workflow(workflow_id: int, request: Request):
     if not ok:
         return JSONResponse({"error": "Failed to delete"}, status_code=500)
     return {"deleted": workflow_id}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  AI Analysis Endpoints
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AiAnalysisRequest(BaseModel):
+    """Request body for AI post-processing of correlation results."""
+    quality: bool = True
+    anomaly: bool = False
+    uncertainty: bool = False
+    cor_index: int = 0
+
+
+@router.post("/ai/analyse")
+def weco_ai_analyse(req: AiAnalysisRequest):
+    """Run AI analysis on the cached correlation results.
+
+    Call this after /run or /run/demo. Returns quality scores,
+    anomaly flags, and uncertainty metrics for the specified result.
+    """
+    global _cached_res_file, _cached_well_list
+    if _cached_res_file is None or _cached_well_list is None:
+        raise HTTPException(400, "No correlation results cached. Run /run or /run/demo first.")
+
+    result = {}
+    try:
+        n_cor = _cached_res_file.get_nbr_results()
+        if req.cor_index >= n_cor:
+            raise HTTPException(400, f"cor_index {req.cor_index} >= n_results {n_cor}")
+
+        if req.quality:
+            from weco.ai.quality import CorrelationQuality
+            cq = CorrelationQuality(_cached_res_file, _cached_well_list)
+            scores = cq.score_all()
+            if req.cor_index < len(scores):
+                s = scores[req.cor_index]
+                result["quality"] = {
+                    "overall": round(s.overall, 4),
+                    "cost_score": round(s.cost_score, 4),
+                    "gap_score": round(s.gap_score, 4),
+                    "similarity_score": round(s.similarity_score, 4),
+                }
+            # Include ranking of all results
+            result["quality_ranking"] = [
+                {"index": i, "overall": round(sc.overall, 4)}
+                for i, sc in enumerate(scores[:20])
+            ]
+
+        if req.anomaly:
+            from weco.ai.anomaly import CorrelationAnomalyDetector
+            det = CorrelationAnomalyDetector(_cached_res_file, _cached_well_list)
+            flags = det.flag(req.cor_index)
+            anomalies = [
+                {"line_idx": f.line_idx, "score": round(f.score, 4), "reason": f.reason}
+                for f in flags if f.is_anomaly
+            ]
+            result["anomaly"] = {
+                "n_flagged": len(anomalies),
+                "flags": anomalies[:20],
+            }
+
+        if req.uncertainty and n_cor > 1:
+            from weco.ai.uncertainty import CorrelationUncertainty
+            cu = CorrelationUncertainty(_cached_res_file, _cached_well_list)
+            summary = cu.summary(top_n=min(n_cor, 10))
+            result["uncertainty"] = {
+                "mean_spread": round(summary.mean_spread, 4),
+                "max_spread": round(summary.max_spread, 4),
+            }
+
+    except HTTPException:
+        raise
+    except ImportError as e:
+        raise HTTPException(501, f"AI module not available: {e}")
+    except Exception as e:
+        log.exception("AI analysis failed")
+        raise HTTPException(500, f"AI analysis error: {e}")
+
+    return result
