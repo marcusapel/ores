@@ -1,0 +1,9 @@
+# Delta with distality cost
+cost-function composite
+var-data GR DEN
+var-weight 1.0 0.5
+dist-on 1
+order pyramidal
+nbr-cor 50
+out-nbr-cor 10
+max-cor 200

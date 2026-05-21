@@ -23,7 +23,7 @@ class PyProject : public Project {
 public:
 	struct TaskCreator{
 		TaskCreator(const CreateTaskFunc &func): create_func(func){}
-		const CreateTaskFunc& create_func; 
+		CreateTaskFunc create_func;
 	};
 
 	struct PyTask {

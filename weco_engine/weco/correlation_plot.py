@@ -188,6 +188,9 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
         self._log_fill: bool = True
         self._show_legend: bool = True
         self._marker_size: int = 0  # 0 = hide markers
+        self._align_mode: str = "marker"  # "absolute" | "marker"
+        self._show_md_labels: bool = True
+        self._show_tvdss: bool = False
 
         # Axes cache (cleared on redraw)
         self._well_axes: list = []  # list of (log_axes, region_ax) per well
@@ -228,6 +231,16 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
 
     def set_show_regions(self, regions: list[str]):
         self._show_regions = regions
+
+    def set_align_mode(self, mode: str):
+        """Set depth alignment: 'absolute' or 'marker' (align by first boundary)."""
+        self._align_mode = mode
+
+    def set_show_md_labels(self, show: bool):
+        self._show_md_labels = show
+
+    def set_show_tvdss(self, show: bool):
+        self._show_tvdss = show
 
     # ──── Auto-configure display from data ───────────────────────────
 
@@ -323,13 +336,41 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
             left=0.04, right=0.96, top=0.92, bottom=0.06,
         )
 
-        # Compute global depth range
+        # Compute global depth range (with optional marker-based alignment)
         all_depths = []
         well_depths = {}
+        well_depth_offsets = {}  # per-well offset for marker alignment
         for idx in order:
             d = _get_depth(wells[idx], self._depth_prop)
             well_depths[idx] = d
-            all_depths.extend(d)
+            well_depth_offsets[idx] = 0.0
+
+        # Marker-based alignment: translate each well so first boundary aligns
+        if self._align_mode == "marker" and self._res is not None:
+            # Find first boundary marker depth per well
+            path = self._res.get_result_full_path(min(self._cor_index, self._res.get_nbr_results() - 1))
+            if path and len(path) > 0:
+                # Find first node that represents a boundary transition
+                for idx in order:
+                    ri = self._get_result_index(idx)
+                    d = well_depths[idx]
+                    if ri is not None and len(d) > 0:
+                        # Use first marker from path as alignment reference
+                        m = path[0][ri]
+                        if 0 <= m < len(d):
+                            well_depth_offsets[idx] = d[m]
+                        else:
+                            well_depth_offsets[idx] = d[0]
+                    elif len(d) > 0:
+                        well_depth_offsets[idx] = d[0]
+
+        # Compute aligned depth ranges
+        for idx in order:
+            d = well_depths[idx]
+            offset = well_depth_offsets[idx]
+            aligned = d - offset
+            all_depths.extend(aligned)
+
         if not all_depths:
             return
         depth_min, depth_max = min(all_depths), max(all_depths)
@@ -339,9 +380,11 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
         # Draw each well
         col = 0
         first_ax = None
+        aligned_well_depths = {}  # depths shifted by alignment offset
         for wi_display, wi_data in enumerate(order):
             well = wells[wi_data]
-            depth = well_depths[wi_data]
+            depth = well_depths[wi_data] - well_depth_offsets[wi_data]
+            aligned_well_depths[wi_data] = depth
             wcolor = WELL_COLORS[wi_display % len(WELL_COLORS)]
 
             # Region strips
@@ -367,11 +410,16 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
 
             self._well_axes.append(log_axes_for_well)
 
-            # Well name header
+            # Well name header (with MD range)
             if self._show_names and log_axes_for_well:
                 # Place name centred above the log tracks
                 mid_ax = log_axes_for_well[len(log_axes_for_well) // 2]
-                mid_ax.set_title(well.name, fontsize=9, fontweight="bold",
+                title_text = well.name
+                if self._show_md_labels:
+                    orig_depth = well_depths[wi_data]
+                    if len(orig_depth) > 0:
+                        title_text += f"\nMD: {orig_depth[0]:.0f}–{orig_depth[-1]:.0f}"
+                mid_ax.set_title(title_text, fontsize=9, fontweight="bold",
                                  color=wcolor, pad=8)
 
             # Gap axis for correlation lines
@@ -382,9 +430,9 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                 ax_gap.set_ylim(y_lim)
                 self._gap_axes.append((ax_gap, wi_display, wi_data, order[wi_display + 1]))
 
-        # Draw correlation lines
+        # Draw correlation lines (using aligned depths)
         if self._show_cor_lines and self._res is not None:
-            self._draw_correlations(wells, order, well_depths, y_lim)
+            self._draw_correlations(wells, order, aligned_well_depths, y_lim)
 
         # Legend
         if self._show_legend:

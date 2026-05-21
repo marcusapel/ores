@@ -233,7 +233,10 @@ void CorScheduler::run_task(Task * task, Correlator &cor) {
 
 
 void CorScheduler::task_end(Task * task) {
-	assert(task->result_);
+	if (!task->result_) {
+		LOG << "*WRN* Task " << task->name() << " produced no result" << std::endl;
+		return;
+	}
 	for (auto child : task->children_){
 		if (child->parent1_.task == task )
 			child->parent1_.cor_graph = task->result_;

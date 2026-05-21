@@ -78,13 +78,16 @@ LITHOLOGY = {
 LITH_GROUPS = "1,2,3;4,5;6,7,8,9,10"
 
 # Seam definitions: (name, base_thickness, sigma, p_present, p_split, p_tonstein)
+# Higher splitting/absence probabilities → more inter-well ambiguity about
+# whether two thin seams are splits of one seam or separate seams entirely.
+# This creates the key mine-planning question: "is this seam continuous?"
 SEAMS = [
-    ("Katharina",   3.0, 0.8, 1.00, 0.20, 0.60),   # thick, persistent
-    ("Sonnenschein",1.5, 0.5, 0.90, 0.15, 0.30),
-    ("Prasident",   2.5, 0.7, 0.95, 0.25, 0.50),
-    ("Zollverein",  1.8, 0.5, 0.85, 0.10, 0.20),
-    ("Floez_9",     1.2, 0.4, 0.80, 0.05, 0.15),
-    ("Floez_10",    0.8, 0.3, 0.70, 0.05, 0.10),
+    ("Katharina",   3.0, 1.0, 0.95, 0.35, 0.60),   # thick, usually present but splits often
+    ("Sonnenschein",1.5, 0.6, 0.80, 0.25, 0.30),   # moderate, sometimes absent
+    ("Prasident",   2.5, 0.9, 0.90, 0.40, 0.50),   # thick, frequently splits
+    ("Zollverein",  1.8, 0.6, 0.75, 0.20, 0.20),   # moderate, often absent
+    ("Floez_9",     1.2, 0.5, 0.70, 0.15, 0.15),   # thin, frequently absent
+    ("Floez_10",    0.8, 0.4, 0.60, 0.10, 0.10),   # thinnest, often missing
 ]
 
 SAMPLE_DZ = 0.2  # 20 cm sample spacing (coal needs fine resolution)

@@ -28,7 +28,14 @@ def main(
     seed: int = 42,
     output_dir: str = ".",
 ):
-    """Generate fluvial channel belt wells and write to files."""
+    """Generate fluvial channel belt wells and write to files.
+
+    Key design for correlation ambiguity:
+    - Channels at SIMILAR depths but NOT connected → "same channel or different?"
+    - Some channels barely extend between adjacent wells → marginal connectivity
+    - Stacked channels (avulsion) at same location → "one amalgamated body or two?"
+    - Higher GR noise so channel/floodplain boundary is ambiguous in log response
+    """
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed)
     spacing = 150.0
@@ -37,20 +44,39 @@ def main(
 
     # Facies: 0=floodplain, 1=crevasse_splay, 2=channel_fill,
     #         3=channel_lag, 4=levee, 5=oxbow_lake
-    FACIES_GR = {0: 120.0, 1: 75.0, 2: 30.0, 3: 15.0, 4: 90.0, 5: 110.0}
+    # GR values with OVERLAP: channel fill (30±15) overlaps with levee (85±20)
+    # and crevasse splay (70±18) — realistic subsurface ambiguity
+    FACIES_GR = {0: 118.0, 1: 70.0, 2: 32.0, 3: 18.0, 4: 85.0, 5: 108.0}
+    FACIES_GR_STD = {0: 12.0, 1: 18.0, 2: 15.0, 3: 8.0, 4: 20.0, 5: 14.0}
 
-    # Generate random channel positions
-    n_channels = n_markers // 8
+    # Generate channels with deliberate ambiguity:
+    # - Paired channels at similar depths (connected? or separate avulsion events?)
+    # - Variable lateral extent (some wide, some narrow → pinch-out uncertainty)
+    n_channels = n_markers // 5  # more channels than before
     channels = []
-    for _ in range(n_channels):
+    for i in range(n_channels):
         y_centre = rng.uniform(0, (n_wells - 1) * spacing)
         z_centre = rng.randint(5, n_markers - 5)
-        width = rng.uniform(0.15, 0.35) * (n_wells - 1) * spacing
-        thickness = rng.randint(3, 8)
-        sinuosity = rng.uniform(0, spacing * 2)  # lateral offset
+        # Bimodal width distribution: some wide (connected), some narrow (isolated)
+        if rng.random() < 0.4:
+            width = rng.uniform(0.5, 0.8) * (n_wells - 1) * spacing  # wide
+        else:
+            width = rng.uniform(0.10, 0.25) * (n_wells - 1) * spacing  # narrow
+        thickness = rng.randint(3, 9)
+        sinuosity = rng.uniform(spacing * 0.5, spacing * 3)
+
         channels.append((y_centre, z_centre, width, thickness, sinuosity))
 
-    wells_lines = []
+        # 30% chance: add a paired channel at similar depth (avulsion/stacking)
+        # This creates "same body or separate?" ambiguity
+        if rng.random() < 0.3:
+            y_offset = rng.uniform(-spacing * 2, spacing * 2)
+            z_offset = rng.randint(-2, 2)  # nearly same depth!
+            width2 = rng.uniform(0.12, 0.30) * (n_wells - 1) * spacing
+            channels.append((y_centre + y_offset, z_centre + z_offset,
+                             width2, thickness - 1, sinuosity * 0.7))
+
+    wells_data = []
 
     for j in range(n_wells):
         y_pos = j * spacing
@@ -81,14 +107,11 @@ def main(
                     break
 
             facies_list.append(facies)
-            gr_val = FACIES_GR[facies] + np_rng.normal(0, 5)
+            # Higher noise per facies — creates genuine log ambiguity
+            gr_val = FACIES_GR[facies] + np_rng.normal(0, FACIES_GR_STD[facies])
             gr.append(gr_val)
 
-        wells_lines.append(f"WELL W{j} {n_markers} {x_pos} {y_pos}")
-        wells_lines.append(f"DATA depth {' '.join(f'{v:.2f}' for v in depth)}")
-        wells_lines.append(f"DATA GR {' '.join(f'{v:.2f}' for v in gr)}")
-
-        # Facies region
+        # Facies region intervals
         intervals = []
         if facies_list:
             cur_f = facies_list[0]
@@ -104,14 +127,36 @@ def main(
                     cur_len = 1
             intervals.append((cur_f, cur_start, cur_len))
 
-        region_parts = []
-        for rid, rstart, rlen in intervals:
-            region_parts.append(f"{rid} {rstart} {rlen}")
-        wells_lines.append(f"REGION facies {' '.join(region_parts)}")
+        wells_data.append({
+            "name": f"W{j}", "n": n_markers,
+            "x": x_pos, "y": y_pos, "z": 0.0, "h": 1.0,
+            "depth": depth, "GR": gr, "facies_intervals": intervals,
+        })
 
+    # Write WeCo WellList v2 format
     wells_path = os.path.join(output_dir, "wells.txt")
     with open(wells_path, "w") as f:
-        f.write("\n".join(wells_lines) + "\n")
+        f.write("WeCo WellList 2\n")
+        f.write(f"{len(wells_data)}\n")
+        for w in wells_data:
+            n = w["n"]
+            f.write(f"\n{w['name']}\n")
+            f.write(f"{n}\n")
+            f.write(f"{w['x']:.5f} {w['y']:.5f} {w['z']:.5f} {w['h']:.5f}\n")
+            # 2 data columns: DEPTH, GR
+            f.write("2\n")
+            f.write(f"DEPTH {n}\n")
+            for v in w["depth"]:
+                f.write(f"{v:.5f}\n")
+            f.write(f"GR {n}\n")
+            for v in w["GR"]:
+                f.write(f"{v:.5f}\n")
+            # 1 region: facies
+            f.write("1\n")
+            f.write(f"FACIES {len(w['facies_intervals'])}\n")
+            for rid, rstart, rlen in w["facies_intervals"]:
+                f.write(f"{rid} {rstart} {rlen}\n")
+        f.write("END\n")
 
     opts_path = os.path.join(output_dir, "options.txt")
     with open(opts_path, "w") as f:

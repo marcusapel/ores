@@ -85,7 +85,7 @@ except ImportError:
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent  # weco/ package → project root
 DATA_DIR = SCRIPT_DIR / "data"
-OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR = SCRIPT_DIR / "tmp" / "img"
 
 VERSION = get_version()
 
@@ -4034,6 +4034,53 @@ class ResultsPage(QWidget):
         self.summary_table.setAlternatingRowColors(True)
         lo.addWidget(self.summary_table)
 
+        # ─ Prev/Next navigation (below summary table, side-by-side) ─
+        nav_bar = QHBoxLayout()
+        nav_bar.addStretch()
+        self._btn_prev = QPushButton("◀ Prev")
+        self._btn_prev.clicked.connect(self._cor_prev)
+        nav_bar.addWidget(self._btn_prev)
+        self._btn_next = QPushButton("Next ▶")
+        self._btn_next.clicked.connect(self._cor_next)
+        nav_bar.addWidget(self._btn_next)
+        nav_bar.addStretch()
+        lo.addLayout(nav_bar)
+
+        # ─ Well selection and ordering ─
+        well_group = QGroupBox("Wells (select and reorder for display)")
+        well_group.setCheckable(True)
+        well_group.setChecked(False)
+        well_grp_lo = QVBoxLayout(well_group)
+        well_grp_lo.setContentsMargins(4, 4, 4, 4)
+        self._well_select_list = QListWidget()
+        self._well_select_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        self._well_select_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self._well_select_list.setMaximumHeight(100)
+        well_grp_lo.addWidget(self._well_select_list)
+        well_btn_lo = QHBoxLayout()
+        btn_all = QPushButton("All")
+        btn_all.setFixedWidth(50)
+        btn_all.clicked.connect(self._well_select_all)
+        well_btn_lo.addWidget(btn_all)
+        btn_none = QPushButton("None")
+        btn_none.setFixedWidth(50)
+        btn_none.clicked.connect(self._well_select_none)
+        well_btn_lo.addWidget(btn_none)
+        btn_up = QPushButton("▲")
+        btn_up.setFixedWidth(30)
+        btn_up.clicked.connect(self._well_move_up)
+        well_btn_lo.addWidget(btn_up)
+        btn_down = QPushButton("▼")
+        btn_down.setFixedWidth(30)
+        btn_down.clicked.connect(self._well_move_down)
+        well_btn_lo.addWidget(btn_down)
+        btn_apply = QPushButton("Apply")
+        btn_apply.clicked.connect(self._well_apply)
+        well_btn_lo.addWidget(btn_apply)
+        well_btn_lo.addStretch()
+        well_grp_lo.addLayout(well_btn_lo)
+        lo.addWidget(well_group)
+
         # §11.11.4 — Side-by-side comparison tab
         sidebyside = QWidget()
         sbs_lo = QHBoxLayout(sidebyside)
@@ -4082,6 +4129,10 @@ class ResultsPage(QWidget):
         n = res_file.get_nbr_results()
         self.cor_spin.setMaximum(n - 1)
         self.cor_spin.setValue(0)
+
+        # Populate well selection widget
+        if well_list is not None:
+            self._populate_well_select(well_list)
 
         # Summary table
         self.summary_table.setColumnCount(4)
@@ -4141,6 +4192,64 @@ class ResultsPage(QWidget):
                 self._corplot.set_result(self._res_file, idx)
             except Exception:
                 pass
+
+    def _cor_prev(self):
+        val = self.cor_spin.value()
+        if val > 0:
+            self.cor_spin.setValue(val - 1)
+
+    def _cor_next(self):
+        val = self.cor_spin.value()
+        if val < self.cor_spin.maximum():
+            self.cor_spin.setValue(val + 1)
+
+    # ─── Well Selection / Ordering ────────────────────────────────────
+
+    def _populate_well_select(self, well_list):
+        """Fill the well selection widget from a WellList."""
+        self._well_select_list.clear()
+        for w in well_list.wells:
+            item = QListWidgetItem(w.name)
+            item.setSelected(True)
+            self._well_select_list.addItem(item)
+
+    def _well_select_all(self):
+        for i in range(self._well_select_list.count()):
+            self._well_select_list.item(i).setSelected(True)
+
+    def _well_select_none(self):
+        self._well_select_list.clearSelection()
+
+    def _well_move_up(self):
+        row = self._well_select_list.currentRow()
+        if row > 0:
+            item = self._well_select_list.takeItem(row)
+            self._well_select_list.insertItem(row - 1, item)
+            self._well_select_list.setCurrentRow(row - 1)
+
+    def _well_move_down(self):
+        row = self._well_select_list.currentRow()
+        if row < self._well_select_list.count() - 1:
+            item = self._well_select_list.takeItem(row)
+            self._well_select_list.insertItem(row + 1, item)
+            self._well_select_list.setCurrentRow(row + 1)
+
+    def _well_apply(self):
+        """Re-render with current well selection and order."""
+        if self._res_file is not None:
+            self._render(self.cor_spin.value())
+
+    def _get_visible_well_names(self):
+        """Return list of selected well names in display order, or None for all."""
+        names = []
+        for i in range(self._well_select_list.count()):
+            item = self._well_select_list.item(i)
+            if item.isSelected():
+                names.append(item.text())
+        if not names or names == [self._well_select_list.item(i).text()
+                                   for i in range(self._well_select_list.count())]:
+            return None
+        return names
 
     def _toggle_tract_overlay(self, state):
         """§12.6 — Toggle systems tract coloured band overlay."""

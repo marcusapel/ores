@@ -692,8 +692,14 @@ def _suggest_defaults_for_wells(wl) -> tuple:
         reasoning["max-cor"] = "Standard n-best search width"
 
     # Always request multiple results for ranking
-    options["nbr-cor"] = 10
-    reasoning["nbr-cor"] = "Request 10-best for result ranking"
+    options["nbr-cor"] = 100
+    options["out-nbr-cor"] = 20
+    options["min-dist"] = 0.1
+    options["out-min-dist"] = 0.05
+    reasoning["nbr-cor"] = "Retain 100 paths for diverse scenario exploration"
+    reasoning["out-nbr-cor"] = "Report 20 ranked scenarios"
+    reasoning["min-dist"] = "Force structurally different solutions (connectivity changes)"
+    reasoning["out-min-dist"] = "Ensure output scenarios are meaningfully distinct"
 
     # --- Position-based ordering (only if wells actually have coordinates) ---
     has_coords = any(
@@ -744,148 +750,116 @@ def list_demos():
     # Built-in demo catalogue — each entry has geology-specific opts that
     # are proven to produce meaningful correlations for that dataset.
     _DEMO_CATALOGUE = [
-        # ── Basic Teaching Demos ──────────────────────────────────────
-        {"id": "ds1.1", "title": "Data Set 1.1 – Variance Weights",
-         "group": "Basic", "wells": "data_set_1.1/wells.txt",
-         "geology": "quaternary",
-         "description": "3 synthetic wells, 2 properties. Demonstrates how "
-                        "var-weight steers the correlation between VarData1/2.",
-         "opts": {"var-data": "VarData1", "var-weight": 0.7,
-                  "var-data2": "VarData2", "var-weight2": 0.3,
-                  "max-cor": 10, "nbr-cor": 10}},
-        {"id": "ds1.2", "title": "Data Set 1.2 – No-Crossing Regions",
-         "group": "Basic", "wells": "data_set_1.2/wells.txt",
-         "geology": "quaternary",
-         "description": "3 synthetic wells with NoCrossing region. Forces "
-                        "correlations to respect stratigraphic ordering.",
-         "opts": {"var-data": "VarData1", "no-crossing": "NoCrossing",
-                  "max-cor": 10, "nbr-cor": 10}},
-        {"id": "ds1.3", "title": "Data Set 1.3 – Same-Region Cost",
-         "group": "Basic", "wells": "data_set_1.3/wells_A.txt",
-         "geology": "quaternary",
-         "description": "5 wells with Facies region. Same-region penalises "
-                        "correlating different facies classes.",
-         "opts": {"var-data": "Distality", "same-region": "Facies",
-                  "max-cor": 50, "nbr-cor": 10}},
-        {"id": "ds1.4", "title": "Data Set 1.4 – Multi-Distality",
-         "group": "Basic", "wells": "data_set_1.4/wells_A.weco",
-         "geology": "quaternary",
-         "description": "5 wells with distality cost. Penalises correlating "
-                        "proximal facies with distal facies.",
-         "opts": {"dist-distal": "Distality", "dist-facies": "Facies",
-                  "dist-scaling": 1.0, "order": "distality",
-                  "max-cor": 50, "nbr-cor": 10}},
-        {"id": "ds1.5", "title": "Data Set 1.5 – Polarity / Dip",
-         "group": "Basic", "wells": "data_set_1.5/wells.txt",
-         "description": "9 wells with structural dip/azimuth. Polarity cost "
-                        "uses dip direction to constrain correlations.",
-         "opts": {"var-data": "Dip", "polarity-region": "Facies",
-                  "max-cor": 50, "nbr-cor": 10, "band-width": 30}},
-        # ── Intermediate ──────────────────────────────────────────────
-        {"id": "ds2", "title": "Data Set 2 – Gap Cost",
-         "group": "Intermediate", "wells": "data_set_2/wells.txt",
-         "description": "9 wells demonstrating gap cost penalty. Higher gap "
-                        "cost forces more complete 1-to-1 matching.",
-         "opts": {"var-data": "Dip", "const-gap-cost": 5.0,
-                  "max-cor": 50, "nbr-cor": 10, "band-width": 30}},
-        # ── Advanced ──────────────────────────────────────────────────
-        {"id": "ds3", "title": "Data Set 3 – Distality / Facies",
-         "group": "Advanced", "wells": "data_set_3/wells.txt",
-         "description": "2 wells with DISTAL + FACIES_1 distality cost. "
-                        "Penalises inconsistent facies-distality relationships.",
+        # ── Concept (teaching specific constraints) ─────────────────
+        {"id": "ds3", "title": "Distality Cost (Walther's Law)",
+         "group": "Concept", "wells": "data_set_3/wells.txt",
+         "description": "2 wells demonstrating the distality cost function. "
+                        "Penalises correlations that violate lateral facies-belt "
+                        "ordering (Walther's Law). Key constraint: dist-distal + dist-facies.",
          "opts": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                   "dist-scaling": 1.0, "order": "distality",
-                  "max-cor": 50, "nbr-cor": 10}},
-        {"id": "ds4", "title": "Data Set 4 – Biozone Constraint",
-         "group": "Advanced", "wells": "data_set_4/wells.txt",
-         "description": "2 wells with BIOZONES no-crossing + distality. "
-                        "Biozone boundaries lock key horizons.",
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05}},
+        {"id": "ds4", "title": "Biozone No-Crossing + Distality",
+         "group": "Concept", "wells": "data_set_4/wells.txt",
+         "description": "2 wells combining no-crossing constraint (BIOZONES) "
+                        "with distality. Biozone datums cannot swap order — "
+                        "demonstrates hard stratigraphic anchoring.",
          "opts": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                   "no-crossing": "BIOZONES", "order": "distality",
-                  "max-cor": 50, "nbr-cor": 10}},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05}},
         # ── Domain: Coal Basin ────────────────────────────────────────
-        {"id": "coal", "title": "Coal Basin – DEN+GR Seam Correlation",
+        {"id": "coal", "title": "Coal Basin – Gap Cost + Multi-Log (DEN+GR)",
          "group": "Domain", "wells": "data_set_coal/wells_10.txt",
          "geology": "coal",
-         "description": "10 coal boreholes with 6 named seams. DEN (bulk "
-                        "density) is the primary coal indicator: coal=1.3 g/cc "
-                        "vs rock=2.3-2.7 g/cc. Gap cost penalises missing seams.",
+         "description": "10 coal boreholes with seam splitting/absence. "
+                        "Gap cost (3.0) penalises missing seams. DEN (coal=1.3 g/cc "
+                        "vs rock=2.5) + GR multi-log. Band-width=15.",
          "opts": {"var-data": "DEN", "var-weight": 0.6,
                   "var-data2": "GR", "var-weight2": 0.4,
-                  "max-cor": 20, "nbr-cor": 10,
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05,
                   "const-gap-cost": 3.0, "band-width": 15}},
         # ── Domain: Quaternary Hydrogeology ───────────────────────────
-        {"id": "quaternary", "title": "Quaternary – GR+RT Hydrogeology",
+        {"id": "quaternary", "title": "Quaternary – Gap Cost + Multi-Log (GR+RT)",
          "group": "Domain", "wells": "data_set_quaternary/wells_20.txt",
          "geology": "quaternary",
-         "description": "20 shallow Quaternary wells (glacial lowland). "
-                        "GR separates sand/gravel (aquifer) from till/clay "
-                        "(aquitard). RT adds permeability discrimination.",
+         "description": "20 shallow Quaternary wells with unit absence. "
+                        "Gap cost (1.5) + GR (sand/clay) + RT (permeability). "
+                        "Band-width=20. Demonstrates aquifer connectivity uncertainty.",
          "opts": {"var-data": "GR", "var-weight": 0.7,
                   "var-data2": "RT", "var-weight2": 0.3,
-                  "max-cor": 30, "nbr-cor": 10,
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05,
                   "const-gap-cost": 1.5, "band-width": 20}},
         # ── Domain: Shallow Marine ────────────────────────────────────
         {"id": "shallow_marine",
-         "title": "Shallow Marine – GR+RHOB+DT Reservoir",
+         "title": "Shallow Marine – 3-Log Variance (GR+RHOB+DT) + Gap Cost",
          "group": "Domain", "wells": "data_set_shallow_marine/wells.txt",
          "geology": "shallow_marine",
-         "description": "10 wells along depositional dip (Hugin Fm analogue). "
-                        "Wave-dominated shoreface with clinoform geometry. "
-                        "GR+RHOB+DT multi-log variance correlation.",
+         "description": "10 wells with repeated shoreface parasequences + erosion. "
+                        "3-log multi-variance (GR 50% + RHOB 30% + DT 20%) "
+                        "+ gap cost (2.0) + band-width=20.",
          "opts": {"var-data": "GR", "var-weight": 0.5,
                   "var-data2": "RHOB", "var-weight2": 0.3,
                   "var-data3": "DT", "var-weight3": 0.2,
-                  "max-cor": 30, "nbr-cor": 10,
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05,
                   "const-gap-cost": 2.0, "band-width": 20}},
         # ── Domain: Bryson (Appalachian) ──────────────────────────────
-        {"id": "bryson", "title": "Bryson – Zone-Constrained Facies",
+        {"id": "bryson", "title": "Bryson – No-Crossing Constraint (Categorical)",
          "group": "Domain", "wells": "data_set_bryson/wells.txt",
          "geology": "fluvial",
-         "description": "7 Appalachian Basin wells with categorical data only "
-                        "(FACIES, MEMBER, ZONE, SEQSTRAT). Uses FACIES as "
-                        "correlation variable with ZONE no-crossing constraint.",
+         "description": "7 Appalachian Basin wells with categorical FACIES cost "
+                        "+ ZONE no-crossing constraint. Demonstrates hard "
+                        "biozone anchoring with categorical (non-continuous) data.",
          "opts": {"var-data": "FACIES", "no-crossing": "ZONE",
-                  "max-cor": 50, "nbr-cor": 10}},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05}},
         # ── Domain: Fluvial Channel Belt ──────────────────────────────
-        {"id": "fluvial", "title": "Fluvial – GR Channel Correlation",
+        {"id": "fluvial", "title": "Fluvial – Gap Cost + High Diversity",
          "group": "Domain", "wells": "data_set_fluvial/wells.txt",
          "geology": "fluvial",
-         "description": "12 wells through laterally discontinuous channel "
-                        "sandbodies. GR alone with gap cost — allows hiatuses "
-                        "where channels pinch out between wells.",
+         "description": "20 wells through discontinuous channel sandbodies. "
+                        "Gap cost (0.5) allows hiatuses at pinch-outs. "
+                        "High min-dist (0.15) forces diverse channel connectivity scenarios.",
          "opts": {"var-data": "GR", "var-weight": 1.0,
-                  "max-cor": 30, "nbr-cor": 10,
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.15, "out-min-dist": 0.05,
                   "const-gap-cost": 0.5, "band-width": 20}},
         # ── Domain: Delta ─────────────────────────────────────────────
-        {"id": "delta", "title": "Delta – GR+DEN Prograding System",
+        {"id": "delta", "title": "Delta – Multi-Log Variance (GR+DEN) + Band-Width",
          "group": "Domain", "wells": "data_set_delta/wells.txt",
          "geology": "deltaic",
-         "description": "8 wells through a prograding delta. GR separates "
-                        "sand (distributary) from mud (prodelta). DEN adds "
-                        "porosity discrimination in shingled parasequences.",
+         "description": "8 wells through a prograding delta with variable "
+                        "thickness parasequences. GR (60%) + DEN (40%) multi-log "
+                        "variance + band-width=20. Clinoform correlation ambiguity.",
          "opts": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "DEN", "var-weight2": 0.4,
-                  "max-cor": 30, "nbr-cor": 10, "band-width": 20}},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05, "band-width": 20}},
         # ── Domain: Sigrun (North Sea) ────────────────────────────────
-        {"id": "sigrun", "title": "Sigrun – GR+NPHI North Sea",
+        {"id": "sigrun", "title": "Sigrun – Multi-Log Well-Tie (GR+NPHI)",
          "group": "Domain", "wells": "data_set_sigrun/wells.txt",
          "geology": "shallow_marine",
-         "description": "2 North Sea wells (Sigrun field). GR+NPHI two-log "
-                        "correlation for well-tie in marine shale/sand sequence.",
+         "description": "2 North Sea wells (Sigrun field). GR (60%) + NPHI (40%) "
+                        "two-log variance for seismic-to-well tie in marine sequence.",
          "opts": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "NPHI", "var-weight2": 0.4,
-                  "max-cor": 50, "nbr-cor": 10}},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05}},
         # ── Domain: Troll (North Sea) ─────────────────────────────────
-        {"id": "troll", "title": "Troll – Facies+Distality Categorical",
+        {"id": "troll", "title": "Troll – Categorical + Distality (Walther's Law)",
          "group": "Domain", "wells": "data_set_troll/wells.txt",
          "geology": "shallow_marine",
-         "description": "5 Troll field wells with categorical facies and "
-                        "distality data. No continuous logs — correlation "
-                        "driven by facies similarity and distality ordering.",
+         "description": "5 Troll field wells with categorical FACIES (60%) + "
+                        "DISTALITY (40%). No continuous logs — correlation "
+                        "driven by facies similarity and Walther's Law ordering.",
          "opts": {"var-data": "FACIES", "var-weight": 0.6,
                   "var-data2": "DISTALITY", "var-weight2": 0.4,
-                  "max-cor": 50, "nbr-cor": 10}},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05}},
     ]
     for d in _DEMO_CATALOGUE:
         wells_path = data_dir / d["wells"]
@@ -908,53 +882,49 @@ def _get_demo_opts(demo_id: str) -> dict:
     for each dataset's specific geological concept.
     """
     _DEMO_OPTS = {
-        "ds1.1": {"var-data": "VarData1", "var-weight": 0.7,
-                  "var-data2": "VarData2", "var-weight2": 0.3,
-                  "max-cor": 10, "nbr-cor": 10},
-        "ds1.2": {"var-data": "VarData1", "no-crossing": "NoCrossing",
-                  "max-cor": 10, "nbr-cor": 10},
-        "ds1.3": {"var-data": "Distality", "same-region": "Facies",
-                  "max-cor": 50, "nbr-cor": 10},
-        "ds1.4": {"dist-distal": "Distality", "dist-facies": "Facies",
-                  "dist-scaling": 1.0, "order": "distality",
-                  "max-cor": 50, "nbr-cor": 10},
-        "ds1.5": {"var-data": "Dip", "polarity-region": "Facies",
-                  "max-cor": 50, "nbr-cor": 10, "band-width": 30},
-        "ds2": {"var-data": "Dip", "const-gap-cost": 5.0,
-                "max-cor": 50, "nbr-cor": 10, "band-width": 30},
         "ds3": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                 "dist-scaling": 1.0, "order": "distality",
-                "max-cor": 50, "nbr-cor": 10},
+                "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                "min-dist": 0.1, "out-min-dist": 0.05},
         "ds4": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                 "no-crossing": "BIOZONES", "order": "distality",
-                "max-cor": 50, "nbr-cor": 10},
+                "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                "min-dist": 0.1, "out-min-dist": 0.05},
         "coal": {"var-data": "DEN", "var-weight": 0.6,
                  "var-data2": "GR", "var-weight2": 0.4,
-                 "max-cor": 20, "nbr-cor": 10,
+                 "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                 "min-dist": 0.1, "out-min-dist": 0.05,
                  "const-gap-cost": 3.0, "band-width": 15},
         "quaternary": {"var-data": "GR", "var-weight": 0.7,
                        "var-data2": "RT", "var-weight2": 0.3,
-                       "max-cor": 30, "nbr-cor": 10,
+                       "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                       "min-dist": 0.1, "out-min-dist": 0.05,
                        "const-gap-cost": 1.5, "band-width": 20},
         "shallow_marine": {"var-data": "GR", "var-weight": 0.5,
                            "var-data2": "RHOB", "var-weight2": 0.3,
                            "var-data3": "DT", "var-weight3": 0.2,
-                           "max-cor": 30, "nbr-cor": 10,
+                           "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                           "min-dist": 0.1, "out-min-dist": 0.05,
                            "const-gap-cost": 2.0, "band-width": 20},
         "bryson": {"var-data": "FACIES", "no-crossing": "ZONE",
-                   "max-cor": 50, "nbr-cor": 10},
+                   "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                   "min-dist": 0.1, "out-min-dist": 0.05},
         "fluvial": {"var-data": "GR", "var-weight": 1.0,
-                    "max-cor": 30, "nbr-cor": 10,
+                    "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                    "min-dist": 0.15, "out-min-dist": 0.05,
                     "const-gap-cost": 0.5, "band-width": 20},
         "delta": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "DEN", "var-weight2": 0.4,
-                  "max-cor": 30, "nbr-cor": 10, "band-width": 20},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05, "band-width": 20},
         "sigrun": {"var-data": "GR", "var-weight": 0.6,
                    "var-data2": "NPHI", "var-weight2": 0.4,
-                   "max-cor": 50, "nbr-cor": 10},
+                   "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                   "min-dist": 0.1, "out-min-dist": 0.05},
         "troll": {"var-data": "FACIES", "var-weight": 0.6,
                   "var-data2": "DISTALITY", "var-weight2": 0.4,
-                  "max-cor": 50, "nbr-cor": 10},
+                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
+                  "min-dist": 0.1, "out-min-dist": 0.05},
     }
     return _DEMO_OPTS.get(demo_id, {})
 

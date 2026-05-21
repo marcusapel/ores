@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
     QTextEdit, QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox,
     QComboBox, QLineEdit, QTabWidget, QScrollArea, QCheckBox,
     QProgressBar, QFrame, QSizePolicy, QFileDialog, QColorDialog,
-    QGridLayout
+    QGridLayout, QListWidget, QListWidgetItem
 )
 from PyQt6.QtGui import QPixmap, QFont, QColor, QTextCursor, QIcon
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
@@ -65,48 +65,8 @@ RESET_OPTS = {
 }
 
 DATASETS = {
-    # ── Basic Teaching Demos ──────────────────────────────────────────
-    "1_variance_weights": {
-        "title": "Variance Cost Weight Sweep",
-        "subtitle": "3 synthetic wells · 2 data properties",
-        "description": (
-            "Three synthetic wells with two log curves (VarData1, VarData2).\n"
-            "The engine correlates unit boundaries by minimising log variance\n"
-            "at each tie-point. Sweep the relative weight to see how the\n"
-            "choice of primary log steers which boundaries are honoured.\n"
-            "Grey framework lines show the overall alignment geometry."
-        ),
-        "wells": DATA_DIR / "data_set_1.1" / "wells.txt",
-        "runs": [
-            {"name": "VarData1 only", "opts": {"var_data": "VarData1", "var_weight": 1.0,
-                                               "var_data2": "VarData2", "var_weight2": 0.0}},
-            {"name": "VarData2 only", "opts": {"var_data": "VarData1", "var_weight": 0.0,
-                                               "var_data2": "VarData2", "var_weight2": 1.0}},
-            {"name": "Equal 50/50", "opts": {"var_data": "VarData1", "var_weight": 0.5,
-                                             "var_data2": "VarData2", "var_weight2": 0.5}},
-            {"name": "Favor1 70/30", "opts": {"var_data": "VarData1", "var_weight": 0.7,
-                                              "var_data2": "VarData2", "var_weight2": 0.3}},
-        ],
-        "common_opts": {"cost_function": "composite", "order": "linear",
-                        "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10},
-    },
-    "2_no_crossing": {
-        "title": "No-Crossing Constraint",
-        "subtitle": "3 synthetic wells · region constraint",
-        "description": (
-            "No-crossing on 'NoCrossing' region enforces that unit boundaries\n"
-            "cannot swap order — like biozone datums that are time-equivalent.\n"
-            "Red lines = zone boundaries; if a gap (blue) appears, it means\n"
-            "the engine infers a hiatus (missing time) in that well."
-        ),
-        "wells": DATA_DIR / "data_set_1.2" / "wells.txt",
-        "runs": [
-            {"name": "With NoCrossing", "opts": {"var_data": "VarData1", "no_crossing": "NoCrossing"}},
-        ],
-        "common_opts": {"cost_function": "composite", "order": "linear",
-                        "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10},
-    },
-    "3_distality": {
+    # ── Concept Demos (real data, teaching distality/gap cost) ────────
+    "1_distality": {
         "title": "Distality-Facies Cost",
         "subtitle": "2 real wells · palaeo-geographic cost",
         "description": (
@@ -120,9 +80,10 @@ DATASETS = {
                 "dist_distal": "DISTAL", "dist_facies": "FACIES_1", "dist_scaling": 1.0}},
         ],
         "common_opts": {"cost_function": "composite", "order": "distality",
-                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05},
     },
-    "4_gap_cost": {
+    "2_gap_cost": {
         "title": "Gap Cost Exploration",
         "subtitle": "2 real wells · varying gap penalty",
         "description": (
@@ -139,30 +100,12 @@ DATASETS = {
                                               "dist_distal": "DISTAL", "dist_facies": "FACIES_1"}},
         ],
         "common_opts": {"cost_function": "composite", "order": "distality",
-                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
-    },
-    "5_ordering": {
-        "title": "Ordering Strategy Comparison",
-        "subtitle": "3 synthetic wells · 3 ordering modes",
-        "description": (
-            "Same wells, but different merge order (which pair is correlated\n"
-            "first). Order affects where gaps (hiatuses) are placed — the\n"
-            "primary source of uncertainty in stratigraphic correlation.\n"
-            "Compare gap positions (blue lines) between modes."
-        ),
-        "wells": DATA_DIR / "data_set_1.1" / "wells.txt",
-        "runs": [
-            {"name": "Linear", "opts": {"order": "linear"}},
-            {"name": "Pyramidal", "opts": {"order": "pyramidal"}},
-            {"name": "Inverse", "opts": {"order": "inverse"}},
-        ],
-        "common_opts": {"cost_function": "composite", "var_data": "VarData1",
-                        "var_weight": 1.0, "max_cor": 10, "nbr_cor": 10,
-                        "out_nbr_cor": 10},
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05},
     },
     # ── Domain Demos ──────────────────────────────────────────────────
-    "6_coal_basin": {
-        "title": "Coal Basin – DEN+GR Seam Correlation",
+    "3_coal_basin": {
+        "title": "Coal Basin – Gap Cost + Multi-Log (DEN+GR)",
         "subtitle": "10 coal boreholes · 6 named seams",
         "description": (
             "Correlate coal SEAM boundaries across the basin.\n"
@@ -198,11 +141,12 @@ DATASETS = {
                 "const_gap_cost": 3.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 20, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 15},
     },
-    "7_quaternary": {
-        "title": "Quaternary – GR+RT Hydrogeology",
+    "4_quaternary": {
+        "title": "Quaternary – Gap Cost + Multi-Log (GR+RT)",
         "subtitle": "20 shallow wells · glacial lowland",
         "description": (
             "Correlate aquifer/aquitard BOUNDARIES (sand↔till contacts).\n"
@@ -233,11 +177,12 @@ DATASETS = {
                 "const_gap_cost": 2.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 20},
     },
-    "8_shallow_marine": {
-        "title": "Shallow Marine – GR+RHOB+DT Reservoir",
+    "5_shallow_marine": {
+        "title": "Shallow Marine – 3-Log Variance (GR+RHOB+DT) + Gap Cost",
         "subtitle": "10 wells · wave-dominated shoreface",
         "description": (
             "Correlate FLOODING SURFACES (parasequence boundaries).\n"
@@ -269,11 +214,12 @@ DATASETS = {
                 "const_gap_cost": 2.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 20},
     },
-    "9_fluvial": {
-        "title": "Fluvial – GR Channel Correlation",
+    "6_fluvial": {
+        "title": "Fluvial – Gap Cost + High Diversity",
         "subtitle": "12 wells · laterally discontinuous channels",
         "description": (
             "Correlate CHANNEL BASE/TOP contacts (sand↔floodplain transitions).\n"
@@ -301,11 +247,12 @@ DATASETS = {
                 "const_gap_cost": 0.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.15, "out_min_dist": 0.05,
                         "band_width": 20},
     },
-    "10_delta": {
-        "title": "Delta – GR+DEN Prograding System",
+    "7_delta": {
+        "title": "Delta – Multi-Log Variance (GR+DEN) + Band-Width",
         "subtitle": "8 wells · shingled parasequences",
         "description": (
             "Correlate CLINOFORM SURFACES (parasequence boundaries).\n"
@@ -329,17 +276,18 @@ DATASETS = {
                 "var_data2": "DEN", "var_weight2": 0.4}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05,
                         "band_width": 20},
     },
-    "11_bryson": {
-        "title": "Bryson – Zone-Constrained Facies",
-        "subtitle": "7 wells · Appalachian Basin (categorical)",
+    "8_bryson": {
+        "title": "Bryson – Zone-Constrained Categorical Facies",
+        "subtitle": "7 wells · Appalachian Basin · no-crossing constraint",
         "description": (
-            "Correlate ZONE and MEMBER boundaries using categorical facies.\n"
-            "ZONE no-crossing = hard constraint (dated horizons cannot swap).\n"
-            "Red lines show where ZONE/MEMBER/SEQSTRAT boundaries match.\n"
-            "Gaps = condensation or non-deposition within a zone."
+            "Correlate using categorical FACIES with ZONE no-crossing:\n"
+            "• ZONE no-crossing = biozone datums cannot swap order.\n"
+            "• Categorical cost: facies identity mismatch penalty.\n"
+            "Red lines show ZONE/MEMBER boundaries. Gaps = non-deposition."
         ),
         "geology_note": (
             "Setting: Appalachian Basin (Devonian–Carboniferous).\n"
@@ -354,14 +302,15 @@ DATASETS = {
         "runs": [
             {"name": "FACIES + ZONE nc", "opts": {
                 "var_data": "FACIES", "no_crossing": "ZONE"}},
-            {"name": "FACIES only", "opts": {
+            {"name": "FACIES unconstrained", "opts": {
                 "var_data": "FACIES"}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05},
     },
-    "12_sigrun": {
-        "title": "Sigrun – GR+NPHI North Sea",
+    "9_sigrun": {
+        "title": "Sigrun – Multi-Log Well-Tie (GR+NPHI)",
         "subtitle": "2 wells · SEQUENCE boundaries",
         "description": (
             "Correlate SEQUENCE boundaries in a North Sea well pair.\n"
@@ -387,10 +336,11 @@ DATASETS = {
                 "var_data": "GR", "var_weight": 1.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05},
     },
-    "13_troll": {
-        "title": "Troll – Facies+Distality Categorical",
+    "10_troll": {
+        "title": "Troll – Categorical + Distality (Walther's Law)",
         "subtitle": "5 wells · categorical correlation",
         "description": (
             "Correlate BIOZONE and SEQUENCE boundaries using categorical\n"
@@ -416,7 +366,8 @@ DATASETS = {
                 "var_data": "FACIES", "var_weight": 1.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 50, "nbr_cor": 10, "out_nbr_cor": 10},
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05},
     },
 }
 
@@ -853,20 +804,12 @@ class DemoRunnerWindow(QMainWindow):
         paging_bar.addWidget(self.run_selector, 1)
 
         paging_bar.addSpacing(20)
-        self.btn_prev = QPushButton("◀ Prev")
-        self.btn_prev.clicked.connect(self._page_prev)
-        paging_bar.addWidget(self.btn_prev)
-
         self.result_spin = QSpinBox()
         self.result_spin.setPrefix("Result #")
         self.result_spin.setMinimum(0)
         self.result_spin.setMaximum(0)
         self.result_spin.valueChanged.connect(self._on_result_spin_changed)
         paging_bar.addWidget(self.result_spin)
-
-        self.btn_next = QPushButton("Next ▶")
-        self.btn_next.clicked.connect(self._page_next)
-        paging_bar.addWidget(self.btn_next)
 
         self.result_cost_label = QLabel("")
         self.result_cost_label.setFont(QFont("Monospace", 9))
@@ -955,6 +898,53 @@ class DemoRunnerWindow(QMainWindow):
         self.ranking_label.setWordWrap(True)
         self.ranking_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         results_vlayout.addWidget(self.ranking_label)
+
+        # ─ Prev/Next navigation (below ranking) ─
+        nav_bar = QHBoxLayout()
+        nav_bar.addStretch()
+        self.btn_prev = QPushButton("◀ Prev")
+        self.btn_prev.clicked.connect(self._page_prev)
+        nav_bar.addWidget(self.btn_prev)
+        self.btn_next = QPushButton("Next ▶")
+        self.btn_next.clicked.connect(self._page_next)
+        nav_bar.addWidget(self.btn_next)
+        nav_bar.addStretch()
+        results_vlayout.addLayout(nav_bar)
+
+        # ─ Well selection and ordering ─
+        well_group = QGroupBox("Wells (select and reorder)")
+        well_group.setCheckable(True)
+        well_group.setChecked(False)
+        well_lo = QVBoxLayout(well_group)
+        well_lo.setContentsMargins(4, 4, 4, 4)
+        self._well_list_widget = QListWidget()
+        self._well_list_widget.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        self._well_list_widget.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self._well_list_widget.setMaximumHeight(100)
+        well_lo.addWidget(self._well_list_widget)
+        well_btn_lo = QHBoxLayout()
+        btn_all = QPushButton("All")
+        btn_all.setFixedWidth(50)
+        btn_all.clicked.connect(self._select_all_wells)
+        well_btn_lo.addWidget(btn_all)
+        btn_none = QPushButton("None")
+        btn_none.setFixedWidth(50)
+        btn_none.clicked.connect(self._select_no_wells)
+        well_btn_lo.addWidget(btn_none)
+        btn_up = QPushButton("▲")
+        btn_up.setFixedWidth(30)
+        btn_up.clicked.connect(self._move_well_up)
+        well_btn_lo.addWidget(btn_up)
+        btn_down = QPushButton("▼")
+        btn_down.setFixedWidth(30)
+        btn_down.clicked.connect(self._move_well_down)
+        well_btn_lo.addWidget(btn_down)
+        btn_apply = QPushButton("Apply")
+        btn_apply.clicked.connect(self._apply_well_selection)
+        well_btn_lo.addWidget(btn_apply)
+        well_btn_lo.addStretch()
+        well_lo.addLayout(well_btn_lo)
+        results_vlayout.addWidget(well_group)
 
         self.tabs.addTab(results_widget, "Results")
 
@@ -1211,6 +1201,10 @@ class DemoRunnerWindow(QMainWindow):
             self._run_results[run_name] = (res_file, well_list, n_cor)
             self.run_selector.addItem(f"{run_name}  (cost={cost:.4f}, n={n_cor})", run_name)
 
+            # Populate well list widget (first run sets it)
+            if self._well_list_widget.count() == 0:
+                self._populate_well_list(well_list)
+
             self._all_results.append((run_name, cost, n_cor))
         else:
             self.log_text.append(f"  ✗ {run_name}: FAILED\n")
@@ -1262,6 +1256,50 @@ class DemoRunnerWindow(QMainWindow):
         val = self.result_spin.value()
         if val < self.result_spin.maximum():
             self.result_spin.setValue(val + 1)
+
+    # ─── Well Selection / Ordering ────────────────────────────────────
+
+    def _populate_well_list(self, well_list):
+        """Fill the well list widget from a WellList."""
+        self._well_list_widget.clear()
+        for w in well_list.wells:
+            item = QListWidgetItem(w.name)
+            item.setSelected(True)
+            self._well_list_widget.addItem(item)
+
+    def _select_all_wells(self):
+        for i in range(self._well_list_widget.count()):
+            self._well_list_widget.item(i).setSelected(True)
+
+    def _select_no_wells(self):
+        self._well_list_widget.clearSelection()
+
+    def _move_well_up(self):
+        row = self._well_list_widget.currentRow()
+        if row > 0:
+            item = self._well_list_widget.takeItem(row)
+            self._well_list_widget.insertItem(row - 1, item)
+            self._well_list_widget.setCurrentRow(row - 1)
+
+    def _move_well_down(self):
+        row = self._well_list_widget.currentRow()
+        if row < self._well_list_widget.count() - 1:
+            item = self._well_list_widget.takeItem(row)
+            self._well_list_widget.insertItem(row + 1, item)
+            self._well_list_widget.setCurrentRow(row + 1)
+
+    def _apply_well_selection(self):
+        """Re-display using only selected wells in the current order."""
+        self._display_current_result()
+
+    def _get_visible_wells(self):
+        """Return list of selected well names in current order."""
+        names = []
+        for i in range(self._well_list_widget.count()):
+            item = self._well_list_widget.item(i)
+            if item.isSelected():
+                names.append(item.text())
+        return names if names else None
 
     def _on_result_spin_changed(self, value):
         self._display_current_result()

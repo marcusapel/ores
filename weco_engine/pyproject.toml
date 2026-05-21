@@ -59,7 +59,7 @@ ai = ["scikit-learn>=1.3"]
 
 cython = ["cython>=3.0", "numpy"]
 
-devel = ["sphinx", 'sphinx_rtd_theme', 'pytest', 'pybind11[global]', "typing-extensions", "pybind11-stubgen"]
+devel = ['pytest', 'pybind11[global]', "typing-extensions", "pybind11-stubgen"]
 
 api = ["fastapi", "uvicorn", "python-multipart"]
 

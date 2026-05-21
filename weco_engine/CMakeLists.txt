@@ -11,7 +11,6 @@ option (GEN_PYBINDING "Generate Python Binding" OFF)
 option (GEN_WECORUN "Generate WeCoRun executable" ON)
 option (GEN_TEST_EXEC "Generate test executables" OFF)
 option (GEN_TEST_COST_FUNCTION "Add test cost function" OFF)
-option (GEN_PLUGIN "Add Plugin Architecture" OFF)
 option (GEN_CPP_DOC "Generate C++ documentation" OFF)
 option (B3D_INTERPOLATION "Use Bézier 3D cubic interpolation" ON)
 
@@ -85,9 +84,6 @@ if (GEN_TEST_COST_FUNCTION)
 endif (GEN_TEST_COST_FUNCTION) 
 
 
-if (GEN_PLUGIN)
-    set(MAINSRC	${MAINSRC}	plugin/plugin.cpp include/weco_plugin.h)
-endif (GEN_PLUGIN)
 
 #================ binding source files =======
 set(BINDINGSRC
@@ -108,9 +104,6 @@ set(LINKOPT ${CMAKE_THREAD_LIBS_INIT})
 if(OpenMP_CXX_FOUND)
     set(LINKOPT ${LINKOPT} OpenMP::OpenMP_CXX)
 endif()
-if (GEN_PLUGIN)
-    set(LINKOPT	${LINKOPT} ${CMAKE_DL_LIBS}	)
-endif (GEN_PLUGIN)
 
 #================ weco_cfg.h =======
 configure_file (
@@ -142,10 +135,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test.cpp")
 endif()
 
 
-#========== plugin example =================
-if(GEN_PLUGIN_EXAMPLE)
-    add_library( plugin_example SHARED plugin/plugin_example.cpp include/weco_plugin.h)
-endif(GEN_PLUGIN_EXAMPLE)
 
 #================= test executable ==============================
 
@@ -181,10 +170,4 @@ if (GEN_CPP_DOC)
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/doc/cpp)
     doxygen_add_docs(doc include ALL COMMENT "building doc")
 endif (GEN_CPP_DOC)
-
-#=================== WebAssembly (§5.1) ==========================
-if (WASM_BUILD)
-    add_executable(weco_wasm ${MAINSRC})
-    set_target_properties(weco_wasm PROPERTIES SUFFIX ".js")
-endif (WASM_BUILD)
 

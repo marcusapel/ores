@@ -21,6 +21,7 @@ including partial copies or modified versions thereof.
 #include <weco.h>
 #include <queue>
 #include <memory>
+#include <stdexcept>
 #include <functional>
 namespace WeCo {
 
@@ -37,7 +38,8 @@ public :
 
 	/// execute task of the default scheduler
 	static bool default_run() {
-		assert(default_scheduler_);
+		if (!default_scheduler_)
+			throw std::runtime_error("No default scheduler available");
 		return default_scheduler()->run();
 	}
 
@@ -66,15 +68,24 @@ public :
 		Task(const Task &&) =delete;
 		Task(const Task &) =delete;
 
-		const CorGraph & parent1() const
-			{assert(parent1_.cor_graph);return *(parent1_.cor_graph);}
-		const CorGraph & parent2() const
-			{assert(parent2_.cor_graph);return *(parent2_.cor_graph);}
+		const CorGraph & parent1() const {
+			if (!parent1_.cor_graph)
+				throw std::runtime_error("Task parent1 not resolved");
+			return *(parent1_.cor_graph);
+		}
+		const CorGraph & parent2() const {
+			if (!parent2_.cor_graph)
+				throw std::runtime_error("Task parent2 not resolved");
+			return *(parent2_.cor_graph);
+		}
 
 		virtual void run(Correlator &) =0;
 
-		const CorGraph& result() const
-			{ assert(result_);return *(result_.get());}
+		const CorGraph& result() const {
+			if (!result_)
+				throw std::runtime_error("Task has no result (correlation failed?)");
+			return *(result_.get());
+		}
 
 
 		int num()const 
@@ -118,7 +129,8 @@ public :
 	virtual Correlator & final_correlator() =0;
 
 	const CorGraph &result() const {
-		assert(final_task_);
+		if (!final_task_)
+			throw std::runtime_error("Scheduler has no result (run not called?)");
 		return final_task_->result();
 	}
 

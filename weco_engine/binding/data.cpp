@@ -95,7 +95,11 @@ void def_data(py::module_& m){
 
 		DEF(WellList,nbr_wells,"")
 
-		.def("well",[](WeCo::WellList & wl,WeCo::WellId id)->WeCo::Well&{return *(wl.well(id)); })
+		.def("well",[](WeCo::WellList & wl,WeCo::WellId id)->WeCo::Well&{
+			if (id >= wl.nbr_wells())
+				throw py::index_error("well: id out of range");
+			return *(wl.well(id));
+		}, py::return_value_policy::reference_internal)
 		DEF(WellList,add,"Add well ot well list")
 	;
 

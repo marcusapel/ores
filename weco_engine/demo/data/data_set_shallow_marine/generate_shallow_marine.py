@@ -49,16 +49,19 @@ import numpy as np
 # ---------------------------------------------------------------------------
 # Facies definitions: ID -> (name, GR, GR_std, RT, RT_std, RHOB, RHOB_std,
 #                            NPHI, NPHI_std, DT, DT_std)
+# Note: Adjacent facies have OVERLAPPING log responses — this is geologically
+# realistic and creates genuine ambiguity for the correlation engine.
+# Upper/lower shoreface GR overlap (40-65 vs 50-80), offshore/bay overlap, etc.
 # ---------------------------------------------------------------------------
 FACIES = {
-    1: ("OffshoreMud",    120, 12, 1.5, 0.4, 2.45, 0.03, 0.32, 0.03, 95, 8),
-    2: ("OffshoreTransit",  90, 15, 3.0, 0.8, 2.40, 0.04, 0.28, 0.03, 85, 7),
-    3: ("LowerShoreface",   65, 12, 8.0, 2.0, 2.30, 0.04, 0.22, 0.03, 75, 6),
-    4: ("UpperShoreface",   40, 10, 15., 4.0, 2.20, 0.03, 0.18, 0.02, 68, 5),
-    5: ("Foreshore",        25,  8, 25., 6.0, 2.15, 0.03, 0.14, 0.02, 62, 4),
-    6: ("BayFillMud",      110, 15, 2.0, 0.5, 2.50, 0.04, 0.35, 0.04, 98, 9),
-    7: ("TidalChannel",     35, 10, 12., 3.0, 2.22, 0.04, 0.20, 0.03, 70, 6),
-    8: ("TransgressiveLag", 45, 12, 20., 5.0, 2.55, 0.05, 0.12, 0.03, 60, 5),
+    1: ("OffshoreMud",    115, 18, 1.8, 0.6, 2.44, 0.05, 0.31, 0.04, 92, 10),
+    2: ("OffshoreTransit",  85, 18, 3.5, 1.2, 2.38, 0.05, 0.27, 0.04, 83, 9),
+    3: ("LowerShoreface",   60, 16, 7.0, 2.5, 2.28, 0.05, 0.21, 0.04, 74, 8),
+    4: ("UpperShoreface",   42, 14, 13., 5.0, 2.20, 0.05, 0.17, 0.04, 67, 7),
+    5: ("Foreshore",        28, 12, 22., 7.0, 2.16, 0.04, 0.13, 0.03, 61, 6),
+    6: ("BayFillMud",      108, 18, 2.2, 0.7, 2.48, 0.05, 0.34, 0.05, 96, 10),
+    7: ("TidalChannel",     38, 14, 10., 4.0, 2.23, 0.05, 0.19, 0.04, 69, 7),
+    8: ("TransgressiveLag", 48, 14, 18., 6.0, 2.52, 0.06, 0.11, 0.04, 59, 7),
 }
 
 # Lateral equivalence groups for distality cost
@@ -69,34 +72,60 @@ FACIES_GROUPS = "1,6;2,8;3,7;4,5"
 #                          facies_profile_distal, thickening_rate)
 # facies_profile = list of (facies_id, fraction) from base to top
 # thickening_rate = fractional increase per well step downdip
+#
+# Design: PS1/PS3/PS5/PS7 are SIMILAR shoreface progradations — this creates
+# the key correlation ambiguity: "which shoreface ties to which?"
+# PS2/PS6 are bay-fill (muddy) — similar signature, different age.
+# PS4 is a thin transgressive lag — easy to miss or miscorrelate.
+# The REPEATED similar pattern forces the engine to explore multiple
+# valid scenarios with different reservoir connectivity implications.
 # ---------------------------------------------------------------------------
 PARASEQUENCES = [
-    ("PS1", 8.0,
-     [(3, 0.4), (4, 0.4), (5, 0.2)],                # proximal: shoreface
-     [(1, 0.3), (2, 0.4), (3, 0.3)],                 # distal: offshore
-     0.15),
-    ("PS2", 6.0,
-     [(7, 0.5), (4, 0.3), (5, 0.2)],                 # proximal: tidal→shore
-     [(6, 0.5), (2, 0.3), (3, 0.2)],                  # distal: bay fill
-     0.10),
-    ("PS3", 10.0,
-     [(3, 0.2), (4, 0.5), (5, 0.3)],                 # proximal: upper shore
-     [(2, 0.3), (3, 0.4), (4, 0.3)],                  # distal: lower shore
-     0.20),
-    ("PS4", 3.0,
-     [(8, 0.3), (2, 0.4), (3, 0.3)],                 # proximal: lag→offshore
-     [(8, 0.1), (1, 0.5), (2, 0.4)],                  # distal: offshore
-     0.05),
-    ("PS5", 9.0,
-     [(3, 0.15), (4, 0.45), (5, 0.4)],               # proximal: prograding
-     [(2, 0.2), (3, 0.4), (4, 0.4)],                  # distal: lower shore
+    ("PS1", 7.0,
+     [(3, 0.4), (4, 0.4), (5, 0.2)],                 # proximal: shoreface
+     [(1, 0.3), (2, 0.4), (3, 0.3)],                  # distal: offshore
      0.18),
+    ("PS2", 5.0,
+     [(7, 0.5), (4, 0.3), (5, 0.2)],                  # proximal: tidal→shore
+     [(6, 0.5), (2, 0.3), (3, 0.2)],                  # distal: bay fill
+     0.08),
+    ("PS3", 8.0,
+     [(3, 0.3), (4, 0.45), (5, 0.25)],               # proximal: shoreface (similar to PS1!)
+     [(2, 0.3), (3, 0.4), (4, 0.3)],                  # distal: lower shore
+     0.22),
+    ("PS4", 2.5,
+     [(8, 0.3), (2, 0.4), (3, 0.3)],                 # proximal: lag→offshore
+     [(8, 0.1), (1, 0.5), (2, 0.4)],                  # distal: offshore (thin)
+     0.03),
+    ("PS5", 7.5,
+     [(3, 0.2), (4, 0.5), (5, 0.3)],                  # proximal: shoreface (similar to PS1/PS3!)
+     [(2, 0.2), (3, 0.4), (4, 0.4)],                  # distal: lower shore
+     0.20),
+    ("PS6", 4.5,
+     [(6, 0.4), (7, 0.4), (4, 0.2)],                  # proximal: bay→tidal
+     [(6, 0.6), (2, 0.2), (3, 0.2)],                  # distal: bay fill (similar to PS2!)
+     0.06),
+    ("PS7", 8.5,
+     [(3, 0.15), (4, 0.5), (5, 0.35)],               # proximal: prograding (similar to PS3/PS5!)
+     [(2, 0.15), (3, 0.45), (4, 0.4)],                # distal: lower shore
+     0.20),
 ]
+
+# Erosional surfaces: some parasequences are partially eroded in certain
+# wells, creating "is this sand connected or is it a separate body?" ambiguity.
+# Format: {ps_index: (wells_affected_fraction, max_erosion_fraction)}
+# e.g. PS4 (thin lag) is completely eroded in 30% of wells (proximal ravinement)
+# PS2 is partially eroded at top in 20% of wells (channel incision)
+EROSION = {
+    3: (0.30, 1.0),   # PS4: thin lag often eroded entirely (proximal wells)
+    1: (0.20, 0.4),   # PS2: top-cut by channel in some wells
+    5: (0.15, 0.5),   # PS6: second bay-fill partially removed in some wells
+}
 
 # Biozone boundaries (between parasequences, 0-indexed)
 BIOZONES = {
-    "BZ1": 1,   # base of PS2
-    "BZ2": 3,   # base of PS4
+    "BZ1": 2,   # base of PS3
+    "BZ2": 5,   # base of PS6
 }
 
 
@@ -143,8 +172,10 @@ def _log_from_facies(rng, facies_seq, log_idx, trend_sign=0.0):
     log_idx: 0=GR, 1=RT, 2=RHOB, 3=NPHI, 4=DT
     trend_sign: applied as a linear gradient within each run of the
         same facies (>0 = upward-increasing, <0 = upward-decreasing).
-        For shoreface PS: GR gets trend_sign=-1 (upward-coarsening),
-        RT gets +1 (upward-cleaning).
+
+    Noise is deliberately high to create log-response ambiguity between
+    adjacent facies — realistic for subsurface data where measurement
+    uncertainty + diagenesis + cementation create overlap.
     """
     n = len(facies_seq)
     values = []
@@ -163,7 +194,8 @@ def _log_from_facies(rng, facies_seq, log_idx, trend_sign=0.0):
             # Vertical trend: linear gradient from -0.5σ to +0.5σ
             frac = k / max(run_len - 1, 1)  # 0→1 from base to top
             trend = trend_sign * std * 0.5 * (frac - 0.5)
-            values.append(float(rng.normal(mean + trend, std * 0.7)))
+            # Higher noise: full σ (not 0.7σ) — creates genuine ambiguity
+            values.append(float(rng.normal(mean + trend, std)))
     return values
 
 
@@ -183,6 +215,10 @@ def generate_well(rng, name, x, y, well_idx, n_wells):
 
     well_idx: 0 = most proximal, n_wells-1 = most distal.
     Returns dict with well data, regions, and truth markers.
+
+    Applies erosional truncation to create connectivity ambiguity:
+    some parasequences are partially or fully removed in certain wells,
+    making it genuinely uncertain whether sand bodies connect laterally.
     """
     t = well_idx / max(n_wells - 1, 1)  # 0=proximal, 1=distal
 
@@ -192,10 +228,25 @@ def generate_well(rng, name, x, y, well_idx, n_wells):
     depth_cursor = 0.0
     sample_spacing = 0.5  # metres
 
-    for ps_name, base_thick, prox, dist, thick_rate in PARASEQUENCES:
+    for ps_idx, (ps_name, base_thick, prox, dist, thick_rate) in enumerate(PARASEQUENCES):
         # Thickness increases downdip
         thickness = base_thick * (1.0 + thick_rate * well_idx)
-        n_samples = max(4, int(round(thickness / sample_spacing)))
+
+        # Apply erosion: remove part/all of this PS in some wells
+        if ps_idx in EROSION:
+            frac_wells_affected, max_erode = EROSION[ps_idx]
+            # Erosion preferentially affects proximal wells (ravinement)
+            # or random wells (channel incision)
+            erode_threshold = frac_wells_affected
+            well_hash = rng.random()
+            if well_hash < erode_threshold:
+                erosion_frac = rng.uniform(0.5, 1.0) * max_erode
+                thickness *= (1.0 - erosion_frac)
+
+        # Add per-well random thickness variation (±20%) to create ambiguity
+        thickness *= rng.uniform(0.80, 1.20)
+
+        n_samples = max(2, int(round(thickness / sample_spacing)))
 
         profile = _interp_profile(prox, dist, t)
         facies_seq = _sample_facies(rng, profile, n_samples)

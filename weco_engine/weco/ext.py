@@ -66,8 +66,13 @@ class ProjectExt(Project):
         :param build_list: create results as lists if True
         :param reorder: reorder wells if True
         :return: a ResFile instance
+        :raises RuntimeError: if no result is available (run() not called or failed)
         """
-        return cor_graph2res_file(self.result(), build_list, reorder)
+        try:
+            cg = self.result()
+        except (RuntimeError, SystemError):
+            raise RuntimeError("No correlation result available — did run() succeed?")
+        return cor_graph2res_file(cg, build_list, reorder)
 
 
 class CCFPartExt(CCFPart):

@@ -2,6 +2,9 @@ name: build-test
 
 on: push
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   linux-build:
     name: Linux Build Py${{ matrix.pyver }}

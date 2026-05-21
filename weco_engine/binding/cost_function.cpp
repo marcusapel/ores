@@ -73,20 +73,40 @@ void def_cost_function(py::module_& m){
 			    ":return: Size of the graph (Number of nodes)\n:rtype: int\n"
 			    )
 			.def("node_size",&WeCo::CorGraph::node_size,":return: Number of wells in the CorGraph")
-			.def("marker",&WeCo::CorGraph::marker, 
+			.def("marker",[](const WeCo::CorGraph &cg, WeCo::CorGraph::NodeId node_id, unsigned well_id) {
+				if (node_id >= cg.size() || well_id >= cg.node_size())
+					throw py::index_error("marker: node_id or well_id out of range");
+				return cg.marker(node_id, well_id);
+			},
                 ":return: Marker ID from a node ID and a Well ID",
                 py::arg( "node_id" ),
                 py::arg( "well_id" )
                 )
-			.def("nbr_trans",&WeCo::CorGraph::nbr_trans, 
+			.def("nbr_trans",[](const WeCo::CorGraph &cg, WeCo::CorGraph::NodeId node_id) {
+				if (node_id >= cg.size())
+					throw py::index_error("nbr_trans: node_id out of range");
+				return cg.nbr_trans(node_id);
+			},
                 ":return: Number of transitions from a CorGraph Node ID",
                 py::arg( "node_id" ) )
-			.def("trans_cost",&WeCo::CorGraph::trans_cost,
+			.def("trans_cost",[](const WeCo::CorGraph &cg, WeCo::CorGraph::NodeId dest_node_id, unsigned edge_id) {
+				if (dest_node_id >= cg.size())
+					throw py::index_error("trans_cost: dest_node_id out of range");
+				if (edge_id >= cg.nbr_trans(dest_node_id))
+					throw py::index_error("trans_cost: edge_id out of range");
+				return cg.trans_cost(dest_node_id, edge_id);
+			},
                 ":return: Transition cost to arrive at CorGraph Node ID and transition ID \n \
                 :param edge_id: The transition ID (must be smaller than nbr_trans)",
                 py::arg( "dest_node_id" ),
                 py::arg( "edge_id" ) )
-			.def("trans_from",&WeCo::CorGraph::trans_from,
+			.def("trans_from",[](const WeCo::CorGraph &cg, WeCo::CorGraph::NodeId dest_node_id, unsigned edge_id) {
+				if (dest_node_id >= cg.size())
+					throw py::index_error("trans_from: dest_node_id out of range");
+				if (edge_id >= cg.nbr_trans(dest_node_id))
+					throw py::index_error("trans_from: edge_id out of range");
+				return cg.trans_from(dest_node_id, edge_id);
+			},
                 "Allows to navigate in the CorGraph structure \n\
                 :return: The source CorGraph Node ID corresponding to transition ID \n\
                 :param dest_node_id: The destination node ID (must be smaller than size) \n\

@@ -1,0 +1,8 @@
+# Prograding delta correlation options
+cost-function composite
+var-data GR
+var-weight 1.0
+order pyramidal
+nbr-cor 50
+out-nbr-cor 10
+max-cor 200

@@ -26,6 +26,7 @@ including partial copies or modified versions thereof.
 #define INCLUDE_WECO_PROJECT_H_
 
 #include <functional>
+#include <stdexcept>
 #include <weco.h>
 #include "scheduler.h"
 #include <map>
@@ -232,6 +233,8 @@ public:
 	bool run(const WellList& well_list);
 
 	const WeCo::CorGraph &result() const {
+		if (!scheduler_)
+			throw std::runtime_error("No result available (run not called or failed)");
 		return scheduler_->result();
 	}
 
@@ -330,9 +333,6 @@ public:
 
 
 
-#ifdef GEN_PLUGIN
-bool load_plugin(const std::string& file_name);
-#endif
 
 
 }// namespace WeCo
