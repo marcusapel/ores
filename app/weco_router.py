@@ -857,22 +857,25 @@ def weco_wheeler(result_idx: int):
 
 
 def _apply_memory_guards(options: dict, n_wells: int) -> dict:
-    """Enforce safe parameter limits to prevent OOM on Radix (2Gi container)."""
+    """Enforce safe parameter limits to prevent OOM on Radix (2Gi container).
+
+    max-cor (path length) must be >= well depth to get full correlation.
+    nbr-cor (number of results) is the main memory driver — scale by well count.
+    """
     opts = dict(options)
     # Force single-thread to limit peak memory (one correlator buffer at a time)
     opts.setdefault("thread", 1)
-    # Scale limits by dataset size
+    # Scale nbr-cor (result count) by dataset size — this is the memory driver
     if n_wells > 50:
-        opts["max-cor"] = min(int(opts.get("max-cor", 20)), 20)
         opts["nbr-cor"] = min(int(opts.get("nbr-cor", 3)), 5)
         opts.setdefault("band-width", 30)
     elif n_wells > 10:
-        opts["max-cor"] = min(int(opts.get("max-cor", 30)), 30)
         opts["nbr-cor"] = min(int(opts.get("nbr-cor", 5)), 10)
         opts.setdefault("band-width", 30)
     else:
-        opts["max-cor"] = min(int(opts.get("max-cor", 50)), 50)
-        opts["nbr-cor"] = min(int(opts.get("nbr-cor", 10)), 20)
+        opts["nbr-cor"] = min(int(opts.get("nbr-cor", 20)), 30)
+    # max-cor (path length) — must cover the full well depth; cap at 200
+    opts["max-cor"] = min(int(opts.get("max-cor", 80)), 200)
     return opts
 
 

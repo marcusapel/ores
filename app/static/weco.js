@@ -391,6 +391,9 @@
       btnRunDemo.textContent = `\u25B6 Run "${selectedDemo}"`;
     }
 
+    // Reset parameters form for the new demo
+    resetParamsForm();
+
     // Also check if this can be imported from RDDMS
     const btnRddms = $('#btn-import-demo-rddms');
     if (btnRddms) {
@@ -737,6 +740,24 @@
     }
   }
 
+  function resetParamsForm() {
+    /**Clear all parameter fields to defaults before applying new demo options.*/
+    const set = (sel, v) => { const el = $(sel); if (el) el.value = v; };
+    set('#p-var-data', '');
+    set('#p-var-weight', '1.0');
+    set('#p-var-data2', '');
+    set('#p-var-weight2', '');
+    set('#p-no-crossing', '');
+    set('#p-same-region', '');
+    set('#p-gap-cost', '');
+    set('#p-polarity-region', '');
+    set('#p-dist-distal', '');
+    set('#p-dist-facies', '');
+    set('#p-band-width', '');
+    set('#p-max-cor', '');
+    set('#p-n-best', '5');
+  }
+
   function applyOptionsToForm(opts) {
     /**Apply recommended/demo-specific options to the Parameters form fields.*/
     const set = (sel, v) => { const el = $(sel); if (el && v != null) el.value = v; };
@@ -920,6 +941,19 @@
   function showResults(data) {
     resEmpty.style.display = 'none';
     resSummary.style.display = 'block';
+    // Show demo name / well list context
+    const resCtx = $('#res-context');
+    if (resCtx) {
+      if (selectedDemo) {
+        resCtx.textContent = selectedDemo;
+      } else if (data.well_names && data.well_names.length <= 6) {
+        resCtx.textContent = data.well_names.join(', ');
+      } else if (data.well_names) {
+        resCtx.textContent = data.well_names.slice(0, 4).join(', ') + ` (+${data.well_names.length - 4})`;
+      } else {
+        resCtx.textContent = '';
+      }
+    }
     resNWells.textContent = data.n_wells || '?';
     resNRes.textContent = data.n_results || 0;
     resElapsed.textContent = data.elapsed_ms || '-';
