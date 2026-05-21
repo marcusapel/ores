@@ -99,6 +99,18 @@ def _session_well_file() -> str:
 _cached_well_list = None
 _cached_res_file = None
 
+# R3: Result cache — avoids re-running if same wells+options
+_result_cache = {}  # key: (wells_hash, options_hash) → response dict
+_RESULT_CACHE_MAX = 5
+
+
+def _cache_key(wl, options: dict) -> str:
+    """Compute a deterministic key from wells + options."""
+    import hashlib
+    well_sig = "|".join(f"{w.name}:{w.size}" for w in wl.wells)
+    opts_sig = "&".join(f"{k}={v}" for k, v in sorted(options.items()) if v)
+    return hashlib.md5(f"{well_sig}#{opts_sig}".encode()).hexdigest()
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  RDDMS → WeCo Well conversion (uses ORES native osdu.py, no gocad)
@@ -1006,11 +1018,37 @@ async def weco_auto(request: Request):
         options.setdefault("nbr-cor", 100)
         options.setdefault("out-nbr-cor", 20)
 
+        # R3: Check result cache
+        cache_k = _cache_key(wl, options)
+        if cache_k in _result_cache:
+            log.info(f"Auto-correlate: cache hit ({cache_k[:8]})")
+            return _result_cache[cache_k]
+
         log.info(f"Auto-correlate: {n_wells} wells, env={reasoning.get('detected_environment','?')}")
 
-        # 4. Run engine
-        rf, data, elapsed = _run_engine(wl, options)
-        _cached_res_file = rf
+        # 4. Run engine (with fallback on failure)
+        engine_error = None
+        try:
+            rf, data, elapsed = _run_engine(wl, options)
+            _cached_res_file = rf
+        except Exception as engine_exc:
+            engine_error = str(engine_exc)
+            log.warning(f"Auto-correlate: primary run failed ({engine_error}), trying fallback")
+            # Fallback: strip advanced options that may cause failure
+            fallback_opts = {k: v for k, v in options.items()
+                            if k in ("var-data", "var-weight", "max-cor",
+                                     "min-dist", "out-min-dist", "nbr-cor",
+                                     "out-nbr-cor", "order")}
+            fallback_opts.setdefault("var-data", "GR")
+            fallback_opts.setdefault("max-cor", 80)
+            try:
+                rf, data, elapsed = _run_engine(wl, fallback_opts)
+                _cached_res_file = rf
+                options = fallback_opts
+                reasoning["fallback"] = f"Primary run failed: {engine_error}. Used simplified options."
+            except Exception as fallback_exc:
+                log.exception(f"Auto-correlate: fallback also failed: {fallback_exc}")
+                raise HTTPException(500, f"Correlation failed: {engine_error} (fallback: {fallback_exc})")
 
         # 5. Extract diverse results with scenario labels
         diverse_indices = _diverse_results(rf, data, n_best=50, n_diverse=5)
@@ -1037,7 +1075,7 @@ async def weco_auto(request: Request):
         log.exception(f"Auto-correlate error: {e}")
         raise HTTPException(500, f"Auto-correlate error: {e}")
 
-    return {
+    response = {
         "status": "ok",
         "elapsed_ms": round(elapsed, 2),
         "iterations": 1,
@@ -1049,6 +1087,13 @@ async def weco_auto(request: Request):
         "results": diverse_results,
         "wells_plot_data": wells_plot_data,
     }
+
+    # R3: Store in cache (evict oldest if full)
+    if len(_result_cache) >= _RESULT_CACHE_MAX:
+        _result_cache.pop(next(iter(_result_cache)))
+    _result_cache[cache_k] = response
+
+    return response
 
 
 # ═══════════════════════════════════════════════════════════════════════════
