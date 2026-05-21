@@ -121,6 +121,12 @@ import urllib.parse
 import uuid as uuid_mod
 import numpy as np
 
+# WeCo-specific default dataspace (falls back to global DEFAULT_DATASPACE)
+WECO_DEFAULT_DATASPACE = os.environ.get(
+    "WECO_DEFAULT_DATASPACE",
+    os.environ.get("DEFAULT_DATASPACE", "maap/weco")
+)
+
 # Deterministic UUID namespace — must match demo/ingest_weco_demos.py
 _WECO_NS = uuid_mod.UUID("a3f8c1e0-7b2d-4e5f-9a1c-6d8e0f2b4a7c")
 
@@ -567,7 +573,7 @@ _templates = Jinja2Templates(
 @router.get("/", response_class=HTMLResponse)
 def weco_page(request: Request):
     """Serve the WeCo correlation web UI."""
-    dataspace = os.environ.get("DEFAULT_DATASPACE", "maap/drogon")
+    dataspace = WECO_DEFAULT_DATASPACE
     return _templates.TemplateResponse(request, "weco.html", {
         "dataspace": dataspace,
     })
@@ -603,7 +609,7 @@ async def weco_import(req: WecoImportRequest, request: Request):
     if not token:
         raise HTTPException(401, "No access token. Log in to OSDU first.")
 
-    dataspace = req.dataspace or os.environ.get("DEFAULT_DATASPACE", "default")
+    dataspace = req.dataspace or WECO_DEFAULT_DATASPACE
 
     try:
         wl = await _rddms_import_wells(token, dataspace)
@@ -753,7 +759,7 @@ async def weco_import_strat_column(request: Request):
     if not token:
         raise HTTPException(401, "No access token. Log in to OSDU first.")
 
-    dataspace = os.environ.get("DEFAULT_DATASPACE", "default")
+    dataspace = WECO_DEFAULT_DATASPACE
     ds_enc = dataspace.replace("/", "%2F")
 
     try:
@@ -1222,7 +1228,7 @@ async def weco_export(request: Request):
             dataspace = w.meta["dataspace"]
             break
     if not dataspace:
-        dataspace = os.environ.get("DEFAULT_DATASPACE", "maap/drogon")
+        dataspace = WECO_DEFAULT_DATASPACE
 
     # Build WellboreMarkerFrame RESQML objects per well
     marker_frames = []
@@ -1320,7 +1326,7 @@ async def weco_full_workflow(req: WecoFullRequest, request: Request):
     if not token:
         raise HTTPException(401, "Not authenticated.")
 
-    dataspace = req.dataspace or os.environ.get("DEFAULT_DATASPACE", "default")
+    dataspace = req.dataspace or WECO_DEFAULT_DATASPACE
 
     # Step 1: Import wells via ORES osdu client
     try:
