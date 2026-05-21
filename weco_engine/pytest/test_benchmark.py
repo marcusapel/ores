@@ -62,5 +62,9 @@ def test_auto_pipeline_timing(wells_path, capsys):
               f"post={t_post*1000:.0f}ms total={total_ms:.0f}ms | "
               f"{len(results)} results, {len(diverse_idx)} diverse")
 
-    # Soft assertion: should complete within 30s for any demo
-    assert total_ms < 30000, f"Pipeline too slow: {total_ms:.0f}ms"
+    # Soft warning: CI runners (especially Windows) are much slower than local
+    if total_ms > 120000:
+        pytest.fail(f"Pipeline extremely slow: {total_ms:.0f}ms (>120s)")
+    elif total_ms > 30000:
+        import warnings
+        warnings.warn(f"Pipeline slow: {total_ms:.0f}ms (>30s, expected on Windows CI)")

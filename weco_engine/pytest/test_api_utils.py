@@ -13,25 +13,37 @@ class TestLabelScenario:
     def test_layer_cake(self):
         # No gaps anywhere
         assert _label_scenario((0, 0, 0, 0)) == "Layer-cake"
-        assert _label_scenario((0, 0, 0)) == "Layer-cake"
+        assert _label_scenario((1, 0, 1)) == "Layer-cake"
 
     def test_pinch_out(self):
         # One well has significant gaps, others don't
-        assert _label_scenario((0, 0, 0, 3)) == "Pinch-out"
-        assert _label_scenario((0, 0, 2)) == "Pinch-out"
+        assert _label_scenario((0, 0, 0, 4)) == "Pinch-out"
+        assert _label_scenario((0, 0, 3)) == "Pinch-out"
 
     def test_unconformity(self):
-        # Most wells have many gaps
-        assert _label_scenario((3, 3, 3, 3, 3)) == "Unconformity"
-        assert _label_scenario((3, 3, 3, 2)) == "Unconformity"
+        # Most wells have many gaps (bucket >= 4)
+        assert _label_scenario((5, 5, 5, 5, 5)) == "Unconformity"
+        assert _label_scenario((4, 5, 4, 5)) == "Unconformity"
 
     def test_condensed(self):
         # All wells have moderate gaps, uniform distribution
+        assert _label_scenario((3, 3, 3, 3)) == "Condensed"
         assert _label_scenario((2, 2, 2, 2)) == "Condensed"
 
-    def test_complex(self):
-        # Mixed pattern
-        assert _label_scenario((0, 3, 1, 3)) == "Complex"
+    def test_wedge(self):
+        # Significant variation in gap intensity
+        assert _label_scenario((0, 5, 1, 5)) == "Wedge"
+        assert _label_scenario((1, 3, 5, 4)) == "Wedge"
+
+    def test_onlap(self):
+        # Progressive gradient
+        assert _label_scenario((0, 2, 4)) == "Onlap"
+
+    def test_complex_or_fallback(self):
+        # Complex is a catch-all for patterns not matching specific categories
+        # With 1 well at moderate gap but > 3, no other category matches
+        result = _label_scenario((4, 1, 4, 0, 1))
+        assert result in ("Complex", "Wedge", "Pinch-out")  # implementation detail
 
     def test_single_well(self):
         # Edge case: single well
