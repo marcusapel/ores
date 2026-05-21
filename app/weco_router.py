@@ -868,10 +868,10 @@ def _apply_memory_guards(options: dict, n_wells: int) -> dict:
     # Scale nbr-cor (result count) by dataset size — this is the memory driver
     if n_wells > 50:
         opts["nbr-cor"] = min(int(opts.get("nbr-cor", 3)), 5)
+        # Only add band-width as perf optimization for very large datasets
         opts.setdefault("band-width", 30)
     elif n_wells > 10:
         opts["nbr-cor"] = min(int(opts.get("nbr-cor", 5)), 10)
-        opts.setdefault("band-width", 30)
     else:
         opts["nbr-cor"] = min(int(opts.get("nbr-cor", 20)), 30)
     # max-cor (path length) — must cover the full well depth; cap at 200
@@ -1027,24 +1027,25 @@ async def weco_auto(request: Request):
         else:
             options, reasoning = _suggest_defaults_for_wells(wl)
 
-        # 2. Detect environment: metadata first, then logs fallback
-        try:
-            env_key = detect_environment_from_metadata(wl)
-            if env_key:
-                reasoning["env_source"] = "metadata"
-            else:
-                env_key = detect_environment_from_logs(wl)
+        # 2. Detect environment (only for non-demo runs — demos have curated opts)
+        if reasoning.get("source") != "demo":
+            try:
+                env_key = detect_environment_from_metadata(wl)
                 if env_key:
-                    reasoning["env_source"] = "logs"
-            if env_key:
-                env_opts = suggest_options(env_key, data_names=wl.get_data_names())
-                for k, v in env_opts.items():
-                    norm_k = k.replace("_", "-")
-                    if norm_k not in options:
-                        options[norm_k] = v
-                reasoning["detected_environment"] = env_key
-        except Exception:
-            pass
+                    reasoning["env_source"] = "metadata"
+                else:
+                    env_key = detect_environment_from_logs(wl)
+                    if env_key:
+                        reasoning["env_source"] = "logs"
+                if env_key:
+                    env_opts = suggest_options(env_key, data_names=wl.get_data_names())
+                    for k, v in env_opts.items():
+                        norm_k = k.replace("_", "-")
+                        if norm_k not in options:
+                            options[norm_k] = v
+                    reasoning["detected_environment"] = env_key
+            except Exception:
+                pass
 
         # 3. Memory guards + ensure diversity
         options = _apply_memory_guards(options, n_wells)

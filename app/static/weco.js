@@ -744,7 +744,7 @@
     /**Clear all parameter fields to defaults before applying new demo options.*/
     const set = (sel, v) => { const el = $(sel); if (el) el.value = v; };
     set('#p-var-data', '');
-    set('#p-var-weight', '1.0');
+    set('#p-var-weight', '');
     set('#p-var-data2', '');
     set('#p-var-weight2', '');
     set('#p-no-crossing', '');
@@ -756,24 +756,43 @@
     set('#p-band-width', '');
     set('#p-max-cor', '');
     set('#p-n-best', '5');
+    // Hide advanced fields (demo-specific applyOptionsToForm will re-show relevant ones)
+    $$('.adv').forEach(el => { el.style.display = 'none'; });
+    if (showAdv) showAdv.checked = false;
   }
 
   function applyOptionsToForm(opts) {
-    /**Apply recommended/demo-specific options to the Parameters form fields.*/
+    /**Apply recommended/demo-specific options to the Parameters form fields.
+     * Also auto-reveals advanced fields that have meaningful values.*/
     const set = (sel, v) => { const el = $(sel); if (el && v != null) el.value = v; };
-    set('#p-var-data', opts['var-data']);
-    set('#p-var-weight', opts['var-weight'] != null ? opts['var-weight'] : 0.5);
+    // Primary log
+    set('#p-var-data', opts['var-data'] || '');
+    set('#p-var-weight', opts['var-weight'] != null ? opts['var-weight'] : '');
+    // Secondary log
     set('#p-var-data2', opts['var-data2'] || '');
     set('#p-var-weight2', opts['var-weight2'] != null ? opts['var-weight2'] : '');
+    // Constraints
     set('#p-no-crossing', opts['no-crossing'] || '');
     set('#p-same-region', opts['same-region'] || '');
+    // Cost modifiers
     set('#p-gap-cost', opts['const-gap-cost'] != null ? opts['const-gap-cost'] : '');
     set('#p-polarity-region', opts['polarity-region'] || '');
+    // Distality
     set('#p-dist-distal', opts['dist-distal'] || '');
     set('#p-dist-facies', opts['dist-facies'] || '');
+    // Engine tuning
     set('#p-band-width', opts['band-width'] != null ? opts['band-width'] : '');
     set('#p-max-cor', opts['max-cor'] != null ? opts['max-cor'] : '');
-    set('#p-n-best', opts['nbr-cor'] || 5);
+    set('#p-n-best', opts['nbr-cor'] || opts['out-nbr-cor'] || 5);
+
+    // Auto-reveal advanced fields if demo uses them
+    const hasAdvanced = opts['var-data2'] || opts['const-gap-cost'] ||
+        opts['dist-distal'] || opts['dist-facies'] || opts['band-width'] ||
+        opts['polarity-region'];
+    if (hasAdvanced) {
+      $$('.adv').forEach(el => { el.style.display = ''; });
+      if (showAdv) showAdv.checked = true;
+    }
   }
 
   function gatherOptions() {
