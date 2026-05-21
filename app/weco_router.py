@@ -798,7 +798,8 @@ async def weco_auto(request: Request):
 
     try:
         from weco.api import (_suggest_defaults_for_wells, _run_engine,
-                              _extract_results, _diverse_results, _topology_signature)
+                              _extract_results, _diverse_results,
+                              _topology_signature, _label_scenario)
         from weco.depenv import detect_environment_from_logs, suggest_options
 
         # 1. Suggest defaults
@@ -830,7 +831,7 @@ async def weco_auto(request: Request):
         rf, data, elapsed = _run_engine(wl, options)
         _cached_res_file = rf
 
-        # 5. Extract diverse results
+        # 5. Extract diverse results with scenario labels
         diverse_indices = _diverse_results(rf, data, n_best=50, n_diverse=5)
         results = _extract_results(rf, data, 50)
         result_map = {r.index: r for r in results}
@@ -840,9 +841,11 @@ async def weco_auto(request: Request):
             r = result_map.get(idx)
             if r:
                 sig = _topology_signature(rf, idx, rf.nbr_well())
+                scenario = _label_scenario(sig)
                 diverse_results.append({
                     **(r.model_dump() if hasattr(r, "model_dump") else r.dict()),
                     "topology": "-".join(str(s) for s in sig),
+                    "scenario": scenario,
                 })
 
         wells_plot_data = _build_wells_plot_data(wl)

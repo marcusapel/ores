@@ -858,17 +858,39 @@
   // ── Results display ───────────────────────────────────────────────
   const corrCanvas = $('#corr-canvas');
   const resultsPlot = $('#results-plot');
+  const resultsComposite = $('#results-composite');
   const btnViewPlot = $('#btn-view-plot');
+  const btnViewComposite = $('#btn-view-composite');
   const btnViewTable = $('#btn-view-table');
 
   btnViewPlot.addEventListener('click', () => {
     resultsPlot.style.display = 'block';
+    resultsComposite.style.display = 'none';
     resCards.style.display = 'none';
+  });
+  btnViewComposite.addEventListener('click', () => {
+    resultsPlot.style.display = 'none';
+    resultsComposite.style.display = 'block';
+    resCards.style.display = 'none';
+    drawCompositeView();
   });
   btnViewTable.addEventListener('click', () => {
     resultsPlot.style.display = 'none';
+    resultsComposite.style.display = 'none';
     resCards.style.display = 'block';
   });
+
+  function drawCompositeView() {
+    if (!correlationResult) return;
+    const results = correlationResult.results || [];
+    const nPanels = Math.min(3, results.length);
+    for (let p = 0; p < nPanels; p++) {
+      const canvas = $(`#comp-canvas-${p}`);
+      if (canvas) {
+        drawCorrelationPlot(correlationResult, p, canvas);
+      }
+    }
+  }
 
   function showResults(data) {
     resEmpty.style.display = 'none';
@@ -1044,6 +1066,7 @@
     showStratColumn: false,  // render stratcolumn strip
     showMD: true,            // show MD depth ticks per well
     showTVDSS: false,        // show TVDSS if available
+    logScaleLogs: ['RT', 'RDEEP', 'RSHAL', 'RES', 'RLLD', 'RLLS'],  // logs drawn with log10 scale
     maxContinuousLogs: 3,    // max continuous log traces per well
     maxDiscreteLogs: 2,      // max discrete/zone tracks per well
   };
@@ -1058,18 +1081,29 @@
   };
 
   // ── Correlation Plot (canvas-based) ───────────────────────────────
-  async function drawCorrelationPlot(data, resultIdx) {
-    const canvas = corrCanvas;
+  async function drawCorrelationPlot(data, resultIdx, targetCanvas) {
+    const canvas = targetCanvas || corrCanvas;
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     // Fallback if canvas not yet laid out (tab just became visible)
     const cw = rect.width > 0 ? rect.width : canvas.parentElement.clientWidth || 800;
-    const ch = rect.height > 0 ? rect.height : 560;
+    const ch = rect.height > 0 ? rect.height : (targetCanvas ? 320 : 560);
     canvas.width = cw * dpr;
     canvas.height = ch * dpr;
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, cw, ch);
+
+    // Draw panel title for composite view
+    if (targetCanvas) {
+      const cost = (data.results || [])[resultIdx]?.cost;
+      const title = `Result #${resultIdx + 1}` + (cost != null ? ` (cost: ${cost.toFixed(4)})` : '');
+      ctx.fillStyle = '#323130';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(title, cw / 2, 12);
+      ctx.textAlign = 'start';
+    }
 
     const nWells = data.n_wells || 0;
     const wellNames = data.well_names || [];
@@ -1156,11 +1190,27 @@
     const trackWidth = 50;  // pixels per log track
     const discreteTrackWidth = 25;  // narrower for discrete
     const stratTrackWidth = 20;
-    const gapWidth = 40;  // gap between wells for correlation lines
+    const baseGapWidth = 40;  // default gap between wells for correlation lines
+
+    // Compute proportional gap widths from well coordinates (V8)
+    let gapWidths = Array(Math.max(0, nWells - 1)).fill(baseGapWidth);
+    if (plotData.length >= 2 && plotData[0].x != null && plotData[0].y != null) {
+      const dists = [];
+      for (let gi = 0; gi < nWells - 1; gi++) {
+        const dx = (plotData[gi + 1].x || 0) - (plotData[gi].x || 0);
+        const dy = (plotData[gi + 1].y || 0) - (plotData[gi].y || 0);
+        dists.push(Math.sqrt(dx * dx + dy * dy));
+      }
+      const maxDist = Math.max(...dists, 1);
+      if (maxDist > 0 && dists.some(d => d > 0)) {
+        const minGap = 25, maxGap = 80;
+        gapWidths = dists.map(d => minGap + (d / maxDist) * (maxGap - minGap));
+      }
+    }
+    const totalGapWidth = gapWidths.reduce((a, b) => a + b, 0);
 
     const wellTotalWidth = nContTracks * trackWidth + nDiscTracks * discreteTrackWidth + nStratTrack * stratTrackWidth;
-    const wellBlockWidth = wellTotalWidth + gapWidth;
-    const totalPlotWidth = nWells * wellTotalWidth + (nWells - 1) * gapWidth;
+    const totalPlotWidth = nWells * wellTotalWidth + totalGapWidth;
 
     // Scale if doesn't fit
     let scale = 1.0;
@@ -1170,7 +1220,7 @@
     const sTrackW = trackWidth * scale;
     const sDiscW = discreteTrackWidth * scale;
     const sStratW = stratTrackWidth * scale;
-    const sGapW = gapWidth * scale;
+    const sGapWidths = gapWidths.map(g => g * scale);
     const sWellW = wellTotalWidth * scale;
     const sTotalW = totalPlotWidth * scale;
     const offsetX = margin.left + (W - sTotalW) / 2;
@@ -1199,7 +1249,7 @@
       wl.centerX = wl.x + (curX - wl.x) / 2;
       wellLayout.push(wl);
       // Gap for correlation lines (except after last well)
-      if (i < nWells - 1) curX += sGapW;
+      if (i < nWells - 1) curX += sGapWidths[i];
     }
 
     // ── Depth alignment ─────────────────────────────────────────────
@@ -1402,6 +1452,17 @@
         let lMax = valid[Math.floor(valid.length * 0.99)];
         if (lMax === lMin) lMax = lMin + 1;
 
+        // Log-scale for resistivity-type logs
+        const useLogScale = corrPlotConfig.logScaleLogs.some(
+          n => lname.toUpperCase().includes(n)
+        ) && lMin > 0;
+        let logMin, logMax;
+        if (useLogScale) {
+          logMin = Math.log10(Math.max(lMin, 0.001));
+          logMax = Math.log10(Math.max(lMax, 0.01));
+          if (logMax === logMin) logMax = logMin + 1;
+        }
+
         // Track background (subtle)
         ctx.fillStyle = '#fafafa';
         ctx.fillRect(ctrack.x, y0, ctrack.w, y1 - y0);
@@ -1418,7 +1479,12 @@
         for (let s = 0; s < (wd.size || logVals.length) && s < logVals.length; s++) {
           if (logVals[s] == null) { started = false; continue; }
           const y = depthToY(depth ? depth[s] : s, i);
-          const normV = Math.max(0, Math.min(1, (logVals[s] - lMin) / (lMax - lMin)));
+          let normV;
+          if (useLogScale && logVals[s] > 0) {
+            normV = Math.max(0, Math.min(1, (Math.log10(logVals[s]) - logMin) / (logMax - logMin)));
+          } else {
+            normV = Math.max(0, Math.min(1, (logVals[s] - lMin) / (lMax - lMin)));
+          }
           const x = ctrack.x + normV * ctrack.w;
           if (!started) { ctx.moveTo(x, y); started = true; }
           else ctx.lineTo(x, y);

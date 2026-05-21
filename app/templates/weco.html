@@ -365,6 +365,7 @@
           <span style="margin-left:auto; display:flex; gap:.3rem; align-items:center;">
             <label style="font-size:12.5px; font-weight:500; white-space:nowrap;">View:</label>
             <button class="btn btn-sm btn-outline" id="btn-view-plot">Correlation Plot</button>
+            <button class="btn btn-sm btn-outline" id="btn-view-composite">Composite (3)</button>
             <button class="btn btn-sm btn-outline" id="btn-view-table">Table</button>
           </span>
         </div>
@@ -376,6 +377,20 @@
         <div id="results-plot" style="margin-bottom:.5rem;">
           <div style="border:1px solid #e1dfdd; border-radius:4px; overflow-x:auto; background:#fff;">
             <canvas id="corr-canvas" style="display:block; width:100%; height:420px;"></canvas>
+          </div>
+        </div>
+        <!-- Composite 3-result view -->
+        <div id="results-composite" style="margin-bottom:.5rem; display:none;">
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px;">
+            <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
+              <canvas id="comp-canvas-0" style="display:block; width:100%; height:320px;"></canvas>
+            </div>
+            <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
+              <canvas id="comp-canvas-1" style="display:block; width:100%; height:320px;"></canvas>
+            </div>
+            <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
+              <canvas id="comp-canvas-2" style="display:block; width:100%; height:320px;"></canvas>
+            </div>
           </div>
         </div>
         <!-- Table view -->
