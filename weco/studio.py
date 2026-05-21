@@ -1718,6 +1718,29 @@ CATEGORY_GUIDE = {
 #  Worker Thread
 # ═══════════════════════════════════════════════════════════════════════════
 
+
+class _RddmsImportWorker(QThread):
+    """Import wells from RDDMS in a background thread."""
+    finished = pyqtSignal(object)  # WellList
+    error = pyqtSignal(str)
+
+    def __init__(self, url, token, dataspace, parent=None):
+        super().__init__(parent)
+        self.url = url
+        self.token = token
+        self.dataspace = dataspace
+
+    def run(self):
+        try:
+            from weco.rddms import rddms_import_wells
+            wl = rddms_import_wells(self.url, self.token, self.dataspace)
+            self.finished.emit(wl)
+        except ImportError as e:
+            self.error.emit(f"RESQML not available: {e}")
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class EngineWorker(QThread):
     """Run correlation in background thread."""
     log_line = pyqtSignal(str)
@@ -2911,33 +2934,68 @@ class DataPage(QWidget):
             self._rddms_status.setText("Please specify an EPC file or RDDMS URL.")
             return
 
-        try:
-            import os
-            if os.path.isfile(source):
+        import os
+        if os.path.isfile(source):
+            try:
                 from weco.rddms import epc_import_wells
                 wl = epc_import_wells(source)
-            else:
-                from weco.rddms import rddms_import_wells
-                import os as _os
-                token = _os.environ.get("OSDU_TOKEN", "")
-                if not token:
-                    self._rddms_status.setText(
-                        "Set OSDU_TOKEN environment variable for RDDMS access.")
-                    return
-                wl = rddms_import_wells(source, token, "demo")
-
-            self._well_list = wl
-            self._well_path = source
-            self._update_ui()
-            self.wells_loaded.emit(wl, source)
+                self._rddms_import_done(wl, source)
+            except ImportError as e:
+                self._rddms_status.setText(f"RESQML not available: {e}")
+            except Exception as e:
+                self._rddms_status.setText(f"Import error: {e}")
+        else:
+            token = os.environ.get("OSDU_TOKEN", "")
+            if not token:
+                self._rddms_status.setText(
+                    "Set OSDU_TOKEN environment variable for RDDMS access.")
+                return
+            dataspace = os.environ.get("RDDMS_DATASPACE",
+                                       os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+            # Start elapsed timer
+            self._rddms_elapsed = 0
+            self._rddms_timer = QTimer(self)
+            self._rddms_timer.timeout.connect(self._rddms_tick)
+            self._rddms_timer.start(1000)
             self._rddms_status.setText(
-                f"Imported {wl.nbr_wells()} wells, "
-                f"{len(wl.get_data_names())} data channels, "
-                f"{len(wl.get_region_names())} regions.")
-        except ImportError as e:
-            self._rddms_status.setText(f"RESQML not available: {e}")
-        except Exception as e:
-            self._rddms_status.setText(f"Import error: {e}")
+                f"⏳ Loading dataspace \"{dataspace}\" from RDDMS… 0s")
+            # Run import in background thread
+            self._rddms_worker = _RddmsImportWorker(source, token, dataspace)
+            self._rddms_worker.finished.connect(self._rddms_worker_done)
+            self._rddms_worker.error.connect(self._rddms_worker_error)
+            self._rddms_worker.start()
+
+    def _rddms_tick(self):
+        self._rddms_elapsed += 1
+        ds = os.environ.get("RDDMS_DATASPACE",
+                            os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+        self._rddms_status.setText(
+            f"⏳ Loading dataspace \"{ds}\" from RDDMS… {self._rddms_elapsed}s")
+
+    def _rddms_worker_done(self, wl):
+        self._rddms_timer.stop()
+        source = self._rddms_source.text().strip()
+        self._rddms_import_done(wl, source)
+
+    def _rddms_worker_error(self, msg):
+        self._rddms_timer.stop()
+        ds = os.environ.get("RDDMS_DATASPACE",
+                            os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+        if "No wells" in msg or "not found" in msg.lower() or "404" in msg:
+            self._rddms_status.setText(
+                f"Dataspace \"{ds}\" not available: {msg}")
+        else:
+            self._rddms_status.setText(f"Import error: {msg}")
+
+    def _rddms_import_done(self, wl, source):
+        self._well_list = wl
+        self._well_path = source
+        self._update_ui()
+        self.wells_loaded.emit(wl, source)
+        self._rddms_status.setText(
+            f"Imported {wl.nbr_wells()} wells, "
+            f"{len(wl.get_data_names())} data channels, "
+            f"{len(wl.get_region_names())} regions.")
 
     def _browse_strat_column(self):
         path, _ = QFileDialog.getOpenFileName(
