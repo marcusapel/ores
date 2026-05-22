@@ -70,3 +70,27 @@ export RDDMS_URL_EQNDEV="https://custom-rddms.example.com/api/v2"
 export RDDMS_URL_PRESHIP="https://..."
 export RDDMS_URL_INTEROP="https://..."
 ```
+
+## Legal Tags & ACL (Interop)
+
+The interop instance requires a valid legal tag and ACL for dataspace creation.
+The script auto-creates the legal tag and includes it in the dataspace payload.
+
+Override via environment variables:
+
+```bash
+export OSDU_DATA_PARTITION_INTEROP="equinor-interop"
+export OSDU_LEGAL_TAG_INTEROP="equinor-interop-weco-demo-legal"
+export OSDU_ACL_OWNERS_INTEROP="data.default.owners@equinor-interop.dataservices.energy"
+export OSDU_ACL_VIEWERS_INTEROP="data.default.viewers@equinor-interop.dataservices.energy"
+```
+
+Or via CLI flags (applies to all targeted instances):
+
+```bash
+python demo/resqml/ingest_wells.py --instance interop \
+    --legal-tag "equinor-interop-weco-demo-legal" \
+    --acl-owners "data.default.owners@equinor-interop.dataservices.energy" \
+    --acl-viewers "data.default.viewers@equinor-interop.dataservices.energy" \
+    --token-file ~/.azure/token.json
+```

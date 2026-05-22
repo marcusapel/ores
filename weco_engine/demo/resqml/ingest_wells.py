@@ -58,6 +58,21 @@ INSTANCES = {
             "https://reservoir-ddms.eqndev.radix.equinor.com/api/v2",
         ),
         "description": "Development (eqndev)",
+        "data_partition": os.environ.get(
+            "OSDU_DATA_PARTITION_EQNDEV", "equinor-eqndev",
+        ),
+        "legal_tag": os.environ.get(
+            "OSDU_LEGAL_TAG_EQNDEV",
+            "equinor-eqndev-weco-demo-legal",
+        ),
+        "acl_owners": os.environ.get(
+            "OSDU_ACL_OWNERS_EQNDEV",
+            "data.default.owners@equinor-eqndev.dataservices.energy",
+        ),
+        "acl_viewers": os.environ.get(
+            "OSDU_ACL_VIEWERS_EQNDEV",
+            "data.default.viewers@equinor-eqndev.dataservices.energy",
+        ),
     },
     "preship": {
         "url": os.environ.get(
@@ -65,6 +80,21 @@ INSTANCES = {
             "https://reservoir-ddms.preship.radix.equinor.com/api/v2",
         ),
         "description": "Pre-ship testing",
+        "data_partition": os.environ.get(
+            "OSDU_DATA_PARTITION_PRESHIP", "equinor-preship",
+        ),
+        "legal_tag": os.environ.get(
+            "OSDU_LEGAL_TAG_PRESHIP",
+            "equinor-preship-weco-demo-legal",
+        ),
+        "acl_owners": os.environ.get(
+            "OSDU_ACL_OWNERS_PRESHIP",
+            "data.default.owners@equinor-preship.dataservices.energy",
+        ),
+        "acl_viewers": os.environ.get(
+            "OSDU_ACL_VIEWERS_PRESHIP",
+            "data.default.viewers@equinor-preship.dataservices.energy",
+        ),
     },
     "interop": {
         "url": os.environ.get(
@@ -72,6 +102,21 @@ INSTANCES = {
             "https://reservoir-ddms.interop.radix.equinor.com/api/v2",
         ),
         "description": "Interoperability testing",
+        "data_partition": os.environ.get(
+            "OSDU_DATA_PARTITION_INTEROP", "equinor-interop",
+        ),
+        "legal_tag": os.environ.get(
+            "OSDU_LEGAL_TAG_INTEROP",
+            "equinor-interop-weco-demo-legal",
+        ),
+        "acl_owners": os.environ.get(
+            "OSDU_ACL_OWNERS_INTEROP",
+            "data.default.owners@equinor-interop.dataservices.energy",
+        ),
+        "acl_viewers": os.environ.get(
+            "OSDU_ACL_VIEWERS_INTEROP",
+            "data.default.viewers@equinor-interop.dataservices.energy",
+        ),
     },
 }
 
@@ -141,19 +186,76 @@ def acquire_token(token_file: str = None) -> str:
 class RddmsClient:
     """Simple synchronous RDDMS client for ingestion."""
 
-    def __init__(self, base_url: str, token: str, dataspace: str):
+    def __init__(self, base_url: str, token: str, dataspace: str,
+                 data_partition: str = "", legal_tag: str = "",
+                 acl_owners: str = "", acl_viewers: str = ""):
         import httpx
         self.base_url = base_url.rstrip("/")
         self.dataspace = dataspace
+        self.data_partition = data_partition or dataspace
+        self.legal_tag = legal_tag
+        self.acl_owners = acl_owners
+        self.acl_viewers = acl_viewers
         self.client = httpx.Client(
             base_url=self.base_url,
             headers={
                 "Authorization": f"Bearer {token}",
-                "data-partition-id": dataspace,
+                "data-partition-id": self.data_partition,
                 "Content-Type": "application/json",
             },
             timeout=60.0,
         )
+
+    def ensure_legal_tag(self) -> bool:
+        """Create the legal tag if it doesn't exist."""
+        if not self.legal_tag:
+            print("  SKIP: No legal tag configured")
+            return True
+
+        # Check if legal tag exists
+        try:
+            resp = self.client.get(
+                f"/api/legal/v1/legaltags/{self.legal_tag}",
+            )
+            if resp.status_code == 200:
+                print(f"  Legal tag '{self.legal_tag}' exists")
+                return True
+        except Exception:
+            pass
+
+        # Create it
+        legal_body = {
+            "name": self.legal_tag,
+            "description": "WeCo demo dataset — well correlation data",
+            "properties": {
+                "contractId": "No-Contract",
+                "countryOfOrigin": ["NO"],
+                "dataType": "Third Party Data",
+                "exportClassification": "EAR99",
+                "originator": "WeCo",
+                "personalData": "No Personal Data",
+                "securityClassification": "Public",
+                "expirationDate": "2099-12-31",
+            },
+        }
+        try:
+            resp = self.client.post(
+                "/api/legal/v1/legaltags",
+                json=legal_body,
+            )
+            if resp.status_code in (200, 201):
+                print(f"  Created legal tag '{self.legal_tag}'")
+                return True
+            elif resp.status_code == 409:
+                print(f"  Legal tag '{self.legal_tag}' already exists (conflict)")
+                return True
+            else:
+                print(f"  WARN: Could not create legal tag: "
+                      f"{resp.status_code} {resp.text[:200]}")
+                return False
+        except Exception as e:
+            print(f"  WARN: Legal tag creation failed: {e}")
+            return False
 
     def ensure_dataspace(self) -> bool:
         """Create target dataspace if it doesn't exist."""
@@ -165,11 +267,25 @@ class RddmsClient:
         except Exception:
             pass
 
+        # Build creation payload with legal tag and ACL
+        body: dict = {"description": "WeCo demo well data"}
+        if self.legal_tag:
+            body["legal"] = {
+                "legaltags": [self.legal_tag],
+                "otherRelevantDataCountries": ["NO"],
+            }
+        if self.acl_owners or self.acl_viewers:
+            body["acl"] = {}
+            if self.acl_owners:
+                body["acl"]["owners"] = [self.acl_owners]
+            if self.acl_viewers:
+                body["acl"]["viewers"] = [self.acl_viewers]
+
         # Try to create it
         try:
             resp = self.client.put(
                 f"/dataspaces/{self.dataspace}",
-                json={"description": "WeCo demo well data"},
+                json=body,
             )
             if resp.status_code in (200, 201):
                 print(f"  Created dataspace '{self.dataspace}'")
@@ -267,6 +383,8 @@ def ingest_instance(instance_name: str, token: str,
     print(f"  Instance: {inst['description']} ({instance_name})")
     print(f"  URL: {inst['url']}")
     print(f"  Dataspace: {TARGET_DATASPACE}")
+    print(f"  Data partition: {inst.get('data_partition', '(default)')}")
+    print(f"  Legal tag: {inst.get('legal_tag', '(none)')}")
     print(f"{'─' * 50}")
 
     if dry_run:
@@ -277,8 +395,15 @@ def ingest_instance(instance_name: str, token: str,
             results[ds] = ingest_dataset(None, ds, dry_run=True)
         return results
 
-    client = RddmsClient(inst["url"], token, TARGET_DATASPACE)
+    client = RddmsClient(
+        inst["url"], token, TARGET_DATASPACE,
+        data_partition=inst.get("data_partition", ""),
+        legal_tag=inst.get("legal_tag", ""),
+        acl_owners=inst.get("acl_owners", ""),
+        acl_viewers=inst.get("acl_viewers", ""),
+    )
     try:
+        client.ensure_legal_tag()
         client.ensure_dataspace()
 
         results = {}
@@ -314,6 +439,18 @@ def main():
     parser.add_argument(
         "--token-file",
         help="Path to JSON token file",
+    )
+    parser.add_argument(
+        "--legal-tag",
+        help="Override legal tag for dataspace creation",
+    )
+    parser.add_argument(
+        "--acl-owners",
+        help="Override ACL owners group",
+    )
+    parser.add_argument(
+        "--acl-viewers",
+        help="Override ACL viewers group",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -354,6 +491,16 @@ def main():
 
     # Determine instances
     instances = list(INSTANCES.keys()) if args.all else [args.instance]
+
+    # Apply CLI overrides for legal tag / ACL
+    if args.legal_tag or args.acl_owners or args.acl_viewers:
+        for inst_name in instances:
+            if args.legal_tag:
+                INSTANCES[inst_name]["legal_tag"] = args.legal_tag
+            if args.acl_owners:
+                INSTANCES[inst_name]["acl_owners"] = args.acl_owners
+            if args.acl_viewers:
+                INSTANCES[inst_name]["acl_viewers"] = args.acl_viewers
 
     # Ingest
     all_results = {}
