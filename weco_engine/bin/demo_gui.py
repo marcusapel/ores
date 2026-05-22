@@ -298,12 +298,13 @@ DATASETS = {
         "ai": {"quality": True, "anomaly": True, "uncertainty": True, "log_qc": False},
     },
     "7_delta": {
-        "title": "Delta – Multi-Log Variance (GR+DEN) + Band-Width",
-        "subtitle": "8 wells · shingled parasequences",
+        "title": "Delta – Multi-Log Variance (GR+DEN) + Sequence Boundaries",
+        "subtitle": "8 wells · shingled parasequences · SEQSTRAT no-crossing",
         "description": (
             "Correlate CLINOFORM SURFACES (parasequence boundaries).\n"
-            "Red lines = prodelta↔delta-front transitions.\n"
-            "Gaps indicate condensation in distal positions (Wheeler wedge).\n"
+            "no_crossing=SEQSTRAT locks the high-order sequence boundaries\n"
+            "(the most geologically important surfaces) so correlations\n"
+            "are distributed throughout the section — not just at the top.\n"
             "k-best results show alternative clinoform geometries."
         ),
         "geology_note": (
@@ -317,9 +318,15 @@ DATASETS = {
         ),
         "wells": DATA_DIR / "data_set_delta" / "wells.txt",
         "runs": [
-            {"name": "GR+DEN", "opts": {
+            {"name": "GR+DEN_seqstrat", "opts": {
                 "var_data": "GR", "var_weight": 0.6,
-                "var_data2": "DEN", "var_weight2": 0.4}},
+                "var_data2": "DEN", "var_weight2": 0.4,
+                "no_crossing": "SEQSTRAT",
+                "const_gap_cost": 1.0}},
+            {"name": "GR+DEN_unconstrained", "opts": {
+                "var_data": "GR", "var_weight": 0.6,
+                "var_data2": "DEN", "var_weight2": 0.4,
+                "const_gap_cost": 2.0}},
         ],
         "common_opts": {"cost_function": "composite",
                         "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,

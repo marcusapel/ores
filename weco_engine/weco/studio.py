@@ -577,15 +577,19 @@ DEMOS = [
         "geology": "delta",
         "description": (
             "8 wells through a prograding delta with GR/DEN/NPHI.\n"
-            "Shingled parasequences with lateral facies variation."
+            "Shingled parasequences with lateral facies variation.\n"
+            "no_crossing=SEQSTRAT locks parasequence boundaries."
         ),
         "opts": {
             "cost_function": "composite",
             "var_data": "GR", "var_weight": 0.6,
             "var_data2": "DEN", "var_weight2": 0.4,
+            "no_crossing": "SEQSTRAT",
+            "const_gap_cost": 1.0,
             "order": "position", "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 5,
         },
-        "editable_keys": ["var_weight", "var_weight2", "max_cor", "order"],
+        "editable_keys": ["var_weight", "var_weight2", "max_cor", "order",
+                          "no_crossing", "const_gap_cost"],
     },
 
     # ── §14.6 Fluvial Channel Belt ────────────────────────────────
