@@ -284,20 +284,31 @@ Both GUIs invoke `CorrelationQuality(rf, wl)`:
 | Export Type | PyQt | Web |
 |------------|:----:|:---:|
 | PNG plot | ✓ (auto-save to `tmp/img/`) | ✓ (download button) |
-| RDDMS markers | — | ✓ (`POST /export`) |
+| RDDMS markers | ✓ (Export tab) | ✓ (`POST /rddms/export-results`) |
+| RDDMS zone log | ✓ (Export tab) | ✓ (`POST /rddms/export-results`) |
+| RDDMS strat column | ✓ (Export tab) | ✓ (`POST /rddms/export-results`) |
 | JSON result | — | ✓ (download) |
 | CSV marker table | — | ✓ (download) |
 | Workflow save/load | — | ✓ (tokenstore SQLite) |
 
-### Web Export Detail
+### RDDMS Export (Both GUIs)
 
-The export button (tab 6) shows count feedback:
-```
-"Exported X wells × Y markers to dataspace"
-```
+Both front-ends use the same `weco.rddms` functions underneath:
 
-RDDMS export writes `WellboreMarkerFrame` per well via transactional API:
-`begin_tx → PUT frame per well → commit`
+| What | Function | RESQML type |
+|------|----------|-------------|
+| Markers | `rddms_export_markers()` | `WellboreMarkerFrameRepresentation` |
+| Zone log | `rddms_export_zonation()` | `DiscreteProperty` on `WellboreFrame` |
+| Strat column | `rddms_export_strat_column()` | `StratigraphicColumn` |
+
+Each realisation (`cor_num`) produces a fresh set of UUIDs so multiple
+n-best results can coexist in the same dataspace.
+
+**PyQt:** "RDDMS Export" tab → fill URL + dataspace → click "Export to RDDMS"
+
+**Web:** Export button calls `POST /rddms/export-results` which delegates to the same functions.
+
+Authentication: both resolve token via `weco.osdu_auth.get_token()` (env var / Azure CLI / ORES session).
 
 ---
 
