@@ -4861,7 +4861,7 @@ def _build_geology_docs_html():
       <td>Which log is most diagnostic?</td>
       <td>var_data / var_weight</td>
       <td>Put the highest weight on the log with the strongest lithology contrast.
-          E.g., DEN for coal (1.3 vs 2.5), GR for sand/shale.</td>
+          E.g., DEN for coal (1.3 vs 2.5), GR for sand/shale, FACIES for categorical.</td>
     </tr>
     <tr>
       <td>Are there known stratigraphic surfaces?</td>
@@ -4878,9 +4878,16 @@ def _build_geology_docs_html():
     <tr>
       <td>Are hiatuses expected?</td>
       <td>const_gap_cost</td>
-      <td>Low (0–1): Many hiatuses expected (deep marine, unconformities).<br>
-          Medium (1–3): Some gaps allowed (glacial, fluvial).<br>
-          High (3–5+): Layer-cake matching (coal seams, tabular beds).</td>
+      <td>Low (0–1): Many hiatuses expected (fluvial pinch-outs, deep marine).<br>
+          Medium (1–2): Some gaps allowed (glacial erosion, deltaic).<br>
+          High (3+): Layer-cake matching (coal seams, tabular carbonates).</td>
+    </tr>
+    <tr>
+      <td>Does thickness vary laterally?</td>
+      <td>band_width</td>
+      <td>10: Thin markers in long wells (coal). Tight = fast.<br>
+          20–40: Marine parasequences, moderate thickness change.<br>
+          60+: Fluvial / highly discontinuous — channels jump depths.</td>
     </tr>
     <tr>
       <td>Does thickness vary systematically?</td>
@@ -4889,18 +4896,20 @@ def _build_geology_docs_html():
           Requires distality ranking and facies interpretation per well.</td>
     </tr>
     <tr>
+      <td>How many alternative scenarios?</td>
+      <td>nbr_cor / min_dist</td>
+      <td>The engine auto-scales these with well count:<br>
+          2–3 wells: 30 paths, min-dist 0.3 (explore freely).<br>
+          4–10 wells: 15–20 paths, min-dist 0.4 (pairs provide diversity).<br>
+          15+ wells: 5 paths, min-dist 0.4 (combinatorics dominate).<br>
+          Categorical data: use min-dist 0.5+ (discrete cost = flat landscape).</td>
+    </tr>
+    <tr>
       <td>How many wells?</td>
       <td>order</td>
       <td>2–3 wells: 'linear' is fine.<br>
           4–20 wells: 'pyramidal' or 'position' (nearest-neighbour).<br>
           20+ wells: 'position' (uses spatial clustering).</td>
-    </tr>
-    <tr>
-      <td>Quality vs speed?</td>
-      <td>max_cor</td>
-      <td>10–20: Fast demos/exploration.<br>
-          50: Good default.<br>
-          100–200: Production quality (diminishing returns).</td>
     </tr>
     </table>
     """)
@@ -5265,7 +5274,7 @@ class WeCoStudio(QMainWindow):
             ("3.", "Parameters"),
             ("4.", "Run"),
             ("5.", "Results"),
-            ("6.", "Docs"),
+            ("6.", "Help"),
             ("7.", "Plugins"),
         ]
         for num, name in _sidebar_labels:

@@ -1065,16 +1065,24 @@ def _suggest_defaults_for_wells(wl) -> tuple:
                 f"'{options.get('var-data', '?')}' — skipping to avoid circular constraint"
             )
 
-    # --- Well-count-adaptive settings ---
+    # --- Well-count and well-length adaptive settings ---
+    # Compute average well length for scaling
+    avg_pts = sum(w.size for w in wl.wells) / max(n_wells, 1)
+    # Complexity proxy: n_pairs × avg_length²  (dominates runtime)
+    n_pairs = n_wells * (n_wells - 1) // 2
+
     if n_wells >= 15:
-        options["max-cor"] = 50
-        options["band-width"] = 30
+        options["max-cor"] = 20
+        options["band-width"] = 60 if avg_pts <= 100 else 30
         reasoning["max-cor"] = f"Bounded for {n_wells}-well project performance"
-        reasoning["band-width"] = "Bandwidth limit for large datasets"
+        reasoning["band-width"] = (
+            "Wide bandwidth for moderate wells" if avg_pts <= 100
+            else "Bandwidth limit for large dataset with long wells"
+        )
         options["const-gap-cost"] = 2.0
-        reasoning["const-gap-cost"] = "Gap penalty for large projects"
+        reasoning["const-gap-cost"] = "Gap penalty for large projects (allow hiatuses)"
     elif n_wells >= 6:
-        options["max-cor"] = 50
+        options["max-cor"] = 40
         options["band-width"] = 40
         reasoning["max-cor"] = f"Standard setting for {n_wells} wells"
         reasoning["band-width"] = "Bandwidth limit for medium datasets"
@@ -1082,14 +1090,56 @@ def _suggest_defaults_for_wells(wl) -> tuple:
         options["max-cor"] = 50
         reasoning["max-cor"] = "Standard n-best search width"
 
-    # Always request multiple results for ranking
-    options["nbr-cor"] = 100
-    options["out-nbr-cor"] = 20
-    options["min-dist"] = 0.1
-    options["out-min-dist"] = 0.05
-    reasoning["nbr-cor"] = "Retain 100 paths for diverse scenario exploration"
-    reasoning["out-nbr-cor"] = "Report 20 ranked scenarios"
-    reasoning["min-dist"] = "Force structurally different solutions (connectivity changes)"
+    # --- Diversity parameters: scale with dataset complexity ---
+    # More wells + longer wells → fewer internal paths needed (combinatorial
+    # search across pairs already provides diversity).
+    # Categorical/ordinal data needs higher min-dist (discrete costs = flat landscape).
+    _CATEGORICAL_NAMES = {"FACIES", "LITHOLOGY", "LITHO", "FORMATION",
+                          "DISTALITY", "DISTAL", "LITH", "DEP_ENV",
+                          "DEPOSITIONAL_FACIES", "LITHO_FACIES", "LITH_FACIES"}
+    is_categorical = any(
+        options.get(k, "").upper() in _CATEGORICAL_NAMES
+        for k in ("var-data", "var-data2", "var-data3")
+    )
+
+    if n_pairs >= 100 or avg_pts >= 300:
+        # Very large: minimise internal work, rely on pair diversity
+        nbr_cor = 5
+        out_nbr_cor = 5
+    elif n_pairs >= 20 or avg_pts >= 100:
+        # Medium-large: moderate exploration
+        nbr_cor = 15
+        out_nbr_cor = 10
+    elif n_wells >= 4:
+        # Medium: balanced
+        nbr_cor = 20
+        out_nbr_cor = 10
+    else:
+        # Small (2-3 wells): need more paths to find diversity
+        nbr_cor = 30
+        out_nbr_cor = 10
+
+    # Min-dist: categorical data needs much higher forcing
+    if is_categorical:
+        min_dist = 0.5
+        out_min_dist = 0.25
+    elif n_wells >= 6:
+        min_dist = 0.4
+        out_min_dist = 0.2
+    else:
+        min_dist = 0.3
+        out_min_dist = 0.15
+
+    options["nbr-cor"] = nbr_cor
+    options["out-nbr-cor"] = out_nbr_cor
+    options["min-dist"] = min_dist
+    options["out-min-dist"] = out_min_dist
+    reasoning["nbr-cor"] = f"{nbr_cor} internal paths (scaled for {n_wells} wells, ~{int(avg_pts)} pts/well)"
+    reasoning["out-nbr-cor"] = f"Report up to {out_nbr_cor} ranked scenarios"
+    reasoning["min-dist"] = (
+        f"{'High' if is_categorical else 'Moderate'} diversity forcing "
+        f"({'categorical' if is_categorical else 'continuous'} data)"
+    )
     reasoning["out-min-dist"] = "Ensure output scenarios are meaningfully distinct"
 
     # --- Position-based ordering (only if wells actually have coordinates) ---
@@ -1292,8 +1342,8 @@ def list_demos():
                         "ordering (Walther's Law). Key constraint: dist-distal + dist-facies.",
          "opts": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                   "dist-scaling": 1.0, "order": "distality",
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05}},
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.3, "out-min-dist": 0.15}},
         {"id": "ds4", "title": "Biozone No-Crossing + Distality",
          "group": "Concept", "wells": "data_set_4/wells.txt",
          "description": "2 wells combining no-crossing constraint (BIOZONES) "
@@ -1301,20 +1351,21 @@ def list_demos():
                         "demonstrates hard stratigraphic anchoring.",
          "opts": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                   "no-crossing": "BIOZONES", "order": "distality",
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05}},
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.3, "out-min-dist": 0.15}},
         # ── Domain: Coal Basin ────────────────────────────────────────
         {"id": "coal", "title": "Coal Basin – Gap Cost + Multi-Log (DEN+GR)",
          "group": "Domain", "wells": "data_set_coal/wells_10.txt",
          "geology": "coal",
          "description": "10 coal boreholes with seam splitting/absence. "
                         "Gap cost (3.0) penalises missing seams. DEN (coal=1.3 g/cc "
-                        "vs rock=2.5) + GR multi-log. Band-width=15.",
+                        "vs rock=2.5) + GR multi-log. Tight band-width (10) reflects "
+                        "thin seam geometry in long boreholes.",
          "opts": {"var-data": "DEN", "var-weight": 0.6,
                   "var-data2": "GR", "var-weight2": 0.4,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05,
-                  "const-gap-cost": 3.0, "band-width": 15}},
+                  "max-cor": 10, "nbr-cor": 5, "out-nbr-cor": 5,
+                  "min-dist": 0.3, "out-min-dist": 0.15,
+                  "const-gap-cost": 3.0, "band-width": 10}},
         # ── Domain: Quaternary Hydrogeology ───────────────────────────
         {"id": "quaternary", "title": "Quaternary – Gap Cost + Multi-Log (GR+RT)",
          "group": "Domain", "wells": "data_set_quaternary/wells_20.txt",
@@ -1324,8 +1375,8 @@ def list_demos():
                         "Band-width=20. Demonstrates aquifer connectivity uncertainty.",
          "opts": {"var-data": "GR", "var-weight": 0.7,
                   "var-data2": "RT", "var-weight2": 0.3,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05,
+                  "max-cor": 20, "nbr-cor": 10, "out-nbr-cor": 10,
+                  "min-dist": 0.2, "out-min-dist": 0.1,
                   "const-gap-cost": 1.5, "band-width": 20}},
         # ── Domain: Shallow Marine ────────────────────────────────────
         {"id": "shallow_marine",
@@ -1338,8 +1389,8 @@ def list_demos():
          "opts": {"var-data": "GR", "var-weight": 0.5,
                   "var-data2": "RHOB", "var-weight2": 0.3,
                   "var-data3": "DT", "var-weight3": 0.2,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05,
+                  "max-cor": 40, "nbr-cor": 20, "out-nbr-cor": 10,
+                  "min-dist": 0.4, "out-min-dist": 0.2,
                   "const-gap-cost": 2.0, "band-width": 20}},
         # ── Domain: Bryson (Appalachian) ──────────────────────────────
         {"id": "bryson", "title": "Bryson – No-Crossing Constraint (Categorical)",
@@ -1349,19 +1400,19 @@ def list_demos():
                         "+ ZONE no-crossing constraint. Demonstrates hard "
                         "biozone anchoring with categorical (non-continuous) data.",
          "opts": {"var-data": "FACIES", "no-crossing": "ZONE",
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05}},
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.5, "out-min-dist": 0.25}},
         # ── Domain: Fluvial Channel Belt ──────────────────────────────
         {"id": "fluvial", "title": "Fluvial – Gap Cost + High Diversity",
          "group": "Domain", "wells": "data_set_fluvial/wells.txt",
          "geology": "fluvial",
          "description": "20 wells through discontinuous channel sandbodies. "
                         "Gap cost (0.5) allows hiatuses at pinch-outs. "
-                        "High min-dist (0.15) forces diverse channel connectivity scenarios.",
+                        "Wide band-width (60) reflects non-marine lateral discontinuity.",
          "opts": {"var-data": "GR", "var-weight": 1.0,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.15, "out-min-dist": 0.05,
-                  "const-gap-cost": 0.5, "band-width": 20}},
+                  "max-cor": 20, "nbr-cor": 10, "out-nbr-cor": 10,
+                  "min-dist": 0.4, "out-min-dist": 0.2,
+                  "const-gap-cost": 0.5, "band-width": 60}},
         # ── Domain: Delta ─────────────────────────────────────────────
         {"id": "delta", "title": "Delta – Multi-Log Variance (GR+DEN) + Band-Width",
          "group": "Domain", "wells": "data_set_delta/wells.txt",
@@ -1371,8 +1422,8 @@ def list_demos():
                         "variance + band-width=20. Clinoform correlation ambiguity.",
          "opts": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "DEN", "var-weight2": 0.4,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05, "band-width": 20}},
+                  "max-cor": 40, "nbr-cor": 20, "out-nbr-cor": 10,
+                  "min-dist": 1.0, "out-min-dist": 0.5, "band-width": 20}},
         # ── Domain: Sigrun (North Sea) ────────────────────────────────
         {"id": "sigrun", "title": "Sigrun – Multi-Log Well-Tie (GR+NPHI)",
          "group": "Domain", "wells": "data_set_sigrun/wells.txt",
@@ -1381,19 +1432,19 @@ def list_demos():
                         "two-log variance for seismic-to-well tie in marine sequence.",
          "opts": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "NPHI", "var-weight2": 0.4,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05}},
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.3, "out-min-dist": 0.15}},
         # ── Domain: Troll (North Sea) ─────────────────────────────────
-        {"id": "troll", "title": "Troll – Categorical + Distality (Walther's Law)",
+        {"id": "troll", "title": "Troll – Categorical Facies Correlation",
          "group": "Domain", "wells": "data_set_troll/wells.txt",
          "geology": "shallow_marine",
-         "description": "5 Troll field wells with categorical FACIES (60%) + "
-                        "DISTALITY (40%). No continuous logs — correlation "
-                        "driven by facies similarity and Walther's Law ordering.",
-         "opts": {"var-data": "FACIES", "var-weight": 0.6,
-                  "var-data2": "DISTALITY", "var-weight2": 0.4,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05}},
+         "description": "5 Troll field wells with categorical FACIES only. "
+                        "No continuous logs — correlation driven purely by facies "
+                        "similarity. Demonstrates ambiguity: same facies at multiple "
+                        "depths creates genuine correlation uncertainty.",
+         "opts": {"var-data": "FACIES",
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.5, "out-min-dist": 0.25}},
     ]
     for d in _DEMO_CATALOGUE:
         wells_path = data_dir / d["wells"]
@@ -1418,47 +1469,46 @@ def _get_demo_opts(demo_id: str) -> dict:
     _DEMO_OPTS = {
         "ds3": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                 "dist-scaling": 1.0, "order": "distality",
-                "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                "min-dist": 0.1, "out-min-dist": 0.05},
+                "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                "min-dist": 0.3, "out-min-dist": 0.15},
         "ds4": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                 "no-crossing": "BIOZONES", "order": "distality",
-                "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                "min-dist": 0.1, "out-min-dist": 0.05},
+                "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                "min-dist": 0.3, "out-min-dist": 0.15},
         "coal": {"var-data": "DEN", "var-weight": 0.6,
                  "var-data2": "GR", "var-weight2": 0.4,
-                 "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                 "min-dist": 0.1, "out-min-dist": 0.05,
-                 "const-gap-cost": 3.0, "band-width": 15},
+                 "max-cor": 10, "nbr-cor": 5, "out-nbr-cor": 5,
+                 "min-dist": 0.3, "out-min-dist": 0.15,
+                 "const-gap-cost": 3.0, "band-width": 10},
         "quaternary": {"var-data": "GR", "var-weight": 0.7,
                        "var-data2": "RT", "var-weight2": 0.3,
-                       "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                       "min-dist": 0.1, "out-min-dist": 0.05,
+                       "max-cor": 20, "nbr-cor": 10, "out-nbr-cor": 10,
+                       "min-dist": 0.2, "out-min-dist": 0.1,
                        "const-gap-cost": 1.5, "band-width": 20},
         "shallow_marine": {"var-data": "GR", "var-weight": 0.5,
                            "var-data2": "RHOB", "var-weight2": 0.3,
                            "var-data3": "DT", "var-weight3": 0.2,
-                           "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                           "min-dist": 0.1, "out-min-dist": 0.05,
+                           "max-cor": 40, "nbr-cor": 20, "out-nbr-cor": 10,
+                           "min-dist": 0.4, "out-min-dist": 0.2,
                            "const-gap-cost": 2.0, "band-width": 20},
         "bryson": {"var-data": "FACIES", "no-crossing": "ZONE",
-                   "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                   "min-dist": 0.1, "out-min-dist": 0.05},
+                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                   "min-dist": 0.5, "out-min-dist": 0.25},
         "fluvial": {"var-data": "GR", "var-weight": 1.0,
-                    "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                    "min-dist": 0.15, "out-min-dist": 0.05,
+                    "max-cor": 20, "nbr-cor": 10, "out-nbr-cor": 10,
+                    "min-dist": 0.4, "out-min-dist": 0.2,
                     "const-gap-cost": 0.5, "band-width": 60},
         "delta": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "DEN", "var-weight2": 0.4,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05, "band-width": 20},
+                  "max-cor": 40, "nbr-cor": 20, "out-nbr-cor": 10,
+                  "min-dist": 1.0, "out-min-dist": 0.5, "band-width": 20},
         "sigrun": {"var-data": "GR", "var-weight": 0.6,
                    "var-data2": "NPHI", "var-weight2": 0.4,
                    "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                    "min-dist": 0.3, "out-min-dist": 0.15},
-        "troll": {"var-data": "FACIES", "var-weight": 0.6,
-                  "var-data2": "DISTALITY", "var-weight2": 0.4,
-                  "max-cor": 200, "nbr-cor": 100, "out-nbr-cor": 20,
-                  "min-dist": 0.1, "out-min-dist": 0.05},
+        "troll": {"var-data": "FACIES",
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.5, "out-min-dist": 0.25},
     }
     return _DEMO_OPTS.get(demo_id, {})
 

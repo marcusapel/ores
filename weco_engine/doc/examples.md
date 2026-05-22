@@ -44,7 +44,7 @@ WeCoStudio --well-list data/data_set_coal/wells.txt  # load custom data
 | **2 — Parameters** | Edit all engine parameters in 7 categories. Contextual help panel explains each parameter. Presets and undo/redo. |
 | **3 — Run** | Execute the engine. Live log, progress bar. Threaded — GUI stays responsive. |
 | **4 — Results** | Professional correlation plot (multi-log tracks, region strips, correlation lines). Navigate n-best results. Export PNG/SVG/PDF. |
-| **5 — Docs** | Built-in reference: workflow guide, parameter docs, format support, interpretation tips. |
+| **5 — Help** | Built-in reference: workflow guide, parameter docs, format support, interpretation tips. |
 
 ### Built-in Demos
 
@@ -52,20 +52,28 @@ Studio ships with demos covering the main WeCo constraint types:
 
 | # | Demo ID | Dataset | Wells | Constraints Demonstrated |
 |---|---------|---------|------:|--------------------------|
-| 1 | `distality` | data_set_3 | 2 | **Distality cost** (Walther's Law facies-belt penalty) |
-| 2 | `biozone_constraint` | data_set_4 | 2 | **No-crossing** + distality (biozone datums lock order) |
-| 3 | `coal_basin` | data_set_coal | 10 | **Gap cost** + multi-log (DEN+GR) + band-width |
+| 1 | `ds3` | data_set_3 | 2 | **Distality cost** (Walther's Law facies-belt penalty) |
+| 2 | `ds4` | data_set_4 | 2 | **No-crossing** + distality (biozone datums lock order) |
+| 3 | `coal` | data_set_coal | 10 | **Gap cost** + multi-log (DEN+GR) + tight band-width |
 | 4 | `quaternary` | data_set_quaternary | 20 | **Gap cost** + multi-log (GR+RT) + band-width |
 | 5 | `shallow_marine` | data_set_shallow_marine | 10 | **3-log variance** (GR+RHOB+DT) + gap cost + band-width |
-| 6 | `fluvial` | data_set_fluvial | 20 | **Gap cost** (channel pinch-out) + high min-dist |
-| 7 | `delta` | data_set_delta | 8 | **Multi-log** (GR+DEN) + band-width |
+| 6 | `fluvial` | data_set_fluvial | 20 | **Gap cost** (channel pinch-out) + wide band-width |
+| 7 | `delta` | data_set_delta | 8 | **Multi-log** (GR+DEN) + high diversity forcing |
 | 8 | `bryson` | data_set_bryson | 7 | **No-crossing** (ZONE) + categorical FACIES cost |
 | 9 | `sigrun` | data_set_sigrun | 2 | **Multi-log** (GR+NPHI) — North Sea well-tie |
 | 10 | `troll` | data_set_troll | 5 | **Categorical** + distality ordering (Walther's Law) |
 
-Each demo produces **20 ranked correlation scenarios** with diversity
-filtering (`min-dist=0.1`, `out-min-dist=0.05`) showing genuinely different
-geological interpretations — not just minor perturbations.
+Each demo uses **geology-aware diversity parameters** scaled to dataset
+complexity:
+
+- **Small datasets** (2–3 wells): 30 internal paths, min-dist 0.3
+  → explore the full solution space freely
+- **Medium datasets** (4–10 wells): 15–20 paths, min-dist 0.4–1.0
+  → pair diversity already constrains; higher forcing for clinoform ambiguity
+- **Large datasets** (15+ wells): 5 paths, min-dist 0.4
+  → combinatorics dominate; minimal internal search needed
+- **Categorical data**: min-dist 0.5+ (discrete cost landscape needs
+  stronger forcing to find distinct correlations)
 
 ---
 
