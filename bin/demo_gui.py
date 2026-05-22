@@ -867,6 +867,8 @@ class DemoRunnerWindow(QMainWindow):
 
         self._workers = []
         self._run_results = {}  # {run_name: (res_file, well_list, cost)}
+        self._last_res_file = None
+        self._last_well_list = None
 
         self._init_ui()
 
@@ -1138,6 +1140,58 @@ class DemoRunnerWindow(QMainWindow):
         self.log_text.setFont(QFont("Monospace", 9))
         self.tabs.addTab(self.log_text, "Engine Log")
 
+        # Tab 4: RDDMS Export
+        export_widget = QWidget()
+        export_layout = QVBoxLayout(export_widget)
+
+        export_group = QGroupBox("RDDMS / OSDU Export")
+        export_form = QFormLayout()
+
+        self._rddms_url_edit = QLineEdit()
+        self._rddms_url_edit.setPlaceholderText(
+            "https://reservoir-ddms.interop.radix.equinor.com/api/v2")
+        export_form.addRow("RDDMS URL:", self._rddms_url_edit)
+
+        self._rddms_dataspace_edit = QLineEdit("maap/weco")
+        export_form.addRow("Dataspace:", self._rddms_dataspace_edit)
+
+        self._rddms_cor_num_spin = QSpinBox()
+        self._rddms_cor_num_spin.setRange(0, 99)
+        self._rddms_cor_num_spin.setValue(0)
+        self._rddms_cor_num_spin.setToolTip(
+            "Realisation index (0 = best). Each gets a unique UUID set.")
+        export_form.addRow("Realisation (cor_num):", self._rddms_cor_num_spin)
+
+        self._rddms_markers_cb = QCheckBox("Well markers (WellboreMarkerFrame)")
+        self._rddms_markers_cb.setChecked(True)
+        export_form.addRow(self._rddms_markers_cb)
+
+        self._rddms_zonation_cb = QCheckBox("Zone log (DiscreteProperty)")
+        self._rddms_zonation_cb.setChecked(True)
+        export_form.addRow(self._rddms_zonation_cb)
+
+        self._rddms_strat_cb = QCheckBox("Strat column (StratigraphicColumn)")
+        self._rddms_strat_cb.setChecked(True)
+        export_form.addRow(self._rddms_strat_cb)
+
+        export_group.setLayout(export_form)
+        export_layout.addWidget(export_group)
+
+        # Export button
+        export_btn_layout = QHBoxLayout()
+        self._rddms_export_btn = QPushButton("Export to RDDMS")
+        self._rddms_export_btn.setEnabled(False)
+        self._rddms_export_btn.clicked.connect(self._export_to_rddms)
+        export_btn_layout.addWidget(self._rddms_export_btn)
+        export_layout.addLayout(export_btn_layout)
+
+        # Status
+        self._rddms_status_label = QLabel("")
+        export_layout.addWidget(self._rddms_status_label)
+        export_layout.addStretch()
+
+        self.tabs.addTab(export_widget, "RDDMS Export")
+
         # Progress bar
         self.progress = QProgressBar()
         self.progress.setVisible(False)
@@ -1396,6 +1450,11 @@ class DemoRunnerWindow(QMainWindow):
             # Store result for paging
             self._run_results[run_name] = (res_file, well_list, n_cor)
             self.run_selector.addItem(f"{run_name}  (cost={cost:.4f}, n={n_cor})", run_name)
+
+            # Track last result for RDDMS export
+            self._last_res_file = res_file
+            self._last_well_list = well_list
+            self._rddms_export_btn.setEnabled(True)
 
             # Populate well list widget (first run sets it)
             if self._well_list_widget.count() == 0:
@@ -1664,7 +1723,96 @@ class DemoRunnerWindow(QMainWindow):
     # ─── Export ───────────────────────────────────────────────────────
 
     def _export_results(self):
-        pass  # Future: export all results as PDF/ZIP
+        """Legacy stub — use _export_to_rddms() instead."""
+        self._export_to_rddms()
+
+    def _export_to_rddms(self):
+        """Export current correlation results to RDDMS dataspace.
+
+        Uses the same weco.rddms functions as the web client's
+        POST /rddms/export-results route.
+        """
+        if not hasattr(self, '_last_res_file') or self._last_res_file is None:
+            self._rddms_status_label.setText("No results to export. Run a correlation first.")
+            return
+        if not hasattr(self, '_last_well_list') or self._last_well_list is None:
+            self._rddms_status_label.setText("No well data loaded.")
+            return
+
+        url = self._rddms_url_edit.text().strip()
+        dataspace = self._rddms_dataspace_edit.text().strip()
+        if not url:
+            self._rddms_status_label.setText("Enter an RDDMS URL.")
+            return
+        if not dataspace:
+            self._rddms_status_label.setText("Enter a dataspace name.")
+            return
+
+        cor_num = self._rddms_cor_num_spin.value()
+        export_markers = self._rddms_markers_cb.isChecked()
+        export_zonation = self._rddms_zonation_cb.isChecked()
+        export_strat = self._rddms_strat_cb.isChecked()
+
+        if not (export_markers or export_zonation or export_strat):
+            self._rddms_status_label.setText("Select at least one export type.")
+            return
+
+        self._rddms_status_label.setText("Exporting...")
+        self._rddms_export_btn.setEnabled(False)
+        QApplication.processEvents()
+
+        try:
+            from weco.osdu_auth import get_token
+            token = get_token()
+        except Exception as e:
+            self._rddms_status_label.setText(f"Auth failed: {e}")
+            self._rddms_export_btn.setEnabled(True)
+            return
+
+        total = 0
+        detail_parts = []
+
+        try:
+            if export_markers:
+                from weco.rddms import rddms_export_markers
+                nm = rddms_export_markers(
+                    url, token, dataspace,
+                    self._last_res_file, self._last_well_list,
+                    cor_num=cor_num,
+                )
+                total += nm
+                detail_parts.append(f"{nm} markers")
+
+            if export_zonation:
+                from weco.rddms import rddms_export_zonation
+                nz = rddms_export_zonation(
+                    url, token, dataspace,
+                    self._last_res_file, self._last_well_list,
+                    cor_num=cor_num,
+                )
+                total += nz
+                detail_parts.append(f"{nz} zone logs")
+
+            if export_strat:
+                from weco.rddms import rddms_export_strat_column
+                ns = rddms_export_strat_column(
+                    url, token, dataspace,
+                    self._last_res_file, self._last_well_list,
+                    cor_num=cor_num,
+                )
+                total += ns
+                detail_parts.append("strat column")
+
+            self._rddms_status_label.setText(
+                f"✓ Exported {total} objects to '{dataspace}' "
+                f"(realisation {cor_num}): {', '.join(detail_parts)}"
+            )
+        except ImportError as e:
+            self._rddms_status_label.setText(f"RESQML package not available: {e}")
+        except Exception as e:
+            self._rddms_status_label.setText(f"Export failed: {e}")
+        finally:
+            self._rddms_export_btn.setEnabled(True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
