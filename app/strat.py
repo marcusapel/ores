@@ -1913,19 +1913,11 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
             if extra:
                 unit_obj["ExtraMetadata"] = extra
 
-            # Link unit to horizon boundaries (top/base) if age-derived horizons exist
-            top_hz_uuid = horizon_age_map.get(unit.get("baseMa"))  # younger boundary = top horizon
-            base_hz_uuid = horizon_age_map.get(unit.get("topMa"))  # older boundary = base horizon
-            if top_hz_uuid:
-                unit_obj["TopBoundary"] = _resqml_ref(
-                    "obj_HorizonInterpretation", top_hz_uuid,
-                    age_labels.get(unit.get("baseMa"), ""),
-                )
-            if base_hz_uuid:
-                unit_obj["BaseBoundary"] = _resqml_ref(
-                    "obj_HorizonInterpretation", base_hz_uuid,
-                    age_labels.get(unit.get("topMa"), ""),
-                )
+            # NOTE: TopBoundary/BaseBoundary are NOT standard RESQML 2.0.1 fields on
+            # StratigraphicUnitInterpretation. Including them causes RDDMS 412
+            # "Missing reference(s)" because the server can't resolve embedded
+            # DataObjectReferences in non-schema fields against the batch.
+            # Horizon ages are already captured in ExtraMetadata above.
 
             by_type["resqml20.obj_StratigraphicUnitInterpretation"].append(unit_obj)
             unit_refs.append(_resqml_ref(
