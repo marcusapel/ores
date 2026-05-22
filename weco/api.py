@@ -1859,7 +1859,7 @@ class RddmsImportRequest(BaseModel):
                           "from OSDU_TOKEN env var.",
     )
     dataspace: str = Field(
-        "demo", description="RDDMS dataspace name.",
+        "maap/weco", description="RDDMS dataspace name.",
     )
     epc_file: Optional[str] = Field(
         None, description="Path to local EPC+H5 file (alternative to URL).",
@@ -1898,7 +1898,7 @@ class RddmsListWellsRequest(BaseModel):
     token: Optional[str] = Field(
         None, description="Bearer token. Falls back to OSDU_TOKEN env.",
     )
-    dataspace: str = Field("demo", description="RDDMS dataspace name.")
+    dataspace: str = Field("maap/weco", description="RDDMS dataspace name.")
 
 
 class RddmsWellEntry(BaseModel):
@@ -2059,7 +2059,7 @@ class RddmsExportRequest(BaseModel):
         None, description="Bearer token.  Falls back to OSDU_TOKEN env.",
     )
     dataspace: str = Field(
-        "demo", description="Target RDDMS dataspace.",
+        "maap/weco", description="Target RDDMS dataspace.",
     )
     project_path: str = Field(
         ..., description="Path to WeCo project directory.",
@@ -2154,7 +2154,7 @@ class RddmsStratColumnRequest(BaseModel):
         None, description="Bearer token.",
     )
     dataspace: str = Field(
-        "demo", description="RDDMS dataspace.",
+        "maap/weco", description="RDDMS dataspace.",
     )
     column_json: Optional[str] = Field(
         None, description="Path to a local StratColumn JSON file.",

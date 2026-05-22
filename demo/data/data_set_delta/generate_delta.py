@@ -67,8 +67,10 @@ def main(
 
         gr, den, nphi, depth = [], [], [], []
         facies_list = []
+        ps_starts = []  # track parasequence start indices
 
         for ps in range(n_parasequences):
+            ps_starts.append(len(depth))
             prograde_shift = ps / max(n_parasequences - 1, 1)
             # Per-well, per-parasequence thickness variation (±30%)
             # Creates genuine "is this the same PS or a different one?" ambiguity
@@ -121,11 +123,21 @@ def main(
                     cur_len = 1
             intervals.append((cur_f, cur_start, cur_len))
 
+        # SEQSTRAT region: one zone per parasequence (boundaries = sequence boundaries)
+        # These are the KEY geological surfaces a geologist would pick first.
+        seqstrat_intervals = []
+        for si in range(len(ps_starts)):
+            start = ps_starts[si]
+            end = ps_starts[si + 1] if si + 1 < len(ps_starts) else n_actual
+            if end > start:
+                seqstrat_intervals.append((si, start, end - start))
+
         wells_data.append({
             "name": f"W{j}", "n": n_actual,
             "x": x_pos, "y": y_pos, "z": 0.0, "h": 1.0,
             "depth": depth, "GR": gr, "DEN": den, "NPHI": nphi,
             "facies_intervals": intervals,
+            "seqstrat_intervals": seqstrat_intervals,
         })
 
     # Write WeCo WellList v2 format
@@ -152,17 +164,22 @@ def main(
             f.write(f"NPHI {n}\n")
             for v in w["NPHI"]:
                 f.write(f"{v:.5f}\n")
-            # 1 region: facies
-            f.write("1\n")
+            # 2 regions: facies + SEQSTRAT
+            f.write("2\n")
             f.write(f"FACIES {len(w['facies_intervals'])}\n")
             for rid, rstart, rlen in w["facies_intervals"]:
                 f.write(f"{rid} {rstart} {rlen}\n")
+            f.write(f"SEQSTRAT {len(w['seqstrat_intervals'])}\n")
+            for rid, rstart, rlen in w["seqstrat_intervals"]:
+                f.write(f"{rid} {rstart} {rlen}\n")
         f.write("END\n")
 
-    # Options file
+    # Options file — use no_crossing to force boundaries at sequence boundaries
     opts_path = os.path.join(output_dir, "options.txt")
     with open(opts_path, "w") as f:
         f.write("# Prograding delta correlation options\n")
+        f.write("# no-crossing SEQSTRAT ensures key parasequence boundaries\n")
+        f.write("# are honoured — the most geologically important surfaces.\n")
         f.write("cost-function composite\n")
         f.write("var-data GR\n")
         f.write("var-weight 1.0\n")
@@ -170,11 +187,13 @@ def main(
         f.write("nbr-cor 50\n")
         f.write("out-nbr-cor 10\n")
         f.write("max-cor 200\n")
+        f.write("no-crossing SEQSTRAT\n")
+        f.write("const-gap-cost 1.0\n")
 
     # Distality options
     opts_dist = os.path.join(output_dir, "options_distality.txt")
     with open(opts_dist, "w") as f:
-        f.write("# Delta with distality cost\n")
+        f.write("# Delta with distality cost + sequence boundaries\n")
         f.write("cost-function composite\n")
         f.write("var-data GR DEN\n")
         f.write("var-weight 1.0 0.5\n")
@@ -183,6 +202,8 @@ def main(
         f.write("nbr-cor 50\n")
         f.write("out-nbr-cor 10\n")
         f.write("max-cor 200\n")
+        f.write("no-crossing SEQSTRAT\n")
+        f.write("const-gap-cost 1.0\n")
 
     print(f"Generated {n_wells} wells in {wells_path}")
     return wells_path, opts_path

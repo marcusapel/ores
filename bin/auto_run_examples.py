@@ -256,16 +256,24 @@ DATASETS = {
             "8 facies: prodelta shale, distal/proximal delta front,\n"
             "distributary mouth bar, distributary channel, interdistributary bay,\n"
             "marsh, delta plain. Beds thicken/coarsen landward (progradation).\n"
-            "Gaps indicate condensation in distal positions (Wheeler wedge)."
+            "Gaps indicate condensation in distal positions (Wheeler wedge).\n"
+            "no_crossing=SEQSTRAT locks parasequence boundaries — the most\n"
+            "geologically important surfaces — preventing top-only correlation."
         ),
         "wells": DATA_DIR / "data_set_delta" / "wells.txt",
         "runs": [
-            {"name": "GR+DEN", "opts": {
+            {"name": "GR+DEN_seqstrat", "opts": {
                 "var_data": "GR", "var_weight": 0.6,
-                "var_data2": "DEN", "var_weight2": 0.4}},
+                "var_data2": "DEN", "var_weight2": 0.4,
+                "no_crossing": "SEQSTRAT",
+                "const_gap_cost": 1.0}},
+            {"name": "GR+DEN_unconstrained", "opts": {
+                "var_data": "GR", "var_weight": 0.6,
+                "var_data2": "DEN", "var_weight2": 0.4,
+                "const_gap_cost": 2.0}},
         ],
         "common_opts": {"cost_function": "composite",
-                        "max_cor": 30, "nbr_cor": 10, "out_nbr_cor": 10,
+                        "max_cor": 50, "nbr_cor": 20, "out_nbr_cor": 10,
                         "band_width": 20},
     },
     "11_bryson": {
