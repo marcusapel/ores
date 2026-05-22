@@ -1789,7 +1789,7 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
 
     by_type: Dict[str, List[dict]] = {
         "resqml20.obj_OrganizationFeature": [],
-        "resqml20.obj_RockVolumeFeature": [],
+        "resqml20.obj_StratigraphicUnitFeature": [],
         "resqml20.obj_BoundaryFeature": [],
         "resqml20.obj_HorizonInterpretation": [],
         "resqml20.obj_StratigraphicUnitInterpretation": [],
@@ -1881,9 +1881,9 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
             unit_uuid = _det_uuid(f"unit:{col_id}:{rank_name}:{name}:{ui}")
             feat_uuid = _det_uuid(f"feat:{col_id}:{rank_name}:{name}:{ui}")
 
-            # RockVolumeFeature (the feature this unit interprets)
-            by_type["resqml20.obj_RockVolumeFeature"].append({
-                "$type": "resqml20.obj_RockVolumeFeature",
+            # StratigraphicUnitFeature (the feature this unit interprets)
+            by_type["resqml20.obj_StratigraphicUnitFeature"].append({
+                "$type": "resqml20.obj_StratigraphicUnitFeature",
                 "SchemaVersion": "2.0",
                 "Uuid": feat_uuid,
                 "Citation": _resqml_citation(name),
@@ -1897,7 +1897,7 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
                 "Citation": _resqml_citation(name),
                 "Domain": "depth",
                 "InterpretedFeature": _resqml_ref(
-                    "obj_RockVolumeFeature", feat_uuid, name,
+                    "obj_StratigraphicUnitFeature", feat_uuid, name,
                 ),
             }
 
@@ -2073,14 +2073,17 @@ async def _push_resqml_to_rddms(
     # resolves against objects already committed in the dataspace — not
     # against other objects in the same uncommitted transaction.
     #
-    # Phase 1: features + interpretations (no cross-type array refs)
-    # Phase 2: ranks (StratigraphicUnits[] → units committed in phase 1)
-    # Phase 3: column (Ranks[] → ranks committed in phase 2)
+    # Phase 1: features (no outgoing references)
+    # Phase 2: interpretations (InterpretedFeature → features from phase 1)
+    # Phase 3: ranks (StratigraphicUnits[] → units from phase 2)
+    # Phase 4: column (Ranks[] → ranks from phase 3)
     phases: List[List[str]] = [
         [
-            "resqml20.obj_RockVolumeFeature",
+            "resqml20.obj_StratigraphicUnitFeature",
             "resqml20.obj_BoundaryFeature",
             "resqml20.obj_OrganizationFeature",
+        ],
+        [
             "resqml20.obj_HorizonInterpretation",
             "resqml20.obj_StratigraphicUnitInterpretation",
         ],
@@ -2512,7 +2515,7 @@ async def rddms_verify_column(request: Request):
     all_ok = True
 
     for typ in [
-        "resqml20.obj_RockVolumeFeature",
+        "resqml20.obj_StratigraphicUnitFeature",
         "resqml20.obj_OrganizationFeature",
         "resqml20.obj_StratigraphicUnitInterpretation",
         "resqml20.obj_StratigraphicColumnRankInterpretation",
