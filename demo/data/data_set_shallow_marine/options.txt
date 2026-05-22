@@ -1,8 +1,6 @@
-# Config: DEFAULT — GR+RHOB+DT constrained by biozone markers
+# Config: DEFAULT — GR+RHOB+DT variance for shoreface correlation
 # Shallow marine: use GR (lithology) + RHOB (porosity) + DT (compaction)
 # Hugin Formation analogue, 5 parasequences
-# BIOZONE no-crossing locks flooding surfaces (key sequence boundaries)
-# min-dist ensures alternative correlations show different geometries
 #
 cost-function=composite
 var-data=GR
@@ -11,12 +9,7 @@ var-data2=RHOB
 var-weight2=0.3
 var-data3=DT
 var-weight3=0.2
-no-crossing=BIOZONE
 order=position
 max-cor=80
-nbr-cor=30
-out-nbr-cor=5
 const-gap-cost=2.0
-min-dist=0.3
-out-min-dist=0.1
 out-file=result.txt
