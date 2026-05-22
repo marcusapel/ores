@@ -3,15 +3,20 @@
 # same-region=SEAM forces coal to correlate with coal
 # High gap cost for missing seams, low at boundaries
 #
-var-data DEN
-var-weight 0.5
-var-data2 GR
-var-weight2 0.3
-var-data3 SON
-var-weight3 0.2
-same-region SEAM
-order position
-max-cor 100
-const-gap-cost 4.0
-const-gap-cost-start 0.0
-const-gap-cost-end 0.0
+cost-function=composite
+var-data=DEN
+var-weight=0.5
+var-data2=GR
+var-weight2=0.3
+var-data3=SON
+var-weight3=0.2
+same-region=SEAM
+order=position
+max-cor=100
+nbr-cor=30
+out-nbr-cor=5
+const-gap-cost=4.0
+const-gap-cost-start=0.0
+const-gap-cost-end=0.0
+min-dist=0.3
+out-min-dist=0.1

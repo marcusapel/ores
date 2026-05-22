@@ -1,9 +1,14 @@
 # Fluvial channel belt correlation options
-cost-function composite
-var-data GR
-var-weight 1.0
-order pyramidal
-nbr-cor 50
-out-nbr-cor 10
-max-cor 200
-gap-const-cost 0.2
+# Laterally discontinuous channels: LOW gap cost = isolated lenses (correct),
+# HIGH gap cost = forced sheet connectivity (incorrect but useful contrast).
+# min-dist ensures output scenarios are genuinely different geometries.
+cost-function=composite
+var-data=GR
+var-weight=1.0
+order=pyramidal
+nbr-cor=30
+out-nbr-cor=5
+max-cor=100
+const-gap-cost=0.5
+min-dist=0.4
+out-min-dist=0.15
