@@ -1,6 +1,7 @@
-# Config: DISTALITY — GR+RHOB+DT with distality cost
+# Config: DISTALITY — GR+RHOB+DT with distality cost + biozone lock
 # Uses FACIES region for lateral equivalence (dist-facies)
 # Transport direction: along Y (dip direction)
+# BIOZONE lock prevents parasequence miscorrelation
 #
 cost-function=composite
 var-data=GR
@@ -10,7 +11,12 @@ var-weight2=0.3
 var-data3=DT
 var-weight3=0.2
 dist-facies=FACIES
+no-crossing=BIOZONE
 order=position
 max-cor=80
+nbr-cor=30
+out-nbr-cor=5
 const-gap-cost=2.0
+min-dist=0.3
+out-min-dist=0.1
 out-file=result_distality.txt

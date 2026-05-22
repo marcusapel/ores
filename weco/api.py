@@ -601,10 +601,17 @@ def _extract_results(rf, data, n_best: int) -> List[RunResult]:
 
     # Build boundary indices from regions in data (WellList)
     boundary_indices = [set() for _ in range(n_wells)]
-    if hasattr(data, 'wells'):
+    # Resolve the wells list from either ResAndWL or a plain WellList
+    _wells = None
+    if hasattr(data, 'well_list') and hasattr(data.well_list, 'wells'):
+        _wells = data.well_list.wells
+    elif hasattr(data, 'wells'):
+        _wells = data.wells
+
+    if _wells:
         # Pick the region with fewest intervals (coarsest stratigraphy)
         all_regions = {}
-        for wi, well in enumerate(data.wells):
+        for wi, well in enumerate(_wells):
             if hasattr(well, 'region') and well.region:
                 for rname, rdata in well.region.items():
                     rlist = list(rdata)
@@ -614,7 +621,7 @@ def _extract_results(rf, data, n_best: int) -> List[RunResult]:
         primary_region = min(all_regions, key=all_regions.get) if all_regions else None
 
         if primary_region:
-            for wi, well in enumerate(data.wells):
+            for wi, well in enumerate(_wells):
                 if hasattr(well, 'region') and primary_region in well.region:
                     rlist = list(well.region[primary_region])
                     if rlist and isinstance(rlist[0], (list, tuple)) and len(rlist[0]) >= 3:
@@ -1354,18 +1361,19 @@ def list_demos():
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.3, "out-min-dist": 0.15}},
         # ── Domain: Coal Basin ────────────────────────────────────────
-        {"id": "coal", "title": "Coal Basin – Gap Cost + Multi-Log (DEN+GR)",
+        {"id": "coal", "title": "Coal Basin – Gap Cost + Multi-Log (DEN+GR+SON)",
          "group": "Domain", "wells": "data_set_coal/wells_10.txt",
          "geology": "coal",
          "description": "10 coal boreholes with seam splitting/absence. "
                         "Gap cost (3.0) penalises missing seams. DEN (coal=1.3 g/cc "
-                        "vs rock=2.5) + GR multi-log. Tight band-width (10) reflects "
-                        "thin seam geometry in long boreholes.",
-         "opts": {"var-data": "DEN", "var-weight": 0.6,
-                  "var-data2": "GR", "var-weight2": 0.4,
-                  "max-cor": 10, "nbr-cor": 5, "out-nbr-cor": 5,
-                  "min-dist": 0.3, "out-min-dist": 0.15,
-                  "const-gap-cost": 3.0, "band-width": 10}},
+                        "vs rock=2.5) + GR + SON multi-log. Band-width scaled to "
+                        "section length for full-section correlation.",
+         "opts": {"var-data": "DEN", "var-weight": 0.5,
+                  "var-data2": "GR", "var-weight2": 0.3,
+                  "var-data3": "SON", "var-weight3": 0.2,
+                  "max-cor": 50, "nbr-cor": 20, "out-nbr-cor": 5,
+                  "min-dist": 0.4, "out-min-dist": 0.15,
+                  "const-gap-cost": 3.0, "band-width": 30}},
         # ── Domain: Quaternary Hydrogeology ───────────────────────────
         {"id": "quaternary", "title": "Quaternary – Gap Cost + Multi-Log (GR+RT)",
          "group": "Domain", "wells": "data_set_quaternary/wells_20.txt",
@@ -1380,18 +1388,20 @@ def list_demos():
                   "const-gap-cost": 1.5, "band-width": 20}},
         # ── Domain: Shallow Marine ────────────────────────────────────
         {"id": "shallow_marine",
-         "title": "Shallow Marine – 3-Log Variance (GR+RHOB+DT) + Gap Cost",
+         "title": "Shallow Marine – 3-Log + Biozone Constraint (GR+RHOB+DT)",
          "group": "Domain", "wells": "data_set_shallow_marine/wells.txt",
          "geology": "shallow_marine",
          "description": "10 wells with repeated shoreface parasequences + erosion. "
                         "3-log multi-variance (GR 50% + RHOB 30% + DT 20%) "
-                        "+ gap cost (2.0) + band-width=20.",
+                        "+ gap cost (2.0). BIOZONE no-crossing locks key flooding "
+                        "surfaces — the most important sequence boundaries.",
          "opts": {"var-data": "GR", "var-weight": 0.5,
                   "var-data2": "RHOB", "var-weight2": 0.3,
                   "var-data3": "DT", "var-weight3": 0.2,
-                  "max-cor": 40, "nbr-cor": 20, "out-nbr-cor": 10,
+                  "no-crossing": "BIOZONE",
+                  "max-cor": 50, "nbr-cor": 20, "out-nbr-cor": 5,
                   "min-dist": 0.4, "out-min-dist": 0.2,
-                  "const-gap-cost": 2.0, "band-width": 20}},
+                  "const-gap-cost": 2.0, "band-width": 30}},
         # ── Domain: Bryson (Appalachian) ──────────────────────────────
         {"id": "bryson", "title": "Bryson – No-Crossing Constraint (Categorical)",
          "group": "Domain", "wells": "data_set_bryson/wells.txt",
@@ -1403,27 +1413,31 @@ def list_demos():
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.5, "out-min-dist": 0.25}},
         # ── Domain: Fluvial Channel Belt ──────────────────────────────
-        {"id": "fluvial", "title": "Fluvial – Gap Cost + High Diversity",
+        {"id": "fluvial", "title": "Fluvial – Gap Cost + Channel Connectivity",
          "group": "Domain", "wells": "data_set_fluvial/wells.txt",
          "geology": "fluvial",
-         "description": "20 wells through discontinuous channel sandbodies. "
-                        "Gap cost (0.5) allows hiatuses at pinch-outs. "
-                        "Wide band-width (60) reflects non-marine lateral discontinuity.",
+         "description": "12 wells through discontinuous channel sandbodies. "
+                        "Gap cost (1.0) forces decision: connected or isolated? "
+                        "Band-width=30 limits vertical stretch, keeping channels "
+                        "at geologically plausible depths.",
          "opts": {"var-data": "GR", "var-weight": 1.0,
-                  "max-cor": 20, "nbr-cor": 10, "out-nbr-cor": 10,
-                  "min-dist": 0.4, "out-min-dist": 0.2,
-                  "const-gap-cost": 0.5, "band-width": 60}},
+                  "max-cor": 50, "nbr-cor": 20, "out-nbr-cor": 5,
+                  "min-dist": 0.5, "out-min-dist": 0.2,
+                  "const-gap-cost": 1.0, "band-width": 30}},
         # ── Domain: Delta ─────────────────────────────────────────────
-        {"id": "delta", "title": "Delta – Multi-Log Variance (GR+DEN) + Band-Width",
+        {"id": "delta", "title": "Delta – Sequence Boundaries + Multi-Log (GR+DEN)",
          "group": "Domain", "wells": "data_set_delta/wells.txt",
          "geology": "deltaic",
          "description": "8 wells through a prograding delta with variable "
-                        "thickness parasequences. GR (60%) + DEN (40%) multi-log "
-                        "variance + band-width=20. Clinoform correlation ambiguity.",
+                        "thickness parasequences. GR (60%) + DEN (40%) multi-log. "
+                        "SEQSTRAT no-crossing locks parasequence boundaries — the "
+                        "highest-order surfaces that must be honoured first.",
          "opts": {"var-data": "GR", "var-weight": 0.6,
                   "var-data2": "DEN", "var-weight2": 0.4,
-                  "max-cor": 40, "nbr-cor": 20, "out-nbr-cor": 10,
-                  "min-dist": 1.0, "out-min-dist": 0.5, "band-width": 20}},
+                  "no-crossing": "SEQSTRAT",
+                  "max-cor": 50, "nbr-cor": 20, "out-nbr-cor": 5,
+                  "min-dist": 0.4, "out-min-dist": 0.2,
+                  "const-gap-cost": 1.5, "band-width": 30}},
         # ── Domain: Sigrun (North Sea) ────────────────────────────────
         {"id": "sigrun", "title": "Sigrun – Multi-Log Well-Tie (GR+NPHI)",
          "group": "Domain", "wells": "data_set_sigrun/wells.txt",
