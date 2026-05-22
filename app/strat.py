@@ -2067,69 +2067,83 @@ async def _push_resqml_to_rddms(
                         f"{e.response.text[:500]}",
                     )
 
-    # PUT objects in dependency order, one type-batch per call.
-    # The RDDMS only resolves array-nested DataObjectReferences (e.g.
-    # StratigraphicUnits[].Unit) against objects already stored in the
-    # transaction — NOT against other objects in the same PUT body.
-    put_order = [
-        "resqml20.obj_RockVolumeFeature",
-        "resqml20.obj_BoundaryFeature",
-        "resqml20.obj_OrganizationFeature",
-        "resqml20.obj_HorizonInterpretation",
-        "resqml20.obj_StratigraphicUnitInterpretation",
-        "resqml20.obj_StratigraphicColumnRankInterpretation",
-        "resqml20.obj_StratigraphicColumn",
+    # Push objects in multiple sequential transactions so that referenced
+    # objects are fully committed before objects that reference them.
+    # The RDDMS validates all DataObjectReferences at commit time and only
+    # resolves against objects already committed in the dataspace — not
+    # against other objects in the same uncommitted transaction.
+    #
+    # Phase 1: features + interpretations (no cross-type array refs)
+    # Phase 2: ranks (StratigraphicUnits[] → units committed in phase 1)
+    # Phase 3: column (Ranks[] → ranks committed in phase 2)
+    phases: List[List[str]] = [
+        [
+            "resqml20.obj_RockVolumeFeature",
+            "resqml20.obj_BoundaryFeature",
+            "resqml20.obj_OrganizationFeature",
+            "resqml20.obj_HorizonInterpretation",
+            "resqml20.obj_StratigraphicUnitInterpretation",
+        ],
+        [
+            "resqml20.obj_StratigraphicColumnRankInterpretation",
+        ],
+        [
+            "resqml20.obj_StratigraphicColumn",
+        ],
     ]
     type_counts: Dict[str, int] = {}
-    for typ in put_order:
-        objects = resqml_by_type.get(typ, [])
-        if objects:
-            type_counts[typ] = len(objects)
+    for phase in phases:
+        for typ in phase:
+            objects = resqml_by_type.get(typ, [])
+            if objects:
+                type_counts[typ] = len(objects)
 
     errors: List[dict] = []
     tx_id: Optional[str] = None
+    pi = 0
 
     try:
-        # 1) Begin transaction
-        tx_id = await osdu.begin_transaction(at, dataspace)
-        log.info("[RDDMS] Transaction on %s: PUT %d objects in %d batches (tx=%s)",
-                 dataspace, total_objects, len(type_counts), tx_id)
-
-        # 2) PUT each type-batch sequentially (dependency order)
-        for typ in put_order:
-            objects = resqml_by_type.get(typ, [])
-            if not objects:
+        for pi, phase_types in enumerate(phases):
+            phase_objects: List[dict] = []
+            for typ in phase_types:
+                phase_objects.extend(resqml_by_type.get(typ, []))
+            if not phase_objects:
                 continue
-            resp = await osdu.put_resources(at, dataspace, objects, tx_id)
-            log.debug("[RDDMS]   PUT %d × %s → ok", len(objects), typ)
 
-        # 3) Commit the transaction
-        await osdu.commit_transaction(at, dataspace, tx_id)
-        log.info("[RDDMS] Transaction %s committed - %d objects pushed to %s",
-                 tx_id, total_objects, dataspace)
+            tx_id = await osdu.begin_transaction(at, dataspace)
+            log.info("[RDDMS] Phase %d/%d: PUT %d objects (tx=%s)",
+                     pi + 1, len(phases), len(phase_objects), tx_id)
+
+            await osdu.put_resources(at, dataspace, phase_objects, tx_id)
+            await osdu.commit_transaction(at, dataspace, tx_id)
+            log.info("[RDDMS] Phase %d committed (%d objects)", pi + 1, len(phase_objects))
+
+        log.info("[RDDMS] All phases committed - %d objects pushed to %s",
+                 total_objects, dataspace)
 
     except httpx.HTTPStatusError as e:
         err = {
             "httpStatus": e.response.status_code,
             "detail": _sanitize(e.response),
+            "phase": pi + 1,
         }
         errors.append(err)
-        log.error("[RDDMS] Transaction write failed: %s", err)
-        # Attempt rollback
-        if tx_id:
-            try:
+        log.error("[RDDMS] Phase %d failed: %s", pi + 1, err)
+        # Attempt rollback of the current transaction
+        try:
+            if tx_id:
                 await osdu.cancel_transaction(at, dataspace, tx_id)
                 log.info("[RDDMS] Transaction %s rolled back", tx_id)
-            except Exception:
-                log.warning("[RDDMS] Rollback failed for tx %s", tx_id)
+        except Exception:
+            pass
     except Exception as e:
         errors.append({"error": _safe_detail(e)})
         log.error("[RDDMS] Transaction write exception: %s", e)
-        if tx_id:
-            try:
+        try:
+            if tx_id:
                 await osdu.cancel_transaction(at, dataspace, tx_id)
-            except Exception:
-                pass
+        except Exception:
+            pass
 
     pushed_count = total_objects if not errors else 0
     failed_count = 0 if not errors else total_objects
