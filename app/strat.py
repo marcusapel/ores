@@ -1945,13 +1945,9 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
             "StratigraphicUnits": unit_refs,
         }
         by_type["resqml20.obj_StratigraphicColumnRankInterpretation"].append(rank_obj)
-        rank_refs.append({
-            "$type": "resqml20.StratigraphicColumnRankInterpretationIndex",
-            "Index": ri,
-            "ColumnRankInterpretation": _resqml_ref(
-                "obj_StratigraphicColumnRankInterpretation", rank_uuid, rank_name,
-            ),
-        })
+        rank_refs.append(_resqml_ref(
+            "obj_StratigraphicColumnRankInterpretation", rank_uuid, rank_name,
+        ))
 
     # StratigraphicColumn
     col_uuid = _det_uuid(f"col:{col_id}")
@@ -2071,7 +2067,10 @@ async def _push_resqml_to_rddms(
                         f"{e.response.text[:500]}",
                     )
 
-    # Flatten all objects into a single list (RDDMS accepts mixed types)
+    # PUT objects in dependency order, one type-batch per call.
+    # The RDDMS only resolves array-nested DataObjectReferences (e.g.
+    # StratigraphicUnits[].Unit) against objects already stored in the
+    # transaction — NOT against other objects in the same PUT body.
     put_order = [
         "resqml20.obj_RockVolumeFeature",
         "resqml20.obj_BoundaryFeature",
@@ -2081,12 +2080,10 @@ async def _push_resqml_to_rddms(
         "resqml20.obj_StratigraphicColumnRankInterpretation",
         "resqml20.obj_StratigraphicColumn",
     ]
-    all_objects: List[dict] = []
     type_counts: Dict[str, int] = {}
     for typ in put_order:
         objects = resqml_by_type.get(typ, [])
         if objects:
-            all_objects.extend(objects)
             type_counts[typ] = len(objects)
 
     errors: List[dict] = []
@@ -2095,16 +2092,21 @@ async def _push_resqml_to_rddms(
     try:
         # 1) Begin transaction
         tx_id = await osdu.begin_transaction(at, dataspace)
-        log.info("[RDDMS] Transaction on %s: PUT %d objects (tx=%s)",
-                 dataspace, len(all_objects), tx_id)
+        log.info("[RDDMS] Transaction on %s: PUT %d objects in %d batches (tx=%s)",
+                 dataspace, total_objects, len(type_counts), tx_id)
 
-        # 2) PUT all objects in one call within the transaction
-        resp = await osdu.put_resources(at, dataspace, all_objects, tx_id)
+        # 2) PUT each type-batch sequentially (dependency order)
+        for typ in put_order:
+            objects = resqml_by_type.get(typ, [])
+            if not objects:
+                continue
+            resp = await osdu.put_resources(at, dataspace, objects, tx_id)
+            log.debug("[RDDMS]   PUT %d × %s → ok", len(objects), typ)
 
         # 3) Commit the transaction
         await osdu.commit_transaction(at, dataspace, tx_id)
         log.info("[RDDMS] Transaction %s committed - %d objects pushed to %s",
-                 tx_id, len(all_objects), dataspace)
+                 tx_id, total_objects, dataspace)
 
     except httpx.HTTPStatusError as e:
         err = {
