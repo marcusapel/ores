@@ -624,8 +624,8 @@ def _extract_results(rf, data, n_best: int) -> List[RunResult]:
             for wi, well in enumerate(_wells):
                 if hasattr(well, 'region') and primary_region in well.region:
                     rlist = list(well.region[primary_region])
-                    if rlist and isinstance(rlist[0], (list, tuple)) and len(rlist[0]) >= 3:
-                        for entry in rlist:
+                    for entry in rlist:
+                        if isinstance(entry, (list, tuple)) and len(entry) >= 2:
                             boundary_indices[wi].add(entry[1])
 
     for i in range(n):
