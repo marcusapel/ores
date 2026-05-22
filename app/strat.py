@@ -1872,6 +1872,7 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
 
         unit_refs: List[dict] = []
 
+        unit_index = 0
         for ui, unit in enumerate(rank.get("units") or []):
             if unit.get("_synthetic"):
                 continue  # skip gap-fill placeholders
@@ -1920,9 +1921,14 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
             # Horizon ages are already captured in ExtraMetadata above.
 
             by_type["resqml20.obj_StratigraphicUnitInterpretation"].append(unit_obj)
-            unit_refs.append(_resqml_ref(
-                "obj_StratigraphicUnitInterpretation", unit_uuid, name,
-            ))
+            unit_refs.append({
+                "$type": "resqml20.StratigraphicUnitInterpretationIndex",
+                "Index": unit_index,
+                "Unit": _resqml_ref(
+                    "obj_StratigraphicUnitInterpretation", unit_uuid, name,
+                ),
+            })
+            unit_index += 1
 
         # StratigraphicColumnRankInterpretation
         rank_obj: Dict[str, Any] = {
@@ -1939,9 +1945,13 @@ def _osdu_column_to_resqml(model: dict) -> Dict[str, List[dict]]:
             "StratigraphicUnits": unit_refs,
         }
         by_type["resqml20.obj_StratigraphicColumnRankInterpretation"].append(rank_obj)
-        rank_refs.append(_resqml_ref(
-            "obj_StratigraphicColumnRankInterpretation", rank_uuid, rank_name,
-        ))
+        rank_refs.append({
+            "$type": "resqml20.StratigraphicColumnRankInterpretationIndex",
+            "Index": ri,
+            "ColumnRankInterpretation": _resqml_ref(
+                "obj_StratigraphicColumnRankInterpretation", rank_uuid, rank_name,
+            ),
+        })
 
     # StratigraphicColumn
     col_uuid = _det_uuid(f"col:{col_id}")
