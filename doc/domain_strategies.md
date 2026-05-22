@@ -25,12 +25,17 @@
 
 **Recommended Options**:
 - `var_data`: GR (coal = very low GR, marine band = high GR)
-- `var_weight`: 1.0 (GR alone is usually sufficient)
+- `var_data2`: DEN (coal ≈ 1.3 g/cc vs rock ≈ 2.5 — the strongest signal)
+- `var_weight / var_weight2`: 0.4 / 0.6 (DEN is more diagnostic)
 - `order`: position
-- `const_gap_cost`: 2.0 (seams should not be skipped easily)
+- `const_gap_cost`: 3.0 (seams should not be skipped easily)
+- `band_width`: 10 (coal seams are thin markers in long boreholes — tight
+  band-width reflects the layer-cake geometry)
 - `no_crossing`: MARINE_BAND (marine bands are laterally continuous)
 
-**Expected Results**: Seam-to-seam correlation. Watch for:
+**Expected Results**: Seam-to-seam correlation with high confidence. Coal
+datasets often have a **single optimal solution** because DEN contrast is
+so diagnostic that there's no ambiguity. Watch for:
 - Seam splits (one seam becomes two — increase `max_cor`)
 - Washout zones (missing coal — allow moderate gaps)
 - Marine bands provide the strongest constraints
@@ -80,11 +85,15 @@
 - `var_weight`: 1.0
 - `order`: position
 - `const_gap_cost`: 0.5 (low — channels are often not laterally continuous)
-- `max_cor`: 80+ (need many alternatives due to non-uniqueness)
+- `band_width`: 60 (wide — channel bodies can be at very different
+  depths in adjacent wells due to avulsion/lateral migration)
+- `min_dist`: 0.4 (moderate forcing — fluvial has inherent ambiguity
+  but strong global optima with many wells)
 
 **Expected Results**: This is the hardest setting for DTW-based correlation.
-Expect lower confidence scores. Use hierarchical mode with
-sequence-stratigraphic surfaces to constrain the search space.
+With 20+ wells the combinatorial constraints narrow solutions significantly;
+expect 2–3 genuinely distinct scenarios. The wide band-width allows the
+algorithm to find channels that jump stratigraphic position between wells.
 
 **Tip**: Consider using `hierarchical_correlate()` with MFS/SB detection
 to lock major flooding surfaces before resolving within intervals.

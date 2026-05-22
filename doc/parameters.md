@@ -106,11 +106,11 @@ Parameters ranked by how much they affect correlation quality:
 | ★★★☆☆ | `var_weight` / `var_weight2` | **Medium** | When using 2+ logs |
 | ★★★☆☆ | `const_gap_cost` | **Medium** | When too many/few hiatuses appear |
 | ★★★☆☆ | `dist_scaling` | **Medium** | Tuning wedge vs. tabular geometry |
-| ★★☆☆☆ | `nbr_cor` | **Low-Med** | If memory is an issue; usually = max_cor |
+| ★★☆☆☆ | `nbr_cor` | **Low-Med** | Auto-scaled with well count; manual only for fine-tuning |
 | ★★☆☆☆ | `same_region` | **Low-Med** | When lithostratigraphic units are well-known |
 | ★★☆☆☆ | `out_nbr_cor` | **Low** | Only affects output count, not quality |
 | ★☆☆☆☆ | `thread` | **Negligible** | Performance only; 0 = auto |
-| ★☆☆☆☆ | `min_dist` | **Negligible** | Rarely needed |
+| ★★★☆☆ | `min_dist` | **Medium** | Controls scenario diversity — higher = more structurally different solutions |
 
 ---
 
@@ -156,15 +156,22 @@ Final:     pick out_nbr_cor cheapest (min out_min_dist apart)
 
 ### Tuning guide
 
-| Scenario | `max_cor` | `nbr_cor` | Typical runtime |
-|----------|-----------|-----------|----------------|
-| Quick demo | 10–20 | 10–20 | < 1 sec |
-| Good default | 50 | 50 | ~0.1 sec (3 wells × 100 markers) |
-| Production quality | 200–500 | 100–200 | 1–5 sec |
-| Exhaustive search | 1000+ | 500+ | 10+ sec |
+| Scenario | `max_cor` | `nbr_cor` | `min_dist` | Typical runtime |
+|----------|-----------|-----------|------------|----------------|
+| 2–3 wells (small) | 50 | 30 | 0.3 | < 1 sec |
+| 4–10 wells (medium) | 40 | 15–20 | 0.4 | 1–4 sec |
+| 15+ wells (large) | 20 | 5–10 | 0.4 | 1–3 sec |
+| Categorical data | 50 | 20–30 | 0.5 | < 2 sec |
+| Long wells (300+ pts) | 10–20 | 5 | 0.3 | 10–20 sec |
 
-**Rule of thumb:** If your best correlation cost seems high, double `max_cor` before
-changing any other parameter. If it doesn't improve, the problem is in costs, not search depth.
+**Rules of thumb:**
+- The auto-parametrizer scales `nbr_cor` and `min_dist` with well count
+  and average well length — manual override is rarely needed.
+- **Categorical data** (FACIES, LITHOLOGY) has a flat cost landscape:
+  use `min_dist ≥ 0.5` to force genuinely different solutions.
+- **Many wells** (15+): pair diversity already provides scenario variation;
+  keep `nbr_cor` low (5–10) for fast runtime.
+- If correlations look identical, increase `out_min_dist` first.
 
 ---
 
