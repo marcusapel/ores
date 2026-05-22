@@ -1,0 +1,16 @@
+# Config: SIGRUN — GR log correlation with flooding surface constraints
+# Hugin Formation (Upper Jurassic): tide-dominated shallow marine
+# GR is the primary correlation log (shale/sand discrimination)
+# SEQUENCE no-crossing locks known flooding surfaces
+#
+cost-function=composite
+var-data=GR
+var-weight=1.0
+no-crossing=SEQUENCE
+order=position
+max-cor=100
+nbr-cor=50
+out-nbr-cor=10
+min-dist=0.2
+out-min-dist=0.1
+out-file=result_gr.txt

@@ -339,6 +339,96 @@ def write_options(filepath, opts_dict, comment_lines):
             f.write(f"{k} {v}\n")
 
 
+def write_truth_model(wells, filepath):
+    """Export ground-truth correlation for coal seams.
+
+    The truth model defines which seam boundaries are isochronous surfaces.
+    Each seam top/base is a correlation horizon — if present in a well,
+    it should correlate with the same seam in adjacent wells.
+
+    Key ambiguity: thin seams (Floez_9, Floez_10) are frequently absent.
+    The correlator must decide: is a thin coal Floez_9 or Katharina (split)?
+    """
+    import json
+
+    truth = {
+        "description": "Ground-truth correlation model for coal seam dataset",
+        "seams": [s[0] for s in SEAMS],
+        "wells": [],
+        "correlation_lines": [],
+    }
+
+    # Per-well: seam presence and boundary depths
+    for w in wells:
+        seam_info = {}
+        for region in w["seam_regions"]:
+            seam_id, start_idx, length = region
+            if seam_id > 0:  # non-zero = coal seam
+                seam_name = SEAMS[seam_id - 1][0] if seam_id <= len(SEAMS) else f"Seam_{seam_id}"
+                depth_top = w["DEPTH"][start_idx]
+                depth_base = w["DEPTH"][min(start_idx + length - 1, len(w["DEPTH"]) - 1)]
+                seam_info[seam_name] = {
+                    "sample_idx_top": start_idx,
+                    "sample_idx_base": start_idx + length - 1,
+                    "depth_top": depth_top,
+                    "depth_base": depth_base,
+                    "thickness": depth_base - depth_top + SAMPLE_DZ,
+                }
+
+        truth["wells"].append({
+            "name": w["name"],
+            "seam_present": {SEAMS[si][0]: present
+                            for si, present in w["seam_present"].items()},
+            "seam_intervals": seam_info,
+        })
+
+    # Correlation lines: each seam top is a surface
+    for si, (sname, *_) in enumerate(SEAMS):
+        line_top = {"name": f"Top_{sname}", "type": "seam_top", "wells": {}}
+        line_base = {"name": f"Base_{sname}", "type": "seam_base", "wells": {}}
+        for w_truth, w in zip(truth["wells"], wells):
+            if sname in w_truth["seam_intervals"]:
+                info = w_truth["seam_intervals"][sname]
+                line_top["wells"][w["name"]] = {
+                    "sample_idx": info["sample_idx_top"],
+                    "depth": info["depth_top"],
+                }
+                line_base["wells"][w["name"]] = {
+                    "sample_idx": info["sample_idx_base"],
+                    "depth": info["depth_base"],
+                }
+        truth["correlation_lines"].append(line_top)
+        truth["correlation_lines"].append(line_base)
+
+    truth["ambiguity_scenarios"] = [
+        {
+            "description": "Thin seam identity ambiguity",
+            "explanation": "Floez_9 and Floez_10 are thin (0.8-1.2m) and "
+                          "frequently absent. When only one thin seam is present, "
+                          "it could be either. Also, Katharina splits into two thin "
+                          "layers resembling these seams.",
+            "affected_seams": ["Katharina", "Floez_9", "Floez_10"],
+        },
+        {
+            "description": "Channel washout missing seam",
+            "explanation": "Fluvial channels locally erode seams. Wells in "
+                          "washout zones lack certain seams, creating lateral "
+                          "discontinuity that the correlator must bridge.",
+            "affected_seams": ["Sonnenschein", "Zollverein", "Floez_9", "Floez_10"],
+        },
+        {
+            "description": "Seam splitting vs. separate seams",
+            "explanation": "Katharina and Prasident frequently split into 2 leaves "
+                          "separated by a thin stone band. A split seam looks like "
+                          "two separate thin seams on logs.",
+            "affected_seams": ["Katharina", "Prasident"],
+        },
+    ]
+
+    with open(filepath, 'w') as f:
+        json.dump(truth, f, indent=2)
+
+
 def main(seed=2026, n_wells=30, output_dir=None):
     rng = np.random.RandomState(seed)
     if output_dir is None:
@@ -407,6 +497,9 @@ def main(seed=2026, n_wells=30, output_dir=None):
     write_options(os.path.join(output_dir, "options.txt"),
                   configs["options_coal.txt"][1],
                   configs["options_coal.txt"][0])
+
+    # Export ground-truth correlation model
+    write_truth_model(wells, os.path.join(output_dir, "truth_correlation.json"))
 
     # Statistics
     depths = [w["h"] for w in wells]

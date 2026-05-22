@@ -358,6 +358,88 @@ def write_options(filepath, opts_dict, comment_lines):
             f.write(f"{k}={v}\n")
 
 
+def write_truth_model(wells, filepath):
+    """Export the ground-truth correlation as a JSON file.
+
+    The truth model defines:
+    - Parasequence boundaries (isochronous surfaces) across all wells
+    - Expected correlation lines between equivalent horizons
+    - Erosion events (missing/condensed parasequences in specific wells)
+
+    This allows validation: does WeCo find the truth among its N-best?
+    And does it produce genuinely different alternatives that span the
+    geological uncertainty space?
+    """
+    import json
+
+    truth = {
+        "description": "Ground-truth correlation model for shallow marine dataset",
+        "parasequences": [ps[0] for ps in PARASEQUENCES],
+        "wells": [],
+        "correlation_lines": [],
+    }
+
+    # For each well, record the depth of each parasequence boundary
+    for w in wells:
+        well_truth = {
+            "name": w["name"],
+            "ps_boundaries_sample_idx": w["ps_boundaries"],
+            "ps_boundaries_depth": [w["DEPTH"][min(idx, len(w["DEPTH"])-1)]
+                                    for idx in w["ps_boundaries"]],
+        }
+        truth["wells"].append(well_truth)
+
+    # Generate correlation lines: each PS boundary connects across wells
+    n_ps = len(PARASEQUENCES)
+    for ps_idx in range(n_ps + 1):  # n_ps+1 boundaries (top of each + base)
+        horizon_name = f"Base_PS{ps_idx+1}" if ps_idx < n_ps else "Top"
+        if ps_idx == 0:
+            horizon_name = "Base"
+
+        line = {
+            "name": horizon_name,
+            "type": "isochronous_surface",
+            "wells": {}
+        }
+        for w in wells:
+            if ps_idx < len(w["ps_boundaries"]):
+                idx = w["ps_boundaries"][ps_idx]
+                if idx < len(w["DEPTH"]):
+                    line["wells"][w["name"]] = {
+                        "sample_idx": idx,
+                        "depth": w["DEPTH"][idx],
+                    }
+        truth["correlation_lines"].append(line)
+
+    # Document expected ambiguity scenarios
+    truth["ambiguity_scenarios"] = [
+        {
+            "description": "PS1/PS3/PS5/PS7 shoreface miscorrelation",
+            "explanation": "These four parasequences have nearly identical "
+                          "shoreface facies profiles. Without biozone constraints, "
+                          "correlating PS1 in well A to PS3 in well B is equally "
+                          "valid from a log-response perspective.",
+            "affected_parasequences": ["PS1", "PS3", "PS5", "PS7"],
+        },
+        {
+            "description": "PS2/PS6 bay-fill miscorrelation",
+            "explanation": "Two bay-fill units with similar muddy signatures. "
+                          "Without biozones, these could be swapped.",
+            "affected_parasequences": ["PS2", "PS6"],
+        },
+        {
+            "description": "PS4 thin lag erosion",
+            "explanation": "PS4 (transgressive lag) is eroded in some proximal "
+                          "wells. The correlator must decide: is the thin sand "
+                          "PS4 or part of PS3/PS5? Gap cost vs. correlation cost.",
+            "affected_parasequences": ["PS4"],
+        },
+    ]
+
+    with open(filepath, 'w') as f:
+        json.dump(truth, f, indent=2)
+
+
 def main(seed=2026, n_wells=10, output_dir=None):
     rng = np.random.RandomState(seed)
     if output_dir is None:
@@ -418,6 +500,9 @@ def main(seed=2026, n_wells=10, output_dir=None):
     }
     for fname, (comments, opts) in configs.items():
         write_options(os.path.join(output_dir, fname), opts, comments)
+
+    # Export ground-truth correlation model
+    write_truth_model(wells, os.path.join(output_dir, "truth_correlation.json"))
 
     # Print summary
     depths = [w["h"] for w in wells]
