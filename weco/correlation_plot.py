@@ -185,6 +185,7 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
         self._show_horizons: bool = True
         self._show_cor_lines: bool = True
         self._cor_color_by_cost: bool = True
+        self._highlight_stable: bool = False
         self._log_fill: bool = True
         self._show_legend: bool = True
         self._marker_size: int = 0  # 0 = hide markers
@@ -271,6 +272,14 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
 
     def render(self):
         """Full redraw of the correlation panel."""
+        # Preserve y-axis view limits if user has zoomed/panned
+        saved_ylim = None
+        if self._well_axes and self._well_axes[0]:
+            try:
+                saved_ylim = self._well_axes[0][0].get_ylim()
+            except Exception:
+                pass
+
         self.fig.clear()
         self._well_axes.clear()
         self._gap_axes.clear()
@@ -449,6 +458,14 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                           ha="center", va="top", fontsize=9, style="italic",
                           color="#555")
 
+        # Restore previous y-axis view limits (preserves user zoom/pan)
+        if saved_ylim is not None and self._well_axes:
+            for ax_list in self._well_axes:
+                for ax in ax_list:
+                    ax.set_ylim(saved_ylim)
+            for gap_ax, *_ in self._gap_axes:
+                gap_ax.set_ylim(saved_ylim)
+
         self.draw()
 
     # ──── Draw a region / lithology colour strip ─────────────────────
@@ -574,6 +591,33 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
 
     # ──── Draw correlation lines ─────────────────────────────────────
 
+    def _compute_stable_nodes(self):
+        """Determine which path nodes are identical across all realisations.
+
+        Returns a set of node tuples that appear in every single result.
+        """
+        if self._res is None:
+            return set()
+        n_res = self._res.get_nbr_results()
+        if n_res < 2:
+            return set()  # nothing to compare
+
+        # Use all available results (cap at 50 to avoid excessive computation)
+        paths = []
+        for i in range(min(n_res, 50)):
+            p = self._res.get_result_full_path(i)
+            if p:
+                paths.append(set(tuple(node) for node in p))
+
+        if len(paths) < 2:
+            return set()
+
+        # Intersection of all paths = nodes present in every realisation
+        stable = paths[0]
+        for p in paths[1:]:
+            stable = stable & p
+        return stable
+
     def _draw_correlations(self, wells, order, well_depths, y_lim):
         if self._res is None:
             return
@@ -594,9 +638,14 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                 indices.append(len(path) - 1)
             path = [path[i] for i in indices]
 
-        # Cost range for colouring
+        # Compute stable nodes for highlight mode
+        stable_nodes = set()
+        if self._highlight_stable and n_res >= 2:
+            stable_nodes = self._compute_stable_nodes()
+
+        # Cost range for colouring (used when not in highlight-stable mode)
         costs = []
-        if self._cor_color_by_cost and n_res > 1:
+        if self._cor_color_by_cost and n_res > 1 and not self._highlight_stable:
             for i in range(min(n_res, 20)):
                 costs.append(self._res.get_result_cost(i))
             cost_min = min(costs)
@@ -610,13 +659,25 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
         else:
             norm_cost = 0.0
 
-        # Choose line colour
-        if self._cor_color_by_cost and cost_max > cost_min:
-            line_color = COR_CMAP(norm_cost)
-            line_alpha = 0.55
+        # Choose default line colour
+        if not self._highlight_stable:
+            if self._cor_color_by_cost and cost_max > cost_min:
+                line_color = COR_CMAP(norm_cost)
+                line_alpha = 0.55
+            else:
+                line_color = "#888888"
+                line_alpha = 0.45
         else:
-            line_color = "#888888"
-            line_alpha = 0.45
+            line_color = None  # will be set per-node below
+            line_alpha = None
+
+        # Colours for stable vs variable lines
+        STABLE_COLOR = "#1a9641"   # green — persists in all realisations
+        STABLE_ALPHA = 0.8
+        STABLE_LW = 1.2
+        VARIABLE_COLOR = "#d7191c"  # red — changes between realisations
+        VARIABLE_ALPHA = 0.5
+        VARIABLE_LW = 0.5
 
         # Draw lines in gap axes
         for gap_ax, disp_left, data_left, data_right in self._gap_axes:
@@ -631,21 +692,50 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
             if ri_left is None or ri_right is None:
                 continue
 
-            segments = []
-            for node in path:
-                ml = node[ri_left]
-                mr = node[ri_right]
-                if ml < len(dl) and mr < len(dr):
-                    y_l = dl[ml]
-                    y_r = dr[mr]
-                    segments.append([(0.0, y_l), (1.0, y_r)])
+            if self._highlight_stable and stable_nodes:
+                # Separate segments into stable and variable
+                stable_segs = []
+                variable_segs = []
+                for node in path:
+                    ml = node[ri_left]
+                    mr = node[ri_right]
+                    if ml < len(dl) and mr < len(dr):
+                        y_l = dl[ml]
+                        y_r = dr[mr]
+                        seg = [(0.0, y_l), (1.0, y_r)]
+                        if tuple(node) in stable_nodes:
+                            stable_segs.append(seg)
+                        else:
+                            variable_segs.append(seg)
 
-            if segments:
-                lc = LineCollection(segments, colors=[line_color] * len(segments),
-                                    linewidths=0.6, alpha=line_alpha, zorder=3)
-                gap_ax.add_collection(lc)
+                if variable_segs:
+                    lc = LineCollection(variable_segs,
+                                        colors=[VARIABLE_COLOR] * len(variable_segs),
+                                        linewidths=VARIABLE_LW, alpha=VARIABLE_ALPHA, zorder=3)
+                    gap_ax.add_collection(lc)
+                if stable_segs:
+                    lc = LineCollection(stable_segs,
+                                        colors=[STABLE_COLOR] * len(stable_segs),
+                                        linewidths=STABLE_LW, alpha=STABLE_ALPHA, zorder=4)
+                    gap_ax.add_collection(lc)
                 gap_ax.set_xlim(0, 1)
                 gap_ax.set_ylim(y_lim)
+            else:
+                segments = []
+                for node in path:
+                    ml = node[ri_left]
+                    mr = node[ri_right]
+                    if ml < len(dl) and mr < len(dr):
+                        y_l = dl[ml]
+                        y_r = dr[mr]
+                        segments.append([(0.0, y_l), (1.0, y_r)])
+
+                if segments:
+                    lc = LineCollection(segments, colors=[line_color] * len(segments),
+                                        linewidths=0.6, alpha=line_alpha, zorder=3)
+                    gap_ax.add_collection(lc)
+                    gap_ax.set_xlim(0, 1)
+                    gap_ax.set_ylim(y_lim)
 
         # Draw horizon labels
         if self._show_horizons and len(path) > 2:
@@ -838,6 +928,12 @@ class CorrelationPlotWindow(QMainWindow):
         self._show_cor_cb.setChecked(True)
         self._show_cor_cb.toggled.connect(self._on_config_change)
         cor_lo.addRow(self._show_cor_cb)
+        self._highlight_stable_cb = QCheckBox("Highlight stable lines")
+        self._highlight_stable_cb.setChecked(False)
+        self._highlight_stable_cb.setToolTip(
+            "Green = same in all realisations, Red = varies between realisations")
+        self._highlight_stable_cb.toggled.connect(self._on_config_change)
+        cor_lo.addRow(self._highlight_stable_cb)
         self._show_hz_cb = QCheckBox("Horizon labels")
         self._show_hz_cb.setChecked(True)
         self._show_hz_cb.toggled.connect(self._on_config_change)
@@ -1057,6 +1153,7 @@ class CorrelationPlotWindow(QMainWindow):
         c._max_cor_lines = self._max_lines_spin.value()
         c._cor_color_by_cost = self._cor_color_cb.isChecked()
         c._show_cor_lines = self._show_cor_cb.isChecked()
+        c._highlight_stable = self._highlight_stable_cb.isChecked()
         c._show_horizons = self._show_hz_cb.isChecked()
         c._show_names = self._names_cb.isChecked()
         c._log_fill = self._fill_cb.isChecked()

@@ -70,9 +70,24 @@ weco wells.txt -o options_with_biozones.txt  # run with biozones
 
 ## References
 
-- Baville (2022) *Stratigraphic correlation of well logs using graph-based
+- Baville, P. (2022) *Stratigraphic correlation of well logs using graph-based
   dynamic time warping*, PhD Thesis, Université de Lorraine, §6.
-- Kieft et al. (2010) Sedimentology of the Hugin Formation, North Sea.
-- Ainsworth (2005) Sequence stratigraphy of the Upper Jurassic shallow
-  marine deposits.
-- Catuneanu (2006) *Principles of Sequence Stratigraphy*, Elsevier.
+- Baville, P. et al. (2022) Computer-assisted stochastic multi-well
+  correlation: Sedimentary facies versus well distality. *Marine and
+  Petroleum Geology* 135, 105371.
+- Kieft, R.L. et al. (2010) Sedimentology and sequence stratigraphy of the
+  Hugin Formation, South Viking Graben. *Petrol. Geol. Conf. Proceedings*
+  7, 157–176.
+- Ainsworth, R.B. et al. (2017) Anatomy of a shoreface-shelf transition:
+  Late Cretaceous Book Cliffs, Utah. *Sedimentology* 64, 1764–1806.
+- Catuneanu, O. (2006) *Principles of Sequence Stratigraphy*, Elsevier,
+  375 pp.
+- Van Wagoner, J.C. et al. (1990) Siliciclastic sequence stratigraphy in
+  well logs, cores, and outcrops. *AAPG Methods Explor.* 7, 55 pp.
+- Walther, J. (1894) *Einleitung in die Geologie als historische
+  Wissenschaft*, Bd. 3, Fischer, Jena (Walther's Law of Facies).
+
+## Authors
+
+Christophe Antoine, Guillaume Caumon, Paul Baville — ASGA/RING, Université de Lorraine.
+

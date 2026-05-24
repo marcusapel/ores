@@ -137,13 +137,13 @@ ENVIRONMENT_SIGNATURES = {
         "indicators": ["GR bimodal (coal=low, shale=high)"],
     },
     "shallow_marine": {
-        "channels": ["GR", "NPHI", "RHOB", "DT", "RT"],
-        "regions": ["FACIES", "BIOZONE"],
+        "channels": ["GR", "NPHI", "RHOB", "DT", "RT", "FACIES"],
+        "regions": ["FACIES", "BIOZONE", "SEQUENCE"],
         "indicators": ["GR coarsening-up, fining-up cycles"],
     },
     "deep_marine": {
         "channels": ["GR", "NPHI", "RHOB", "RT", "DISTALITY"],
-        "regions": ["FACIES", "BIOZONE", "SEQUENCE"],
+        "regions": ["FACIES", "BIOZONE"],
         "indicators": ["Turbidite cycles, high GR shale background"],
     },
     "fluvial_deltaic": {
@@ -568,3 +568,358 @@ Key Principles:
   • min_dist > 0 ensures multiple DIFFERENT solutions (not clones)
   • Cross-correlation < 0.1 = danger zone (correlating noise)
 """
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# §6  AI-Based Preprocessing Recommendation
+# ═══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class PreprocessingRecommendation:
+    """Recommended preprocessing steps, tuned per geological setting."""
+
+    environment: str = "unknown"
+
+    # Which steps to apply
+    normalise: bool = True
+    vshale: bool = True
+    stacking_pattern: bool = True
+    electrofacies: bool = False
+    log_qc: bool = False
+    smooth: bool = False
+    ai_facies: bool = False
+    biozone_from_fossils: bool = False
+
+    # Parameters
+    normalise_method: str = "percentile"  # percentile, zscore, minmax
+    vshale_method: str = "linear"  # linear, clavier, steiber
+    electrofacies_k: int = 5
+    smooth_window: int = 5
+    ai_facies_logs: List[str] = field(default_factory=list)
+
+    # Postprocessing thresholds
+    quality_threshold: float = 0.6
+    uncertainty_max_std: float = 5.0  # meters
+    expected_n_scenarios: int = 3
+
+    # Reasoning for each decision
+    reasoning: Dict[str, str] = field(default_factory=dict)
+
+
+# Per-environment preprocessing profiles
+_ENV_PREPROCESSING: Dict[str, Dict[str, Any]] = {
+    "shallow_marine": {
+        "normalise": True,
+        "vshale": True,
+        "stacking_pattern": True,
+        "electrofacies": False,
+        "ai_facies": True,  # needed for dist-facies cost
+        "smooth": False,
+        "normalise_method": "percentile",
+        "vshale_method": "linear",
+        "electrofacies_k": 6,
+        "quality_threshold": 0.65,
+        "uncertainty_max_std": 4.0,
+        "expected_n_scenarios": 3,
+        "reasoning": {
+            "ai_facies": "Shallow marine requires facies for distality cost function — "
+                         "AI prediction enables Walther's Law constraint",
+            "stacking_pattern": "Coarsening-up / fining-up cycles are diagnostic "
+                                "of parasequences in wave-dominated shoreface",
+        },
+    },
+    "deep_marine": {
+        "normalise": True,
+        "vshale": True,
+        "stacking_pattern": True,
+        "electrofacies": True,
+        "ai_facies": True,
+        "smooth": False,
+        "normalise_method": "percentile",
+        "vshale_method": "clavier",
+        "electrofacies_k": 4,
+        "quality_threshold": 0.55,
+        "uncertainty_max_std": 6.0,
+        "expected_n_scenarios": 5,
+        "reasoning": {
+            "electrofacies": "Deep marine turbidite amalgamation creates "
+                             "log patterns that K-Means separates into flow units",
+            "ai_facies": "Facies prediction helps distinguish channel, levee, "
+                         "and lobe deposits for distality ordering",
+            "vshale_method": "Clavier method better for shale-dominated sections "
+                             "where linear GR overestimates Vshale",
+        },
+    },
+    "fluvial_deltaic": {
+        "normalise": True,
+        "vshale": True,
+        "stacking_pattern": False,
+        "electrofacies": True,
+        "ai_facies": True,
+        "smooth": True,
+        "smooth_window": 3,
+        "normalise_method": "percentile",
+        "vshale_method": "steiber",
+        "electrofacies_k": 5,
+        "quality_threshold": 0.45,
+        "uncertainty_max_std": 8.0,
+        "expected_n_scenarios": 5,
+        "reasoning": {
+            "stacking_pattern": "Fluvial systems lack systematic CU/FU — "
+                                "stacking pattern adds noise rather than signal",
+            "smooth": "Thin bed effects in fluvial need smoothing to see "
+                      "overall sand/shale architecture",
+            "electrofacies": "Channel / floodplain / crevasse splay discrimination "
+                             "helps constrain lateral correlation",
+            "ai_facies": "Without facies, the engine correlates on GR shape "
+                         "alone — fluvial channels are laterally variable",
+        },
+    },
+    "coal_basin": {
+        "normalise": True,
+        "vshale": False,
+        "stacking_pattern": False,
+        "electrofacies": False,
+        "ai_facies": False,
+        "smooth": False,
+        "log_qc": True,
+        "normalise_method": "minmax",
+        "quality_threshold": 0.7,
+        "uncertainty_max_std": 2.0,
+        "expected_n_scenarios": 2,
+        "reasoning": {
+            "vshale": "Coal density dominates GR — Vshale is meaningless "
+                      "in coal-bearing intervals",
+            "stacking_pattern": "Cyclothems are defined by coal-shale-sand "
+                                "alternation, not gradational GR trends",
+            "log_qc": "Washouts common in coal seams — caliper QC critical",
+        },
+    },
+    "carbonate": {
+        "normalise": True,
+        "vshale": False,
+        "stacking_pattern": False,
+        "electrofacies": True,
+        "ai_facies": True,
+        "smooth": False,
+        "normalise_method": "zscore",
+        "electrofacies_k": 8,
+        "quality_threshold": 0.5,
+        "uncertainty_max_std": 5.0,
+        "expected_n_scenarios": 4,
+        "reasoning": {
+            "vshale": "GR is unreliable in carbonates (no clay baseline) — "
+                      "porosity and PE discriminate facies better",
+            "electrofacies": "Multiple log response needed to separate "
+                             "wackestone/packstone/grainstone/boundstone",
+            "ai_facies": "Facies-based cost function critical for "
+                         "platform-to-basin transects",
+        },
+    },
+    "continental_quaternary": {
+        "normalise": True,
+        "vshale": True,
+        "stacking_pattern": False,
+        "electrofacies": True,
+        "ai_facies": False,
+        "smooth": True,
+        "smooth_window": 7,
+        "normalise_method": "percentile",
+        "vshale_method": "linear",
+        "electrofacies_k": 4,
+        "quality_threshold": 0.4,
+        "uncertainty_max_std": 10.0,
+        "expected_n_scenarios": 8,
+        "reasoning": {
+            "smooth": "Quaternary logs are noisy (short intervals, mixed "
+                      "till/gravel/sand) — smoothing reveals layers",
+            "stacking_pattern": "No systematic coarsening/fining in "
+                                "glacial deposits — irrelevant transform",
+            "electrofacies": "Simple lithology grouping (clay/silt/sand/gravel) "
+                             "from combined GR+resistivity",
+        },
+    },
+    "paralic_estuarine": {
+        "normalise": True,
+        "vshale": True,
+        "stacking_pattern": True,
+        "electrofacies": True,
+        "ai_facies": True,
+        "smooth": False,
+        "normalise_method": "percentile",
+        "vshale_method": "linear",
+        "electrofacies_k": 6,
+        "quality_threshold": 0.5,
+        "uncertainty_max_std": 6.0,
+        "expected_n_scenarios": 4,
+        "reasoning": {
+            "ai_facies": "Estuarine facies (channel/bar/marsh/lagoon) have "
+                         "strong distality ordering for Walther's Law",
+            "electrofacies": "Heterolithic IHS (inclined heterolithic "
+                             "stratification) needs multi-log discrimination",
+        },
+    },
+}
+
+
+def recommend_preprocessing(
+    wl: "WellList",
+    environment: Optional[str] = None,
+) -> PreprocessingRecommendation:
+    """AI-based preprocessing recommendation for a well dataset.
+
+    Detects the geological environment (or uses supplied one), then
+    returns the optimal set of preprocessing steps with per-step
+    reasoning.
+
+    Parameters
+    ----------
+    wl : WellList
+        Loaded well data.
+    environment : str, optional
+        Override auto-detection with an explicit environment key.
+
+    Returns
+    -------
+    PreprocessingRecommendation
+    """
+    # Auto-detect environment if not supplied
+    if environment is None:
+        environment, _ = detect_geological_environment(wl)
+
+    rec = PreprocessingRecommendation(environment=environment)
+
+    # Look up profile (fallback to shallow_marine defaults)
+    profile = _ENV_PREPROCESSING.get(environment, _ENV_PREPROCESSING.get("shallow_marine", {}))
+
+    # Apply profile
+    rec.normalise = profile.get("normalise", True)
+    rec.vshale = profile.get("vshale", True)
+    rec.stacking_pattern = profile.get("stacking_pattern", True)
+    rec.electrofacies = profile.get("electrofacies", False)
+    rec.log_qc = profile.get("log_qc", False)
+    rec.smooth = profile.get("smooth", False)
+    rec.ai_facies = profile.get("ai_facies", False)
+    rec.normalise_method = profile.get("normalise_method", "percentile")
+    rec.vshale_method = profile.get("vshale_method", "linear")
+    rec.electrofacies_k = profile.get("electrofacies_k", 5)
+    rec.smooth_window = profile.get("smooth_window", 5)
+    rec.quality_threshold = profile.get("quality_threshold", 0.6)
+    rec.uncertainty_max_std = profile.get("uncertainty_max_std", 5.0)
+    rec.expected_n_scenarios = profile.get("expected_n_scenarios", 3)
+    rec.reasoning = dict(profile.get("reasoning", {}))
+
+    # Data-adaptive adjustments
+    data_names = wl.get_data_names()
+    region_names = wl.get_region_names()
+    data_upper = {n.upper() for n in data_names}
+    region_upper = {n.upper() for n in region_names}
+
+    # If facies region already exists, skip AI prediction
+    if any(r in region_upper for r in ("FACIES", "LITH", "LITHO", "LITH_FACIES")):
+        rec.ai_facies = False
+        rec.reasoning["ai_facies"] = (
+            "Existing facies region detected — no prediction needed"
+        )
+
+    # If no GR, disable GR-based transforms
+    if "GR" not in data_upper:
+        rec.vshale = False
+        rec.stacking_pattern = False
+        rec.reasoning["vshale"] = "No GR log available"
+        rec.reasoning["stacking_pattern"] = "No GR log available"
+
+    # If BIOZONE/SEQUENCE region exists, enable biozone postprocessing check
+    if any(r in region_upper for r in ("BIOZONE", "SEQUENCE", "ZONE", "BZ")):
+        rec.biozone_from_fossils = False  # already have it
+        rec.reasoning["biozone"] = "Biozone region already present in data"
+    else:
+        rec.reasoning["biozone"] = (
+            "No biozone region — consider adding if chronostratigraphic "
+            "control is available (first/last occurrence picks)"
+        )
+
+    # If CAL (caliper) exists, enable log QC
+    if "CAL" in data_upper or "CALI" in data_upper:
+        rec.log_qc = True
+        rec.reasoning["log_qc"] = (
+            "Caliper log available — washout detection enabled"
+        )
+
+    # Determine which logs to use for AI facies prediction
+    if rec.ai_facies:
+        candidate_logs = ["GR", "RT", "RHOB", "DEN", "DT", "NPHI", "SON"]
+        rec.ai_facies_logs = [n for n in candidate_logs if n in data_upper]
+        if len(rec.ai_facies_logs) < 2:
+            rec.ai_facies = False
+            rec.reasoning["ai_facies"] = (
+                "Insufficient logs for facies prediction (need ≥2)"
+            )
+
+    # Adjust quality threshold based on data quality
+    # More channels + constraints → expect higher quality
+    n_usable_channels = sum(
+        1 for ch in data_names
+        if ch.upper() not in {"DEPTH", "MD", "TVD", "TVDSS", "X", "Y", "Z"}
+    )
+    n_constraints = sum(
+        1 for r in region_names
+        if any(k in r.upper() for k in ("BIO", "ZONE", "SEQ", "STRAT"))
+    )
+    if n_usable_channels >= 4 and n_constraints >= 1:
+        rec.quality_threshold = min(rec.quality_threshold + 0.1, 0.85)
+        rec.reasoning["quality_threshold"] = (
+            f"Rich data ({n_usable_channels} logs + {n_constraints} constraints) "
+            "→ raised quality expectation"
+        )
+
+    return rec
+
+
+def recommend_postprocessing(
+    wl: "WellList",
+    environment: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Recommend postprocessing analysis based on geological setting.
+
+    Returns a dict with keys:
+    - run_quality: bool
+    - run_uncertainty: bool
+    - run_anomaly: bool
+    - quality_threshold: float
+    - uncertainty_max_std: float
+    - n_scenarios_report: int
+    - reasoning: dict
+    """
+    if environment is None:
+        environment, _ = detect_geological_environment(wl)
+
+    profile = _ENV_PREPROCESSING.get(environment, {})
+
+    result: Dict[str, Any] = {
+        "run_quality": True,
+        "run_uncertainty": True,
+        "run_anomaly": False,
+        "quality_threshold": profile.get("quality_threshold", 0.6),
+        "uncertainty_max_std": profile.get("uncertainty_max_std", 5.0),
+        "n_scenarios_report": profile.get("expected_n_scenarios", 3),
+        "reasoning": {},
+    }
+
+    # Anomaly detection useful for complex environments
+    if environment in ("fluvial_deltaic", "continental_quaternary", "deep_marine"):
+        result["run_anomaly"] = True
+        result["reasoning"]["anomaly"] = (
+            f"High lateral variability in {environment} → anomaly detection "
+            "helps flag dubious correlation lines"
+        )
+
+    # For well-constrained environments, uncertainty should be tight
+    n_wells = wl.nbr_wells()
+    if n_wells <= 3:
+        result["uncertainty_max_std"] *= 1.5
+        result["reasoning"]["uncertainty"] = (
+            "Few wells → wider uncertainty acceptable"
+        )
+
+    return result

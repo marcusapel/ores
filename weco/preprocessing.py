@@ -780,6 +780,152 @@ def apply_standard_preprocessing(
     return results
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  AI-driven auto-preprocessing (geological-context-aware)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def auto_preprocess(
+    well_list,
+    environment: "str | None" = None,
+    gr_name: str = "GR",
+) -> dict:
+    """AI-driven preprocessing: auto-detect geological setting and apply
+    the optimal conditioning steps.
+
+    Uses the decision tree's ``recommend_preprocessing()`` to decide which
+    transforms are appropriate for the detected depositional environment.
+
+    Parameters
+    ----------
+    well_list : WellList
+        Loaded well data.
+    environment : str, optional
+        Override auto-detection (e.g. "shallow_marine", "fluvial_deltaic").
+    gr_name : str
+        Name of the GR log for GR-based transforms.
+
+    Returns
+    -------
+    dict
+        Keys: ``steps_applied`` (list), ``steps_skipped`` (list),
+        ``environment`` (str), ``reasoning`` (dict), ``errors`` (list).
+    """
+    from .decision_tree import recommend_preprocessing
+
+    rec = recommend_preprocessing(well_list, environment=environment)
+
+    result = {
+        "steps_applied": [],
+        "steps_skipped": [],
+        "environment": rec.environment,
+        "reasoning": dict(rec.reasoning),
+        "errors": [],
+        "recommendation": rec,
+    }
+
+    # Resolve GR name from data
+    data_names = well_list.get_data_names()
+    if gr_name not in data_names:
+        # Try case-insensitive
+        for d in data_names:
+            if d.upper() == gr_name.upper():
+                gr_name = d
+                break
+
+    # 1. Normalise
+    if rec.normalise and gr_name in data_names:
+        ok = normalise_log(well_list, gr_name,
+                           output_name=f"{gr_name}_norm",
+                           method=rec.normalise_method)
+        if ok:
+            result["steps_applied"].append(
+                f"normalise({gr_name}, method={rec.normalise_method})")
+        else:
+            result["errors"].append("normalise failed")
+    elif not rec.normalise:
+        result["steps_skipped"].append("normalise")
+
+    # 2. Per-well transforms
+    for w in well_list.wells:
+        if rec.vshale and gr_name in (w.data if hasattr(w, 'data') else {}):
+            compute_vshale(w, gr_name=gr_name, method=rec.vshale_method)
+
+        if rec.stacking_pattern and gr_name in (w.data if hasattr(w, 'data') else {}):
+            compute_stacking_pattern(w, gr_name=gr_name)
+
+        if rec.smooth and gr_name in (w.data if hasattr(w, 'data') else {}):
+            compute_moving_average(w, gr_name, window=rec.smooth_window)
+
+    if rec.vshale:
+        result["steps_applied"].append(
+            f"vshale(method={rec.vshale_method})")
+    else:
+        result["steps_skipped"].append("vshale")
+
+    if rec.stacking_pattern:
+        result["steps_applied"].append("stacking_pattern")
+    else:
+        result["steps_skipped"].append("stacking_pattern")
+
+    if rec.smooth:
+        result["steps_applied"].append(f"smooth(window={rec.smooth_window})")
+    else:
+        result["steps_skipped"].append("smooth")
+
+    # 3. Log QC (cross-well)
+    if rec.log_qc:
+        try:
+            from .ai.log_qc import LogQC
+            qc = LogQC()
+            for w in well_list.wells:
+                qc.detect_washouts(w)
+            result["steps_applied"].append("log_qc")
+        except ImportError:
+            result["errors"].append("log_qc requires scikit-learn")
+    else:
+        result["steps_skipped"].append("log_qc")
+
+    # 4. Electrofacies (cross-well K-Means)
+    if rec.electrofacies:
+        feat_logs = [n for n in data_names
+                     if n.upper() not in ("DEPTH", "MD", "TVD", "TVDSS",
+                                          "X", "Y", "Z")][:4]
+        if len(feat_logs) >= 2:
+            ok = compute_electrofacies(
+                well_list, log_names=feat_logs, n_clusters=rec.electrofacies_k)
+            if ok:
+                result["steps_applied"].append(
+                    f"electrofacies(k={rec.electrofacies_k}, logs={feat_logs})")
+            else:
+                result["errors"].append("electrofacies failed")
+        else:
+            result["errors"].append("electrofacies: need ≥2 non-depth logs")
+    else:
+        result["steps_skipped"].append("electrofacies")
+
+    # 5. AI Facies prediction
+    if rec.ai_facies and rec.ai_facies_logs:
+        try:
+            from .ai.facies_predict import FaciesPredictor
+            # Use electrofacies as pseudo-training labels, or unsupervised
+            compute_electrofacies(
+                well_list,
+                log_names=rec.ai_facies_logs[:4],
+                n_clusters=rec.electrofacies_k,
+                region_name="predicted_facies",
+            )
+            result["steps_applied"].append(
+                f"ai_facies(logs={rec.ai_facies_logs[:4]})")
+        except ImportError:
+            result["errors"].append("ai_facies requires scikit-learn")
+        except Exception as e:
+            result["errors"].append(f"ai_facies: {e}")
+    else:
+        result["steps_skipped"].append("ai_facies")
+
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Seismic attribute extraction (§11.0.1)
 # ---------------------------------------------------------------------------

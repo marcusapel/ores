@@ -51,3 +51,25 @@ deposits. Coal seams form excellent local markers but split/merge laterally.
 The challenge: repeated Coal-Marsh-Bayfill cyclicity creates ambiguity in
 well-to-well correlation. Reservoir zonation (units 1-6) and 4th/5th-order
 sequence boundaries constrain valid correlations.
+
+## References
+
+- Hettinger, R.D. & Kirschbaum, M.A. (2002) Stratigraphy of the Upper
+  Cretaceous Mancos Shale and Mesaverde Group in the southern part of the
+  Uinta and Piceance Basins. *USGS DDS-69-B*, 21 pp.
+- Cole, R.D. & Cumella, S.P. (2005) Sand-body architecture in the Lower
+  Williams Fork Formation (Upper Cretaceous), Coal Canyon, Colorado. *The
+  Mountain Geologist* 42, 85–107.
+- Yoshida, S. et al. (2004) Sequence stratigraphy and correlation of the
+  Neslen and lower Farrer Formations, Book Cliffs, Utah. *SEPM Spec. Pub.*
+  80, 221–246.
+- Pattison, S.A.J. (2019) Re-interpreting stratigraphy of the Upper Cretaceous
+  Mesaverde Group, Book Cliffs, Utah. *Sedimentology* 66, 1–35.
+- Van Wagoner, J.C. et al. (1990) Siliciclastic sequence stratigraphy in
+  well logs, cores, and outcrops. *AAPG Methods Explor.* 7, 55 pp.
+- Baville, P. (2022) *Stratigraphic correlation of well logs using
+  graph-based dynamic time warping*, PhD Thesis, Université de Lorraine.
+
+## Authors
+
+Christophe Antoine, Guillaume Caumon, Paul Baville — ASGA/RING, Université de Lorraine.

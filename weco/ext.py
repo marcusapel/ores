@@ -12,9 +12,16 @@
 # Licencee agrees to attach or embed this Notice on all copies of the program,
 # including partial copies or modified versions thereof.
 
+import os as _os
+import tempfile as _tempfile
+
 from weco.engine import Project, CCFPart, WellList as EngineWellList
 from typing import Union
 from weco.engine_data import WellList, well_list_python2engine, cor_graph2res_file, ResFile
+
+# Default temporary output directory — avoids polluting the working directory.
+_TMP_DIR = _os.path.join(_tempfile.gettempdir(), "weco")
+_os.makedirs(_TMP_DIR, exist_ok=True)
 
 
 class ProjectExt(Project):
@@ -25,6 +32,8 @@ class ProjectExt(Project):
     def __init__(self):
 
         super().__init__()
+        # Redirect engine file outputs to tmp/ so they don't pollute CWD.
+        self.set_option_value("out-file", _os.path.join(_TMP_DIR, "out.txt"))
 
     def get_option_ext(self, name):
         coption = self.search_option(name)
