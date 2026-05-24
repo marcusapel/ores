@@ -32,6 +32,9 @@ class ProjectExt(Project):
     def __init__(self):
 
         super().__init__()
+        # Reset all static options to defaults — prevents state leaking between
+        # successive ProjectExt instances in the same process.
+        self.reset_options()
         # Redirect engine file outputs to tmp/ so they don't pollute CWD.
         self.set_option_value("out-file", _os.path.join(_TMP_DIR, "out.txt"))
 
