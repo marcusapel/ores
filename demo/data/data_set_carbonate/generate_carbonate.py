@@ -163,17 +163,51 @@ def generate_carbonate(
 
 
 def _write_wells_file(wells, filepath):
-    """Write wells in WeCo text format."""
+    """Write wells in WeCo WellList 2 format."""
+    log_keys = ["depth", "GR", "DEN", "SON", "NEU", "RT", "PEF"]
     with open(filepath, "w") as f:
+        f.write("WeCo WellList 2\n")
         f.write(f"{len(wells)}\n")
         for w in wells:
             n = len(w["depth"])
-            f.write(f'{w["name"]} {w["x"]:.1f} {w["y"]:.1f} {n}\n')
-            log_names = [k for k in w if k not in ("well_id", "name", "x", "y", "facies")]
-            f.write(" ".join(log_names) + "\n")
-            for i in range(n):
-                vals = " ".join(f"{w[k][i]:.4f}" for k in log_names)
-                f.write(vals + "\n")
+            depth_top = w["depth"][0]
+            depth_base = w["depth"][-1]
+            h = depth_base - depth_top
+
+            f.write(f'{w["name"]}\n')
+            f.write(f"{n}\n")
+            f.write(f'{w["x"]:.3f} {w["y"]:.3f} {depth_top:.3f} {h:.3f}\n')
+
+            # Data channels (exclude depth itself)
+            data_keys = [k for k in log_keys if k != "depth" and k in w]
+            f.write(f"{len(data_keys)}\n")
+            for k in data_keys:
+                f.write(f"{k} {n}\n")
+                for v in w[k]:
+                    f.write(f"{v:.4f}\n")
+
+            # Region: FACIES
+            facies = w["facies"]
+            regions = []
+            cur_id, start, length = facies[0], 0, 1
+            for i in range(1, n):
+                if facies[i] != cur_id:
+                    if cur_id > 0:
+                        regions.append((cur_id, start, length))
+                    cur_id = facies[i]
+                    start = i
+                    length = 1
+                else:
+                    length += 1
+            if cur_id > 0:
+                regions.append((cur_id, start, length))
+
+            f.write("1\n")
+            f.write(f"FACIES {len(regions)}\n")
+            for rid, st, ln in regions:
+                f.write(f"{rid} {st} {ln}\n")
+
+        f.write("END\n")
 
 
 if __name__ == "__main__":
