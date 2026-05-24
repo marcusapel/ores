@@ -84,6 +84,10 @@ class CorrelationLine(BaseModel):
         default="framework",
         description="Type: 'boundary' (unit contact), 'gap' (hiatus), or 'framework' (geometry)"
     )
+    stable: bool = Field(
+        default=False,
+        description="True if this line persists identically across all realisations."
+    )
 
 
 class RunResult(BaseModel):
@@ -628,6 +632,19 @@ def _extract_results(rf, data, n_best: int) -> List[RunResult]:
                         if isinstance(entry, (list, tuple)) and len(entry) >= 2:
                             boundary_indices[wi].add(entry[1])
 
+    # Compute stable nodes: present in ALL realisations
+    stable_nodes = set()
+    if n >= 2:
+        all_paths = []
+        for i in range(min(n, 50)):
+            p = rf.get_result_full_path(i)
+            if p:
+                all_paths.append(set(tuple(node) for node in p))
+        if len(all_paths) >= 2:
+            stable_nodes = all_paths[0]
+            for p in all_paths[1:]:
+                stable_nodes = stable_nodes & p
+
     for i in range(n):
         path = rf.get_result_full_path(i)
         cost = float(rf.get_result_cost(i))
@@ -700,7 +717,8 @@ def _extract_results(rf, data, n_best: int) -> List[RunResult]:
                 lt = "gap"
             else:
                 lt = "framework"
-            lines.append(CorrelationLine(markers=markers, line_type=lt))
+            is_stable = tuple(node) in stable_nodes if stable_nodes else False
+            lines.append(CorrelationLine(markers=markers, line_type=lt, stable=is_stable))
 
         results.append(RunResult(
             index=i,
@@ -1174,6 +1192,63 @@ def suggest_defaults(req: SuggestDefaultsRequest):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  AI Preprocessing Suggestion
+# ═══════════════════════════════════════════════════════════════════════════
+
+class PreprocessingSuggestRequest(BaseModel):
+    """Request preprocessing recommendation."""
+    well_file: str = Field(..., description="Server-side path to well-list file.")
+    environment: Optional[str] = Field(None, description="Override environment detection.")
+
+
+class PreprocessingSuggestResponse(BaseModel):
+    """Preprocessing recommendation response."""
+    environment: str
+    steps: Dict[str, bool]
+    parameters: Dict[str, Any]
+    postprocessing: Dict[str, Any]
+    reasoning: Dict[str, str]
+
+
+@app.post("/suggest-preprocessing", response_model=PreprocessingSuggestResponse,
+          tags=["system"])
+def suggest_preprocessing(req: PreprocessingSuggestRequest):
+    """AI-driven preprocessing recommendation based on geological setting."""
+    from .decision_tree import recommend_preprocessing, recommend_postprocessing
+
+    wl = _load_well_list(req.well_file)
+    rec = recommend_preprocessing(wl, environment=req.environment)
+    post = recommend_postprocessing(wl, environment=rec.environment)
+
+    return PreprocessingSuggestResponse(
+        environment=rec.environment,
+        steps={
+            "normalise": rec.normalise,
+            "vshale": rec.vshale,
+            "stacking_pattern": rec.stacking_pattern,
+            "electrofacies": rec.electrofacies,
+            "log_qc": rec.log_qc,
+            "smooth": rec.smooth,
+            "ai_facies": rec.ai_facies,
+        },
+        parameters={
+            "normalise_method": rec.normalise_method,
+            "vshale_method": rec.vshale_method,
+            "electrofacies_k": rec.electrofacies_k,
+            "smooth_window": rec.smooth_window,
+            "ai_facies_logs": rec.ai_facies_logs,
+        },
+        postprocessing={
+            "quality_threshold": post["quality_threshold"],
+            "uncertainty_max_std": post["uncertainty_max_std"],
+            "run_anomaly": post["run_anomaly"],
+            "n_scenarios_report": post["n_scenarios_report"],
+        },
+        reasoning=rec.reasoning,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  Auto-Correlate: suggest → run → quality-gate → diverse-select
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -1210,17 +1285,31 @@ class AutoResponse(BaseModel):
 
 @app.post("/auto", response_model=AutoResponse, tags=["correlation"])
 def auto_correlate(req: AutoRequest):
-    """Fully automated correlation: suggest params → run → quality-check → diversify.
+    """Fully automated correlation: suggest params → preprocess → run → quality-check → diversify.
 
     Chains the full workflow in one call:
     1. Load wells and suggest optimal parameters
-    2. Run correlation with diversity enabled
-    3. Score quality (if weco.ai available)
-    4. If quality < threshold, adjust gap-cost and re-run (up to max_iterations)
-    5. Select structurally diverse results using topology clustering
+    2. Apply AI-recommended preprocessing (geological-context-aware)
+    3. Run correlation with diversity enabled
+    4. Score quality (if weco.ai available)
+    5. If quality < threshold, adjust gap-cost and re-run (up to max_iterations)
+    6. Select structurally diverse results using topology clustering
     """
     wl = _load_well_list(req.well_file)
     options, reasoning = _suggest_defaults_for_wells(wl)
+
+    # A1: AI preprocessing (environment-specific data conditioning)
+    try:
+        from weco.preprocessing import auto_preprocess
+        preproc_result = auto_preprocess(wl)
+        reasoning["preprocessing"] = (
+            f"{preproc_result['environment']}: "
+            f"{', '.join(preproc_result['steps_applied'])}"
+        )
+        if preproc_result.get("errors"):
+            reasoning["preprocessing_errors"] = "; ".join(preproc_result["errors"])
+    except Exception as e:
+        reasoning["preprocessing"] = f"skipped ({e})"
 
     # A2: Detect depositional environment and apply preset
     try:
@@ -1582,68 +1671,274 @@ def run_demo(req: DemoRunRequest):
     )
 
 
+# Fallback parameter help for headless environments without PyQt
+_FALLBACK_PARAM_HELP = {
+    "cost_function": {"label": "Cost Function", "type": "select", "default": "composite",
+                      "help": "Cost framework: 'composite' combines multiple cost components.", "category": "Global"},
+    "order": {"label": "Merge Order", "type": "select", "default": "linear",
+              "help": "Well merge strategy: linear, pyramidal, position, distality, inverse.", "category": "Graph"},
+    "max_cor": {"label": "Max Correlations", "type": "int", "default": 50,
+                "help": "N-best correlations kept during DTW merge.", "category": "Graph"},
+    "nbr_cor": {"label": "N-Best Output", "type": "int", "default": 1,
+                "help": "Number of final correlation results to output.", "category": "Graph"},
+    "band_width": {"label": "Band Width", "type": "int", "default": 0,
+                   "help": "Sakoe-Chiba band constraint. 0 = full DTW search.", "category": "Graph"},
+    "beam_width": {"label": "Beam Width", "type": "int", "default": 0,
+                   "help": "Beam search width for wavefront pruning. 0 = no pruning.", "category": "Graph"},
+    "var_data": {"label": "Primary Log", "type": "data", "default": "",
+                 "help": "Primary well-log for variance cost.", "category": "Variance"},
+    "var_weight": {"label": "Primary Weight", "type": "float", "default": 1.0,
+                   "help": "Weight for primary log variance cost.", "category": "Variance"},
+    "var_data2": {"label": "Secondary Log", "type": "data", "default": "",
+                  "help": "Second log for multi-variable correlation.", "category": "Variance"},
+    "var_weight2": {"label": "Secondary Weight", "type": "float", "default": 1.0,
+                    "help": "Weight for secondary log.", "category": "Variance"},
+    "no_crossing": {"label": "No-Crossing Region", "type": "region", "default": "",
+                    "help": "Region imposing hard no-crossing constraints.", "category": "Constraints"},
+    "same_region": {"label": "Same-Region Cost", "type": "region", "default": "",
+                    "help": "Region adding penalty for cross-zone matching.", "category": "Constraints"},
+    "const_gap_cost": {"label": "Gap Cost", "type": "float", "default": 0.0,
+                       "help": "Cost per gap step. Higher = fewer gaps.", "category": "Gap"},
+    "dist_facies": {"label": "Distality Facies", "type": "region", "default": "",
+                    "help": "Facies region for Walther's Law distality cost.", "category": "Distality"},
+    "dist_distal": {"label": "Distality Region", "type": "region", "default": "",
+                    "help": "Proximal-distal ordering region.", "category": "Distality"},
+    "out_file": {"label": "Output File", "type": "string", "default": "tmp/out.txt",
+                 "help": "Result file path.", "category": "Output"},
+}
+
+
 @app.get("/options/help", response_model=OptionsHelpResponse, tags=["system"])
 def options_help():
     """Return parameter descriptions and effect hints for all engine options."""
-    # Core option metadata (subset of parameters.md + PARAM_HELP from studio)
-    _OPTION_META = [
-        {"name": "var-data", "label": "Primary Log", "type": "str",
-         "default": "GR", "category": "Variables",
-         "help": "Name of the primary well log to correlate on.",
-         "effect": "Determines which log drives the shape-similarity cost"},
-        {"name": "var-weight", "label": "Primary Weight", "type": "float",
-         "default": 1.0, "category": "Variables",
-         "help": "Weight of the primary log's contribution to total cost.",
-         "effect": "Higher = primary log dominates; lower = other costs matter more"},
-        {"name": "var-data2", "label": "Secondary Log", "type": "str",
-         "default": "", "category": "Variables",
-         "help": "Name of a second log for multi-variable correlation.",
-         "effect": "Adds a second shape-cost term for multi-property matching"},
-        {"name": "var-weight2", "label": "Secondary Weight", "type": "float",
-         "default": 1.0, "category": "Variables",
-         "help": "Weight for the secondary log.",
-         "effect": None},
-        {"name": "max-cor", "label": "Max Correlations (search)", "type": "int",
-         "default": 50, "category": "Graph",
-         "help": "Maximum n-best correlations kept during each DTW merge step.",
-         "effect": "Higher = better quality but slower; lower = faster but may miss optimal"},
-        {"name": "nbr-cor", "label": "N-Best Results (output)", "type": "int",
-         "default": 1, "category": "Graph",
-         "help": "Number of final n-best results to output.",
-         "effect": "Higher = more alternative correlations available for QC/uncertainty"},
-        {"name": "order", "label": "Merge Order", "type": "str",
-         "default": "linear", "category": "Graph",
-         "help": "Well merge order strategy: linear, pyramidal, position.",
-         "effect": "'position' = geographically nearest merge; 'pyramidal' = balanced tree"},
-        {"name": "no-crossing", "label": "No-Crossing Region", "type": "str",
-         "default": "", "category": "Constraints",
-         "help": "Region that imposes hard no-crossing constraints at zone boundaries.",
-         "effect": "Hard constraint: blocks ALL cross-overs at zone boundaries"},
-        {"name": "same-region", "label": "Same-Region Cost", "type": "str",
-         "default": "", "category": "Constraints",
-         "help": "Region that adds penalty for matching markers from different zones.",
-         "effect": "Soft constraint: penalises cross-unit ties but does not block them"},
-        {"name": "const-gap-cost", "label": "Constant Gap Cost", "type": "float",
-         "default": 0.0, "category": "Gap",
-         "help": "Constant cost added per gap step in the correlation.",
-         "effect": "Higher = fewer gaps (layer-cake style); lower = more hiatuses allowed"},
-        {"name": "dist-scaling", "label": "Distance Scaling", "type": "str",
-         "default": "", "category": "Distance",
-         "help": "Scale costs by inter-well distance.",
-         "effect": "'linear' = nearby wells weighted more; '' = equal weight everywhere"},
-        {"name": "band-width", "label": "Band Width (Sakoe-Chiba)", "type": "int",
-         "default": 0, "category": "Graph",
-         "help": "Sakoe-Chiba band constraint. 0 = full DTW search.",
-         "effect": "Wider = more accurate but slower; 0 = full search; >0 = fast approximate"},
-        {"name": "beam-width", "label": "Beam Width", "type": "int",
-         "default": 0, "category": "Graph",
-         "help": "Beam search width for wavefront pruning. 0 = no pruning.",
-         "effect": "Wider = more accurate; 0 = optimal; small = aggressive speedup"},
-    ]
+    try:
+        from weco.studio import PARAM_HELP
+    except ImportError:
+        # Fallback if PyQt is not installed (headless server)
+        PARAM_HELP = _FALLBACK_PARAM_HELP
 
-    categories = sorted(set(o["category"] for o in _OPTION_META))
-    items = [OptionHelp(**o) for o in _OPTION_META]
+    items = []
+    for name, meta in sorted(PARAM_HELP.items()):
+        items.append(OptionHelp(
+            name=name.replace("_", "-"),
+            label=meta.get("label", name),
+            type=meta.get("type", "string"),
+            default=meta.get("default"),
+            help=meta.get("help", ""),
+            effect=meta.get("effect"),
+            category=meta.get("category", ""),
+        ))
+
+    categories = sorted(set(o.category for o in items))
     return OptionsHelpResponse(options=items, categories=categories)
+
+
+@app.get("/docs/formats", tags=["docs"])
+def docs_formats():
+    """Return documentation of all WeCo file formats (wells, results, options, batch JSON)."""
+    return JSONResponse(content={
+        "well_list": {
+            "extension": ".txt / .wells.txt",
+            "description": "WeCo native well-list format (space-separated text)",
+            "spec": (
+                "WeCo WellList 2          # Header: format version\n"
+                "N                         # Number of wells\n"
+                "WellName                  # Well name (no spaces)\n"
+                "Size                      # Number of samples\n"
+                "X Y Z H                   # Coordinates: X, Y, Z (top), H (total height)\n"
+                "N_data                    # Number of data arrays\n"
+                "DataName Size             # Data column: name + n_values\n"
+                "v1 v2 v3 ...             # Values (one per line or space-separated)\n"
+                "...                       # (repeat for each data column)\n"
+                "N_regions                 # Number of region lists\n"
+                "RegionName N_entries      # Region: name + n_entries\n"
+                "ID Start Length           # Each entry: region_id, start_index, length\n"
+                "...                       # (repeat for each region entry)\n"
+                "...                       # (repeat for each well)\n"
+                "END                       # End marker"
+            ),
+            "notes": [
+                "Strings cannot contain spaces",
+                "Data arrays hold continuous log values (GR, RHOB, etc.)",
+                "Region lists hold categorical intervals (facies, biozones, sequences)",
+                "Region entries: ID is an integer category, Start is 0-based sample index, Length is number of samples",
+            ],
+        },
+        "option_file": {
+            "extension": ".txt / .opt",
+            "description": "Engine option file (key=value pairs, one per line)",
+            "spec": (
+                "# Comment lines start with #\n"
+                "cost-function=composite\n"
+                "order=pyramidal\n"
+                "max-cor=50\n"
+                "var-data=GR\n"
+                "var-weight=1.0\n"
+                "var-data2=RHOB\n"
+                "var-weight2=0.5\n"
+                "no-crossing=BIOZONE\n"
+                "const-gap-cost=0.3\n"
+                "dist-facies=FACIES\n"
+                "dist-distal=DISTALITY\n"
+            ),
+            "notes": [
+                "Use hyphens (cost-function) in option files",
+                "Use underscores (cost_function) in Python API",
+                "Both are accepted and auto-converted",
+                "Empty string means disabled/unused",
+                "Use GET /options/help for the full parameter list",
+            ],
+        },
+        "result_file": {
+            "extension": ".txt (out.txt)",
+            "description": "WeCo DAG result file — directed acyclic graph of correlation nodes",
+            "spec": (
+                "WellIds: 0 1 2            # Well indices in merge order\n"
+                "Node 0 (0 0 0)            # Node: matched positions per well\n"
+                "Node 1 (5 3 4)            # Position = sample index\n"
+                "   -> 0 (14.2)            # Edge: target_node (cost)\n"
+                "Node 2 (10 8 9)\n"
+                "   -> 0 (2.3)\n"
+                "   -> 1 (4.2)\n"
+            ),
+            "notes": [
+                "Each node is a correlated horizon (matched positions across all wells)",
+                "Edges carry transition costs between successive horizons",
+                "Best correlation = cheapest path from first to last node",
+                "N-best paths give alternative geologically plausible scenarios",
+            ],
+        },
+        "batch_json": {
+            "extension": ".json",
+            "description": "Batch configuration file for WeCoBatch (python -m weco.batch config.json)",
+            "spec": {
+                "wells": "path/to/wells.txt  (required)",
+                "format": "weco | las | csv | resqml | epc  (default: weco)",
+                "preset": "shallow_marine | fluvial | carbonate | deep_marine | coal | quaternary | null",
+                "options": {
+                    "cost_function": "composite",
+                    "order": "pyramidal",
+                    "max_cor": 50,
+                    "var_data": "GR",
+                    "var_weight": 1.0,
+                    "no_crossing": "BIOZONE",
+                    "const_gap_cost": 0.3,
+                },
+                "condition": "true | false  (default: true, run auto-preprocessing)",
+                "output_dir": "tmp/  (default: weco_output/)",
+                "exports": ["csv", "las", "rms", "epc", "gocad", "marker_set", "zone_thickness", "ensemble"],
+                "multi_run": "true | false  (default: false)",
+                "runs": [
+                    {
+                        "name": "run_01_variance_only",
+                        "options": {"var_data": "GR", "const_gap_cost": 0.0},
+                    },
+                    {
+                        "name": "run_02_with_constraints",
+                        "options": {"no_crossing": "BIOZONE", "const_gap_cost": 0.5},
+                    },
+                ],
+            },
+            "notes": [
+                "Run with: python -m weco.batch config.json",
+                "Or via CLI: weco demo  (for auto_run_examples)",
+                "If multi_run=true, each entry in 'runs' executes independently",
+                "Run-specific 'options' override top-level 'options'",
+                "If 'preset' is set, its defaults are applied first, then overridden by 'options'",
+                "Available presets: shallow_marine, fluvial, carbonate, deep_marine, coal, quaternary, delta",
+                "Exports are written to output_dir/run_name/ for multi_run",
+            ],
+        },
+        "supported_import_formats": [
+            {"format": "WeCo native", "extension": ".txt", "description": "Native well-list text format"},
+            {"format": "LAS 2.0", "extension": ".las", "description": "Log ASCII Standard (auto-detected)"},
+            {"format": "CSV/TSV", "extension": ".csv/.tsv", "description": "Tabular with header row"},
+            {"format": "RESQML", "extension": ".epc", "description": "EPC+HDF5 container (requires h5py)"},
+            {"format": "GOCAD Well", "extension": ".wl", "description": "GOCAD ASCII well format"},
+        ],
+        "supported_export_formats": [
+            {"format": "CSV", "extension": ".csv", "description": "Marker picks as tabular CSV"},
+            {"format": "LAS 2.0", "extension": ".las", "description": "Markers as LAS curves"},
+            {"format": "RMS", "extension": ".txt", "description": "RMS horizon picks format"},
+            {"format": "RESQML", "extension": ".epc", "description": "EPC+HDF5 stratigraphic column"},
+            {"format": "GOCAD", "extension": ".wl/.vs/.ts", "description": "GOCAD well + surfaces"},
+            {"format": "JSON", "extension": ".json", "description": "Marker set JSON (RDDMS-compatible)"},
+            {"format": "PNG/SVG/PDF", "extension": ".png/.svg/.pdf", "description": "Correlation plots"},
+        ],
+    })
+
+
+@app.get("/docs/batch-schema", tags=["docs"])
+def docs_batch_schema():
+    """Return the JSON schema for WeCoBatch configuration files."""
+    schema = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "WeCo Batch Configuration",
+        "description": "Configuration file for python -m weco.batch",
+        "type": "object",
+        "required": ["wells"],
+        "properties": {
+            "wells": {
+                "type": "string",
+                "description": "Path to well-list file (WeCo, LAS, CSV, or RESQML)",
+            },
+            "format": {
+                "type": "string",
+                "enum": ["weco", "las", "csv", "resqml", "epc"],
+                "default": "weco",
+                "description": "Input file format",
+            },
+            "preset": {
+                "type": ["string", "null"],
+                "enum": ["shallow_marine", "fluvial", "carbonate", "deep_marine",
+                         "coal", "quaternary", "delta", None],
+                "description": "Geological preset — sets default options per environment",
+            },
+            "options": {
+                "type": "object",
+                "description": "Engine options (key: value). Use underscores for keys.",
+                "additionalProperties": True,
+            },
+            "condition": {
+                "type": "boolean",
+                "default": True,
+                "description": "Run auto-preprocessing before correlation",
+            },
+            "output_dir": {
+                "type": "string",
+                "default": "weco_output",
+                "description": "Directory for output files",
+            },
+            "exports": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["csv", "las", "rms", "epc", "gocad",
+                             "marker_set", "zone_thickness", "ensemble"],
+                },
+                "default": ["csv"],
+                "description": "Export formats to produce",
+            },
+            "multi_run": {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, execute each entry in 'runs' independently",
+            },
+            "runs": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Run identifier"},
+                        "wells": {"type": "string", "description": "Override well file"},
+                        "options": {"type": "object", "description": "Override options"},
+                    },
+                },
+                "description": "Multiple run configurations (requires multi_run=true)",
+            },
+        },
+    }
+    return JSONResponse(content=schema)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

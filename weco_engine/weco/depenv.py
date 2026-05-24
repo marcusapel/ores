@@ -129,6 +129,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 2.0,
         },
         "geo_preset_key": "shallow_marine_reservoir",
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": True,
+            "electrofacies": False, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.65, "uncertainty_max_std": 4.0,
+            "run_anomaly": False, "expected_n_scenarios": 3,
+        },
     },
 
     "deep_marine": {
@@ -146,6 +155,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 1.0,
         },
         "geo_preset_key": "deep_marine_clastic",
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": True,
+            "electrofacies": True, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.55, "uncertainty_max_std": 6.0,
+            "run_anomaly": True, "expected_n_scenarios": 5,
+        },
     },
 
     "deltaic": {
@@ -169,6 +187,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 1.5,
         },
         "geo_preset_key": None,
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": True,
+            "electrofacies": True, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.55, "uncertainty_max_std": 5.0,
+            "run_anomaly": False, "expected_n_scenarios": 4,
+        },
     },
 
     "fluvial": {
@@ -185,6 +212,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 1.5,
         },
         "geo_preset_key": "fluvial_continental",
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": False,
+            "electrofacies": True, "smooth": True, "smooth_window": 3,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.45, "uncertainty_max_std": 8.0,
+            "run_anomaly": True, "expected_n_scenarios": 5,
+        },
     },
 
     "lacustrine": {
@@ -207,6 +243,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 1.0,
         },
         "geo_preset_key": None,
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": True,
+            "electrofacies": True, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.55, "uncertainty_max_std": 5.0,
+            "run_anomaly": False, "expected_n_scenarios": 3,
+        },
     },
 
     "aeolian": {
@@ -229,6 +274,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 2.0,
         },
         "geo_preset_key": None,
+        "preprocessing": {
+            "normalise": True, "vshale": False, "stacking_pattern": False,
+            "electrofacies": False, "smooth": False,
+            "ai_facies": False, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.6, "uncertainty_max_std": 4.0,
+            "run_anomaly": False, "expected_n_scenarios": 2,
+        },
     },
 
     "tidal": {
@@ -251,6 +305,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 1.5,
         },
         "geo_preset_key": None,
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": True,
+            "electrofacies": True, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.5, "uncertainty_max_std": 6.0,
+            "run_anomaly": False, "expected_n_scenarios": 4,
+        },
     },
 
     "carbonate": {
@@ -269,6 +332,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 0.5,
         },
         "geo_preset_key": "carbonate_platform",
+        "preprocessing": {
+            "normalise": True, "vshale": False, "stacking_pattern": False,
+            "electrofacies": True, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.5, "uncertainty_max_std": 5.0,
+            "run_anomaly": False, "expected_n_scenarios": 4,
+        },
     },
 
     "reef": {
@@ -292,6 +364,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 0.5,
         },
         "geo_preset_key": "carbonate_platform",
+        "preprocessing": {
+            "normalise": True, "vshale": False, "stacking_pattern": False,
+            "electrofacies": True, "smooth": False,
+            "ai_facies": True, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.5, "uncertainty_max_std": 5.0,
+            "run_anomaly": False, "expected_n_scenarios": 3,
+        },
     },
 
     "coal": {
@@ -311,6 +392,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 3.0,
         },
         "geo_preset_key": "coal_basin",
+        "preprocessing": {
+            "normalise": True, "vshale": False, "stacking_pattern": False,
+            "electrofacies": False, "smooth": False,
+            "ai_facies": False, "log_qc": True,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.7, "uncertainty_max_std": 2.0,
+            "run_anomaly": False, "expected_n_scenarios": 2,
+        },
     },
 
     "glacial": {
@@ -328,6 +418,15 @@ DEPENV_PRESETS: Dict[str, Dict[str, Any]] = {
             "const_gap_cost": 2.0,
         },
         "geo_preset_key": "quaternary_hydrogeology",
+        "preprocessing": {
+            "normalise": True, "vshale": True, "stacking_pattern": False,
+            "electrofacies": True, "smooth": True, "smooth_window": 7,
+            "ai_facies": False, "log_qc": False,
+        },
+        "postprocessing": {
+            "quality_threshold": 0.4, "uncertainty_max_std": 10.0,
+            "run_anomaly": True, "expected_n_scenarios": 8,
+        },
     },
 }
 

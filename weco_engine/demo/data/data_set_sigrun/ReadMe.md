@@ -49,3 +49,35 @@ The Hugin Formation is a tide-dominated shallow marine system with lateral facie
 changes from tidal channels/bars (proximal) to prodelta/offshore (distal). The
 flooding surfaces (Hugin_FS_m through _f) provide isochronous correlation markers.
 Wells are spaced 3-8 km apart across the field.
+
+## Validation
+
+The reference correlation panel (`tmp/Correlation_panel_1_500_sigrun_wells.pdf`)
+shows the published correlation of Hugin flooding surfaces from Equinor's internal
+interpretation. The WeCo n-best output should include this stated correlation as
+one of the diverse solutions.
+
+## References
+
+- Knaust, D. & Hoth, S. (2021) Depositional environment and reservoir quality
+  of the Hugin Formation, Gudrun–Sigrun area, South Viking Graben. *Marine and
+  Petroleum Geology* 133, 105236.
+- Cole, J.M. et al. (2008) The Hugin Formation: Reservoir geology and
+  palaeogeography in the Gudrun–Sigrun area, Norwegian North Sea. *Petrol.
+  Geol. Conf. Proceedings* 7, 689–699.
+- Husmo, T. et al. (2003) Lower and Middle Jurassic. In: Evans, D. et al.
+  (eds) *The Millennium Atlas: Petroleum Geology of the Central and Northern
+  North Sea*, Geological Society, London, 129–156.
+- Boyd, R. et al. (2006) Estuarine and incised valley facies models. In:
+  *Facies Models Revisited*, SEPM Special Publication 84, 171–234.
+- Baville, P. (2022) *Stratigraphic correlation of well logs using
+  graph-based dynamic time warping*, PhD Thesis, Université de Lorraine.
+- Baville, P. et al. (2022) Computer-assisted stochastic multi-well
+  correlation: Sedimentary facies versus well distality. *Marine and
+  Petroleum Geology* 135, 105371.
+
+## Authors
+
+Well data courtesy of Equinor ASA / DISKOS national well database.
+Facies interpretation: D. Knaust (Equinor).
+WeCo integration: ASGA/RING, Université de Lorraine.

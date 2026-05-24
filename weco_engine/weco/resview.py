@@ -146,6 +146,8 @@ class CorResView(BaseResView):
             return ret
 
     cor_pen = Qt.GlobalColor.lightGray
+    cor_stable_pen = QPen(QColor("#1a9641"), 1.5)   # green — persists across all realisations
+    cor_variable_pen = QPen(QColor("#d7191c"), 0.8)  # red — varies between realisations
     tw_path_pen = QPen(Qt.GlobalColor.black, 3.0)
 
     region_palettes = (
@@ -245,6 +247,7 @@ class CorResView(BaseResView):
 
         self.cor_lines = None
         self.cor_line_num = 0
+        self._cached_stable_nodes = None
 
         self.splitter = QSplitter(parent)
         self.options_panel = QWidget(self.splitter)
@@ -314,6 +317,8 @@ class CorResView(BaseResView):
                                "Region Palette:", "Region Palette")
 
         self.add_bool_option('datasep', 'Data Sep.')
+        self.add_bool_option('highlight_stable', 'Highlight stable',
+                             'Green = same in all realisations, Red = varies')
         for i in range(self.max_well_data_col):
             self.add_select_option("welldata%i" % i,
                                    self.get_well_data_possible_values,
@@ -728,6 +733,29 @@ class CorResView(BaseResView):
                     self.view.draw_poly(((x12, y0), (x1, y1), (x0, y1)),
                                         QPen(), self.blue_brush)
 
+    def _compute_stable_nodes(self):
+        """Return set of node tuples present in ALL realisations."""
+        if not self.cur_res:
+            return set()
+        n_res = self.cur_res.get_nbr_results()
+        if n_res < 2:
+            return set()
+        paths = []
+        for i in range(min(n_res, 50)):
+            p = self.cur_res.get_result_full_path(i)
+            if p:
+                remap = tuple(well.result_index() for well in self.wells_visible)
+                remapped = set(
+                    tuple(node[j] for j in remap) for node in p
+                )
+                paths.append(remapped)
+        if len(paths) < 2:
+            return set()
+        stable = paths[0]
+        for p in paths[1:]:
+            stable = stable & p
+        return stable
+
     def draw_cor(self):
         if self.cor_lines is None:
             # recalc cor lines
@@ -758,7 +786,16 @@ class CorResView(BaseResView):
             return
 
         nbr_line = len(self.wells_visible) - 1
-        pen = self.cor_pen
+        highlight = self.cur_opt.get('highlight_stable', False)
+
+        # Pre-compute stable nodes if highlighting is enabled
+        stable_nodes = set()
+        if highlight and self.cur_res and self.cur_res.get_nbr_results() >= 2:
+            if not hasattr(self, '_cached_stable_nodes'):
+                self._cached_stable_nodes = None
+            if self._cached_stable_nodes is None:
+                self._cached_stable_nodes = self._compute_stable_nodes()
+            stable_nodes = self._cached_stable_nodes
 
         x0 = list(self.size_left_margin + self.size_well + (
                 self.size_well + self.size_correlation) * i for i in
@@ -767,6 +804,10 @@ class CorResView(BaseResView):
         y0 = self.size_top_margin
         wells = self.wells_visible
         for li in self.cor_lines:
+            if highlight and stable_nodes:
+                pen = self.cor_stable_pen if li in stable_nodes else self.cor_variable_pen
+            else:
+                pen = self.cor_pen
             py = y0 + wells[0].y[li[0]]
             for n in range(nbr_line):
                 ny = y0 + wells[n + 1].y[li[n + 1]]
@@ -869,6 +910,7 @@ class CorResView(BaseResView):
             self.cur_res = res
             self.cor_lines = None
             self.tw_cor_path = None
+            self._cached_stable_nodes = None
             self.cor_panel.clear()
             if self.cur_res:
                 for i in range(self.cur_res.get_nbr_results()):

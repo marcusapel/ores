@@ -70,3 +70,24 @@ Spec string: `"1,2,7;3,8,9;4,5,6"`
 - Grid: 10×10 at 500 m nominal spacing
 - Sample spacing: 0.5 m
 - Generator: `data/data_set_quaternary/generate_quaternary.py`
+
+### References
+
+- Ehlers, J. & Gibbard, P.L. (2004) *Quaternary Glaciations: Extent and
+  Chronology*, Part I (Europe), Elsevier, 475 pp.
+- Houmark-Nielsen, M. (2011) Pleistocene glaciations in Denmark: A closer
+  look at chronology, ice dynamics, and landforms. *Developments in
+  Quaternary Sciences* 15, 47–58.
+- Jørgensen, F. & Sandersen, P.B.E. (2006) Buried and open tunnel valleys
+  in Denmark — erosion beneath multiple ice sheets. *Quat. Sci. Rev.* 25,
+  1339–1363.
+- Kessler, T.C. et al. (2012) Modeling fine-scale geological heterogeneity
+  — examples of sand lenses in tills. *Groundwater* 50, 781–792.
+- Wierzbicki, G. et al. (2021) Quaternary hydrogeological modelling:
+  Challenges and methods. *Hydrogeol. J.* 29, 1545–1567.
+- Berg, R.C. et al. (2011) Surficial geology and hydrogeology decision
+  support: The Illinois approach. In: *Three-Dimensional Geological
+  Mapping*, GSC Special Paper 53.
+- Baville, P. (2022) *Stratigraphic correlation of well logs using
+  graph-based dynamic time warping*, PhD Thesis, Université de Lorraine.
+

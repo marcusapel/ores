@@ -14,6 +14,8 @@
 out.txt
 result.txt
 chat.txt
+/wells.txt
+/options.txt
 
 # Temp directory (test/demo results)
 /tmp/*

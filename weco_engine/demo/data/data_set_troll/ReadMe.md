@@ -40,3 +40,26 @@ The Sognefjord Formation is a wave/tide-influenced deltaic system prograding
 northward. Wells span proximal (distributary channels, foreshores) to distal
 (prodelta, shelf) environments. Sequences 2-7 represent major regressive-
 transgressive cycles bounded by flooding surfaces.
+
+## References
+
+- Dreyer, T. et al. (2005) Sedimentary architecture of field analogues for
+  reservoir information (SAFARI): A case study of the fluvial to marine
+  transition in the Sognefjord Formation. *Petrol. Geol. Conf. Proceedings*
+  6, 1025–1038.
+- Holgate, N.E. et al. (2014) Seismic stratigraphic analysis of the Middle
+  and Upper Jurassic Troll Field area, northern North Sea. *Marine and
+  Petroleum Geology* 56, 166–183.
+- Stewart, D.J. et al. (1995) The Troll Field: sequence stratigraphy and
+  sedimentology of a giant reservoir. *Petrol. Geol. NW Europe: Proceedings
+  4th Conference*, Geological Society, 975–998.
+- Martinius, A.W. et al. (2005) Reservoir characterization in the context
+  of the Sognefjord Formation. In: *Petroleum Geology: NW Europe and Global
+  Perspectives*, Geological Society, London.
+- Baville, P. (2022) *Stratigraphic correlation of well logs using
+  graph-based dynamic time warping*, PhD Thesis, Université de Lorraine.
+
+## Authors
+
+Core data courtesy of Equinor ASA / DISKOS national well database.
+WeCo integration: ASGA/RING, Université de Lorraine.

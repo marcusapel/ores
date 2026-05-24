@@ -76,3 +76,20 @@ See `options_coal.txt` — optimised for multi-log seam correlation.
 - Seed: 2026
 - Sample spacing: 0.2 m (fine resolution for thin seams)
 - Generator: `data/data_set_coal/generate_coal.py`
+
+### References
+
+- Diessel, C.F.K. (1992) *Coal-Bearing Depositional Systems*, Springer, 721 pp.
+- Fielding, C.R. (1987) Coal depositional models for deltaic and alluvial
+  plain sequences. *Geology* 15, 661–664.
+- Heckel, P.H. (1986) Sea-level curve for Pennsylvanian eustatic marine
+  transgressive-regressive depositional cycles along Midcontinent outcrop
+  belt. *Geology* 14, 330–334.
+- Hamilton, D.S. & Tadros, N.Z. (1994) Utility of coal seams as genetic
+  stratigraphic sequence boundaries in non-marine basins. *AAPG Bulletin*
+  78, 267–286.
+- Cairncross, B. (2001) An overview of the Permian (Karoo) coal deposits
+  of sub-Saharan Africa. *J. African Earth Sciences* 33, 529–562.
+- Baville, P. (2022) *Stratigraphic correlation of well logs using
+  graph-based dynamic time warping*, PhD Thesis, Université de Lorraine.
+

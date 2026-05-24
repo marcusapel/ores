@@ -290,3 +290,82 @@ Synthetic generators: parallel layers, clinoform wedge, prograding delta, quater
 | RING Papers | Lallier, Edwards, Caumon, Julio | DTW foundations, hierarchical correlation, uncertainty |
 | Sedimentology | Ainsworth, Aschoff, Boyd, Catuneanu, Kieft | Facies models, depositional environments |
 | Field Data | Gudrun/Sigrun reports | Hugin Fm, shallow marine deltaic |
+
+---
+
+## AI-Based Preprocessing, Postprocessing & Auto-Parameter Estimation
+
+### Pipeline Overview
+
+```
+Load Wells → Detect Environment → Recommend Preprocessing → Apply Conditioning
+     → Suggest Optimal Parameters → Run Engine → Quality Gate → Uncertainty
+     → Anomaly Detection → Report/Export
+```
+
+### Environment Detection (`weco.decision_tree`)
+
+The system auto-detects the geological environment from:
+1. **Region names** — FACIES, BIOZONE, SEAM, COAL, DISTAL → strong environment signal
+2. **Data channels** — log combination fingerprints (GR+DEN+RT vs GR+NPHI+RHOB)
+3. **GR statistics** — mean, std, modality discriminate marine/fluvial/carbonate
+4. **Formation metadata** — OSDU vocabulary or name pattern matching
+
+### Preprocessing Recommendation (`recommend_preprocessing()`)
+
+Per-environment profiles specify which transforms to apply:
+
+| Environment | Normalise | Vshale | Stacking | Electrofacies | AI Facies | Smooth | Log QC |
+|-------------|:---------:|:------:|:--------:|:-------------:|:---------:|:------:|:------:|
+| shallow_marine | ✓ | ✓ | ✓ | — | ✓ | — | — |
+| deep_marine | ✓ | ✓ (Clavier) | ✓ | ✓ (k=4) | ✓ | — | — |
+| fluvial_deltaic | ✓ | ✓ (Steiber) | — | ✓ (k=5) | ✓ | ✓ (w=3) | — |
+| coal_basin | ✓ (minmax) | — | — | — | — | — | ✓ |
+| carbonate | ✓ (zscore) | — | — | ✓ (k=8) | ✓ | — | — |
+| quaternary | ✓ | ✓ | — | ✓ (k=4) | — | ✓ (w=7) | — |
+
+Each decision includes geological reasoning (e.g., "Vshale meaningless in carbonates — GR
+has no clay baseline").
+
+### Postprocessing Recommendation (`recommend_postprocessing()`)
+
+| Environment | Quality Threshold | Uncertainty Max | Anomaly | Expected Scenarios |
+|-------------|:-----------------:|:--------------:|:-------:|:-----------------:|
+| shallow_marine | 0.65 | 4 m | No | 3 |
+| deep_marine | 0.55 | 6 m | Yes | 5 |
+| fluvial_deltaic | 0.45 | 8 m | Yes | 5 |
+| coal_basin | 0.70 | 2 m | No | 2 |
+| carbonate | 0.50 | 5 m | No | 4 |
+| quaternary | 0.40 | 10 m | Yes | 8 |
+
+### Auto-Preprocessing Function (`weco.preprocessing.auto_preprocess()`)
+
+One-call function that:
+1. Detects environment (or uses override)
+2. Applies all recommended transforms with environment-specific parameters
+3. Returns detailed report: steps applied, steps skipped, errors, reasoning
+
+### GUI Integration
+
+- **DataPage** → "AI Suggest" button (purple): detects environment, sets checkboxes,
+  shows reasoning dialog
+- **ResultsPage** → "AI Auto-Analyse" button (purple): runs quality + uncertainty +
+  anomaly with environment-tuned thresholds, reports pass/fail
+
+### API Endpoints
+
+| Endpoint | Input | Output |
+|----------|-------|--------|
+| `POST /suggest-preprocessing` | well_file, [environment] | steps, parameters, postprocessing, reasoning |
+| `POST /suggest-defaults` | well_file | engine options + reasoning |
+| `POST /auto` | well_file | preprocesses → runs → quality-gates → diversifies |
+
+### Data-Adaptive Adjustments
+
+The system goes beyond static per-environment profiles:
+- If **FACIES region** already exists → skip AI facies prediction
+- If **no GR log** → disable GR-dependent transforms
+- If **CAL/CALI** present → enable log QC (washout detection)
+- If many logs + constraints → raise quality threshold
+- If **DISTAL + FACIES** both exist → enable distality cost function
+- If facies appears derived from GR (binary, ≤2 values) → skip (circular reasoning)

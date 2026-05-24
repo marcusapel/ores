@@ -2638,8 +2638,19 @@ class DataPage(QWidget):
         src_row.addStretch()
         cond_lo.addLayout(src_row)
 
-        # Apply button + status
+        # Apply button + AI Suggest button + status
         btn_row = QHBoxLayout()
+
+        self._btn_ai_suggest_cond = QPushButton("AI Suggest")
+        self._btn_ai_suggest_cond.setToolTip(
+            "Auto-detect geological environment and recommend\n"
+            "optimal preprocessing steps with reasoning.")
+        self._btn_ai_suggest_cond.setStyleSheet(
+            "QPushButton {font-weight:bold; padding:8px 16px; "
+            "background-color:#8e44ad; color:white; border-radius:4px;}")
+        self._btn_ai_suggest_cond.clicked.connect(self._ai_suggest_conditioning)
+        btn_row.addWidget(self._btn_ai_suggest_cond)
+
         self._btn_apply_cond = QPushButton("Apply Data Conditioning")
         self._btn_apply_cond.setStyleSheet(
             "QPushButton {font-weight:bold; padding:8px 16px; "
@@ -3170,6 +3181,48 @@ class DataPage(QWidget):
                     f"Depths: {', '.join(f'{d:.1f}' for d in surfaces)}\n\n"
                     "These will be added as 'no_crossing' regions."
                 )
+
+    def _ai_suggest_conditioning(self):
+        """AI-based: auto-detect environment and set optimal checkboxes."""
+        wl = self._well_list
+        if wl is None or not wl.wells:
+            self._cond_status.setText("No wells loaded.")
+            return
+
+        from weco.decision_tree import recommend_preprocessing
+
+        rec = recommend_preprocessing(wl)
+
+        # Set checkboxes according to recommendation
+        self._chk_normalise.setChecked(rec.normalise)
+        self._chk_vshale.setChecked(rec.vshale)
+        self._chk_stacking.setChecked(rec.stacking_pattern)
+        self._chk_electrofacies.setChecked(rec.electrofacies)
+        self._chk_smooth.setChecked(rec.smooth)
+        self._chk_logqc.setChecked(rec.log_qc)
+        self._chk_facies_predict.setChecked(rec.ai_facies)
+
+        # Set cluster count
+        self._cond_nclusters.setValue(rec.electrofacies_k)
+
+        # Build reasoning summary
+        env_label = rec.environment.replace("_", " ").title()
+        lines = [f"Detected: {env_label}"]
+        for key, reason in rec.reasoning.items():
+            lines.append(f"  [{key}] {reason}")
+
+        n_steps = sum([rec.normalise, rec.vshale,
+                       rec.stacking_pattern, rec.electrofacies, rec.smooth,
+                       rec.log_qc, rec.ai_facies])
+        self._cond_status.setText(
+            f"AI: {env_label} — {n_steps} steps enabled"
+        )
+
+        # Show detailed reasoning in a message box
+        QMessageBox.information(
+            self, "AI Preprocessing Recommendation",
+            "\n".join(lines)
+        )
 
     def _apply_conditioning(self):
         """Run selected data-conditioning transforms on the loaded wells."""
@@ -4029,6 +4082,16 @@ class ResultsPage(QWidget):
         btn_uncert.clicked.connect(self._ai_uncertainty)
         btn_row.addWidget(btn_uncert)
 
+        btn_auto_analyse = QPushButton("AI Auto-Analyse")
+        btn_auto_analyse.setToolTip(
+            "Run quality + uncertainty + anomaly analysis with\n"
+            "thresholds tuned for the detected geological setting")
+        btn_auto_analyse.setStyleSheet(
+            "QPushButton {font-weight:bold; padding:4px 12px; "
+            "background-color:#8e44ad; color:white; border-radius:3px;}")
+        btn_auto_analyse.clicked.connect(self._ai_auto_analyse)
+        btn_row.addWidget(btn_auto_analyse)
+
         # §15.16 — Export Wizard
         btn_export_wizard = QPushButton("Export Wizard…")
         btn_export_wizard.setToolTip("Select artifacts, format, and destination")
@@ -4244,6 +4307,10 @@ class ResultsPage(QWidget):
         cost = self._res_file.get_result_cost(cor_idx)
         self.cost_label.setText(f"Cost: {cost:.4f}")
 
+        # Preserve scroll position so plot doesn't jump when switching realisations
+        h_scroll = self.plot_scroll.horizontalScrollBar().value()
+        v_scroll = self.plot_scroll.verticalScrollBar().value()
+
         png = render_correlation_plot(
             self._well_list, self._res_file, self._title, cor_idx)
         if png:
@@ -4254,6 +4321,10 @@ class ResultsPage(QWidget):
             if pm.width() > w:
                 pm = pm.scaledToWidth(w, Qt.TransformationMode.SmoothTransformation)
             self.plot_label.setPixmap(pm)
+
+        # Restore scroll position
+        self.plot_scroll.horizontalScrollBar().setValue(h_scroll)
+        self.plot_scroll.verticalScrollBar().setValue(v_scroll)
 
     def _on_cor_change(self, idx):
         self._render(idx)
@@ -4436,6 +4507,98 @@ class ResultsPage(QWidget):
             lines.append(f"  {w1} <-> {w2}:  mean={mean_std:.3f}  max={max_std:.3f}")
 
         QMessageBox.information(self, "Uncertainty Analysis", "\n".join(lines))
+
+    def _ai_auto_analyse(self):
+        """AI: Run quality + uncertainty + anomaly with environment-tuned thresholds."""
+        if self._res_file is None or self._well_list is None:
+            QMessageBox.information(self, "WeCo", "No results to analyse.")
+            return
+
+        from weco.decision_tree import (
+            detect_geological_environment, recommend_postprocessing,
+        )
+
+        env, conf = detect_geological_environment(self._well_list)
+        post_rec = recommend_postprocessing(self._well_list, environment=env)
+
+        report_lines = [
+            f"AI Auto-Analysis — {env.replace('_', ' ').title()} "
+            f"(confidence: {conf:.0%})",
+            f"Quality threshold: {post_rec['quality_threshold']:.2f}",
+            f"Uncertainty max std: {post_rec['uncertainty_max_std']:.1f} m",
+            f"Expected scenarios: {post_rec['n_scenarios_report']}",
+            "",
+        ]
+
+        # Run quality scoring
+        try:
+            from weco.ai.quality import CorrelationQuality
+            scorer = CorrelationQuality()
+            results = scorer.score_correlations(self._res_file, self._well_list)
+            if results:
+                best = results[0].get("total", 0.0)
+                threshold = post_rec["quality_threshold"]
+                status = "PASS" if best >= threshold else "BELOW THRESHOLD"
+                report_lines.append(f"Quality: {best:.4f} [{status}]")
+                # Update table
+                n = min(len(results), self.summary_table.rowCount())
+                for i in range(n):
+                    total = results[i].get("total", 0.0)
+                    item = QTableWidgetItem(f"{total:.4f}")
+                    self.summary_table.setItem(i, 3, item)
+                self.summary_table.resizeColumnsToContents()
+        except ImportError:
+            report_lines.append("Quality: skipped (scikit-learn not installed)")
+
+        # Run uncertainty
+        try:
+            from weco.ai.uncertainty import CorrelationUncertainty
+            if self._res_file.get_nbr_results() >= 2:
+                rf = self._res_file
+                if not hasattr(rf, 'well_names') or not rf.well_names:
+                    rf.well_names = [w.name for w in self._well_list.wells]
+                uc = CorrelationUncertainty()
+                result = uc.from_n_best(rf)
+                if result:
+                    all_stds = []
+                    for std_arr in result.values():
+                        if len(std_arr) > 0:
+                            all_stds.append(float(std_arr.mean()))
+                    if all_stds:
+                        mean_u = sum(all_stds) / len(all_stds)
+                        max_u = max(all_stds)
+                        threshold = post_rec["uncertainty_max_std"]
+                        status = "OK" if max_u <= threshold else "HIGH"
+                        report_lines.append(
+                            f"Uncertainty: mean={mean_u:.2f}, max={max_u:.2f} [{status}]")
+            else:
+                report_lines.append("Uncertainty: skipped (need ≥2 results)")
+        except ImportError:
+            report_lines.append("Uncertainty: skipped (scikit-learn not installed)")
+
+        # Run anomaly detection if recommended
+        if post_rec.get("run_anomaly"):
+            try:
+                from weco.ai.anomaly import CorrelationAnomalyDetector
+                det = CorrelationAnomalyDetector()
+                anomalies = det.detect(self._res_file, self._well_list)
+                n_anom = sum(1 for a in anomalies if a.get("is_anomaly"))
+                report_lines.append(
+                    f"Anomaly detection: {n_anom} suspicious correlations flagged")
+            except (ImportError, Exception) as e:
+                report_lines.append(f"Anomaly: skipped ({e})")
+        else:
+            report_lines.append("Anomaly: not recommended for this environment")
+
+        # Reasoning
+        if post_rec.get("reasoning"):
+            report_lines.append("")
+            report_lines.append("Reasoning:")
+            for key, reason in post_rec["reasoning"].items():
+                report_lines.append(f"  [{key}] {reason}")
+
+        QMessageBox.information(
+            self, "AI Auto-Analysis", "\n".join(report_lines))
 
     # ── Run History (multi-run comparison §3.15) ──────────────────────
 
@@ -4804,7 +4967,94 @@ accepted and converted automatically.</p>
   <li><b>Cost Matrix</b>: Debug output showing transition costs between states.
       Use cost-matrix option to generate.</li>
 </ul>
+
+<h3>Batch JSON Configuration</h3>
+<p>Run multiple correlation workflows from a single JSON file using
+<code>python -m weco.batch config.json</code>.</p>
+<pre style="background:#f4f4f4; padding:8px; font-size:9pt;">
+{
+  "wells": "path/to/wells.txt",
+  "format": "weco",
+  "preset": "shallow_marine",
+  "options": {
+    "cost_function": "composite",
+    "order": "pyramidal",
+    "max_cor": 50,
+    "var_data": "GR",
+    "var_weight": 1.0,
+    "no_crossing": "BIOZONE",
+    "const_gap_cost": 0.3
+  },
+  "condition": true,
+  "output_dir": "tmp/results/",
+  "exports": ["csv", "las", "rms"],
+  "multi_run": true,
+  "runs": [
+    {"name": "run_01", "options": {"var_data": "GR"}},
+    {"name": "run_02", "options": {"no_crossing": "ZONE", "const_gap_cost": 0.5}}
+  ]
+}
+</pre>
+<table border="1" cellpadding="4" style="font-size:9pt; border-collapse:collapse;">
+<tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td>wells</td><td>string</td><td><i>required</i></td><td>Path to well-list file</td></tr>
+<tr><td>format</td><td>string</td><td>weco</td><td>Input format: weco, las, csv, resqml, epc</td></tr>
+<tr><td>preset</td><td>string</td><td>null</td><td>Geological preset (auto-fills options)</td></tr>
+<tr><td>options</td><td>object</td><td>{}</td><td>Engine parameters (underscore keys)</td></tr>
+<tr><td>condition</td><td>bool</td><td>true</td><td>Run auto-preprocessing</td></tr>
+<tr><td>output_dir</td><td>string</td><td>weco_output</td><td>Output directory for exports</td></tr>
+<tr><td>exports</td><td>array</td><td>["csv"]</td><td>csv, las, rms, epc, gocad, marker_set, zone_thickness, ensemble</td></tr>
+<tr><td>multi_run</td><td>bool</td><td>false</td><td>Execute each 'runs' entry independently</td></tr>
+<tr><td>runs</td><td>array</td><td>[]</td><td>Per-run overrides (name + options)</td></tr>
+</table>
+<p><b>Available presets:</b> shallow_marine, fluvial, carbonate, deep_marine,
+coal, quaternary, delta.</p>
+<p><b>Note:</b> Use underscores in JSON options (var_data, not var-data). Preset
+defaults are applied first, then overridden by explicit options. Run-specific
+options override top-level options.</p>
+
+<h3>Python API</h3>
+<pre style="background:#f4f4f4; padding:8px; font-size:9pt;">
+from weco.ext import ProjectExt
+
+project = ProjectExt()
+project.set_options_ext(
+    var_data="GR",
+    var_weight=1.0,
+    cost_function="composite",
+    max_cor=50,
+)
+# Or load from option file:
+# project.option_load("options.txt")
+project.run("wells.txt")
+res_file = project.get_res_file()
+</pre>
+
+<h3>REST API (Web)</h3>
+<pre style="background:#f4f4f4; padding:8px; font-size:9pt;">
+# Quick auto-run (suggests parameters + runs)
+POST /auto
+  {"well_file": "path/to/wells.txt"}
+
+# Manual run with explicit options
+POST /run
+  {"well_file": "...", "options": {"var_data": "GR", ...}}
+
+# Batch run (multiple configs on same data)
+POST /run/batch
+  {"well_file": "...", "configs": [
+    {"label": "run1", "options": {...}},
+    {"label": "run2", "options": {...}}
+  ]}
+
+# Documentation endpoints
+GET /options/help          → full parameter reference
+GET /docs/formats          → file format specs
+GET /docs/batch-schema     → JSON schema for batch config
+GET /demos                 → available demo datasets
+</pre>
 """
+
 
 
 def _build_geology_docs_html():
