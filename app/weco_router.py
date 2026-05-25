@@ -1923,6 +1923,79 @@ async def weco_wells_info():
     }
 
 
+@router.post("/wells/order")
+async def weco_wells_order(req: dict):
+    """Compute well display ordering by spatial criteria.
+
+    Methods: input, x, y, azimuth, distality, pca, nearest.
+    """
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Import wells first.")
+
+    import math
+    import numpy as np
+
+    wl = _cached_well_list
+    n = len(wl.wells)
+    method = req.get("method", "input").lower().strip()
+    azimuth_deg = req.get("azimuth_deg", 90.0)
+    projections = None
+
+    if method == "x":
+        order = sorted(range(n), key=lambda i: wl.wells[i].x)
+        projections = [wl.wells[i].x for i in order]
+    elif method == "y":
+        order = sorted(range(n), key=lambda i: wl.wells[i].y)
+        projections = [wl.wells[i].y for i in order]
+    elif method == "azimuth":
+        theta = math.radians(azimuth_deg)
+        dx, dy = math.sin(theta), math.cos(theta)
+        projs = [(wl.wells[i].x * dx + wl.wells[i].y * dy, i) for i in range(n)]
+        projs.sort()
+        order = [i for _, i in projs]
+        projections = [p for p, _ in projs]
+    elif method == "distality":
+        distality_vals = []
+        for i, w in enumerate(wl.wells):
+            d = 0.5
+            if hasattr(w, 'region') and isinstance(w.region, dict):
+                for rname in ('DISTALITY', 'DISTAL', 'distality', 'Distality'):
+                    reg = w.region.get(rname)
+                    if reg and len(reg) > 0:
+                        d = reg[0][0] if isinstance(reg[0], (list, tuple)) else reg[0]
+                        break
+            distality_vals.append((d, i))
+        distality_vals.sort()
+        order = [i for _, i in distality_vals]
+        projections = [d for d, _ in distality_vals]
+    elif method == "pca":
+        coords = np.array([[w.x, w.y] for w in wl.wells])
+        if coords.std() < 1e-6:
+            order = list(range(n))
+        else:
+            centered = coords - coords.mean(axis=0)
+            _, _, Vt = np.linalg.svd(centered, full_matrices=False)
+            proj_vals = centered @ Vt[0]
+            order = list(np.argsort(proj_vals).tolist())
+            projections = [float(proj_vals[i]) for i in order]
+    elif method == "nearest":
+        try:
+            from weco.order import compute_nearest_ordering
+            coords = [(w.x, w.y) for w in wl.wells]
+            order = compute_nearest_ordering(coords, first=0)
+        except Exception:
+            order = list(range(n))
+    else:
+        order = list(range(n))
+
+    return {
+        "method": method,
+        "order": order,
+        "well_names": [wl.wells[i].name for i in order],
+        "projections": projections,
+    }
+
+
 @router.get("/well-data/{well_idx}")
 async def weco_well_data(well_idx: int, channel: Optional[str] = None):
     """Return actual log values for a loaded well (for plotting).

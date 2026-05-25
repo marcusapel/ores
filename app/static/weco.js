@@ -1001,6 +1001,19 @@
         <option value="marker">By marker (fill view)</option>
         <option value="absolute">Absolute depth</option>
       </select>
+      <label style="font-weight:600;margin-left:8px;">Well Order:</label>
+      <select id="ctrl-well-order" style="font-size:11px;padding:1px 4px;">
+        <option value="result">Result order</option>
+        <option value="input">Input order</option>
+        <option value="x">By X (W→E)</option>
+        <option value="y">By Y (S→N)</option>
+        <option value="azimuth">By azimuth</option>
+        <option value="distality">By distality</option>
+        <option value="pca">Principal direction (PCA)</option>
+        <option value="nearest">Nearest-neighbour</option>
+      </select>
+      <input id="ctrl-azimuth" type="number" min="0" max="359" value="90" step="5"
+        style="font-size:11px;width:48px;padding:1px 3px;display:none;" title="Azimuth (°N clockwise)">
       <label style="font-weight:600;margin-left:8px;">Logs:</label>
       <select id="ctrl-logs" multiple style="font-size:10px;min-width:100px;max-height:50px;"></select>
       <label><input type="checkbox" id="ctrl-discrete" checked> Discrete</label>
@@ -1018,6 +1031,36 @@
       corrPlotConfig.alignMode = ctrlAlign.value;
       window.redrawCorrelationPlot();
     });
+
+    // Well order control
+    const ctrlWellOrder = bar.querySelector('#ctrl-well-order');
+    const ctrlAzimuth = bar.querySelector('#ctrl-azimuth');
+    ctrlWellOrder.addEventListener('change', async () => {
+      const method = ctrlWellOrder.value;
+      ctrlAzimuth.style.display = method === 'azimuth' ? 'inline-block' : 'none';
+      if (method === 'result') {
+        corrPlotConfig.wellOrder = null;  // use default result order
+        window.redrawCorrelationPlot();
+        return;
+      }
+      // Call the wells/order API (uses cached wells on server)
+      try {
+        const resp = await api('POST', '/wells/order', {
+          method: method,
+          azimuth_deg: parseFloat(ctrlAzimuth.value) || 90,
+        });
+        corrPlotConfig.wellOrder = resp.order;
+        window.redrawCorrelationPlot();
+      } catch(e) {
+        console.warn('Well order failed:', e);
+      }
+    });
+    ctrlAzimuth.addEventListener('change', () => {
+      if (ctrlWellOrder.value === 'azimuth') {
+        ctrlWellOrder.dispatchEvent(new Event('change'));
+      }
+    });
+
     bar.querySelector('#ctrl-discrete').addEventListener('change', (e) => {
       corrPlotConfig.showDiscrete = e.target.checked;
       window.redrawCorrelationPlot();
@@ -1307,6 +1350,7 @@
     showGlobalStrat: false,  // render global strat column reference strip (left side)
     showMD: true,            // show MD depth ticks per well
     showTVDSS: false,        // show TVDSS if available
+    wellOrder: null,         // null = result order, or array of well indices
     logScaleLogs: ['RT', 'RDEEP', 'RSHAL', 'RES', 'RLLD', 'RLLS'],  // logs drawn with log10 scale
     maxContinuousLogs: 3,    // max continuous log traces per well
     maxDiscreteLogs: 2,      // max discrete/zone tracks per well
@@ -1372,6 +1416,16 @@
     // Inject plot controls toolbar and populate log selector
     ensurePlotControls();
     updateLogSelector(plotData);
+
+    // ── Apply well display ordering ─────────────────────────────────
+    if (corrPlotConfig.wellOrder && corrPlotConfig.wellOrder.length === nWells) {
+      const order = corrPlotConfig.wellOrder;
+      plotData = order.map(i => plotData[i]);
+      // Also reorder well names for headers
+      const reorderedNames = order.map(i => wellNames[i]);
+      wellNames.length = 0;
+      reorderedNames.forEach(n => wellNames.push(n));
+    }
 
     // ── Classify logs into continuous vs discrete ───────────────────
     const discreteLogNames = new Set();
