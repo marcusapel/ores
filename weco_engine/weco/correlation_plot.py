@@ -380,7 +380,7 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
             nrows=1, ncols=total_cols,
             width_ratios=ratios,
             wspace=0.02,
-            left=0.04, right=0.96, top=0.92, bottom=0.06,
+            left=0.04, right=0.96, top=0.90, bottom=0.06,
         )
 
         # Compute global depth range (with optional marker-based alignment)
@@ -466,8 +466,8 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                     orig_depth = well_depths[wi_data]
                     if len(orig_depth) > 0:
                         title_text += f"\nMD: {orig_depth[0]:.0f}–{orig_depth[-1]:.0f}"
-                mid_ax.set_title(title_text, fontsize=9, fontweight="bold",
-                                 color=wcolor, pad=8)
+                mid_ax.set_title(title_text, fontsize=8, fontweight="bold",
+                                 color=wcolor, pad=14)
 
             # Gap axis for correlation lines
             if wi_display < n_disp - 1:
@@ -546,9 +546,9 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                        edgecolor="#888")
 
         # Label at top
-        ax.text(0.5, 1.01, region_name, transform=ax.transAxes,
-                ha="center", va="bottom", fontsize=6, rotation=0,
-                color="#666", fontweight="bold")
+        ax.text(0.5, 1.02, region_name, transform=ax.transAxes,
+                ha="center", va="bottom", fontsize=5, rotation=0,
+                color="#666", fontweight="bold", clip_on=True)
 
     # ──── Draw a log track ───────────────────────────────────────────
 
@@ -642,23 +642,23 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
         label = log_name
         if raw is not None and unit:
             label += f" ({unit})"
-        ax.text(0.5, 1.01, label, transform=ax.transAxes,
-                ha="center", va="bottom", fontsize=7, color=lcolor,
-                fontweight="bold")
+        ax.text(0.5, 1.02, label, transform=ax.transAxes,
+                ha="center", va="bottom", fontsize=5.5, color=lcolor,
+                fontweight="bold", clip_on=True)
 
-        # Scale min/max labels at top corners
+        # Scale min/max labels at top corners (only if enough space)
         if raw is not None:
             xlim = ax.get_xlim()
             if is_log_scale:
                 smin_str = f"{xlim[0]:.1g}"
                 smax_str = f"{xlim[1]:.0f}"
             else:
-                smin_str = f"{xlim[0]:.1f}" if abs(xlim[0]) < 100 else f"{xlim[0]:.0f}"
-                smax_str = f"{xlim[1]:.1f}" if abs(xlim[1]) < 100 else f"{xlim[1]:.0f}"
+                smin_str = f"{xlim[0]:.0f}"
+                smax_str = f"{xlim[1]:.0f}"
             ax.text(0.0, 1.005, smin_str, transform=ax.transAxes,
-                    ha="left", va="bottom", fontsize=5.5, color="#888")
+                    ha="left", va="bottom", fontsize=4.5, color="#aaa")
             ax.text(1.0, 1.005, smax_str, transform=ax.transAxes,
-                    ha="right", va="bottom", fontsize=5.5, color="#888")
+                    ha="right", va="bottom", fontsize=4.5, color="#aaa")
 
         # Subtle well outline
         for spine in ax.spines.values():
