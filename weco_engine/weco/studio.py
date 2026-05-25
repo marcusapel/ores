@@ -5482,13 +5482,31 @@ class WeCoStudio(QMainWindow):
         self.setAcceptDrops(True)  # §3.43 — drag-and-drop support
 
         self._current_demo = None
-        self._dark_mode = False
+        self._dark_mode = self._detect_os_dark_mode()
         self._all_demos_running = False
         self._demo_queue = []
         self._demo_results = []
         self._demo_output_dir = OUTPUT_DIR / "demo_results"
         self._init_ui()
         self._connect_signals()
+        # Apply OS-detected theme on startup
+        if self._dark_mode:
+            self._apply_dark_palette()
+
+    @staticmethod
+    def _detect_os_dark_mode() -> bool:
+        """Detect OS dark mode preference."""
+        app = QApplication.instance()
+        # PyQt6.5+ has styleHints().colorScheme()
+        if hasattr(app, 'styleHints'):
+            hints = app.styleHints()
+            if hasattr(hints, 'colorScheme'):
+                from PyQt6.QtCore import Qt
+                return hints.colorScheme() == Qt.ColorScheme.Dark
+        # Fallback: check if system palette window color is dark
+        palette = app.palette()
+        bg = palette.color(QPalette.ColorRole.Window)
+        return bg.lightness() < 128
 
     def _init_ui(self):
         central = QWidget()
@@ -5563,7 +5581,7 @@ class WeCoStudio(QMainWindow):
         self.statusBar().showMessage("WeCo Studio ready")
 
         # Dark mode toggle button in status bar
-        self._dark_btn = QPushButton("Dark Mode")
+        self._dark_btn = QPushButton("Light Mode" if self._dark_mode else "Dark Mode")
         self._dark_btn.setFixedSize(90, 24)
         self._dark_btn.clicked.connect(self.toggle_dark_mode)
         self.statusBar().addPermanentWidget(self._dark_btn)
@@ -5705,9 +5723,66 @@ class WeCoStudio(QMainWindow):
         self.statusBar().showMessage(
             f"Preset applied: {preset['label']} — adjust parameters for your data")
 
+    # ─── Resolution Check ─────────────────────────────────────────────
+
+    _FINE_SCALE_MAX_SAMPLES = 300  # warn if largest well exceeds this
+    _FINE_SCALE_MIN_SPACING = 0.5  # metres — spacing below this is "fine"
+
+    def _check_resolution(self, wl):
+        """Detect fine-scaled data and offer to resample for performance."""
+        if not wl.wells:
+            return
+        max_size = max(w.size for w in wl.wells)
+        if max_size <= self._FINE_SCALE_MAX_SAMPLES:
+            return
+
+        # Estimate average sample spacing from well length / (size - 1)
+        spacings = []
+        for w in wl.wells:
+            if w.size > 1 and w.h > 0:
+                spacings.append(w.h / (w.size - 1))
+        if not spacings:
+            return
+        avg_spacing = sum(spacings) / len(spacings)
+        if avg_spacing >= self._FINE_SCALE_MIN_SPACING:
+            return
+
+        # Fine-scaled data detected — calculate recommended step
+        target_spacing = 1.0  # metres
+        step = max(2, round(target_spacing / avg_spacing))
+        new_max = max_size // step + 1
+
+        msg = (
+            f"<b>Fine-scaled data detected</b><br><br>"
+            f"Average sample spacing: <b>{avg_spacing:.3f} m</b><br>"
+            f"Largest well: <b>{max_size}</b> samples<br><br>"
+            f"This will be slow to correlate. DTW runtime scales as O(n²) "
+            f"with sample count.<br><br>"
+            f"<b>Recommended:</b> Resample every {step} samples "
+            f"(~{step * avg_spacing:.2f} m spacing, "
+            f"reducing largest well to ~{new_max} samples).<br><br>"
+            f"Resample now?"
+        )
+        reply = QMessageBox.question(
+            self, "Resolution Warning", msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            for w in wl.wells:
+                w.resample(step)
+            self.statusBar().showMessage(
+                f"Resampled {wl.nbr_wells()} wells (step={step}, "
+                f"spacing ~{step * avg_spacing:.2f} m)")
+            # Refresh the data page display
+            self.page_data._populate(wl)
+
     # ─── Wells Loaded ─────────────────────────────────────────────────
 
     def _on_wells_loaded(self, wl, path):
+        # Check for fine-scaled data and offer resampling
+        self._check_resolution(wl)
+
         # Rebuild params if not demo-driven
         if self._current_demo is None:
             data_names = self.page_data.get_data_names()
@@ -5805,32 +5880,39 @@ class WeCoStudio(QMainWindow):
 
     # ─── Dark Mode Toggle (§3.42) ────────────────────────────────────
 
+    def _apply_dark_palette(self):
+        """Apply dark palette to the application."""
+        app = QApplication.instance()
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
+        palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+        palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(35, 35, 35))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(128, 128, 128))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(128, 128, 128))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(128, 128, 128))
+        app.setPalette(palette)
+
     def toggle_dark_mode(self):
         """Toggle dark mode theme."""
         self._dark_mode = not self._dark_mode
         app = QApplication.instance()
         if self._dark_mode:
-            palette = QPalette()
-            palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-            palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-            palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
-            palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-            palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-            palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-            palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-            palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-            palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-            palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor(35, 35, 35))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(128, 128, 128))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(128, 128, 128))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(128, 128, 128))
-            app.setPalette(palette)
+            self._apply_dark_palette()
+            self._dark_btn.setText("Light Mode")
             self.statusBar().showMessage("Dark mode enabled")
         else:
             app.setPalette(app.style().standardPalette())
+            self._dark_btn.setText("Dark Mode")
             self.statusBar().showMessage("Light mode enabled")
 
     # ─── Drag-and-Drop Well File Loading (§3.43) ─────────────────────

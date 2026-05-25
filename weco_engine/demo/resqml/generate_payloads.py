@@ -58,7 +58,7 @@ def _now_iso() -> str:
 
 
 def build_wellbore_trajectory(well, dataset_name: str) -> dict:
-    """Build a WellboreTrajectoryRepresentation JSON object."""
+    """Build a WellboreTrajectoryRepresentation for RDDMS v2."""
     depth = well.data.get("DEPTH") or well.data.get("Depth") or []
     n = len(depth)
 
@@ -67,54 +67,68 @@ def build_wellbore_trajectory(well, dataset_name: str) -> dict:
     ys = well.data.get("Y") or well.data.get("y") or [well.y] * n
 
     # MD = depth channel
-    md_values = list(depth)
+    md_values = [float(v) for v in depth]
 
-    # TVD — for vertical wells, TVD ≈ MD
-    tvd_values = md_values.copy()
+    # Build 3D control points (X, Y, Z=MD for vertical wells)
+    control_points = []
+    for i in range(n):
+        control_points.extend([
+            float(list(xs)[i]) if i < len(list(xs)) else well.x,
+            float(list(ys)[i]) if i < len(list(ys)) else well.y,
+            md_values[i] if i < len(md_values) else 0.0,
+        ])
 
     return {
-        "schemaVersion": "1.0.0",
-        "kind": "resqml20:obj_WellboreTrajectoryRepresentation",
-        "uuid": _uuid(),
-        "title": well.name,
-        "citation": {
-            "title": well.name,
-            "creation": _now_iso(),
-            "originator": "WeCo Demo Ingestion",
-            "format": "WeCo RESQML Payload Generator",
+        "$type": "resqml20.obj_WellboreTrajectoryRepresentation",
+        "SchemaVersion": "2.0",
+        "Uuid": _uuid(),
+        "Citation": {
+            "$type": "eml20.Citation",
+            "Title": well.name,
+            "Originator": "WeCo Demo Ingestion",
+            "Creation": _now_iso(),
+            "Format": "WeCo RESQML Payload Generator",
         },
-        "data": {
-            "Name": well.name,
-            "Description": f"WeCo demo well — {dataset_name}",
-            "WellboreName": well.name,
-            "DatasetName": dataset_name,
-            "MdUom": "m",
-            "StartMd": md_values[0] if md_values else 0.0,
-            "FinishMd": md_values[-1] if md_values else 0.0,
-            "MeasuredDepths": md_values,
-            "Tvds": tvd_values,
-            "Eastings": list(xs)[:n],
-            "Northings": list(ys)[:n],
-            "SpatialLocation": {
-                "Wgs84Coordinates": {
-                    "x": well.x,
-                    "y": well.y,
-                },
-            },
-            "KbElevation": abs(well.z) if well.z else 0.0,
+        "MdUom": "m",
+        "StartMd": md_values[0] if md_values else 0.0,
+        "FinishMd": md_values[-1] if md_values else 0.0,
+        "Geometry": {
+            "$type": "resqml20.ParametricLineGeometry",
+            "controlPointParameters": md_values,
+            "controlPoints": control_points,
         },
-        "meta": {
-            "dataspace": f"maap/weco",
-            "dataset": dataset_name,
-            "wellCount": 1,
+    }
+
+
+def build_wellbore_frame(well, traj_uuid: str, md_values: list) -> dict:
+    """Build a WellboreFrameRepresentation (log sample grid) for RDDMS v2."""
+    return {
+        "$type": "resqml20.obj_WellboreFrameRepresentation",
+        "SchemaVersion": "2.0",
+        "Uuid": _uuid(),
+        "Citation": {
+            "$type": "eml20.Citation",
+            "Title": f"{well.name}_Logs",
+            "Originator": "WeCo Demo Ingestion",
+            "Creation": _now_iso(),
+            "Format": "WeCo RESQML Payload Generator",
+        },
+        "NodeMd": {
+            "Values": md_values,
+            "UOM": "m",
+        },
+        "RepresentedInterpretation": {
+            "$type": "eml20.DataObjectReference",
+            "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreTrajectoryRepresentation",
+            "UUID": traj_uuid,
+            "Title": well.name,
         },
     }
 
 
 def build_continuous_property(well, log_name: str, values: list,
-                              traj_uuid: str) -> dict:
-    """Build a ContinuousProperty JSON object for a well log."""
-    # Determine UOM from log name
+                              frame_uuid: str) -> dict:
+    """Build a ContinuousProperty for RDDMS v2."""
     uom_map = {
         "GR": "gAPI",
         "RT": "ohm.m",
@@ -126,82 +140,102 @@ def build_continuous_property(well, log_name: str, values: list,
     uom = uom_map.get(log_name.upper(), "unitless")
 
     return {
-        "schemaVersion": "1.0.0",
-        "kind": "resqml20:obj_ContinuousProperty",
-        "uuid": _uuid(),
-        "title": f"{well.name}_{log_name}",
-        "citation": {
-            "title": f"{log_name} for {well.name}",
-            "creation": _now_iso(),
-            "originator": "WeCo Demo Ingestion",
+        "$type": "resqml20.obj_ContinuousProperty",
+        "SchemaVersion": "2.0",
+        "Uuid": _uuid(),
+        "Citation": {
+            "$type": "eml20.Citation",
+            "Title": f"{well.name}_{log_name}",
+            "Originator": "WeCo Demo Ingestion",
+            "Creation": _now_iso(),
+            "Format": "WeCo RESQML Payload Generator",
         },
-        "data": {
-            "Name": log_name,
-            "WellboreName": well.name,
-            "Uom": uom,
-            "IndexableElement": "nodes",
-            "Count": len(values),
-            "Values": values,
-            "MinimumValue": min(values) if values else 0.0,
-            "MaximumValue": max(values) if values else 0.0,
-            "SupportingRepresentationUuid": traj_uuid,
+        "PropertyKind": {
+            "$type": "eml20.DataObjectReference",
+            "Title": log_name,
+        },
+        "UOM": uom,
+        "Count": 1,
+        "IndexableElement": "nodes",
+        "PatchOfValues": {
+            "Values": [float(v) for v in values],
+        },
+        "SupportingRepresentation": {
+            "$type": "eml20.DataObjectReference",
+            "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
+            "UUID": frame_uuid,
+            "Title": f"{well.name}_{log_name}",
         },
     }
 
 
 def build_discrete_property(well, region_name: str, values: list,
-                            traj_uuid: str, code_table: dict = None) -> dict:
-    """Build a DiscreteProperty JSON object for a well region."""
+                            frame_uuid: str, code_table: dict = None) -> dict:
+    """Build a DiscreteProperty for RDDMS v2."""
     int_values = [int(v) for v in values]
     obj = {
-        "schemaVersion": "1.0.0",
-        "kind": "resqml20:obj_DiscreteProperty",
-        "uuid": _uuid(),
-        "title": f"{well.name}_{region_name}",
-        "citation": {
-            "title": f"{region_name} for {well.name}",
-            "creation": _now_iso(),
-            "originator": "WeCo Demo Ingestion",
+        "$type": "resqml20.obj_DiscreteProperty",
+        "SchemaVersion": "2.0",
+        "Uuid": _uuid(),
+        "Citation": {
+            "$type": "eml20.Citation",
+            "Title": f"{well.name}_{region_name}",
+            "Originator": "WeCo Demo Ingestion",
+            "Creation": _now_iso(),
+            "Format": "WeCo RESQML Payload Generator",
         },
-        "data": {
-            "Name": region_name,
-            "WellboreName": well.name,
-            "IndexableElement": "intervals",
-            "Count": len(int_values),
+        "PropertyKind": {
+            "$type": "eml20.DataObjectReference",
+            "Title": region_name,
+        },
+        "Count": 1,
+        "IndexableElement": "cells",
+        "PatchOfValues": {
             "Values": int_values,
-            "SupportingRepresentationUuid": traj_uuid,
+        },
+        "SupportingRepresentation": {
+            "$type": "eml20.DataObjectReference",
+            "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
+            "UUID": frame_uuid,
+            "Title": f"{well.name}_{region_name}",
         },
     }
     if code_table:
-        obj["data"]["Lookup"] = code_table
+        obj["Lookup"] = code_table
     return obj
 
 
 def build_marker_frame(well, markers: dict, traj_uuid: str) -> dict:
-    """Build a WellboreMarkerFrameRepresentation from biozone markers."""
+    """Build a WellboreMarkerFrameRepresentation for RDDMS v2."""
     marker_list = []
     for name, depth in markers.items():
         marker_list.append({
-            "uuid": _uuid(),
-            "title": name,
-            "MarkerMd": depth,
+            "Uuid": _uuid(),
             "GeologicBoundaryKind": "horizon",
+            "Label": name,
         })
 
     return {
-        "schemaVersion": "1.0.0",
-        "kind": "resqml20:obj_WellboreMarkerFrameRepresentation",
-        "uuid": _uuid(),
-        "title": f"{well.name}_markers",
-        "citation": {
-            "title": f"Markers for {well.name}",
-            "creation": _now_iso(),
-            "originator": "WeCo Demo Ingestion",
+        "$type": "resqml20.obj_WellboreMarkerFrameRepresentation",
+        "SchemaVersion": "2.0",
+        "Uuid": _uuid(),
+        "Citation": {
+            "$type": "eml20.Citation",
+            "Title": f"{well.name}_markers",
+            "Originator": "WeCo Demo Ingestion",
+            "Creation": _now_iso(),
+            "Format": "WeCo RESQML Payload Generator",
         },
-        "data": {
-            "WellboreName": well.name,
-            "WellboreTrajectoryUuid": traj_uuid,
-            "Markers": marker_list,
+        "WellboreMarker": marker_list,
+        "NodeMd": {
+            "Values": [depth for _, depth in markers.items()],
+            "UOM": "m",
+        },
+        "RepresentedInterpretation": {
+            "$type": "eml20.DataObjectReference",
+            "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreTrajectoryRepresentation",
+            "UUID": traj_uuid,
+            "Title": well.name,
         },
     }
 
@@ -263,6 +297,7 @@ def process_dataset(dataset_name: str, output_dir: Path) -> dict:
 
     # Build trajectory payloads
     trajectories = []
+    frames = []
     all_logs = []
     all_regions = []
     all_markers = []
@@ -273,7 +308,14 @@ def process_dataset(dataset_name: str, output_dir: Path) -> dict:
     for w in wl.wells:
         traj = build_wellbore_trajectory(w, dataset_name)
         trajectories.append(traj)
-        traj_uuid = traj["uuid"]
+        traj_uuid = traj["Uuid"]
+
+        # Build sample grid (frame) — needed for log properties
+        depth = w.data.get("DEPTH") or w.data.get("Depth") or []
+        md_values = [float(v) for v in depth]
+        frame = build_wellbore_frame(w, traj_uuid, md_values)
+        frames.append(frame)
+        frame_uuid = frame["Uuid"]
 
         # Continuous logs
         for dname, dvals in w.data.items():
@@ -283,7 +325,7 @@ def process_dataset(dataset_name: str, output_dir: Path) -> dict:
                 continue  # discrete — handled below
             values = [float(v) for v in dvals]
             if values:
-                prop = build_continuous_property(w, dname, values, traj_uuid)
+                prop = build_continuous_property(w, dname, values, frame_uuid)
                 all_logs.append(prop)
 
         # Discrete regions
@@ -292,7 +334,7 @@ def process_dataset(dataset_name: str, output_dir: Path) -> dict:
                 values = list(w.data[rname])
                 code_table = w.data.get(f"_code_table_{rname}")
                 prop = build_discrete_property(
-                    w, rname, values, traj_uuid,
+                    w, rname, values, frame_uuid,
                     code_table=code_table if isinstance(code_table, dict) else None,
                 )
                 all_regions.append(prop)
@@ -300,9 +342,9 @@ def process_dataset(dataset_name: str, output_dir: Path) -> dict:
     # Write JSON payloads
     summary = {"dataset": dataset_name, "wells": len(trajectories)}
 
-    _write_json(out_dir / "wells.json", trajectories)
-    summary["well_objects"] = len(trajectories)
-    print(f"    → {len(trajectories)} trajectory objects → wells.json")
+    _write_json(out_dir / "wells.json", trajectories + frames)
+    summary["well_objects"] = len(trajectories) + len(frames)
+    print(f"    → {len(trajectories)} trajectories + {len(frames)} frames → wells.json")
 
     if all_logs:
         _write_json(out_dir / "logs.json", all_logs)

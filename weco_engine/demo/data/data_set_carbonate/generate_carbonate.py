@@ -215,3 +215,15 @@ if __name__ == "__main__":
     result = generate_carbonate(output_dir=out, seed=42)
     print(f"Generated {len(result['wells'])} carbonate wells, "
           f"{result['n_samples']} samples, {len(result['truth'])} horizons")
+
+    # Export JSON
+    import json, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(out), '..', '..'))
+    from weco.data import WellList
+    from weco.json_format import welllist_to_json
+    wl = WellList(os.path.join(out, "wells.txt"))
+    doc = welllist_to_json(wl)
+    json_path = os.path.join(out, "wells.weco.json")
+    with open(json_path, "w") as f:
+        json.dump(doc, f, indent=2)
+    print(f"Wrote: {json_path}")

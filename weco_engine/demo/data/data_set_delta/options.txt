@@ -1,7 +1,6 @@
 # Prograding delta correlation options
 # no-crossing SEQSTRAT ensures key parasequence boundaries
 # are honoured — the most geologically important surfaces.
-# min-dist forces genuinely different scenario outputs.
 cost-function=composite
 var-data=GR
 var-weight=0.6
