@@ -1229,7 +1229,10 @@ class DemoRunnerWindow(QMainWindow):
 
         self.tabs.addTab(export_widget, "RDDMS Export")
 
-        # Tab 5: Tools (presets, conditioning, export, sweep, etc.)
+        # Tab 5: Wheeler + Strat Column comparison
+        self._build_wheeler_tab()
+
+        # Tab 6: Tools (presets, conditioning, export, sweep, etc.)
         self._build_tools_tab()
 
         # Tab 6: Settings
@@ -1248,6 +1251,224 @@ class DemoRunnerWindow(QMainWindow):
         self._load_settings()
 
         self.statusBar().showMessage("Ready — select a dataset and click Run")
+
+    # ─── Wheeler + Strat Column Tab ───────────────────────────────────
+
+    def _build_wheeler_tab(self):
+        """Build the Wheeler Diagram + Strat Column comparison tab."""
+        from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem
+        from PyQt6.QtGui import QBrush, QColor, QPen
+        from PyQt6.QtCore import Qt
+
+        wheeler_widget = QWidget()
+        wheeler_layout = QVBoxLayout(wheeler_widget)
+        wheeler_layout.setContentsMargins(6, 6, 6, 6)
+
+        # Controls row
+        ctrl_row = QHBoxLayout()
+        self._wheeler_btn = QPushButton("Show Wheeler Diagram")
+        self._wheeler_btn.clicked.connect(self._draw_wheeler)
+        ctrl_row.addWidget(self._wheeler_btn)
+
+        self._strat_load_btn = QPushButton("Load Strat Column...")
+        self._strat_load_btn.clicked.connect(self._load_strat_column)
+        ctrl_row.addWidget(self._strat_load_btn)
+
+        self._strat_rddms_btn = QPushButton("Import from RDDMS")
+        self._strat_rddms_btn.clicked.connect(self._import_strat_rddms)
+        ctrl_row.addWidget(self._strat_rddms_btn)
+
+        self._wheeler_info = QLabel("")
+        ctrl_row.addWidget(self._wheeler_info)
+        ctrl_row.addStretch()
+        wheeler_layout.addLayout(ctrl_row)
+
+        # Graphics view for the diagram
+        self._wheeler_scene = QGraphicsScene()
+        self._wheeler_view = QGraphicsView(self._wheeler_scene)
+        self._wheeler_view.setMinimumHeight(300)
+        wheeler_layout.addWidget(self._wheeler_view)
+
+        # Completeness summary
+        self._wheeler_summary = QLabel("Run a correlation, then click 'Show Wheeler Diagram'.")
+        self._wheeler_summary.setWordWrap(True)
+        wheeler_layout.addWidget(self._wheeler_summary)
+
+        self._strat_column = None  # Loaded strat column object
+        self.tabs.addTab(wheeler_widget, "Wheeler")
+
+    def _load_strat_column(self):
+        """Load strat column from JSON file."""
+        from PyQt6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Stratigraphic Column", "", "JSON files (*.json);;All files (*)"
+        )
+        if not path:
+            return
+        try:
+            from weco.strat_column import StratColumn
+            col = StratColumn.from_json(path)
+            self._strat_column = col
+            self._wheeler_info.setText(f"Loaded: {col.name} ({col.unit_count} units)")
+            self.statusBar().showMessage(f"Strat column loaded: {col.name}")
+        except Exception as e:
+            self._wheeler_info.setText(f"Error: {e}")
+
+    def _import_strat_rddms(self):
+        """Import strat column from RDDMS using configured dataspace."""
+        try:
+            from weco.rddms import rddms_import_strat_column
+
+            # Get RDDMS URL and dataspace from Settings/Export tab
+            url = (self._rddms_url_edit.text().strip() or
+                   self._settings_rddms_url.text().strip())
+            dataspace = (self._rddms_dataspace_edit.text().strip() or
+                         self._settings_rddms_dataspace.text().strip() or
+                         "maap/weco")
+            token = getattr(self, '_rddms_token', '') or ''
+
+            if not url:
+                self._wheeler_info.setText("Set RDDMS URL in Settings or Export tab first")
+                return
+
+            self._wheeler_info.setText(f"Importing from {dataspace}...")
+            col = rddms_import_strat_column(url, token, dataspace)
+            if col and col.unit_count > 0:
+                self._strat_column = col
+                self._wheeler_info.setText(f"✓ {col.name} ({col.unit_count} units from {dataspace})")
+                self.statusBar().showMessage(f"Strat column imported: {col.name}")
+            else:
+                self._wheeler_info.setText(f"No strat column found in '{dataspace}'")
+        except ImportError as e:
+            self._wheeler_info.setText(f"RDDMS module not available: {e}")
+        except Exception as e:
+            self._wheeler_info.setText(f"Import error: {e}")
+
+    def _draw_wheeler(self):
+        """Render Wheeler diagram comparing correlation gaps with reference strat column."""
+        from PyQt6.QtGui import QBrush, QColor, QPen, QFont
+        from PyQt6.QtCore import Qt
+
+        if not hasattr(self, '_result_file') or self._result_file is None:
+            self._wheeler_info.setText("No results available — run a correlation first.")
+            return
+
+        try:
+            from weco.api import _extract_results, _wheeler_gap_analysis
+
+            result_idx = self._result_spin.value() - 1 if hasattr(self, '_result_spin') else 0
+            results = _extract_results(self._result_file, None, result_idx + 1)
+            if result_idx >= len(results):
+                self._wheeler_info.setText("Result index out of range")
+                return
+
+            result = results[result_idx]
+            well_names = [w.name for w in self._well_list.wells]
+            analysis = _wheeler_gap_analysis(result, well_names)
+
+            wells = analysis["wells"]
+            n_intervals = analysis["n_intervals"]
+            n_wells = len(well_names)
+
+            # Clear scene
+            self._wheeler_scene.clear()
+
+            # Layout constants
+            cell_w = 80
+            cell_h = max(6, min(20, 400 // max(n_intervals, 1)))
+            strat_col_w = 90 if self._strat_column else 0
+            x_offset = strat_col_w + 30
+            y_offset = 30
+
+            # ─── Draw strat column on the left ───
+            if self._strat_column:
+                units = []
+                for rank in self._strat_column.ranks:
+                    units.extend(rank.units)
+                n_units = len(units) if units else 1
+                unit_h = (n_intervals * cell_h) / n_units
+
+                # Header
+                txt = self._wheeler_scene.addText("Reference", QFont("sans-serif", 7, QFont.Weight.Bold))
+                txt.setPos(5, y_offset - 18)
+
+                for ui, u in enumerate(units):
+                    y = y_offset + ui * unit_h
+                    color = QColor(u.color_html) if u.color_html else QColor("#e0e0e0")
+                    rect = self._wheeler_scene.addRect(5, y, strat_col_w - 10, unit_h - 1,
+                                                       QPen(QColor("#9e9e9e"), 0.5), QBrush(color))
+                    # Unit label
+                    if unit_h > 10:
+                        label = u.name[:12] if len(u.name) > 12 else u.name
+                        lt = self._wheeler_scene.addText(label, QFont("sans-serif", 6))
+                        lt.setPos(7, y + 1)
+
+            # ─── Well headers ───
+            for wi, name in enumerate(well_names):
+                x = x_offset + wi * cell_w
+                ht = self._wheeler_scene.addText(name, QFont("sans-serif", 7, QFont.Weight.Bold))
+                ht.setPos(x + 5, y_offset - 18)
+
+            # ─── Gap/present grid ───
+            for wi, name in enumerate(well_names):
+                w = wells[name]
+                x = x_offset + wi * cell_w
+                gap_set = set(g["interval"] for g in w["gaps"])
+
+                for iv in range(n_intervals):
+                    y = y_offset + iv * cell_h
+                    is_gap = iv in gap_set
+
+                    if is_gap:
+                        fill_color = QColor("#fff3e0")
+                    elif self._strat_column:
+                        # Color by matching strat unit
+                        units_list = []
+                        for rank in self._strat_column.ranks:
+                            units_list.extend(rank.units)
+                        if units_list:
+                            ui = min(int(iv * len(units_list) / n_intervals), len(units_list) - 1)
+                            uc = units_list[ui].color_html
+                            fill_color = QColor(uc).lighter(140) if uc else QColor("#c8e6c9")
+                        else:
+                            fill_color = QColor("#c8e6c9")
+                    else:
+                        fill_color = QColor("#c8e6c9")
+
+                    self._wheeler_scene.addRect(x, y, cell_w - 2, cell_h - 1,
+                                                QPen(Qt.PenStyle.NoPen), QBrush(fill_color))
+
+                    if is_gap:
+                        # Diagonal stripe for gap
+                        pen = QPen(QColor("#ff9800"), 0.5)
+                        self._wheeler_scene.addLine(x + 1, y + cell_h - 1, x + cell_w - 3, y + 1, pen)
+
+                # Gap fraction at bottom
+                gf = w["gap_fraction"]
+                bottom_y = y_offset + n_intervals * cell_h + 5
+                color = "#e65100" if gf > 0.3 else "#2e7d32"
+                gt = self._wheeler_scene.addText(f"{gf*100:.0f}% gaps", QFont("sans-serif", 7))
+                gt.setDefaultTextColor(QColor(color))
+                gt.setPos(x + 5, bottom_y)
+
+                if self._strat_column:
+                    compl = (1 - gf) * 100
+                    ct = self._wheeler_scene.addText(f"{compl:.0f}% complete", QFont("sans-serif", 6))
+                    ct.setDefaultTextColor(QColor("#1565c0"))
+                    ct.setPos(x + 5, bottom_y + 12)
+
+            # Summary
+            total_gaps = sum(wells[n]["gap_fraction"] for n in well_names) / max(n_wells, 1)
+            summary = f"Solution #{result_idx+1} — {n_intervals} intervals, {n_wells} wells, avg gap fraction: {total_gaps*100:.1f}%"
+            if self._strat_column:
+                summary += f" | Strat ref: {self._strat_column.name} ({self._strat_column.unit_count} units)"
+            self._wheeler_summary.setText(summary)
+            self._wheeler_info.setText(f"Wheeler diagram rendered ({n_intervals}×{n_wells})")
+
+        except Exception as e:
+            self._wheeler_info.setText(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
 
     # ─── Tools Tab ─────────────────────────────────────────────────────
 
