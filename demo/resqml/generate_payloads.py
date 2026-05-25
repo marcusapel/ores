@@ -263,6 +263,48 @@ DATASETS = {
         "logs": ["GR", "RT"],
         "regions": [],
     },
+    "distality": {
+        "path": "demo/data/data_set_distality/wells.txt",
+        "title": "Distality Cost (Walther's Law)",
+        "logs": ["DISTAL"],
+        "regions": ["FACIES_1", "FACIES_2", "FACIES_3", "FACIES_4", "BIOZONES"],
+    },
+    "biozone_distality": {
+        "path": "demo/data/data_set_biozone_distality/wells.txt",
+        "title": "Biozone No-Crossing + Distality",
+        "logs": ["DISTAL"],
+        "regions": ["FACIES_1", "FACIES_2", "FACIES_3", "FACIES_4", "BIOZONES"],
+    },
+    "bryson": {
+        "path": "demo/data/data_set_bryson/wells.txt",
+        "title": "Bryson – Appalachian Basin",
+        "logs": ["MD"],
+        "regions": ["FACIES", "ZONE", "DISTALITY", "SEQSTRAT"],
+    },
+    "fluvial": {
+        "path": "demo/data/data_set_fluvial/wells.txt",
+        "title": "Fluvial – Channel Belt",
+        "logs": ["GR"],
+        "regions": ["FACIES"],
+    },
+    "delta": {
+        "path": "demo/data/data_set_delta/wells.txt",
+        "title": "Delta – Deltaic System",
+        "logs": ["GR", "DEN", "NPHI"],
+        "regions": ["FACIES", "SEQSTRAT"],
+    },
+    "sigrun": {
+        "path": "demo/data/data_set_sigrun/wells.txt",
+        "title": "Sigrun – North Sea",
+        "logs": ["GR", "NPHI"],
+        "regions": ["FACIES", "BIOZONE", "DISTALITY", "SEQUENCE"],
+    },
+    "troll": {
+        "path": "demo/data/data_set_troll/wells.txt",
+        "title": "Troll – North Sea",
+        "logs": ["MD"],
+        "regions": ["FACIES", "BIOZONE", "DISTALITY", "SEQUENCE"],
+    },
 }
 
 

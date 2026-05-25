@@ -21,7 +21,7 @@ on correlation results.
 
 ## Geological Context
 
-The same geological setting as data_set_3 (tide-dominated shallow marine),
+The same geological setting as data_set_distality (tide-dominated shallow marine),
 but focusing on **two wells** to study how facies grouping affects the
 distality cost function.
 

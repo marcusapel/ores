@@ -42,7 +42,7 @@ The outcome file stores the *n*-best well correlations simulated using the **var
 
 *N.b.*, *n* is given in the option file as a correlation setting.
 
-> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_1.1.bat***
+> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_variance_weights.bat***
 
 <hr>
 
@@ -67,7 +67,7 @@ The outcome file stores the *n*-best well correlations simulated using the **no-
 
 *N.b.*, *n* is given in the option file as a correlation setting.
 
-> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_1.2.bat***
+> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_no_crossing_regions.bat***
 
 <hr>
 
@@ -97,7 +97,7 @@ The outcome file stores the *n*-best well correlations simulated using the **dis
 
 *N.b.*, *n* is given in the option file as a correlation setting.
 
-> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_1.3.bat***
+> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_same_region.bat***
 
 <hr>
 
@@ -121,7 +121,7 @@ Along these five wells, the data are the sedimentary facies interpretation (**Fa
 List of options to simulate well correlations using the **multi-distal** correlation cost function (*i* corresponds to the input WeCo well file *wells_i.weco*).
 
 → The input parameters are:
-  - *multi-dist-distal* = .\data\data_set_1.4\multi_distal.txt
+  - *multi-dist-distal* = .\data\data_set_multi_distality\multi_distal.txt
   - *multi-dist-facies* = Facies
   - *multi-dist-scaling* = 1.0
 
@@ -131,7 +131,7 @@ The outcome file stores the *n*-best well correlations simulated using the **mul
 
 *N.b.*, *n* is given in the option file as a correlation setting.
 
-> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_1.4.bat***
+> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_multi_distality.bat***
 
 <hr>
 
@@ -160,8 +160,8 @@ List of options to simulate well correlations using the **3D Bezier** correlatio
   - *depth* = Depth
   - *dip* = Dip
   - *facies-b3d* = Facies
-<!--  - *dep-facies-file* = .\data\data_set_1.5\dep_facies.txt -->
-<!--  - *dep-profile-file* = .\data\data_set_1.5\dep_profile.txt -->
+<!--  - *dep-facies-file* = .\data\data_set_polarity_dip\dep_facies.txt -->
+<!--  - *dep-profile-file* = .\data\data_set_polarity_dip\dep_profile.txt -->
 
 > *outcome.txt*
 
@@ -169,7 +169,7 @@ The outcome file stores the *n*-best well correlations simulated using the **3D 
 
 *N.b.*, *n* is given in the option file as a correlation setting.
 
-> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_1.5.bat***
+> You can test this data set in the WeCo interface by double-clicking on ***test_data_set_polarity_dip.bat***
 
 <hr>
 
@@ -210,16 +210,16 @@ WeCo option files:
 
 * **option_2*i*.txt**: List of options to simulate well correlations using the **multi-distal** correlation cost function (*i* corresponds to the input WeCo well file **wells_*i*.txt**).  
 → The input parameters are:
-  - *multi-dist-distal* = .\data\data_set_3\multi_distal.txt
+  - *multi-dist-distal* = .\data\data_set_distality\multi_distal.txt
   - *multi-dist-facies* = Facies
   - *multi-dist-scaling* = 1.0
 
 WeCo outcome files:
 
-* [**outcome_1*i*.txt**](.\data_set_3): The outcome file stores the *n*-best well correlations simulated using the **distal** cost function (*i* corresponds to the input WeCo well file [**wells_*i*.txt**](.\data_set_3)).  
+* [**outcome_1*i*.txt**](.\data_set_distality): The outcome file stores the *n*-best well correlations simulated using the **distal** cost function (*i* corresponds to the input WeCo well file [**wells_*i*.txt**](.\data_set_distality)).  
 *N.b.*, *n* is given in the option file as a correlation setting.
 
-* [**outcome_2*i*.txt**](.\data_set_3): The outcome file stores the *n*-best well correlations simulated using the **multi-distal** cost function (*i* corresponds to the input WeCo well file [**wells_*i*.txt**](.\data_set_3)).  
+* [**outcome_2*i*.txt**](.\data_set_distality): The outcome file stores the *n*-best well correlations simulated using the **multi-distal** cost function (*i* corresponds to the input WeCo well file [**wells_*i*.txt**](.\data_set_distality)).  
 *N.b.*, *n* is given in the option file as a correlation setting.
 
 → Multiple geological scenarios validation by confronting stratigraphic well correlation simulations to biostratigraphic interpretations (Baville et al., *Annual RING Meeting*, 2022).
@@ -266,7 +266,7 @@ for full description.
 6 log curves, and coal seam correlation. See
 [data_set_coal/ReadMe.md](data_set_coal/ReadMe.md) for full description.
 
-**data_set_eage2024 — EAGE 2024 workshop**
+**data_set_hugin_tidal — EAGE 2024 workshop**
 
 Facies-based dataset used for the EAGE 2024 workshop demonstration.
 
@@ -290,6 +290,6 @@ WeCo option file:
 WeCo outcome file:
 * **outcome.txt**: The outcome file stores the *n*-best well correlations simulated using the **same-region** correlation cost function.  
 *N.b.*, *n* is given in the option file as a correlation setting.
-→ You can test this data set in the WeCo interface by double-clicking on ***test_data_set_1.3.bat***
+→ You can test this data set in the WeCo interface by double-clicking on ***test_data_set_same_region.bat***
 <hr>
 -->

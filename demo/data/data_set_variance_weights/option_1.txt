@@ -4,7 +4,7 @@ max-cor=10
 min-dist=0.000000
 nbr-cor=10
 out-dot=
-out-file=tmp/data_set_1.1/outcome_4.txt
+out-file=tmp/data_set_variance_weights/outcome_1.txt
 out-min-dist=0.000000
 out-nbr-cor=10
 step-dot=
@@ -15,6 +15,6 @@ cost-function=composite
 order=linear
 
 var-data=VarData1
-var-weight=0.70000
+var-weight=1.00000
 var-data2=VarData2
-var-weight2=0.30000
+var-weight2=0.00000

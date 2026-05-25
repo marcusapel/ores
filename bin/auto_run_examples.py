@@ -45,7 +45,7 @@ DATASETS = {
             "Five runs sweep the relative weight between the two properties.\n"
             "Demonstrates how changing var-weight steers the correlation."
         ),
-        "wells": DATA_DIR / "data_set_1.1" / "wells.txt",
+        "wells": DATA_DIR / "data_set_variance_weights" / "wells.txt",
         "runs": [
             {"name": "VarData1_only",  "opts": {"var_data": "VarData1", "var_weight": 1.0,
                                                  "var_data2": "VarData2", "var_weight2": 0.0}},
@@ -69,7 +69,7 @@ DATASETS = {
             "Adds no-crossing constraint on region 'NoCrossing' which forces\n"
             "correlation lines to respect zone ordering (e.g. stratigraphic units)."
         ),
-        "wells": DATA_DIR / "data_set_1.2" / "wells.txt",
+        "wells": DATA_DIR / "data_set_no_crossing_regions" / "wells.txt",
         "runs": [
             {"name": "with_no_crossing", "opts": {"var_data": "VarData1", "no_crossing": "NoCrossing"}},
         ],
@@ -86,7 +86,7 @@ DATASETS = {
             "to penalise inconsistent facies vs. distality relationships.\n"
             "Order = distality (sorts wells most-distal first)."
         ),
-        "wells": DATA_DIR / "data_set_3" / "wells.txt",
+        "wells": DATA_DIR / "data_set_distality" / "wells.txt",
         "runs": [
             {"name": "distality_facies1", "opts": {
                 "dist_distal": "DISTAL", "dist_facies": "FACIES_1", "dist_scaling": 1.0}},
@@ -103,7 +103,7 @@ DATASETS = {
             "which penalises gaps (where a marker in one well has no match).\n"
             "Higher gap cost forces more 1-to-1 matching; lower allows more gaps."
         ),
-        "wells": DATA_DIR / "data_set_4" / "wells.txt",
+        "wells": DATA_DIR / "data_set_biozone_distality" / "wells.txt",
         "runs": [
             {"name": "gap0_distality",    "opts": {"const_gap_cost": 0.0,
                                                      "dist_distal": "DISTAL", "dist_facies": "FACIES_1"}},
@@ -124,7 +124,7 @@ DATASETS = {
             "linear, pyramidal, inverse. Shows how task ordering affects\n"
             "the best correlation when wells are correlated in different sequences."
         ),
-        "wells": DATA_DIR / "data_set_1.1" / "wells.txt",
+        "wells": DATA_DIR / "data_set_variance_weights" / "wells.txt",
         "runs": [
             {"name": "order_linear",    "opts": {"order": "linear"}},
             {"name": "order_pyramidal", "opts": {"order": "pyramidal"}},

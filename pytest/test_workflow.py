@@ -15,8 +15,8 @@ from weco.workflow import CorrelationWorkflow, PRESETS, quick_correlate
 # Fixtures
 # ---------------------------------------------------------------------------
 
-DATA_1_1 = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_1.1", "wells.txt")
-OPT_1_1 = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_1.1", "option_1.txt")
+DATA_1_1 = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_variance_weights", "wells.txt")
+OPT_1_1 = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_variance_weights", "option_1.txt")
 
 
 @pytest.fixture

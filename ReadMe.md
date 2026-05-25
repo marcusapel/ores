@@ -48,7 +48,7 @@ docker run --rm -p 8000:8000 weco
 from weco.workflow import CorrelationWorkflow
 
 wf = (CorrelationWorkflow()
-      .import_wells("data/data_set_1.1/wells.txt")
+      .import_wells("data/data_set_variance_weights/wells.txt")
       .configure("simple")
       .run())
 
@@ -71,7 +71,7 @@ Includes 16 built-in demos across coal, fluvial, shallow marine, carbonate, and 
 ### Command Line
 
 ```bash
-WeCoRun -w data/data_set_1.1/wells.txt -o output/ --cost-function composite \
+WeCoRun -w data/data_set_variance_weights/wells.txt -o output/ --cost-function composite \
         --var-data GR --max-cor 30
 ```
 
@@ -139,10 +139,10 @@ WeCo includes 19 datasets in `data/`:
 
 | Dataset | Wells | Geology | Key Challenge |
 |---------|-------|---------|---------------|
-| `data_set_1.1`–`1.5` | 5 | Synthetic | Unit tests for individual cost functions |
-| `data_set_2` | 10 | Synthetic | Multi-well scaling |
-| `data_set_3` | 50 | Synthetic | Performance benchmark |
-| `data_set_4` | 150 | Synthetic | Large-scale stress test |
+| `data_set_variance_weights`–`1.5` | 5 | Synthetic | Unit tests for individual cost functions |
+| `data_set_gap_cost` | 10 | Synthetic | Multi-well scaling |
+| `data_set_distality` | 50 | Synthetic | Performance benchmark |
+| `data_set_biozone_distality` | 150 | Synthetic | Large-scale stress test |
 | `data_set_coal` | 10–30 | Coal basin | Cyclothems, seam splitting, marine bands |
 | `data_set_fluvial` | 20 | Fluvial | Channel stacking, avulsion |
 | `data_set_shallow_marine` | 20 | Shelf | Parasequences, flooding surfaces |
@@ -152,7 +152,7 @@ WeCo includes 19 datasets in `data/`:
 | `data_set_bryson` | 8 | Real (Appalachian) | Published reference correlation |
 | `data_set_sigrun` | 12 | Real (North Sea) | Biostratigraphic constraints |
 | `data_set_troll` | 10 | Real (North Sea) | Thick sand bodies |
-| `data_set_eage2024` | 8 | Real (LAS) | Conference demo dataset |
+| `data_set_hugin_tidal` | 8 | Real (LAS) | Conference demo dataset |
 
 ---
 

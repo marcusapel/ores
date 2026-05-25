@@ -114,7 +114,7 @@ DATASETS = {
             "Distality cost penalises correlating proximal facies\n"
             "with distal facies. Order = distality (most-distal first)."
         ),
-        "wells": DATA_DIR / "data_set_3" / "wells.txt",
+        "wells": DATA_DIR / "data_set_distality" / "wells.txt",
         "runs": [
             {"name": "Distality (FACIES_1)", "opts": {
                 "dist_distal": "DISTAL", "dist_facies": "FACIES_1", "dist_scaling": 1.0}},
@@ -131,7 +131,7 @@ DATASETS = {
             "Explores the effect of const-gap-cost which penalises gaps.\n"
             "Higher gap cost → more 1-to-1 matching; lower → allows hiatuses."
         ),
-        "wells": DATA_DIR / "data_set_4" / "wells.txt",
+        "wells": DATA_DIR / "data_set_biozone_distality" / "wells.txt",
         "runs": [
             {"name": "Gap cost = 0", "opts": {"const_gap_cost": 0.0,
                                               "dist_distal": "DISTAL", "dist_facies": "FACIES_1"}},

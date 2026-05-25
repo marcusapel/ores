@@ -59,11 +59,11 @@ Both GUIs load the same demo datasets from `demo/data/`:
 
 ```
 demo/data/
-├── data_set_1.1/    (3 wells — simple distality)
-├── data_set_1.5/    (4 wells — marker-only)
-├── data_set_2/      (5 wells — gap cost exploration)
-├── data_set_3/      (6 wells — coal basin cyclothems)
-├── data_set_4/      (2 wells — constrained crossing)
+├── data_set_variance_weights/    (3 wells — simple distality)
+├── data_set_polarity_dip/    (4 wells — marker-only)
+├── data_set_gap_cost/      (5 wells — gap cost exploration)
+├── data_set_distality/      (6 wells — coal basin cyclothems)
+├── data_set_biozone_distality/      (2 wells — constrained crossing)
 ├── data_set_bryson/ (7 wells — Appalachian biostratigraphy)
 ├── data_set_coal/   (30 wells — large coal deposit)
 ├── data_set_delta/  (8 wells — deltaic sequences)
@@ -77,7 +77,7 @@ demo/data/
 ```python
 DATASETS = {
     "1_distality": {
-        "title": "...", "wells": "demo/data/data_set_1.1/wells.txt",
+        "title": "...", "wells": "demo/data/data_set_variance_weights/wells.txt",
         "runs": [...], "common_opts": {...}, "ai": {...}
     },
     ...
@@ -339,8 +339,8 @@ Automated timing via `pytest/test_benchmark.py`:
 
 | Dataset | Wells | Engine (ms) | Total (ms) |
 |---------|------:|------------:|------------:|
-| data_set_1.1 | 3 | ~370 | ~370 |
-| data_set_4 | 2 | ~30 | ~31 |
+| data_set_variance_weights | 3 | ~370 | ~370 |
+| data_set_biozone_distality | 2 | ~30 | ~31 |
 | data_set_bryson | 7 | ~800 | ~800 |
 | data_set_delta | 8 | ~3000 | ~3000 |
 | data_set_shallow_marine | 10 | ~15000 | ~15000 |

@@ -52,8 +52,8 @@ Studio ships with demos covering the main WeCo constraint types:
 
 | # | Demo ID | Dataset | Wells | Constraints Demonstrated |
 |---|---------|---------|------:|--------------------------|
-| 1 | `ds3` | data_set_3 | 2 | **Distality cost** (Walther's Law facies-belt penalty) |
-| 2 | `ds4` | data_set_4 | 2 | **No-crossing** + distality (biozone datums lock order) |
+| 1 | `distality` | data_set_distality | 2 | **Distality cost** (Walther's Law facies-belt penalty) |
+| 2 | `biozone_distality` | data_set_biozone_distality | 2 | **No-crossing** + distality (biozone datums lock order) |
 | 3 | `coal` | data_set_coal | 10 | **Gap cost** + multi-log (DEN+GR) + tight band-width |
 | 4 | `quaternary` | data_set_quaternary | 20 | **Gap cost** + multi-log (GR+RT) + band-width |
 | 5 | `shallow_marine` | data_set_shallow_marine | 10 | **3-log variance** (GR+RHOB+DT) + gap cost + band-width |
@@ -212,7 +212,7 @@ plt.show()
 ### EAGE2024.ipynb — Jupyter Notebook
 
 Interactive notebook from the EAGE 2024 conference demo, using real LAS
-well data from `data/data_set_eage2024/`.
+well data from `data/data_set_hugin_tidal/`.
 
 ### High-Level Workflow API
 
@@ -238,12 +238,12 @@ All datasets live in `demo/data/`. Each folder contains:
 - `options.txt` — default engine parameters
 - `generate_*.py` — regeneration script (synthetic datasets)
 
-### Concept Datasets (data_set_3, data_set_4)
+### Concept Datasets (data_set_distality, data_set_biozone_distality)
 
 | Dataset | Wells | Purpose | Key Constraint |
 |---------|------:|---------|----------------|
-| **data_set_3** | 2 | Distality cost (Walther's Law) | `dist-distal`, `dist-facies`, `dist-scaling` |
-| **data_set_4** | 2 | Biozone no-crossing + distality | `no-crossing=BIOZONES` + distality |
+| **data_set_distality** | 2 | Distality cost (Walther's Law) | `dist-distal`, `dist-facies`, `dist-scaling` |
+| **data_set_biozone_distality** | 2 | Biozone no-crossing + distality | `no-crossing=BIOZONES` + distality |
 
 **Use these to learn how distality and no-crossing constraints work.**
 

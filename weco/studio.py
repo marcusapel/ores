@@ -151,10 +151,10 @@ OPTION_PRESETS = {
 
 DEMOS = [
     {
-        "id": "1.1",
+        "id": "variance_weights",
         "title": "Variance Weight Sweep",
         "group": "Basics",
-        "wells": "data_set_1.1/wells.txt",
+        "wells": "data_set_variance_weights/wells.txt",
         "description": (
             "3 synthetic wells with VarData1 & VarData2.\n"
             "Sweep var-weight between the two to see how\n"
@@ -169,10 +169,10 @@ DEMOS = [
         "editable_keys": ["var_weight", "var_weight2", "max_cor", "nbr_cor", "order"],
     },
     {
-        "id": "1.2",
+        "id": "no_crossing_regions",
         "title": "No-Crossing Constraint",
         "group": "Constraints",
-        "wells": "data_set_1.2/wells.txt",
+        "wells": "data_set_no_crossing_regions/wells.txt",
         "description": (
             "Same wells + a region 'NoCrossing' that enforces\n"
             "stratigraphic ordering. Correlation lines cannot\n"
@@ -186,10 +186,10 @@ DEMOS = [
         "editable_keys": ["var_data", "no_crossing", "max_cor", "order"],
     },
     {
-        "id": "3",
+        "id": "distality",
         "title": "Distality-Facies Cost",
         "group": "Advanced",
-        "wells": "data_set_3/wells.txt",
+        "wells": "data_set_distality/wells.txt",
         "description": (
             "2 real wells (A, B) with distality & facies.\n"
             "The distality cost penalises thickness ratios\n"
@@ -204,10 +204,10 @@ DEMOS = [
         "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
     },
     {
-        "id": "4",
+        "id": "biozone_distality",
         "title": "Gap Cost Exploration",
         "group": "Advanced",
-        "wells": "data_set_4/wells.txt",
+        "wells": "data_set_biozone_distality/wells.txt",
         "description": (
             "2 real wells. Vary const-gap-cost to control\n"
             "how the engine penalises stratigraphic gaps\n"
@@ -222,10 +222,10 @@ DEMOS = [
         "editable_keys": ["const_gap_cost", "dist_scaling", "max_cor", "nbr_cor", "order"],
     },
     {
-        "id": "5",
+        "id": "ordering_strategies",
         "title": "Ordering Strategies",
         "group": "Basics",
-        "wells": "data_set_1.1/wells.txt",
+        "wells": "data_set_variance_weights/wells.txt",
         "description": (
             "3 synthetic wells. Compare linear, pyramidal,\n"
             "and inverse ordering to see how merge order\n"
