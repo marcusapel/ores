@@ -3928,6 +3928,222 @@ def validate_sensitivity(req: SensitivityRequest):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  Anomaly Detection & Uncertainty Analysis
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AnomalyRequest(BaseModel):
+    """Detect anomalous correlation lines."""
+
+    well_file: str = Field(..., description="Path to well-list file.")
+    result_file: str = Field(..., description="Path to WeCo result file.")
+    cor_num: int = Field(0, ge=0, description="Result index to analyse.")
+    method: str = Field(
+        "isolation_forest",
+        description="Detection method: 'isolation_forest' or 'statistical'.",
+    )
+    contamination: float = Field(0.1, ge=0.01, le=0.5, description="Expected anomaly fraction.")
+    threshold: float = Field(2.5, description="Z-score threshold (for 'statistical' method).")
+
+
+class AnomalyFlag(BaseModel):
+    """One flagged correlation line."""
+
+    line_index: int
+    is_anomaly: bool
+    score: float = Field(description="Anomaly score (lower = more anomalous for IF).")
+    well_pair: Optional[str] = None
+
+
+class AnomalyResponse(BaseModel):
+    """Anomaly detection results."""
+
+    result_index: int
+    method: str
+    n_lines: int
+    n_anomalies: int
+    anomaly_fraction: float
+    flags: List[AnomalyFlag]
+    summary: str
+
+
+@app.post("/validate/anomaly", response_model=AnomalyResponse, tags=["validation"])
+def validate_anomaly(req: AnomalyRequest):
+    """Detect anomalous (suspicious) correlation lines using ML or statistics."""
+    if not os.path.isfile(req.well_file):
+        raise HTTPException(status_code=404, detail="Well file not found")
+    if not os.path.isfile(req.result_file):
+        raise HTTPException(status_code=404, detail="Result file not found")
+
+    try:
+        wl = _load_well_list(req.well_file)
+        from weco.data import ResFile
+        rf = ResFile(req.result_file)
+
+        n_results = rf.get_nbr_results()
+        if req.cor_num >= n_results:
+            raise HTTPException(status_code=400,
+                                detail=f"Result index {req.cor_num} out of range (have {n_results})")
+
+        method = req.method.lower().strip()
+        if method == "statistical":
+            from weco.ai.anomaly import StatisticalAnomalyDetector
+            det = StatisticalAnomalyDetector(threshold=req.threshold)
+        else:
+            from weco.ai.anomaly import CorrelationAnomalyDetector
+            det = CorrelationAnomalyDetector(contamination=req.contamination)
+
+        raw_flags = det.flag_anomalies(rf, wl, n_correlations=req.cor_num + 1)
+
+        flags = []
+        for i, f in enumerate(raw_flags):
+            flags.append(AnomalyFlag(
+                line_index=f.get("index", i),
+                is_anomaly=f.get("anomaly", False),
+                score=round(f.get("score", 0.0), 4),
+                well_pair=f.get("well_pair"),
+            ))
+
+        n_anomalies = sum(1 for f in flags if f.is_anomaly)
+        n_lines = len(flags)
+        frac = n_anomalies / max(n_lines, 1)
+
+        if n_anomalies == 0:
+            summary = "No anomalous lines detected — correlation appears consistent."
+        elif frac < 0.15:
+            summary = f"{n_anomalies} suspicious line(s) — minor issues, review flagged pairs."
+        else:
+            summary = f"{n_anomalies} anomalies ({frac:.0%}) — consider revising parameters."
+
+        return AnomalyResponse(
+            result_index=req.cor_num,
+            method=method,
+            n_lines=n_lines,
+            n_anomalies=n_anomalies,
+            anomaly_fraction=round(frac, 3),
+            flags=flags,
+            summary=summary,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UncertaintyRequest(BaseModel):
+    """Analyse correlation uncertainty from n-best ensemble."""
+
+    well_file: str = Field(..., description="Path to well-list file.")
+    result_file: str = Field(..., description="Path to WeCo result file.")
+    n_paths: Optional[int] = Field(None, description="Number of paths to consider (default: all).")
+    low_threshold: float = Field(0.5, description="Below this std = high confidence.")
+    high_threshold: float = Field(2.0, description="Above this std = low confidence.")
+
+
+class WellPairUncertainty(BaseModel):
+    """Per-well-pair uncertainty summary."""
+
+    well_a: str
+    well_b: str
+    mean_spread: float
+    max_spread: float
+    n_high_conf: int
+    n_low_conf: int
+
+
+class UncertaintyResponse(BaseModel):
+    """Uncertainty analysis results."""
+
+    n_paths_used: int
+    n_pairs: int
+    overall_mean_spread: float
+    overall_max_spread: float
+    high_confidence_fraction: float
+    low_confidence_fraction: float
+    pairs: List[WellPairUncertainty]
+    interpretation: str
+
+
+@app.post("/validate/uncertainty", response_model=UncertaintyResponse,
+          tags=["validation"])
+def validate_uncertainty(req: UncertaintyRequest):
+    """Analyse per-marker uncertainty from n-best ensemble spread."""
+    if not os.path.isfile(req.well_file):
+        raise HTTPException(status_code=404, detail="Well file not found")
+    if not os.path.isfile(req.result_file):
+        raise HTTPException(status_code=404, detail="Result file not found")
+
+    try:
+        wl = _load_well_list(req.well_file)
+        from weco.data import ResFile
+        rf = ResFile(req.result_file)
+
+        n_results = rf.get_nbr_results()
+        if n_results < 2:
+            raise HTTPException(status_code=400,
+                                detail="Need at least 2 results for uncertainty analysis.")
+
+        from weco.ai.uncertainty import CorrelationUncertainty
+        n_paths = req.n_paths or n_results
+
+        uncertainty_map = CorrelationUncertainty.from_n_best(rf, n_paths=n_paths)
+        confidence_map = CorrelationUncertainty.confidence_classification(
+            uncertainty_map,
+            low_threshold=req.low_threshold,
+            high_threshold=req.high_threshold,
+        )
+
+        pairs = []
+        all_spreads = []
+        total_high = 0
+        total_low = 0
+        total_markers = 0
+
+        for (wa, wb), spreads in uncertainty_map.items():
+            import numpy as np
+            ms = float(np.mean(spreads))
+            mx = float(np.max(spreads))
+            all_spreads.append(ms)
+            confs = confidence_map.get((wa, wb), np.array([]))
+            n_h = int(np.sum(confs == 3))
+            n_l = int(np.sum(confs == 1))
+            total_high += n_h
+            total_low += n_l
+            total_markers += len(confs)
+            pairs.append(WellPairUncertainty(
+                well_a=wa, well_b=wb,
+                mean_spread=round(ms, 3), max_spread=round(mx, 3),
+                n_high_conf=n_h, n_low_conf=n_l,
+            ))
+
+        overall_mean = sum(all_spreads) / max(len(all_spreads), 1)
+        overall_max = max(all_spreads) if all_spreads else 0.0
+        high_frac = total_high / max(total_markers, 1)
+        low_frac = total_low / max(total_markers, 1)
+
+        if high_frac >= 0.7:
+            interp = "High confidence — ensemble shows consistent tie positions."
+        elif low_frac >= 0.3:
+            interp = "Significant uncertainty — consider additional constraints or data."
+        else:
+            interp = "Moderate uncertainty — most markers are stable across realisations."
+
+        return UncertaintyResponse(
+            n_paths_used=min(n_paths, n_results),
+            n_pairs=len(pairs),
+            overall_mean_spread=round(overall_mean, 3),
+            overall_max_spread=round(overall_max, 3),
+            high_confidence_fraction=round(high_frac, 3),
+            low_confidence_fraction=round(low_frac, 3),
+            pairs=pairs,
+            interpretation=interp,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  Batch Demo Run
 # ═══════════════════════════════════════════════════════════════════════════
 
