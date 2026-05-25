@@ -1,6 +1,6 @@
 [
   {
-    "generated": "2026-05-24T21:40:06.294662+00:00",
+    "generated": "2026-05-25T11:31:28.077330+00:00",
     "generator": "demo/resqml/generate_payloads.py",
     "target_dataspace": "maap/weco",
     "datasets": {
@@ -24,6 +24,51 @@
         "well_objects": 40,
         "log_objects": 120,
         "region_objects": 20
+      },
+      "distality": {
+        "dataset": "distality",
+        "wells": 2,
+        "well_objects": 4,
+        "region_objects": 10
+      },
+      "biozone_distality": {
+        "dataset": "biozone_distality",
+        "wells": 2,
+        "well_objects": 4,
+        "region_objects": 10
+      },
+      "bryson": {
+        "dataset": "bryson",
+        "wells": 7,
+        "well_objects": 14,
+        "log_objects": 7,
+        "region_objects": 21
+      },
+      "fluvial": {
+        "dataset": "fluvial",
+        "wells": 20,
+        "well_objects": 40,
+        "log_objects": 20
+      },
+      "delta": {
+        "dataset": "delta",
+        "wells": 8,
+        "well_objects": 16,
+        "log_objects": 24
+      },
+      "sigrun": {
+        "dataset": "sigrun",
+        "wells": 6,
+        "well_objects": 12,
+        "log_objects": 18,
+        "region_objects": 24
+      },
+      "troll": {
+        "dataset": "troll",
+        "wells": 23,
+        "well_objects": 46,
+        "log_objects": 23,
+        "region_objects": 69
       }
     }
   }

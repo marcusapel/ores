@@ -1548,6 +1548,18 @@ def list_demos():
          "opts": {"var-data": "FACIES",
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.5, "out-min-dist": 0.25}},
+        # ── Real Data: Hugin Fm (EAGE 2024) ──────────────────────────
+        {"id": "hugin_tidal", "title": "Hugin Fm – Tidal Distality (Real Wells)",
+         "group": "Domain", "wells": "data_set_hugin_tidal/facies.wells.txt",
+         "geology": "shallow_marine",
+         "description": "2 real North Sea wells (Hugin Fm, Gudrun–Sigrun area). "
+                        "Tide-dominated shallow marine with interpreted facies. "
+                        "Demonstrates distality cost on real subsurface data — "
+                        "Walther's Law constrains lateral facies ordering.",
+         "opts": {"dist-distal": "DISTALITY", "dist-facies": "FACIES_1",
+                  "dist-scaling": 1.0, "order": "distality",
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                  "min-dist": 0.3, "out-min-dist": 0.15}},
     ]
     for d in _DEMO_CATALOGUE:
         wells_path = data_dir / d["wells"]
