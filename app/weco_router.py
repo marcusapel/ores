@@ -652,6 +652,74 @@ def weco_suggest_defaults(request: Request):
         return {"options": {}, "reasoning": {"error": str(e)}}
 
 
+@router.post("/suggest-preprocessing")
+def weco_suggest_preprocessing(request: Request):
+    """AI-driven preprocessing recommendation based on loaded wells."""
+    global _cached_well_list
+
+    if _cached_well_list is None:
+        return {"steps": {}, "environment": "unknown", "parameters": {}}
+
+    try:
+        from weco.decision_tree import recommend_preprocessing
+        rec = recommend_preprocessing(_cached_well_list)
+        return {
+            "environment": rec.environment,
+            "steps": {
+                "normalise": rec.normalise,
+                "vshale": rec.vshale,
+                "stacking_pattern": rec.stacking_pattern,
+                "electrofacies": rec.electrofacies,
+                "smooth": rec.smooth,
+                "log_qc": rec.log_qc,
+                "ai_facies": rec.ai_facies,
+            },
+            "parameters": {
+                "smooth_window": rec.smooth_window,
+                "electrofacies_k": rec.electrofacies_k,
+            },
+            "reasoning": rec.reasoning,
+        }
+    except Exception as e:
+        log.warning(f"Suggest preprocessing failed: {e}")
+        return {"steps": {}, "environment": "unknown", "parameters": {},
+                "reasoning": {"error": str(e)}}
+
+
+@router.post("/preprocess")
+async def weco_preprocess(request: Request):
+    """Apply preprocessing steps to loaded wells.
+
+    Body: { "steps": ["resample", "normalise", ...], "resample_interval": 1.0 }
+    """
+    global _cached_well_list
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    body = await request.json()
+    steps = body.get("steps", [])
+    resample_interval = body.get("resample_interval", 1.0)
+
+    try:
+        from weco.preprocessing import auto_preprocess
+        result = auto_preprocess(
+            _cached_well_list,
+            steps=steps,
+            resample_interval=resample_interval,
+        )
+        wells_plot_data = _build_wells_plot_data(_cached_well_list)
+        return {
+            "status": "ok",
+            "well_count": len(_cached_well_list.wells),
+            "applied": result.get("applied", steps),
+            "wells_plot_data": wells_plot_data,
+        }
+    except Exception as e:
+        log.warning(f"Preprocess failed: {e}")
+        raise HTTPException(500, f"Preprocessing failed: {e}")
+
+
 @router.get("/facies-dict/{region_name}")
 def weco_facies_dict(region_name: str):
     """Get auto-detected facies dictionary for a region channel.
@@ -949,6 +1017,15 @@ async def weco_run(req: WecoRunRequest, request: Request):
     try:
         from weco.api import _run_engine, _extract_results
         safe_opts = _apply_memory_guards(req.options, n_wells)
+        # Apply preprocessing steps if requested
+        pp_steps = safe_opts.pop("preprocessing", None)
+        if pp_steps and isinstance(pp_steps, list):
+            try:
+                from weco.preprocessing import auto_preprocess
+                auto_preprocess(wl, steps=pp_steps)
+                log.info(f"Preprocessing applied: {pp_steps}")
+            except Exception as pp_err:
+                log.warning(f"Preprocessing failed (continuing): {pp_err}")
         log.info(f"Running correlation: {n_wells} wells, options={safe_opts}, n_best={req.n_best}")
         rf, data, elapsed = _run_engine(wl, safe_opts)
         _cached_res_file = rf

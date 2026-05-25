@@ -248,6 +248,8 @@
     renderWellChips(names);
     dataNames.textContent = (data.data_names || []).join(', ') || '(none)';
     regionNames.textContent = (data.region_names || []).join(', ') || '(none)';
+    // Store well details for resampling check
+    if (data.wells_plot_data) wellDetails = data.wells_plot_data;
     populateDropdowns(data.data_names || [], data.region_names || []);
     populateLogSelectors(data.data_names || [], data.region_names || []);
     updateLogWellList(names);
@@ -335,7 +337,7 @@
   function populateDropdowns(dataLogs, regions) {
     const skip = new Set(['Depth', 'DEPTH', 'MD', 'X', 'Y', 'Z']);
     const usableLogs = dataLogs.filter(n => !skip.has(n));
-    const dataSelects = ['#p-var-data', '#p-var-data2'];
+    const dataSelects = ['#p-var-data', '#p-var-data2', '#p-var-data3', '#p-var-data4', '#p-var-data5'];
     const regionSelects = ['#p-no-crossing', '#p-same-region', '#p-polarity-region',
                            '#p-dist-distal', '#p-dist-facies'];
     dataSelects.forEach(sel => {
@@ -357,6 +359,8 @@
     }
     // Auto-suggest best parameters from the backend
     autoSuggest();
+    // Check for fine-scale data (resampling warning)
+    checkResampleWarning();
   }
 
   async function autoSuggest() {
@@ -366,6 +370,82 @@
         applyOptions(data.options);
       }
     } catch(e) { /* silent fallback to manual selection */ }
+  }
+
+  // ── Resampling warning ────────────────────────────────────────────
+  function checkResampleWarning() {
+    const warn = $('#resample-warning');
+    if (!warn || !wellDetails || !wellDetails.length) return;
+    // Check if any well has >300 samples or <0.5m spacing
+    let fineScale = false;
+    for (const w of wellDetails) {
+      const n = w.size || (w.depths && w.depths.length) || 0;
+      if (n > 300) { fineScale = true; break; }
+      if (w.depths && w.depths.length > 1) {
+        const spacing = (w.depths[w.depths.length - 1] - w.depths[0]) / (w.depths.length - 1);
+        if (spacing < 0.5) { fineScale = true; break; }
+      }
+    }
+    warn.style.display = fineScale ? 'block' : 'none';
+  }
+
+  // Resample button handler
+  const btnResample = $('#btn-resample');
+  if (btnResample) {
+    btnResample.addEventListener('click', async () => {
+      try {
+        btnResample.disabled = true;
+        btnResample.textContent = 'Resampling...';
+        const data = await api('POST', '/preprocess', { steps: ['resample'], resample_interval: 1.0 });
+        if (data.well_count) {
+          wellDetails = data.wells_plot_data || wellDetails;
+          const warn = $('#resample-warning');
+          if (warn) { warn.className = 'wc-status ok'; warn.innerHTML = '&#10003; Resampled to 1m interval.'; }
+        }
+      } catch(e) {
+        const warn = $('#resample-warning');
+        if (warn) { warn.className = 'wc-status err'; warn.textContent = 'Resample failed: ' + e.message; }
+      } finally {
+        btnResample.disabled = false;
+        btnResample.textContent = 'Resample (1m)';
+      }
+    });
+  }
+
+  // ── AI Preprocessing suggest ──────────────────────────────────────
+  const btnAiPreprocess = $('#btn-ai-preprocess');
+  const preprocessStatus = $('#preprocess-status');
+  if (btnAiPreprocess) {
+    btnAiPreprocess.addEventListener('click', async () => {
+      if (preprocessStatus) preprocessStatus.textContent = 'Analyzing...';
+      try {
+        const data = await api('POST', '/suggest-preprocessing');
+        if (data.steps) {
+          // Apply recommended steps to checkboxes
+          const ppMap = {
+            'normalise': '#pp-normalise', 'vshale': '#pp-vshale',
+            'stacking_pattern': '#pp-stacking', 'electrofacies': '#pp-electrofacies',
+            'smooth': '#pp-smooth', 'log_qc': '#pp-logqc',
+            'ai_facies': '#pp-ai-facies', 'anomaly': '#pp-anomaly',
+          };
+          for (const [k, sel] of Object.entries(ppMap)) {
+            const el = $(sel);
+            if (el) el.checked = !!data.steps[k];
+          }
+          if (data.parameters) {
+            const sw = $('#pp-smooth-window');
+            if (sw && data.parameters.smooth_window) sw.value = data.parameters.smooth_window;
+            const ek = $('#pp-efacies-k');
+            if (ek && data.parameters.electrofacies_k) ek.value = data.parameters.electrofacies_k;
+          }
+          if (preprocessStatus) preprocessStatus.textContent = `\u2713 ${data.environment || 'auto'}`;
+        } else {
+          if (preprocessStatus) preprocessStatus.textContent = 'No recommendations';
+        }
+      } catch(e) {
+        if (preprocessStatus) preprocessStatus.textContent = 'Failed';
+      }
+    });
   }
 
   // ── Demo datasets ─────────────────────────────────────────────────
@@ -598,11 +678,15 @@
     const map = {
       'var-data': '#p-var-data', 'var-weight': '#p-var-weight',
       'var-data2': '#p-var-data2', 'var-weight2': '#p-var-weight2',
+      'var-data3': '#p-var-data3', 'var-weight3': '#p-var-weight3',
+      'var-data4': '#p-var-data4', 'var-weight4': '#p-var-weight4',
+      'var-data5': '#p-var-data5', 'var-weight5': '#p-var-weight5',
       'no-crossing': '#p-no-crossing', 'same-region': '#p-same-region',
       'polarity-region': '#p-polarity-region',
       'const-gap-cost': '#p-gap-cost',
       'dist-distal': '#p-dist-distal', 'dist-facies': '#p-dist-facies',
       'band-width': '#p-band-width', 'max-cor': '#p-max-cor',
+      'order': '#p-order', 'hierarchical': '#p-hierarchical',
     };
     for (const [key, sel] of Object.entries(map)) {
       if (opts[key] !== undefined) {
@@ -767,6 +851,12 @@
     set('#p-var-weight', '');
     set('#p-var-data2', '');
     set('#p-var-weight2', '');
+    set('#p-var-data3', '');
+    set('#p-var-weight3', '');
+    set('#p-var-data4', '');
+    set('#p-var-weight4', '');
+    set('#p-var-data5', '');
+    set('#p-var-weight5', '');
     set('#p-no-crossing', '');
     set('#p-same-region', '');
     set('#p-gap-cost', '');
@@ -776,6 +866,10 @@
     set('#p-band-width', '');
     set('#p-max-cor', '');
     set('#p-n-best', '5');
+    set('#p-order', 'position');
+    set('#p-hierarchical', 'off');
+    // Reset preprocessing checkboxes
+    $$('#preprocess-checks input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     // Hide advanced fields (demo-specific applyOptionsToForm will re-show relevant ones)
     $$('.adv').forEach(el => { el.style.display = 'none'; });
     if (showAdv) showAdv.checked = false;
@@ -791,6 +885,11 @@
     // Secondary log
     set('#p-var-data2', opts['var-data2'] || '');
     set('#p-var-weight2', opts['var-weight2'] != null ? opts['var-weight2'] : '');
+    // Logs 3-5
+    for (const i of [3, 4, 5]) {
+      set(`#p-var-data${i}`, opts[`var-data${i}`] || '');
+      set(`#p-var-weight${i}`, opts[`var-weight${i}`] != null ? opts[`var-weight${i}`] : '');
+    }
     // Constraints
     set('#p-no-crossing', opts['no-crossing'] || '');
     set('#p-same-region', opts['same-region'] || '');
@@ -804,14 +903,32 @@
     set('#p-band-width', opts['band-width'] != null ? opts['band-width'] : '');
     set('#p-max-cor', opts['max-cor'] != null ? opts['max-cor'] : '');
     set('#p-n-best', opts['nbr-cor'] || opts['out-nbr-cor'] || 5);
+    // Merge order & hierarchical
+    set('#p-order', opts['order'] || 'position');
+    set('#p-hierarchical', opts['hierarchical'] || 'off');
 
     // Auto-reveal advanced fields if demo uses them
-    const hasAdvanced = opts['var-data2'] || opts['const-gap-cost'] ||
+    const hasAdvanced = opts['var-data2'] || opts['var-data3'] ||
+        opts['const-gap-cost'] ||
         opts['dist-distal'] || opts['dist-facies'] || opts['band-width'] ||
-        opts['polarity-region'];
+        opts['polarity-region'] || opts['hierarchical'];
     if (hasAdvanced) {
       $$('.adv').forEach(el => { el.style.display = ''; });
       if (showAdv) showAdv.checked = true;
+    }
+
+    // Preprocessing checkboxes
+    if (opts['preprocessing'] && Array.isArray(opts['preprocessing'])) {
+      const ppMap = {
+        'normalise': '#pp-normalise', 'vshale': '#pp-vshale',
+        'stacking_pattern': '#pp-stacking', 'electrofacies': '#pp-electrofacies',
+        'smooth': '#pp-smooth', 'log_qc': '#pp-logqc',
+        'ai_facies': '#pp-ai-facies', 'anomaly': '#pp-anomaly',
+      };
+      for (const [k, sel] of Object.entries(ppMap)) {
+        const el = $(sel);
+        if (el) el.checked = opts['preprocessing'].includes(k);
+      }
     }
   }
 
@@ -827,6 +944,14 @@
     if (val('#p-var-data2'))  opts['var-data2'] = val('#p-var-data2');
     const w2 = parseFloat(val('#p-var-weight2'));
     if (val('#p-var-data2') && !isNaN(w2)) opts['var-weight2'] = w2;
+    // Logs 3-5
+    for (const i of [3, 4, 5]) {
+      if (val(`#p-var-data${i}`)) {
+        opts[`var-data${i}`] = val(`#p-var-data${i}`);
+        const wi = parseFloat(val(`#p-var-weight${i}`));
+        if (!isNaN(wi)) opts[`var-weight${i}`] = wi;
+      }
+    }
     const gc = parseFloat(val('#p-gap-cost'));
     if (!isNaN(gc) && gc !== 0) opts['const-gap-cost'] = gc;
     if (val('#p-polarity-region'))  opts['polarity-region'] = val('#p-polarity-region');
@@ -836,6 +961,23 @@
     if (!isNaN(bw) && bw > 0) opts['band-width'] = bw;
     const mc = parseInt(val('#p-max-cor'));
     if (!isNaN(mc) && mc > 0 && mc !== 50) opts['max-cor'] = mc;
+    // Merge order
+    const order = val('#p-order');
+    if (order && order !== 'linear') opts['order'] = order;
+    // Hierarchical
+    const hier = val('#p-hierarchical');
+    if (hier && hier !== 'off') opts['hierarchical'] = hier;
+    // Preprocessing
+    const ppSteps = [];
+    if ($('#pp-normalise') && $('#pp-normalise').checked) ppSteps.push('normalise');
+    if ($('#pp-vshale') && $('#pp-vshale').checked) ppSteps.push('vshale');
+    if ($('#pp-stacking') && $('#pp-stacking').checked) ppSteps.push('stacking_pattern');
+    if ($('#pp-electrofacies') && $('#pp-electrofacies').checked) ppSteps.push('electrofacies');
+    if ($('#pp-smooth') && $('#pp-smooth').checked) ppSteps.push('smooth');
+    if ($('#pp-logqc') && $('#pp-logqc').checked) ppSteps.push('log_qc');
+    if ($('#pp-ai-facies') && $('#pp-ai-facies').checked) ppSteps.push('ai_facies');
+    if ($('#pp-anomaly') && $('#pp-anomaly').checked) ppSteps.push('anomaly');
+    if (ppSteps.length) opts['preprocessing'] = ppSteps;
 
     return opts;
   }

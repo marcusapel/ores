@@ -287,6 +287,34 @@
         <select id="p-var-data2" class="adv" style="display:none;" title="Second log curve (multi-log correlation)"><option value="">-- none --</option></select>
         <label for="p-var-weight2" class="adv" style="display:none;" title="Weight for second log curve.">Weight 2</label>
         <input id="p-var-weight2" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" title="Weight for second log curve" />
+        <label for="p-var-data3" class="adv" style="display:none;" title="Third log curve for multi-log correlation.">Log 3</label>
+        <select id="p-var-data3" class="adv" style="display:none;" title="Third log curve"><option value="">-- none --</option></select>
+        <label for="p-var-weight3" class="adv" style="display:none;" title="Weight for third log curve.">Weight 3</label>
+        <input id="p-var-weight3" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" title="Weight for log 3" />
+        <label for="p-var-data4" class="adv" style="display:none;" title="Fourth log curve for multi-log correlation.">Log 4</label>
+        <select id="p-var-data4" class="adv" style="display:none;" title="Fourth log curve"><option value="">-- none --</option></select>
+        <label for="p-var-weight4" class="adv" style="display:none;" title="Weight for fourth log curve.">Weight 4</label>
+        <input id="p-var-weight4" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" title="Weight for log 4" />
+        <label for="p-var-data5" class="adv" style="display:none;" title="Fifth log curve for multi-log correlation.">Log 5</label>
+        <select id="p-var-data5" class="adv" style="display:none;" title="Fifth log curve"><option value="">-- none --</option></select>
+        <label for="p-var-weight5" class="adv" style="display:none;" title="Weight for fifth log curve.">Weight 5</label>
+        <input id="p-var-weight5" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" title="Weight for log 5" />
+
+        <div class="row-section">Merge Order &amp; Mode</div>
+        <label for="p-order" title="Controls how wells are paired and merged. Linear: sequential L-R. Pyramidal: balanced tree. Position: spatial nearest-neighbour. Distality: Walther's Law ordering. Inverse: reverse of linear.">Merge Order</label>
+        <select id="p-order" title="Well merge ordering strategy">
+          <option value="linear">Linear (sequential)</option>
+          <option value="pyramidal">Pyramidal (balanced)</option>
+          <option value="position" selected>Position (spatial)</option>
+          <option value="distality">Distality (Walther's Law)</option>
+          <option value="inverse">Inverse</option>
+        </select>
+        <label for="p-hierarchical" class="adv" style="display:none;" title="Hierarchical multi-scale correlation: Off = single pass, Auto = automatic scale detection, Manual = user-defined scales.">Hierarchical</label>
+        <select id="p-hierarchical" class="adv" style="display:none;" title="Multi-scale correlation mode">
+          <option value="off" selected>Off</option>
+          <option value="auto">Auto (detect scales)</option>
+          <option value="manual">Manual</option>
+        </select>
 
         <div class="row-section">Constraints</div>
         <label for="p-no-crossing" title="Region name for no-crossing constraint. Correlation lines cannot cross boundaries of this region. Useful for biozones, sequence boundaries, dated markers.">No-Crossing Region</label>
@@ -313,6 +341,35 @@
         <div class="row-section">Output</div>
         <label for="p-n-best" title="Number of k-best results to return. Multiple results capture geological uncertainty. 5–20 for exploration, 1 for production.">N-Best Results</label>
         <input id="p-n-best" type="number" value="5" min="1" max="100" title="k-best results (captures geological uncertainty)" />
+      </div>
+    </section>
+
+    <!-- Data Conditioning / Preprocessing -->
+    <section class="wc-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+        <h3 style="margin:0;">Data Conditioning</h3>
+        <div style="display:flex; gap:.5rem; align-items:center;">
+          <button class="btn btn-outline btn-sm" id="btn-ai-preprocess">AI Suggest</button>
+          <span id="preprocess-status" class="muted" style="font-size:12px;"></span>
+        </div>
+      </div>
+      <div id="resample-warning" class="wc-status warn" style="display:none;">
+        &#9888; Fine-scale data detected (&gt;300 samples or &lt;0.5m spacing). Consider resampling for performance — correlation cost is O(n&sup2;).
+        <button class="btn btn-sm btn-outline" id="btn-resample" style="margin-left:.5rem;">Resample (1m)</button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:.3rem .8rem; font-size:12.5px;" id="preprocess-checks">
+        <label title="Normalise log curves to [0,1] range. Removes absolute magnitude differences between wells."><input type="checkbox" id="pp-normalise" /> Normalise</label>
+        <label title="Compute V-Shale (gamma-ray index). Converts GR to clay volume — useful for clastic sections."><input type="checkbox" id="pp-vshale" /> V-Shale</label>
+        <label title="Compute stacking pattern (GR derivative). Detects fining-up / coarsening-up trends."><input type="checkbox" id="pp-stacking" /> Stacking Pattern</label>
+        <label title="K-Means electrofacies clustering. Groups log responses into discrete facies classes."><input type="checkbox" id="pp-electrofacies" /> Electrofacies</label>
+        <label title="Moving-average smoothing. Reduces noise while preserving trends."><input type="checkbox" id="pp-smooth" /> Smooth</label>
+        <label title="Log quality control: detect washouts, bad hole, spike removal."><input type="checkbox" id="pp-logqc" /> Log QC</label>
+        <label title="AI facies prediction using gradient-boosted machine learning on multi-log input."><input type="checkbox" id="pp-ai-facies" /> AI Facies (GBM)</label>
+        <label title="Statistical anomaly detection — flags outlier intervals."><input type="checkbox" id="pp-anomaly" /> Anomaly Detection</label>
+      </div>
+      <div class="adv" style="display:none; margin-top:.4rem; font-size:12px; color:#605e5c;">
+        <span>Smooth window: <input id="pp-smooth-window" type="number" value="5" min="1" max="50" style="width:50px; font-size:12px;" /></span>
+        <span style="margin-left:.8rem;">Electrofacies K: <input id="pp-efacies-k" type="number" value="4" min="2" max="12" style="width:50px; font-size:12px;" /></span>
       </div>
     </section>
   </div>
