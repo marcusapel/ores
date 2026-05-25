@@ -338,6 +338,12 @@
         <label for="p-max-cor" class="adv" style="display:none;" title="Maximum correlation lines allowed. Safety cap for memory. 100–500 typical.">Max Correlations</label>
         <input id="p-max-cor" class="adv" style="display:none;" type="number" value="50" min="1" max="200" title="Max correlation lines (memory safety cap)" />
 
+        <div class="row-section adv" style="display:none;">Seismic Tiles Constraint</div>
+        <label for="p-seistiles-path" class="adv" style="display:none;" title="Path to seismic tiles directory on server. Enables seismic-guided correlation that uses horizon picks from seismic as soft constraints.">Tiles Path</label>
+        <input id="p-seistiles-path" class="adv" style="display:none;" type="text" placeholder="/data/seismic/tiles/" title="Server path to seismic tiles directory" />
+        <label for="p-seistiles-weight" class="adv" style="display:none;" title="Weight of seismic constraint relative to well-log cost. 0=ignore, 1=equal, 2=double weight.">Seis Weight</label>
+        <input id="p-seistiles-weight" class="adv" style="display:none;" type="number" value="1.0" step="0.1" min="0" max="10" title="Seismic constraint weight (0=off, 1=equal)" />
+
         <div class="row-section">Output</div>
         <label for="p-n-best" title="Number of k-best results to return. Multiple results capture geological uncertainty. 5–20 for exploration, 1 for production.">N-Best Results</label>
         <input id="p-n-best" type="number" value="5" min="1" max="100" title="k-best results (captures geological uncertainty)" />
@@ -382,6 +388,11 @@
       <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
         <button class="btn btn-run" id="btn-run" disabled>&#9654; Run Correlation</button>
         <button class="btn btn-sm" id="btn-quick-run" disabled style="background:#0078d4;border-color:#0078d4;color:#fff;font-weight:600;">&#9889; Quick Run</button>
+        <button class="btn btn-sm btn-outline" id="btn-import-strat" title="Import stratigraphic column from RDDMS for Wheeler diagram and constraint">&#128200; Import Strat Col</button>
+        <select id="strat-col-select" style="font-size:11px; max-width:200px; display:none;" title="Select a specific strat column from RDDMS">
+          <option value="">-- auto (all units) --</option>
+        </select>
+        <span id="strat-col-status" style="font-size:11px; color:#605e5c;"></span>
         <span id="run-spinner" style="display:none; font-size:13px;">&#9203; Running...</span>
       </div>
       <div id="quick-run-info" style="display:none; margin-top:.4rem; font-size:12px; color:#605e5c; background:#f3f2f1; border-radius:4px; padding:6px 10px;">
@@ -402,6 +413,24 @@
       <div style="margin-top:.5rem;">
         <div style="font-weight:600; font-size:12.5px; margin-bottom:.2rem;">Engine Log</div>
         <div class="engine-log" id="engine-log" role="log" aria-label="Engine output log" aria-live="polite">Waiting for run...</div>
+      </div>
+      <!-- Parameter Sweep -->
+      <div style="margin-top:.75rem; padding-top:.5rem; border-top:1px solid #eee;">
+        <div style="font-weight:600; font-size:12.5px; margin-bottom:.4rem;">Parameter Sweep</div>
+        <div style="display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; font-size:12px;">
+          <select id="sweep-param" style="font-size:12px; padding:2px 4px;">
+            <option value="const-gap-cost">Gap Cost</option>
+            <option value="band-width">Band Width</option>
+            <option value="var-weight">Primary Weight</option>
+            <option value="max-cor">Max Correlations</option>
+          </select>
+          <label>From: <input id="sweep-from" type="number" value="0" step="0.5" style="width:55px; font-size:12px;"></label>
+          <label>To: <input id="sweep-to" type="number" value="8" step="0.5" style="width:55px; font-size:12px;"></label>
+          <label>Steps: <input id="sweep-steps" type="number" value="5" min="3" max="20" style="width:40px; font-size:12px;"></label>
+          <button class="btn btn-outline btn-sm" id="btn-sweep">Sweep</button>
+          <button class="btn btn-outline btn-sm" id="btn-sensitivity">Sensitivity</button>
+        </div>
+        <div id="sweep-results" style="font-size:11px; font-family:monospace; margin-top:.3rem; max-height:80px; overflow-y:auto;"></div>
       </div>
     </section>
   </div>
@@ -429,6 +458,7 @@
             <label style="font-size:12.5px; font-weight:500; white-space:nowrap;">View:</label>
             <button class="btn btn-sm btn-outline" id="btn-view-plot">Correlation Plot</button>
             <button class="btn btn-sm btn-outline" id="btn-view-composite">Composite (3)</button>
+            <button class="btn btn-sm btn-outline" id="btn-view-wheeler">Wheeler</button>
             <button class="btn btn-sm btn-outline" id="btn-view-table">Table</button>
           </span>
         </div>
@@ -454,6 +484,12 @@
             <div style="border:1px solid #e1dfdd; border-radius:4px; overflow:hidden; background:#fff;">
               <canvas id="comp-canvas-2" style="display:block; width:100%; height:320px;" role="img" aria-label="Composite view: solution 3"></canvas>
             </div>
+          </div>
+        </div>
+        <!-- Wheeler diagram view -->
+        <div id="results-wheeler" style="margin-bottom:.5rem; display:none;">
+          <div style="border:1px solid #e1dfdd; border-radius:4px; overflow-x:auto; background:#fff; padding:8px;">
+            <canvas id="wheeler-canvas" style="display:block; width:100%; height:320px;" role="img" aria-label="Wheeler gap diagram showing stratigraphic presence and absence"></canvas>
           </div>
         </div>
         <!-- Table view -->

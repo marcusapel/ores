@@ -628,16 +628,60 @@
       ctx.font = '10px sans-serif';
       ctx.fillText(dMin.toFixed(1), 2, margin.top + 10);
       ctx.fillText(dMax.toFixed(1), 2, margin.top + h);
-      ctx.fillText(vMin.toFixed(1), margin.left, margin.top + h + 14);
-      ctx.fillText(vMax.toFixed(1), margin.left + w - 20, margin.top + h + 14);
+
+      // Use log-specific styling
+      const previewStyle = typeof getLogStyle === 'function' ? getLogStyle(channel) : null;
+      const curveColor = previewStyle ? previewStyle.color : '#0078d4';
+      const unit = previewStyle && previewStyle.unit ? previewStyle.unit : '';
+
+      // Scale labels
+      ctx.fillText(`${vMin.toFixed(1)}${unit ? ' ' + unit : ''}`, margin.left, margin.top + h + 14);
+      ctx.fillText(`${vMax.toFixed(1)}${unit ? ' ' + unit : ''}`, margin.left + w - 40, margin.top + h + 14);
+
+      // Grid lines
+      ctx.strokeStyle = '#f0eeec';
+      ctx.lineWidth = 0.4;
+      for (let g = 1; g <= 4; g++) {
+        const gx = margin.left + (g / 5) * w;
+        ctx.beginPath(); ctx.moveTo(gx, margin.top); ctx.lineTo(gx, margin.top + h); ctx.stroke();
+      }
+      for (let g = 1; g <= 4; g++) {
+        const gy = margin.top + (g / 5) * h;
+        ctx.beginPath(); ctx.moveTo(margin.left, gy); ctx.lineTo(margin.left + w, gy); ctx.stroke();
+      }
+
+      // Fill behind curve (CPI-style)
+      if (previewStyle && previewStyle.fill && previewStyle.fillAlpha > 0) {
+        const fillEdge = previewStyle.fill === 'right' ? margin.left + w : margin.left;
+        ctx.globalAlpha = previewStyle.fillAlpha * 1.5; // slightly more visible in single preview
+        ctx.fillStyle = curveColor;
+        ctx.beginPath();
+        let inPath = false;
+        for (let i = 0; i < values.length; i++) {
+          if (values[i] === null || !isFinite(values[i])) {
+            if (inPath) { ctx.lineTo(fillEdge, margin.top + ((i-1) / (values.length - 1 || 1)) * h); ctx.closePath(); ctx.fill(); ctx.beginPath(); inPath = false; }
+            continue;
+          }
+          const x = margin.left + ((values[i] - vMin) / (vMax - vMin || 1)) * w;
+          const y = margin.top + ((i) / (values.length - 1 || 1)) * h;
+          if (!inPath) { ctx.moveTo(fillEdge, y); inPath = true; }
+          ctx.lineTo(x, y);
+        }
+        if (inPath) {
+          const lastIdx = values.length - 1;
+          ctx.lineTo(fillEdge, margin.top + h);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+      }
 
       // Draw curve (depth on Y-axis, value on X-axis)
-      ctx.strokeStyle = '#0078d4';
+      ctx.strokeStyle = curveColor;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       let started = false;
       for (let i = 0; i < values.length; i++) {
-        if (values[i] === null || !isFinite(values[i])) continue;
+        if (values[i] === null || !isFinite(values[i])) { started = false; continue; }
         const x = margin.left + ((values[i] - vMin) / (vMax - vMin || 1)) * w;
         const y = margin.top + ((i) / (values.length - 1 || 1)) * h;
         if (!started) { ctx.moveTo(x, y); started = true; }
@@ -978,6 +1022,14 @@
     if ($('#pp-ai-facies') && $('#pp-ai-facies').checked) ppSteps.push('ai_facies');
     if ($('#pp-anomaly') && $('#pp-anomaly').checked) ppSteps.push('anomaly');
     if (ppSteps.length) opts['preprocessing'] = ppSteps;
+
+    // Seismic tiles constraint
+    const seisPath = val('#p-seistiles-path');
+    if (seisPath) {
+      opts['seistiles'] = seisPath;
+      const sw = parseFloat(val('#p-seistiles-weight'));
+      if (!isNaN(sw) && sw !== 1.0) opts['seis-weight'] = sw;
+    }
 
     return opts;
   }
@@ -1611,8 +1663,39 @@
       '#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f'
     ];
 
-    // Log trace colors for continuous logs
+    // Professional CPI log styling (color, fill direction, typical scale)
+    const logStyleMap = {
+      'GR':    { color: '#2ca02c', fill: 'right', fillAlpha: 0.12, typicalMin: 0, typicalMax: 150, unit: 'API' },
+      'SGR':   { color: '#2ca02c', fill: 'right', fillAlpha: 0.12, typicalMin: 0, typicalMax: 150, unit: 'API' },
+      'RT':    { color: '#d62728', fill: null, fillAlpha: 0, logScale: true, typicalMin: 0.2, typicalMax: 2000, unit: 'Ωm' },
+      'RDEEP': { color: '#d62728', fill: null, fillAlpha: 0, logScale: true, typicalMin: 0.2, typicalMax: 2000, unit: 'Ωm' },
+      'RSHAL': { color: '#ff7f0e', fill: null, fillAlpha: 0, logScale: true, typicalMin: 0.2, typicalMax: 2000, unit: 'Ωm' },
+      'RES':   { color: '#d62728', fill: null, fillAlpha: 0, logScale: true, typicalMin: 0.2, typicalMax: 2000, unit: 'Ωm' },
+      'DEN':   { color: '#1f77b4', fill: 'left', fillAlpha: 0.10, typicalMin: 1.95, typicalMax: 2.95, unit: 'g/cc' },
+      'RHOB':  { color: '#1f77b4', fill: 'left', fillAlpha: 0.10, typicalMin: 1.95, typicalMax: 2.95, unit: 'g/cc' },
+      'NEU':   { color: '#7f7f7f', fill: null, fillAlpha: 0, typicalMin: -0.05, typicalMax: 0.45, unit: 'v/v' },
+      'NPHI':  { color: '#7f7f7f', fill: null, fillAlpha: 0, typicalMin: -0.05, typicalMax: 0.45, unit: 'v/v' },
+      'CAL':   { color: '#9467bd', fill: null, fillAlpha: 0, typicalMin: 6, typicalMax: 16, unit: 'in' },
+      'SON':   { color: '#bcbd22', fill: null, fillAlpha: 0, typicalMin: 40, typicalMax: 140, unit: 'µs/ft' },
+      'DT':    { color: '#bcbd22', fill: null, fillAlpha: 0, typicalMin: 40, typicalMax: 140, unit: 'µs/ft' },
+      'SP':    { color: '#8c564b', fill: null, fillAlpha: 0, typicalMin: -100, typicalMax: 50, unit: 'mV' },
+      'SPT':   { color: '#8c564b', fill: null, fillAlpha: 0, typicalMin: 0, typicalMax: 200, unit: '' },
+      'COND':  { color: '#ff7f0e', fill: null, fillAlpha: 0, typicalMin: 0, typicalMax: 5000, unit: 'mS/m' },
+      'MS':    { color: '#e377c2', fill: null, fillAlpha: 0, typicalMin: 0, typicalMax: 100, unit: 'SI×10⁻⁵' },
+      'WC':    { color: '#17becf', fill: 'right', fillAlpha: 0.08, typicalMin: 0, typicalMax: 100, unit: '%' },
+    };
+    // Fallback colors when log name not in map
     const logColors = ['#1565c0', '#c62828', '#2e7d32', '#6a1b9a', '#e65100', '#00695c', '#bf360c'];
+
+    function getLogStyle(lname) {
+      // Try exact match first, then case-insensitive prefix match
+      if (logStyleMap[lname]) return logStyleMap[lname];
+      const up = lname.toUpperCase();
+      for (const [key, style] of Object.entries(logStyleMap)) {
+        if (up.startsWith(key) || up.includes(key)) return style;
+      }
+      return null;
+    }
 
     // ── Draw each well ──────────────────────────────────────────────
     for (let i = 0; i < nWells; i++) {
@@ -1742,18 +1825,33 @@
           continue;
         }
 
-        // Compute value range (1st-99th percentile)
-        const valid = logVals.filter(v => v != null);
+        // Get professional style for this log type
+        const lstyle = getLogStyle(lname);
+        const lcolor = lstyle ? lstyle.color : logColors[ci % logColors.length];
+
+        // Compute value range (1st-99th percentile, or use typical scale)
+        const valid = logVals.filter(v => v != null && isFinite(v));
         if (valid.length === 0) continue;
         valid.sort((a, b) => a - b);
         let lMin = valid[Math.floor(valid.length * 0.01)];
         let lMax = valid[Math.floor(valid.length * 0.99)];
+        // Use typical scale if data is within expected range
+        if (lstyle && lstyle.typicalMin != null) {
+          const dataRange = lMax - lMin;
+          const typRange = lstyle.typicalMax - lstyle.typicalMin;
+          // If data is within 2x of typical, use typical scale for consistency
+          if (dataRange > 0 && dataRange < typRange * 3 &&
+              lMin >= lstyle.typicalMin - typRange * 0.5 &&
+              lMax <= lstyle.typicalMax + typRange * 0.5) {
+            lMin = lstyle.typicalMin;
+            lMax = lstyle.typicalMax;
+          }
+        }
         if (lMax === lMin) lMax = lMin + 1;
 
         // Log-scale for resistivity-type logs
-        const useLogScale = corrPlotConfig.logScaleLogs.some(
-          n => lname.toUpperCase().includes(n)
-        ) && lMin > 0;
+        const useLogScale = (lstyle && lstyle.logScale) ||
+          (corrPlotConfig.logScaleLogs.some(n => lname.toUpperCase().includes(n)) && lMin > 0);
         let logMin, logMax;
         if (useLogScale) {
           logMin = Math.log10(Math.max(lMin, 0.001));
@@ -1764,18 +1862,25 @@
         // Track background (subtle)
         ctx.fillStyle = '#fafafa';
         ctx.fillRect(ctrack.x, y0, ctrack.w, y1 - y0);
-        ctx.strokeStyle = '#e0e0e0';
+        ctx.strokeStyle = '#e8e6e4';
         ctx.lineWidth = 0.3;
         ctx.strokeRect(ctrack.x, y0, ctrack.w, y1 - y0);
 
-        // Draw log trace
-        const lcolor = logColors[ci % logColors.length];
-        ctx.beginPath();
-        ctx.strokeStyle = lcolor;
-        ctx.lineWidth = 1.2;
-        let started = false;
+        // Faint grid lines (3 vertical divisions)
+        ctx.strokeStyle = '#f0eeec';
+        ctx.lineWidth = 0.3;
+        for (let g = 1; g <= 3; g++) {
+          const gx = ctrack.x + (g / 4) * ctrack.w;
+          ctx.beginPath();
+          ctx.moveTo(gx, y0);
+          ctx.lineTo(gx, y1);
+          ctx.stroke();
+        }
+
+        // Build points array for trace + fill
+        const points = [];
         for (let s = 0; s < (wd.size || logVals.length) && s < logVals.length; s++) {
-          if (logVals[s] == null) { started = false; continue; }
+          if (logVals[s] == null || !isFinite(logVals[s])) { points.push(null); continue; }
           const y = depthToY(depth ? depth[s] : s, i);
           let normV;
           if (useLogScale && logVals[s] > 0) {
@@ -1784,16 +1889,59 @@
             normV = Math.max(0, Math.min(1, (logVals[s] - lMin) / (lMax - lMin)));
           }
           const x = ctrack.x + normV * ctrack.w;
-          if (!started) { ctx.moveTo(x, y); started = true; }
-          else ctx.lineTo(x, y);
+          points.push({ x, y, normV });
+        }
+
+        // Draw fill (CPI-style shading behind the curve)
+        if (lstyle && lstyle.fill && lstyle.fillAlpha > 0) {
+          ctx.globalAlpha = lstyle.fillAlpha;
+          ctx.fillStyle = lcolor;
+          ctx.beginPath();
+          let inPath = false;
+          const fillEdge = lstyle.fill === 'right' ? ctrack.x + ctrack.w : ctrack.x;
+          for (let p = 0; p < points.length; p++) {
+            if (!points[p]) { 
+              if (inPath) { ctx.lineTo(fillEdge, points[p-1].y); ctx.closePath(); ctx.fill(); ctx.beginPath(); inPath = false; }
+              continue;
+            }
+            if (!inPath) { ctx.moveTo(fillEdge, points[p].y); inPath = true; }
+            ctx.lineTo(points[p].x, points[p].y);
+          }
+          if (inPath) {
+            // Close path back to edge
+            const lastPt = points.filter(p => p)[points.filter(p => p).length - 1];
+            if (lastPt) { ctx.lineTo(fillEdge, lastPt.y); ctx.closePath(); ctx.fill(); }
+          }
+          ctx.globalAlpha = 1.0;
+        }
+
+        // Draw log trace
+        ctx.beginPath();
+        ctx.strokeStyle = lcolor;
+        ctx.lineWidth = 1.2;
+        let started = false;
+        for (const pt of points) {
+          if (!pt) { started = false; continue; }
+          if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+          else ctx.lineTo(pt.x, pt.y);
         }
         ctx.stroke();
 
-        // Track header (log name + range)
-        ctx.font = '7px sans-serif';
+        // Track header (log name + scale + unit)
+        ctx.font = 'bold 7px sans-serif';
         ctx.fillStyle = lcolor;
         ctx.textAlign = 'center';
-        ctx.fillText(lname, ctrack.x + ctrack.w / 2, y0 - 2);
+        ctx.fillText(lname, ctrack.x + ctrack.w / 2, y0 - 8);
+        // Scale range
+        ctx.font = '6px sans-serif';
+        ctx.fillStyle = '#888';
+        const scaleMin = useLogScale ? Math.pow(10, logMin).toFixed(1) : lMin.toFixed(lMin < 10 ? 2 : 0);
+        const scaleMax = useLogScale ? Math.pow(10, logMax).toFixed(0) : lMax.toFixed(lMax < 10 ? 2 : 0);
+        const unitStr = lstyle && lstyle.unit ? ` ${lstyle.unit}` : '';
+        ctx.textAlign = 'left';
+        ctx.fillText(scaleMin + unitStr, ctrack.x, y0 - 1);
+        ctx.textAlign = 'right';
+        ctx.fillText(scaleMax, ctrack.x + ctrack.w, y0 - 1);
       }
 
       // ── Per-well depth ticks ─────────────────────────────────────
@@ -2356,5 +2504,407 @@
       }
     }
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Wheeler Diagram View
+  // ═══════════════════════════════════════════════════════════════════
+
+  function _lighten(hex, amount) {
+    // Lighten a hex color by mixing with white
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    const r = Math.min(255, Math.round(parseInt(c.slice(0,2),16) + (255 - parseInt(c.slice(0,2),16)) * amount));
+    const g = Math.min(255, Math.round(parseInt(c.slice(2,4),16) + (255 - parseInt(c.slice(2,4),16)) * amount));
+    const b = Math.min(255, Math.round(parseInt(c.slice(4,6),16) + (255 - parseInt(c.slice(4,6),16)) * amount));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  const resultsWheeler = $('#results-wheeler');
+  const wheelerCanvas = $('#wheeler-canvas');
+  const btnViewWheeler = $('#btn-view-wheeler');
+
+  if (btnViewWheeler) {
+    btnViewWheeler.addEventListener('click', () => {
+      resultsPlot.style.display = 'none';
+      resultsComposite.style.display = 'none';
+      resCards.style.display = 'none';
+      if (resultsWheeler) resultsWheeler.style.display = 'block';
+      drawWheelerDiagram();
+    });
+  }
+
+  async function drawWheelerDiagram() {
+    if (!correlationResult || !wheelerCanvas) return;
+    const idx = parseInt(resSelector.value) || 0;
+
+    try {
+      const data = await api('GET', `/wheeler/${idx}`);
+      const wells = data.wells || {};
+      const wellNames = Object.keys(wells);
+      const nIntervals = data.n_intervals || 1;
+      const strat = data.strat_column; // null if not loaded
+
+      const canvas = wheelerCanvas;
+      const dpr = window.devicePixelRatio || 1;
+      const cw = canvas.parentElement.clientWidth || 900;
+      const hasStrat = strat && strat.units && strat.units.length > 0;
+      const stratColWidth = hasStrat ? 100 : 0; // left panel for strat
+      const ch = Math.max(360, nIntervals * 10 + 100);
+      canvas.width = cw * dpr;
+      canvas.height = ch * dpr;
+      canvas.style.width = cw + 'px';
+      canvas.style.height = ch + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, cw, ch);
+
+      const margin = {top: 50, bottom: 30, left: 20 + stratColWidth, right: 15};
+      const W = cw - margin.left - margin.right;
+      const H = ch - margin.top - margin.bottom;
+      const colW = W / Math.max(wellNames.length, 1);
+      const rowH = H / Math.max(nIntervals, 1);
+
+      // Title
+      ctx.fillStyle = '#323130';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      const title = hasStrat
+        ? `Wheeler Diagram — Solution #${idx + 1} vs ${strat.name}`
+        : `Wheeler Diagram — Solution #${idx + 1} (${nIntervals} intervals)`;
+      ctx.fillText(title, cw / 2, 16);
+
+      // Subtitle hint
+      if (!hasStrat) {
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = '#797775';
+        ctx.fillText('Import a strat column (Run tab) to compare with reference framework', cw / 2, 30);
+      }
+
+      // ─── Strat column panel (left side) ───
+      if (hasStrat) {
+        const units = strat.units;
+        const nUnits = units.length;
+        const unitH = H / Math.max(nUnits, 1);
+        const sx = 10;
+        const sw = stratColWidth - 15;
+
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#323130';
+        ctx.fillText('Reference', sx + sw / 2, margin.top - 8);
+        ctx.fillText('Strat Col', sx + sw / 2, margin.top - 0);
+
+        for (let ui = 0; ui < nUnits; ui++) {
+          const u = units[ui];
+          const y = margin.top + ui * unitH;
+          // Colored band
+          ctx.fillStyle = u.color || '#e0e0e0';
+          ctx.fillRect(sx, y, sw, unitH - 1);
+          // Border
+          ctx.strokeStyle = '#9e9e9e';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(sx, y, sw, unitH - 1);
+          // Label
+          ctx.fillStyle = '#212121';
+          ctx.font = '8px sans-serif';
+          ctx.textAlign = 'center';
+          if (unitH > 10) {
+            const label = u.name.length > 12 ? u.name.slice(0, 11) + '…' : u.name;
+            ctx.fillText(label, sx + sw / 2, y + unitH / 2 + 3);
+          }
+        }
+
+        // Draw dashed guide lines from strat units to Wheeler grid
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = '#bdbdbd';
+        ctx.lineWidth = 0.5;
+        for (let ui = 0; ui < nUnits; ui++) {
+          const y = margin.top + ui * unitH;
+          ctx.beginPath();
+          ctx.moveTo(sx + sw, y);
+          ctx.lineTo(margin.left, y);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+
+      // ─── Well name headers ───
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      wellNames.forEach((name, wi) => {
+        const x = margin.left + wi * colW + colW / 2;
+        ctx.fillStyle = '#323130';
+        ctx.fillText(name, x, margin.top - 6);
+      });
+
+      // ─── Draw presence/gap grid ───
+      wellNames.forEach((name, wi) => {
+        const w = wells[name];
+        const x = margin.left + wi * colW;
+        const gapSet = new Set((w.gaps || []).map(g => g.interval));
+
+        for (let iv = 0; iv < nIntervals; iv++) {
+          const y = margin.top + iv * rowH;
+          const isGap = gapSet.has(iv);
+
+          // If strat loaded, color present cells by the matching strat unit
+          let fillColor = '#c8e6c9'; // default green for present
+          if (hasStrat && !isGap) {
+            const unitIdx = Math.floor(iv * strat.units.length / nIntervals);
+            const u = strat.units[Math.min(unitIdx, strat.units.length - 1)];
+            fillColor = u.color ? _lighten(u.color, 0.4) : '#c8e6c9';
+          }
+
+          ctx.fillStyle = isGap ? '#fff3e0' : fillColor;
+          ctx.fillRect(x + 1, y + 0.5, colW - 2, rowH - 1);
+
+          if (isGap) {
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(x + 2, y + rowH - 1);
+            ctx.lineTo(x + colW - 2, y + 1);
+            ctx.stroke();
+          }
+        }
+
+        // Gap fraction at bottom
+        const gf = w.gap_fraction || 0;
+        ctx.fillStyle = gf > 0.3 ? '#e65100' : '#2e7d32';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${(gf * 100).toFixed(0)}% gaps`, x + colW / 2, ch - 8);
+
+        // Completeness vs strat column
+        if (hasStrat) {
+          const completeness = ((1 - gf) * 100).toFixed(0);
+          ctx.fillStyle = '#1565c0';
+          ctx.fillText(`${completeness}% complete`, x + colW / 2, ch - 18);
+        }
+      });
+
+      // ─── Interval labels on left ───
+      ctx.fillStyle = '#605e5c';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      const labelStep = Math.max(1, Math.floor(nIntervals / 20));
+      for (let iv = 0; iv < nIntervals; iv += labelStep) {
+        const y = margin.top + iv * rowH + rowH / 2 + 3;
+        ctx.fillText(`${iv + 1}`, margin.left - 3, y);
+      }
+
+      // ─── Legend ───
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      const lx = cw - 240;
+      const ly = 35;
+      ctx.fillStyle = '#c8e6c9';
+      ctx.fillRect(lx, ly, 12, 12);
+      ctx.fillStyle = '#323130';
+      ctx.fillText('Present', lx + 15, ly + 10);
+      ctx.fillStyle = '#fff3e0';
+      ctx.fillRect(lx + 65, ly, 12, 12);
+      ctx.strokeStyle = '#ff9800';
+      ctx.beginPath(); ctx.moveTo(lx + 65, ly + 12); ctx.lineTo(lx + 77, ly); ctx.stroke();
+      ctx.fillStyle = '#323130';
+      ctx.fillText('Gap/hiatus', lx + 80, ly + 10);
+      if (hasStrat) {
+        ctx.fillStyle = '#1565c0';
+        ctx.fillText('■ Strat-colored', lx + 155, ly + 10);
+      }
+
+    } catch(e) {
+      const ctx = wheelerCanvas.getContext('2d');
+      ctx.clearRect(0, 0, wheelerCanvas.width, wheelerCanvas.height);
+      ctx.fillStyle = '#c62828';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('Wheeler diagram error: ' + e.message, 10, 30);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Parameter Sweep & Sensitivity
+  // ═══════════════════════════════════════════════════════════════════
+
+  const btnSweep = $('#btn-sweep');
+  const btnSensitivity = $('#btn-sensitivity');
+  const sweepResults = $('#sweep-results');
+
+  if (btnSweep) {
+    btnSweep.addEventListener('click', async () => {
+      const param = $('#sweep-param').value;
+      const from = parseFloat($('#sweep-from').value) || 0;
+      const to = parseFloat($('#sweep-to').value) || 10;
+      const steps = parseInt($('#sweep-steps').value) || 5;
+
+      const step = (to - from) / Math.max(steps - 1, 1);
+      const values = Array.from({length: steps}, (_, i) => Math.round((from + i * step) * 100) / 100);
+
+      sweepResults.textContent = `Sweeping ${param}: ${values.join(', ')}...`;
+
+      try {
+        const options = gatherOptions();
+        const resp = await api('POST', '/sweep', { parameter: param, values, base_options: options });
+        let html = `<strong>Best: ${param}=${resp.best_value} (cost=${resp.best_cost.toFixed(4)})</strong><br>`;
+        resp.results.forEach(r => {
+          const pct = Math.max(2, ((r.cost / (resp.results[0].cost || 1)) * 100));
+          html += `${r.value} → ${r.cost.toFixed(4)} <span style="display:inline-block;height:6px;width:${Math.min(pct, 100)}%;background:#1565c0;border-radius:2px;vertical-align:middle;"></span><br>`;
+        });
+        sweepResults.innerHTML = html;
+      } catch(e) {
+        sweepResults.textContent = 'Sweep failed: ' + e.message;
+      }
+    });
+  }
+
+  if (btnSensitivity) {
+    btnSensitivity.addEventListener('click', async () => {
+      sweepResults.textContent = 'Testing sensitivity across merge orders...';
+      try {
+        const options = gatherOptions();
+        const resp = await api('POST', '/sensitivity', { base_options: options });
+        let html = `<strong>Robustness: ${resp.robustness.toFixed(2)}</strong> — ${resp.recommendation}<br>`;
+        for (const [order, cost] of Object.entries(resp.costs)) {
+          const marker = order === resp.best_order ? ' ★' : '';
+          html += `${order}: ${cost === Infinity ? '∞' : cost.toFixed(4)}${marker}<br>`;
+        }
+        sweepResults.innerHTML = html;
+      } catch(e) {
+        sweepResults.textContent = 'Sensitivity failed: ' + e.message;
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Geological Presets (loaded from API)
+  // ═══════════════════════════════════════════════════════════════════
+
+  async function loadPresetsFromAPI() {
+    try {
+      const resp = await api('GET', '/presets');
+      if (resp.presets && resp.presets.length > 0 && paramPreset) {
+        // Keep "Custom" as first option, replace hardcoded presets
+        paramPreset.innerHTML = '<option value="">Custom</option>';
+        for (const p of resp.presets) {
+          const opt = document.createElement('option');
+          opt.value = p.id || p.name;
+          opt.textContent = `${p.name} (${p.environment || p.group || ''})`;
+          opt.dataset.options = JSON.stringify(p.options || {});
+          paramPreset.appendChild(opt);
+        }
+      }
+    } catch(e) {
+      // Fall back to hardcoded presets (already in HTML)
+    }
+  }
+  // Load presets on startup
+  loadPresetsFromAPI();
+
+  // Override preset change handler to use API-loaded options
+  if (paramPreset) {
+    paramPreset.removeEventListener('change', paramPreset._handler);
+    paramPreset.addEventListener('change', () => {
+      const sel = paramPreset.selectedOptions[0];
+      if (!sel || !sel.dataset.options) return;
+      try {
+        const opts = JSON.parse(sel.dataset.options);
+        if (opts && Object.keys(opts).length > 0) applyOptions(opts);
+      } catch(e) { /* ignore parse errors */ }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Strat Column Import from RDDMS
+  // ═══════════════════════════════════════════════════════════════════
+
+  const btnImportStrat = $('#btn-import-strat');
+  const stratColSelect = $('#strat-col-select');
+  const stratColStatus = $('#strat-col-status');
+
+  // When dataspace changes, load available strat columns for the picker
+  async function loadStratColumnList() {
+    if (!stratColSelect) return;
+    const ds = dsSel ? dsSel.value : '';
+    try {
+      const resp = await api('GET', `/strat-column/list?dataspace=${encodeURIComponent(ds)}`);
+      stratColSelect.innerHTML = '<option value="">-- auto (all units) --</option>';
+      if (resp.columns && resp.columns.length > 0) {
+        for (const col of resp.columns) {
+          const opt = document.createElement('option');
+          opt.value = col.id;
+          opt.textContent = col.name || col.id;
+          if (col.description) opt.title = col.description;
+          stratColSelect.appendChild(opt);
+        }
+        stratColSelect.style.display = '';
+        if (stratColStatus) stratColStatus.textContent = `${resp.columns.length} column(s) in ${ds || 'default'}`;
+      } else {
+        stratColSelect.style.display = 'none';
+        if (stratColStatus) stratColStatus.textContent = 'No strat columns found';
+      }
+    } catch(e) {
+      stratColSelect.style.display = 'none';
+      if (stratColStatus) stratColStatus.textContent = '';
+    }
+  }
+
+  // Load strat column list when dataspace changes
+  if (dsSel) {
+    dsSel.addEventListener('change', () => { loadStratColumnList(); });
+  }
+
+  if (btnImportStrat) {
+    btnImportStrat.addEventListener('click', async () => {
+      btnImportStrat.disabled = true;
+      btnImportStrat.textContent = '⏳ Importing...';
+      try {
+        const ds = dsSel ? dsSel.value : '';
+        const resp = await api('POST', '/strat-column/import', { dataspace: ds || undefined });
+        if (resp.status === 'ok' && resp.name) {
+          btnImportStrat.textContent = `✓ ${resp.name} (${resp.n_units} units)`;
+          if (stratColStatus) stratColStatus.textContent = `Loaded: ${resp.name}`;
+          corrPlotConfig.showGlobalStrat = true;
+          const cb = $('#ctrl-global-strat');
+          if (cb) cb.checked = true;
+        } else {
+          btnImportStrat.textContent = '⚠ No strat column in RDDMS';
+        }
+      } catch(e) {
+        btnImportStrat.textContent = '✗ Import failed';
+        console.warn('Strat import error:', e);
+      }
+      setTimeout(() => {
+        btnImportStrat.disabled = false;
+        btnImportStrat.textContent = '📈 Import Strat Col';
+      }, 3000);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Options Help Tooltips (from API)
+  // ═══════════════════════════════════════════════════════════════════
+
+  async function loadOptionsHelp() {
+    try {
+      const resp = await api('GET', '/options');
+      if (resp && resp.options) {
+        for (const opt of resp.options) {
+          // Find matching input/select by id pattern p-{param-name}
+          const paramId = 'p-' + (opt.name || '').replace(/_/g, '-');
+          const el = $(`#${paramId}`);
+          if (el) {
+            const desc = opt.description || opt.help || '';
+            if (desc) {
+              el.title = desc;
+              // Also update the label
+              const label = $(`label[for="${paramId}"]`);
+              if (label) label.title = desc;
+            }
+          }
+        }
+      }
+    } catch(e) { /* non-critical — labels already have basic tooltips */ }
+  }
+  loadOptionsHelp();
 
 })();

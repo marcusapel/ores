@@ -819,7 +819,9 @@ async def weco_import_strat_column(request: Request):
     """Import a lithostratigraphic column from OSDU/RDDMS.
 
     Queries for StratigraphicColumn or LocalStratigraphicColumn resources
-    in the active dataspace and builds a StratColumn.
+    in the specified (or default) dataspace and builds a StratColumn.
+
+    Body (optional): {"dataspace": "some/dataspace"}
     """
     global _cached_strat_column
 
@@ -827,7 +829,12 @@ async def weco_import_strat_column(request: Request):
     if not token:
         raise HTTPException(401, "No access token. Log in to OSDU first.")
 
-    dataspace = WECO_DEFAULT_DATASPACE
+    # Accept dataspace from request body, fall back to default
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    dataspace = body.get("dataspace") or WECO_DEFAULT_DATASPACE
     ds_enc = dataspace.replace("/", "%2F")
 
     try:
@@ -880,6 +887,59 @@ async def weco_import_strat_column(request: Request):
         raise HTTPException(500, f"Strat column import error: {e}")
 
 
+@router.get("/strat-column/list")
+async def weco_list_strat_columns(request: Request, dataspace: str = ""):
+    """List available stratigraphic columns in a dataspace.
+
+    Returns a lightweight list of column IDs and names for the picker UI.
+    Uses the OSDU Search API to find StratigraphicColumn resources.
+    """
+    token = _get_token(request)
+    if not token:
+        raise HTTPException(401, "No access token.")
+
+    ds = dataspace or WECO_DEFAULT_DATASPACE
+
+    try:
+        from . import osdu
+        search_url = f"https://{osdu.OSDU_BASE_URL}/api/search/v2/query"
+        hdr = osdu.headers(token)
+
+        kinds = [
+            "resqml20.obj.StratigraphicColumn",
+            "resqml20.obj.LocalStratigraphicColumn",
+        ]
+        columns = []
+
+        async with osdu.http_client(timeout=30) as client:
+            for kind in kinds:
+                payload = {
+                    "kind": f"*:*:{kind}:*",
+                    "query": f'data.DataspaceID:"{ds}"' if ds else "*",
+                    "limit": 50,
+                    "returnedFields": ["id", "data.Name", "data.Citation.Title",
+                                       "data.Description", "kind"],
+                }
+                r = await client.post(search_url, headers=hdr, json=payload)
+                if r.status_code != 200:
+                    continue
+                for rec in (r.json() or {}).get("results", []):
+                    rd = rec.get("data", {})
+                    name = rd.get("Name") or rd.get("Citation", {}).get("Title") or rec.get("id", "")
+                    columns.append({
+                        "id": rec.get("id"),
+                        "name": name,
+                        "kind": rec.get("kind", ""),
+                        "description": rd.get("Description", ""),
+                    })
+
+        return {"status": "ok", "dataspace": ds, "columns": columns}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"List strat columns error: {e}")
+
+
 @router.get("/wheeler/{result_idx}")
 def weco_wheeler(result_idx: int):
     """Get Wheeler-style gap analysis for a correlation result.
@@ -906,8 +966,20 @@ def weco_wheeler(result_idx: int):
         # Include strat column if loaded
         strat_info = None
         if _cached_strat_column:
+            units = []
+            for rank in _cached_strat_column.ranks:
+                for u in rank.units:
+                    units.append({
+                        "name": u.name,
+                        "top_age_ma": u.top_age_ma,
+                        "base_age_ma": u.base_age_ma,
+                        "color": u.color_html or "#ccc",
+                        "environment": u.depositional_environment,
+                        "rank": rank.name,
+                    })
             strat_info = {
                 "name": _cached_strat_column.name,
+                "units": units,
                 "horizons": [{"name": h.name, "age_ma": h.age_ma}
                              for h in _cached_strat_column.horizons],
             }
@@ -2244,3 +2316,132 @@ def weco_ai_analyse(req: AiAnalysisRequest):
         raise HTTPException(500, f"AI analysis error: {e}")
 
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Presets
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.get("/presets")
+async def weco_get_presets():
+    """Return all geological presets from the engine."""
+    try:
+        from weco.api import list_presets
+        resp = list_presets()
+        return resp.model_dump() if hasattr(resp, "model_dump") else resp.dict()
+    except Exception as e:
+        log.warning(f"Presets load failed: {e}")
+        # Return empty so frontend falls back to hardcoded
+        return {"presets": []}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Parameter Sweep
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/sweep")
+async def weco_sweep(request: Request):
+    """Run a parameter sweep on the loaded wells."""
+    global _cached_well_list
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    body = await request.json()
+    parameter = body.get("parameter")
+    values = body.get("values", [])
+    base_options = body.get("base_options", {})
+
+    if not parameter or not values:
+        raise HTTPException(400, "Must provide 'parameter' and 'values'.")
+
+    try:
+        from weco.api import _run_engine, _extract_results
+
+        results = []
+        for val in values:
+            opts = dict(base_options)
+            opts[parameter] = val
+            safe_opts = _apply_memory_guards(opts, len(_cached_well_list.wells))
+            rf, data, elapsed = _run_engine(_cached_well_list, safe_opts)
+            extracted = _extract_results(rf, data, 1)
+            cost = extracted[0].cost if extracted else float("inf")
+            results.append({"value": val, "cost": cost, "elapsed_ms": round(elapsed, 2)})
+
+        results.sort(key=lambda r: r["cost"])
+        best = results[0] if results else {"value": values[0], "cost": 0}
+
+        return {
+            "status": "ok",
+            "parameter": parameter,
+            "best_value": best["value"],
+            "best_cost": best["cost"],
+            "results": results,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception(f"Sweep failed: parameter={parameter}")
+        raise HTTPException(500, f"Sweep error: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Sensitivity (merge-order robustness)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/sensitivity")
+async def weco_sensitivity(request: Request):
+    """Test sensitivity to merge order."""
+    global _cached_well_list
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    body = await request.json()
+    base_options = body.get("base_options", {})
+
+    try:
+        from weco.api import _run_engine, _extract_results
+
+        orders = ["linear", "nearest", "mst", "random"]
+        costs = {}
+
+        for order in orders:
+            opts = dict(base_options)
+            opts["order"] = order
+            safe_opts = _apply_memory_guards(opts, len(_cached_well_list.wells))
+            try:
+                rf, data, elapsed = _run_engine(_cached_well_list, safe_opts)
+                extracted = _extract_results(rf, data, 1)
+                costs[order] = extracted[0].cost if extracted else float("inf")
+            except Exception:
+                costs[order] = float("inf")
+
+        finite_costs = [c for c in costs.values() if c < float("inf")]
+        if len(finite_costs) >= 2:
+            spread = max(finite_costs) - min(finite_costs)
+            mean = sum(finite_costs) / len(finite_costs)
+            robustness = 1.0 - (spread / mean) if mean > 0 else 1.0
+        else:
+            robustness = 1.0
+
+        best_order = min(costs, key=costs.get)
+        if robustness > 0.9:
+            recommendation = "Very robust — result stable across merge orders."
+        elif robustness > 0.7:
+            recommendation = f"Moderately robust. Consider using '{best_order}' order."
+        else:
+            recommendation = f"Sensitive to merge order! '{best_order}' gives lowest cost."
+
+        return {
+            "status": "ok",
+            "costs": costs,
+            "best_order": best_order,
+            "robustness": round(robustness, 4),
+            "recommendation": recommendation,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("Sensitivity test failed")
+        raise HTTPException(500, f"Sensitivity error: {e}")
