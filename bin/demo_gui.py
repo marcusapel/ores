@@ -1226,6 +1226,9 @@ class DemoRunnerWindow(QMainWindow):
 
         self.tabs.addTab(export_widget, "RDDMS Export")
 
+        # Tab 5: Settings
+        self._build_settings_tab()
+
         # Progress bar
         self.progress = QProgressBar()
         self.progress.setVisible(False)
@@ -1235,7 +1238,220 @@ class DemoRunnerWindow(QMainWindow):
         splitter.addWidget(right_panel)
         splitter.setSizes([300, 1000])
 
+        # Load saved settings
+        self._load_settings()
+
         self.statusBar().showMessage("Ready — select a dataset and click Run")
+
+    # ─── Settings Tab ─────────────────────────────────────────────────
+
+    def _build_settings_tab(self):
+        """Build the Settings tab with appearance, RDDMS, and display options."""
+        from PyQt6.QtWidgets import QRadioButton, QButtonGroup
+
+        settings_widget = QWidget()
+        settings_layout = QVBoxLayout(settings_widget)
+
+        # ── Appearance ──────────────────────────────────────────────
+        appearance_group = QGroupBox("Appearance")
+        appearance_form = QFormLayout()
+
+        self._theme_group = QButtonGroup(self)
+        self._theme_system = QRadioButton("System (follow OS)")
+        self._theme_light = QRadioButton("Light")
+        self._theme_dark = QRadioButton("Dark")
+        self._theme_group.addButton(self._theme_system, 0)
+        self._theme_group.addButton(self._theme_light, 1)
+        self._theme_group.addButton(self._theme_dark, 2)
+        self._theme_system.setChecked(True)
+
+        theme_layout = QHBoxLayout()
+        theme_layout.addWidget(self._theme_system)
+        theme_layout.addWidget(self._theme_light)
+        theme_layout.addWidget(self._theme_dark)
+        appearance_form.addRow("Theme:", theme_layout)
+
+        self._theme_group.idClicked.connect(self._on_theme_changed)
+        appearance_group.setLayout(appearance_form)
+        settings_layout.addWidget(appearance_group)
+
+        # ── RDDMS Connection ────────────────────────────────────────
+        rddms_group = QGroupBox("RDDMS Connection (saved locally)")
+        rddms_form = QFormLayout()
+
+        self._settings_rddms_url = QLineEdit()
+        self._settings_rddms_url.setPlaceholderText(
+            "https://reservoir-ddms.interop.radix.equinor.com/api/v2")
+        rddms_form.addRow("Server URL:", self._settings_rddms_url)
+
+        self._settings_rddms_dataspace = QLineEdit("maap/weco")
+        rddms_form.addRow("Default dataspace:", self._settings_rddms_dataspace)
+
+        self._settings_rddms_timeout = QSpinBox()
+        self._settings_rddms_timeout.setRange(5, 300)
+        self._settings_rddms_timeout.setValue(60)
+        self._settings_rddms_timeout.setSuffix(" s")
+        rddms_form.addRow("Timeout:", self._settings_rddms_timeout)
+
+        rddms_group.setLayout(rddms_form)
+        settings_layout.addWidget(rddms_group)
+
+        # ── Well Display Order ──────────────────────────────────────
+        order_group = QGroupBox("Default Well Display Order")
+        order_form = QFormLayout()
+
+        self._settings_well_order = QComboBox()
+        self._settings_well_order.addItems([
+            "Input order",
+            "By X coordinate (West → East)",
+            "By Y coordinate (South → North)",
+            "By azimuth projection",
+            "By distality (proximal → distal)",
+            "Principal direction (PCA)",
+            "Nearest-neighbour chain",
+        ])
+        self._settings_well_order.setToolTip(
+            "Default display order for wells in correlation plots.\n"
+            "Can be overridden per-run in the Results tab.")
+        order_form.addRow("Order:", self._settings_well_order)
+
+        self._settings_azimuth = QSpinBox()
+        self._settings_azimuth.setRange(0, 359)
+        self._settings_azimuth.setValue(90)
+        self._settings_azimuth.setSuffix("° (N=0, E=90, S=180, W=270)")
+        self._settings_azimuth.setToolTip(
+            "Transport / depositional direction azimuth.\n"
+            "Used when order = 'By azimuth projection'.")
+        order_form.addRow("Azimuth:", self._settings_azimuth)
+
+        order_group.setLayout(order_form)
+        settings_layout.addWidget(order_group)
+
+        # ── Engine Defaults ─────────────────────────────────────────
+        engine_group = QGroupBox("Engine Defaults")
+        engine_form = QFormLayout()
+
+        self._settings_max_cor = QSpinBox()
+        self._settings_max_cor.setRange(1, 500)
+        self._settings_max_cor.setValue(50)
+        self._settings_max_cor.setToolTip("Default max-cor (n-best search width)")
+        engine_form.addRow("Max correlations:", self._settings_max_cor)
+
+        self._settings_nbr_cor = QSpinBox()
+        self._settings_nbr_cor.setRange(1, 100)
+        self._settings_nbr_cor.setValue(10)
+        self._settings_nbr_cor.setToolTip("Default number of output results")
+        engine_form.addRow("Output n-best:", self._settings_nbr_cor)
+
+        engine_group.setLayout(engine_form)
+        settings_layout.addWidget(engine_group)
+
+        # ── Save button ─────────────────────────────────────────────
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("Save Settings")
+        save_btn.clicked.connect(self._save_settings)
+        btn_layout.addWidget(save_btn)
+        btn_layout.addStretch()
+        settings_layout.addLayout(btn_layout)
+
+        self._settings_status = QLabel("")
+        settings_layout.addWidget(self._settings_status)
+        settings_layout.addStretch()
+
+        self.tabs.addTab(settings_widget, "Settings")
+
+    def _settings_file(self) -> Path:
+        """Path to local settings JSON (stored in user config, not repo)."""
+        config_dir = Path.home() / ".config" / "weco-gui"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        return config_dir / "settings.json"
+
+    def _save_settings(self):
+        """Persist settings to a local JSON file."""
+        import json
+        settings = {
+            "theme": self._theme_group.checkedId(),
+            "rddms_url": self._settings_rddms_url.text(),
+            "rddms_dataspace": self._settings_rddms_dataspace.text(),
+            "rddms_timeout": self._settings_rddms_timeout.value(),
+            "well_order": self._settings_well_order.currentIndex(),
+            "azimuth": self._settings_azimuth.value(),
+            "max_cor": self._settings_max_cor.value(),
+            "nbr_cor": self._settings_nbr_cor.value(),
+        }
+        try:
+            with open(self._settings_file(), "w") as f:
+                json.dump(settings, f, indent=2)
+            self._settings_status.setText("Settings saved.")
+            # Sync RDDMS fields to Export tab
+            self._rddms_url_edit.setText(settings["rddms_url"])
+            self._rddms_dataspace_edit.setText(settings["rddms_dataspace"])
+            self.statusBar().showMessage("Settings saved", 3000)
+        except Exception as e:
+            self._settings_status.setText(f"Error: {e}")
+
+    def _load_settings(self):
+        """Load settings from local JSON file if it exists."""
+        import json
+        path = self._settings_file()
+        if not path.exists():
+            return
+        try:
+            with open(path) as f:
+                settings = json.load(f)
+        except Exception:
+            return
+
+        # Apply loaded values
+        theme_id = settings.get("theme", 0)
+        btn = self._theme_group.button(theme_id)
+        if btn:
+            btn.setChecked(True)
+        self._on_theme_changed(theme_id)
+
+        if settings.get("rddms_url"):
+            self._settings_rddms_url.setText(settings["rddms_url"])
+            self._rddms_url_edit.setText(settings["rddms_url"])
+        if settings.get("rddms_dataspace"):
+            self._settings_rddms_dataspace.setText(settings["rddms_dataspace"])
+            self._rddms_dataspace_edit.setText(settings["rddms_dataspace"])
+        if "rddms_timeout" in settings:
+            self._settings_rddms_timeout.setValue(settings["rddms_timeout"])
+        if "well_order" in settings:
+            self._settings_well_order.setCurrentIndex(settings["well_order"])
+        if "azimuth" in settings:
+            self._settings_azimuth.setValue(settings["azimuth"])
+        if "max_cor" in settings:
+            self._settings_max_cor.setValue(settings["max_cor"])
+        if "nbr_cor" in settings:
+            self._settings_nbr_cor.setValue(settings["nbr_cor"])
+
+    def _on_theme_changed(self, theme_id: int):
+        """Apply theme change live."""
+        from PyQt6.QtGui import QPalette
+        app = QApplication.instance()
+        if theme_id == 2 or (theme_id == 0 and _os_prefers_dark()):
+            # Dark
+            palette = QPalette()
+            palette.setColor(QPalette.ColorRole.Window, QColor(43, 43, 43))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(220, 220, 220))
+            palette.setColor(QPalette.ColorRole.Base, QColor(30, 30, 30))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(50, 50, 50))
+            palette.setColor(QPalette.ColorRole.Text, QColor(220, 220, 220))
+            palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor(220, 220, 220))
+            palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.Link, QColor(86, 164, 255))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(50, 50, 50))
+            palette.setColor(QPalette.ColorRole.ToolTipText, QColor(220, 220, 220))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(128, 128, 128))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(128, 128, 128))
+            app.setPalette(palette)
+        else:
+            # Light (system default)
+            app.setPalette(app.style().standardPalette())
 
     # ─── Tree Selection ───────────────────────────────────────────────
 
@@ -1858,16 +2074,65 @@ def main():
     app.setApplicationName("WeCo Demo Runner")
     app.setStyle("Fusion")
 
-    # Dark-ish palette for a professional look
+    # Follow OS light/dark mode
     from PyQt6.QtGui import QPalette
-    palette = app.palette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(245, 245, 248))
-    palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
-    app.setPalette(palette)
+    if _os_prefers_dark():
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(43, 43, 43))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(220, 220, 220))
+        palette.setColor(QPalette.ColorRole.Base, QColor(30, 30, 30))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(50, 50, 50))
+        palette.setColor(QPalette.ColorRole.Text, QColor(220, 220, 220))
+        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(220, 220, 220))
+        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.Link, QColor(86, 164, 255))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(50, 50, 50))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(220, 220, 220))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(128, 128, 128))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(128, 128, 128))
+        app.setPalette(palette)
 
     window = DemoRunnerWindow()
     window.show()
     sys.exit(app.exec())
+
+
+def _os_prefers_dark() -> bool:
+    """Detect OS dark mode preference."""
+    # Qt 6.5+ exposes colorScheme directly
+    try:
+        from PyQt6.QtCore import Qt as _Qt
+        scheme = QApplication.styleHints().colorScheme()
+        if scheme == _Qt.ColorScheme.Dark:
+            return True
+        if scheme == _Qt.ColorScheme.Light:
+            return False
+    except (AttributeError, TypeError):
+        pass
+    # Fallback: check GTK/GNOME/KDE settings on Linux
+    import subprocess
+    try:
+        out = subprocess.check_output(
+            ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
+            stderr=subprocess.DEVNULL, text=True,
+        ).strip().strip("'")
+        if "dark" in out:
+            return True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        pass
+    try:
+        out = subprocess.check_output(
+            ["gsettings", "get", "org.gnome.desktop.interface", "gtk-theme"],
+            stderr=subprocess.DEVNULL, text=True,
+        ).strip().strip("'")
+        if "dark" in out.lower():
+            return True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        pass
+    return False
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ import traceback
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -44,6 +44,21 @@ app = FastAPI(
     description="Multi-well stratigraphic correlation engine — REST interface",
     version="0.9.31",
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    """Catch-all: ensure every unhandled error returns valid JSON.
+
+    Without this, uncaught exceptions (e.g. C++ SIGSEGV survivors, import
+    errors, attribute errors on None) would return raw 500 text that the
+    frontend JS cannot parse — leading to the 'Cannot read properties of
+    undefined' cascade.
+    """
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {exc}"},
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -171,6 +186,32 @@ class DemoListResponse(BaseModel):
     """Response from ``GET /demos``."""
 
     demos: List[DemoItem]
+
+
+class DemoWellInfo(BaseModel):
+    """Metadata for one well in a demo dataset."""
+
+    name: str
+    size: int
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    h: float = 0.0
+    data_names: List[str] = Field(default_factory=list)
+    region_names: List[str] = Field(default_factory=list)
+
+
+class DemoWellsResponse(BaseModel):
+    """Response from ``GET /demos/{demo_id}/wells``."""
+
+    demo_id: str
+    title: str
+    n_wells: int
+    wells: List[DemoWellInfo]
+    all_data_names: List[str] = Field(default_factory=list)
+    all_region_names: List[str] = Field(default_factory=list)
+    recommended_options: Dict[str, Any] = Field(default_factory=dict)
+    ai_settings: Dict[str, Any] = Field(default_factory=dict)
 
 
 class DemoRunRequest(BaseModel):
@@ -785,14 +826,21 @@ def run_correlation(req: RunRequest):
             detail="well_file is required (server-side path to wells.txt).",
         )
 
-    well_list = _load_well_list(req.well_file)
+    try:
+        well_list = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
 
     try:
         rf, data, elapsed = _run_engine(
             well_list, req.options, req.options_file
         )
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
 
     well_names = data.well_names()
     results = _extract_results(rf, data, req.n_best)
@@ -838,6 +886,10 @@ async def run_upload(
         rf, data, elapsed = _run_engine(wl, options)
         well_names = data.well_names()
         results = _extract_results(rf, data, n_best)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
     finally:
         os.unlink(tmp_path)
 
@@ -854,14 +906,23 @@ async def run_upload(
 @app.post("/info", response_model=InfoResponse, tags=["data"])
 def well_info(well_file: str):
     """Return metadata about a well-list file."""
-    wl = _load_well_list(well_file)
-    return InfoResponse(
-        n_wells=len(wl.wells),
-        well_names=[w.name for w in wl.wells],
-        n_markers=[w.size for w in wl.wells],
-        data_names=wl.get_data_names(),
-        region_names=wl.get_region_names(),
-    )
+    try:
+        wl = _load_well_list(well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
+    try:
+        return InfoResponse(
+            n_wells=len(wl.wells),
+            well_names=[w.name for w in wl.wells],
+            n_markers=[w.size for w in wl.wells],
+            data_names=wl.get_data_names(),
+            region_names=wl.get_region_names(),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read well info: {exc}")
 
 
 @app.post("/validate-options", response_model=OptionsValidation, tags=["system"])
@@ -870,14 +931,17 @@ def validate_options(options: Dict[str, Any]):
     from weco.ext import ProjectExt
 
     errors = []
-    proj = ProjectExt()
-    proj.reset_options()
-    proj.set_options_ext(**_RESET_OPTS)
-    for key, val in options.items():
-        try:
-            proj.set_option_ext(key, val)
-        except ValueError as exc:
-            errors.append(str(exc))
+    try:
+        proj = ProjectExt()
+        proj.reset_options()
+        proj.set_options_ext(**_RESET_OPTS)
+        for key, val in options.items():
+            try:
+                proj.set_option_ext(key, val)
+            except ValueError as exc:
+                errors.append(str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Engine init error: {exc}")
 
     return OptionsValidation(
         valid=len(errors) == 0,
@@ -1186,8 +1250,20 @@ def _suggest_defaults_for_wells(wl) -> tuple:
           tags=["system"])
 def suggest_defaults(req: SuggestDefaultsRequest):
     """Suggest optimal engine parameters based on well data characteristics."""
-    wl = _load_well_list(req.well_file)
-    options, reasoning = _suggest_defaults_for_wells(wl)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
+    try:
+        options, reasoning = _suggest_defaults_for_wells(wl)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to suggest defaults: {exc}",
+        )
     return SuggestDefaultsResponse(options=options, reasoning=reasoning)
 
 
@@ -1216,9 +1292,21 @@ def suggest_preprocessing(req: PreprocessingSuggestRequest):
     """AI-driven preprocessing recommendation based on geological setting."""
     from .decision_tree import recommend_preprocessing, recommend_postprocessing
 
-    wl = _load_well_list(req.well_file)
-    rec = recommend_preprocessing(wl, environment=req.environment)
-    post = recommend_postprocessing(wl, environment=rec.environment)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
+    try:
+        rec = recommend_preprocessing(wl, environment=req.environment)
+        post = recommend_postprocessing(wl, environment=rec.environment)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Preprocessing recommendation failed: {exc}",
+        )
 
     return PreprocessingSuggestResponse(
         environment=rec.environment,
@@ -1295,8 +1383,20 @@ def auto_correlate(req: AutoRequest):
     5. If quality < threshold, adjust gap-cost and re-run (up to max_iterations)
     6. Select structurally diverse results using topology clustering
     """
-    wl = _load_well_list(req.well_file)
-    options, reasoning = _suggest_defaults_for_wells(wl)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
+    try:
+        options, reasoning = _suggest_defaults_for_wells(wl)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to suggest defaults: {exc}",
+        )
 
     # A1: AI preprocessing (environment-specific data conditioning)
     try:
@@ -1646,11 +1746,97 @@ def _get_demo_ai_opts(demo_id: str) -> dict:
     return {**_AI_DEFAULTS, **_AI_DEMO_OPTS.get(demo_id, {})}
 
 
+@app.get("/demos/{demo_id}/wells", response_model=DemoWellsResponse, tags=["demos"])
+def get_demo_wells(demo_id: str):
+    """Load a demo dataset and return well metadata (without running correlation).
+
+    Used by the web frontend to pre-load demo wells so the user can see
+    well names, available logs, and recommended options before clicking "Run".
+    """
+    # Find the demo in the catalogue
+    demo_list = list_demos().demos
+    demo = None
+    for d in demo_list:
+        if d.id == demo_id:
+            demo = d
+            break
+
+    if demo is None:
+        raise HTTPException(status_code=404, detail=f"Demo '{demo_id}' not found.")
+
+    try:
+        wl = _load_well_list(demo.wells)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load demo wells: {exc}",
+        )
+
+    # Build per-well metadata
+    wells_info = []
+    for w in wl.wells:
+        w_data_names = sorted(
+            k for k in (w.data.keys() if hasattr(w, 'data') and w.data else [])
+        )
+        w_region_names = sorted(
+            k for k in (w.region.keys() if hasattr(w, 'region') and isinstance(w.region, dict) else
+                        w.region if hasattr(w, 'region') and isinstance(w.region, list) else [])
+        )
+        wells_info.append(DemoWellInfo(
+            name=getattr(w, 'name', ''),
+            size=getattr(w, 'size', 0),
+            x=getattr(w, 'x', 0.0),
+            y=getattr(w, 'y', 0.0),
+            z=getattr(w, 'z', 0.0),
+            h=getattr(w, 'h', 0.0),
+            data_names=w_data_names,
+            region_names=w_region_names,
+        ))
+
+    # Aggregate all data/region names across wells
+    all_data_names = sorted(set(
+        name for w in wl.wells
+        for name in (w.data.keys() if hasattr(w, 'data') and w.data else [])
+    ))
+    all_region_names = sorted(set(
+        name for w in wl.wells
+        for name in (w.region.keys() if hasattr(w, 'region') and isinstance(w.region, dict) else
+                     w.region if hasattr(w, 'region') and isinstance(w.region, list) else [])
+    ))
+
+    # Get recommended options for this demo
+    recommended_options = _get_demo_opts(demo_id)
+    if not recommended_options:
+        try:
+            recommended_options, _ = _suggest_defaults_for_wells(wl)
+        except Exception:
+            recommended_options = {}
+
+    ai_settings = _get_demo_ai_opts(demo_id)
+
+    return DemoWellsResponse(
+        demo_id=demo_id,
+        title=demo.title,
+        n_wells=len(wells_info),
+        wells=wells_info,
+        all_data_names=all_data_names,
+        all_region_names=all_region_names,
+        recommended_options=recommended_options,
+        ai_settings=ai_settings,
+    )
+
+
 @app.post("/run/demo", response_model=RunResponse, tags=["demos"])
 def run_demo(req: DemoRunRequest):
     """Run a built-in demo dataset with geology-specific default options."""
     # Get the demo list
-    demo_list = list_demos().demos
+    try:
+        demo_list = list_demos().demos
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list demos: {exc}")
+
     demo = None
     for d in demo_list:
         if d.id == req.demo_id:
@@ -1661,18 +1847,31 @@ def run_demo(req: DemoRunRequest):
         raise HTTPException(status_code=404,
                             detail=f"Demo '{req.demo_id}' not found.")
 
-    wl = _load_well_list(demo.wells)
+    try:
+        wl = _load_well_list(demo.wells)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load demo wells: {exc}",
+        )
 
     # Use per-demo opts from the catalogue (geology-specific, tested params)
     options = _get_demo_opts(req.demo_id)
     if not options:
         # Fallback to auto-suggestion if no per-demo opts
-        options, _ = _suggest_defaults_for_wells(wl)
+        try:
+            options, _ = _suggest_defaults_for_wells(wl)
+        except Exception:
+            options = {}
 
     try:
         rf, data, elapsed = _run_engine(wl, options)
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
 
     well_names = data.well_names()
     results = _extract_results(rf, data, req.n_best)
@@ -2608,18 +2807,26 @@ def depenv_suggest(req: DepenvSuggestRequest):
 
     env_key = None
 
-    if req.strat_column_json:
-        if not os.path.isfile(req.strat_column_json):
-            raise HTTPException(
-                status_code=404,
-                detail=f"File not found: {req.strat_column_json}",
-            )
-        from weco.strat_column import StratColumn
-        col = StratColumn.from_json(req.strat_column_json)
-        env_key = detect_environment(col)
+    try:
+        if req.strat_column_json:
+            if not os.path.isfile(req.strat_column_json):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"File not found: {req.strat_column_json}",
+                )
+            from weco.strat_column import StratColumn
+            col = StratColumn.from_json(req.strat_column_json)
+            env_key = detect_environment(col)
 
-    if not env_key and req.environment:
-        env_key = normalise_depenv(req.environment) or req.environment
+        if not env_key and req.environment:
+            env_key = normalise_depenv(req.environment) or req.environment
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Environment detection failed: {exc}",
+        )
 
     if not env_key or env_key not in DEPENV_PRESETS:
         raise HTTPException(
@@ -2699,6 +2906,8 @@ def json_run(req: JsonRunRequest):
         wl_py = json_to_welllist(doc)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid project document: {e}")
 
     # Merge options: project options + request overrides
     opts = doc.get("options", {})
@@ -2708,8 +2917,13 @@ def json_run(req: JsonRunRequest):
     import tempfile
     from weco.data import WellList as PyWellList
 
-    _validate_well_list(wl_py)
-    _validate_options_against_wells(opts, wl_py)
+    try:
+        _validate_well_list(wl_py)
+        _validate_options_against_wells(opts, wl_py)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Validation failed: {e}")
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".txt", delete=False
@@ -2719,12 +2933,19 @@ def json_run(req: JsonRunRequest):
 
     try:
         rf, data, elapsed = _run_engine(wl_py, opts)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
     finally:
         os.unlink(tmp_path)
 
     # Build full project JSON with results
-    result_doc = project_to_json(wl_py, opts, rf, max_paths=req.n_best)
-    result_doc["elapsed_ms"] = elapsed * 1000
+    try:
+        result_doc = project_to_json(wl_py, opts, rf, max_paths=req.n_best)
+        result_doc["elapsed_ms"] = elapsed * 1000
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Result serialization failed: {exc}")
 
     return JsonRunResponse(status="ok", project=result_doc)
 
@@ -2737,9 +2958,14 @@ def json_convert(req: JsonConvertRequest):
     """
     from weco.json_format import welllist_to_json
 
-    wl = _load_well_list(req.well_file)
-    doc = welllist_to_json(wl)
-    doc["meta"]["sourceFile"] = os.path.basename(req.well_file)
+    try:
+        wl = _load_well_list(req.well_file)
+        doc = welllist_to_json(wl)
+        doc["meta"]["sourceFile"] = os.path.basename(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Conversion failed: {exc}")
     return JSONResponse(content=doc)
 
 
@@ -2752,13 +2978,18 @@ def json_export(req: JsonExportRequest):
     from weco.json_format import project_to_json
     from weco.data import ResFile
 
-    wl = _load_well_list(req.well_file)
+    try:
+        wl = _load_well_list(req.well_file)
 
-    res = None
-    if req.result_file and os.path.isfile(req.result_file):
-        res = ResFile(req.result_file)
+        res = None
+        if req.result_file and os.path.isfile(req.result_file):
+            res = ResFile(req.result_file)
 
-    doc = project_to_json(wl, req.options, res)
+        doc = project_to_json(wl, req.options, res)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Export failed: {exc}")
     return JSONResponse(content=doc)
 
 
@@ -2814,7 +3045,10 @@ async def workflow_recommend(file: UploadFile = File(...)):
         import os
         os.unlink(tmp_path)
 
-    rec = recommend_workflow(wl)
+    try:
+        rec = recommend_workflow(wl)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Workflow recommendation failed: {exc}")
 
     return JSONResponse(content={
         "status": "ok",
@@ -2957,7 +3191,13 @@ class ConditionResponse(BaseModel):
 @app.post("/data/condition", response_model=ConditionResponse, tags=["data"])
 def condition_data(req: ConditionRequest):
     """Apply conditioning transforms: normalise, Vshale, smooth, derivative, electrofacies."""
-    wl = _load_well_list(req.well_file)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
     added = []
     modified = []
 
@@ -3384,7 +3624,13 @@ def run_batch(req: BatchRunRequest):
     Returns results sorted by cost. Useful for parameter exploration
     and sensitivity testing.
     """
-    wl = _load_well_list(req.well_file)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
     results = []
 
     for i, cfg in enumerate(req.configs):
@@ -3455,7 +3701,13 @@ class SweepResponse(BaseModel):
 @app.post("/run/sweep", response_model=SweepResponse, tags=["correlation"])
 def run_sweep(req: SweepRequest):
     """Sweep a single parameter to find optimal value."""
-    wl = _load_well_list(req.well_file)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
     results = []
 
     for val in req.values:
@@ -3624,7 +3876,13 @@ class SensitivityResponse(BaseModel):
           tags=["validation"])
 def validate_sensitivity(req: SensitivityRequest):
     """Test correlation robustness across different merge orders."""
-    wl = _load_well_list(req.well_file)
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
     costs = {}
 
     for order in req.orders:
@@ -3705,7 +3963,10 @@ class BatchDemoResponse(BaseModel):
 @app.post("/demos/batch-run", response_model=BatchDemoResponse, tags=["demos"])
 def batch_run_demos(req: BatchDemoRequest):
     """Run multiple (or all) demos and return summary results."""
-    demo_list = list_demos().demos
+    try:
+        demo_list = list_demos().demos
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list demos: {exc}")
 
     if req.demo_ids:
         demo_list = [d for d in demo_list if d.id in req.demo_ids]
@@ -3742,4 +4003,134 @@ def batch_run_demos(req: BatchDemoRequest):
         succeeded=succeeded,
         failed=len(results) - succeeded,
         results=results,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Well Ordering / Display Order
+# ═══════════════════════════════════════════════════════════════════════════
+
+class WellOrderRequest(BaseModel):
+    """Request well display ordering."""
+
+    well_file: str = Field(..., description="Server-side path to well-list file.")
+    method: str = Field(
+        "input",
+        description="Ordering method: 'input', 'x', 'y', 'azimuth', "
+                    "'distality', 'pca', 'nearest'.",
+    )
+    azimuth_deg: float = Field(
+        90.0,
+        description="Transport direction azimuth (degrees N, clockwise). "
+                    "Used when method='azimuth'.",
+    )
+
+
+class WellOrderResponse(BaseModel):
+    """Response with computed well display order."""
+
+    method: str
+    order: List[int] = Field(
+        description="Well indices in display order (0-based).",
+    )
+    well_names: List[str] = Field(
+        description="Well names in display order.",
+    )
+    projections: Optional[List[float]] = Field(
+        None, description="Projection values (for azimuth/distality/PCA).",
+    )
+
+
+@app.post("/wells/order", response_model=WellOrderResponse, tags=["data"])
+def compute_well_order(req: WellOrderRequest):
+    """Compute display ordering of wells by various spatial criteria.
+
+    Methods:
+    - ``input``: original file order
+    - ``x``: sort by X coordinate (West → East)
+    - ``y``: sort by Y coordinate (South → North)
+    - ``azimuth``: project onto a user-defined azimuth direction
+    - ``distality``: sort by distality region value (proximal → distal)
+    - ``pca``: project onto principal spread direction (auto-detected)
+    - ``nearest``: nearest-neighbour chain (minimises inter-well distance)
+    """
+    import math
+
+    try:
+        wl = _load_well_list(req.well_file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load wells: {exc}")
+
+    n = len(wl.wells)
+    if n == 0:
+        raise HTTPException(status_code=400, detail="No wells in file.")
+
+    method = req.method.lower().strip()
+    projections = None
+
+    if method == "x":
+        order = sorted(range(n), key=lambda i: wl.wells[i].x)
+        projections = [wl.wells[i].x for i in order]
+
+    elif method == "y":
+        order = sorted(range(n), key=lambda i: wl.wells[i].y)
+        projections = [wl.wells[i].y for i in order]
+
+    elif method == "azimuth":
+        theta = math.radians(req.azimuth_deg)
+        dx = math.sin(theta)
+        dy = math.cos(theta)
+        projs = [(wl.wells[i].x * dx + wl.wells[i].y * dy, i)
+                 for i in range(n)]
+        projs.sort()
+        order = [i for _, i in projs]
+        projections = [p for p, _ in projs]
+
+    elif method == "distality":
+        # Use DISTALITY region if available, else compute from azimuth
+        distality_vals = []
+        for i, w in enumerate(wl.wells):
+            d = 0.5  # default middle
+            if hasattr(w, 'region'):
+                for rname in ('DISTALITY', 'DISTAL', 'distality', 'Distality'):
+                    reg = (w.region.get(rname) if isinstance(w.region, dict)
+                           else None)
+                    if reg and len(reg) > 0:
+                        d = reg[0][0] if isinstance(reg[0], (list, tuple)) else reg[0]
+                        break
+            distality_vals.append((d, i))
+        distality_vals.sort()
+        order = [i for _, i in distality_vals]
+        projections = [d for d, _ in distality_vals]
+
+    elif method == "pca":
+        coords = np.array([[w.x, w.y] for w in wl.wells])
+        if coords.std() < 1e-6:
+            order = list(range(n))
+        else:
+            centered = coords - coords.mean(axis=0)
+            _, _, Vt = np.linalg.svd(centered, full_matrices=False)
+            direction = Vt[0]
+            proj_vals = centered @ direction
+            order = list(np.argsort(proj_vals))
+            projections = [float(proj_vals[i]) for i in order]
+
+    elif method == "nearest":
+        from weco.order import compute_nearest_ordering
+        coords = [(w.x, w.y) for w in wl.wells]
+        order = compute_nearest_ordering(coords, first=0)
+
+    else:
+        # input order
+        order = list(range(n))
+
+    well_names = [wl.wells[i].name for i in order]
+
+    return WellOrderResponse(
+        method=method,
+        order=order,
+        well_names=well_names,
+        projections=projections,
     )
