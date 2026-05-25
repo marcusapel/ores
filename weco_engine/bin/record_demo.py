@@ -41,9 +41,9 @@ DEMO_STEPS = [
     {
         "title": "2. Load dataset",
         "action": "load_dataset",
-        "dataset": "data_set_2",
+        "dataset": "data_set_gap_cost",
         "wait": 2.0,
-        "description": "Load the data_set_2 example dataset.",
+        "description": "Load the data_set_gap_cost example dataset.",
     },
     {
         "title": "3. Configure options",

@@ -10,7 +10,7 @@ Measures wall-clock time and correlation quality for:
 Usage::
 
     python bin/benchmark_performance.py                       # all datasets
-    python bin/benchmark_performance.py --dataset data_set_2  # single dataset
+    python bin/benchmark_performance.py --dataset data_set_gap_cost  # single dataset
     python bin/benchmark_performance.py --csv results.csv     # export CSV
 """
 
@@ -30,14 +30,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # ── Datasets ──────────────────────────────────────────────────────────────
 DEFAULT_DATASETS = [
-    "data_set_1.1",
-    "data_set_1.2",
-    "data_set_1.3",
-    "data_set_1.4",
-    "data_set_1.5",
-    "data_set_2",
-    "data_set_3",
-    "data_set_4",
+    "data_set_variance_weights",
+    "data_set_no_crossing_regions",
+    "data_set_same_region",
+    "data_set_multi_distality",
+    "data_set_polarity_dip",
+    "data_set_gap_cost",
+    "data_set_distality",
+    "data_set_biozone_distality",
 ]
 
 BAND_WIDTHS = [0, 5, 10, 20, 50, 100]

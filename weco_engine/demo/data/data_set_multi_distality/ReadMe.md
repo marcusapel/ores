@@ -3,7 +3,7 @@
 ## Purpose
 
 Synthetic toy example demonstrating the **multi-distality** cost function
-(`multi-dist-distal`). Unlike the single distality cost (data_set_1.3), this
+(`multi-dist-distal`). Unlike the single distality cost (data_set_same_region), this
 tests **multiple sediment transport directions** simultaneously and selects
 the one producing the best correlation.
 

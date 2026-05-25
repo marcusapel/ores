@@ -1431,8 +1431,8 @@ def list_demos():
     # are proven to produce meaningful correlations for that dataset.
     _DEMO_CATALOGUE = [
         # ── Concept (teaching specific constraints) ─────────────────
-        {"id": "ds3", "title": "Distality Cost (Walther's Law)",
-         "group": "Concept", "wells": "data_set_3/wells.txt",
+        {"id": "distality", "title": "Distality Cost (Walther's Law)",
+         "group": "Concept", "wells": "data_set_distality/wells.txt",
          "description": "2 wells demonstrating the distality cost function. "
                         "Penalises correlations that violate lateral facies-belt "
                         "ordering (Walther's Law). Key constraint: dist-distal + dist-facies.",
@@ -1440,8 +1440,8 @@ def list_demos():
                   "dist-scaling": 1.0, "order": "distality",
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.3, "out-min-dist": 0.15}},
-        {"id": "ds4", "title": "Biozone No-Crossing + Distality",
-         "group": "Concept", "wells": "data_set_4/wells.txt",
+        {"id": "biozone_distality", "title": "Biozone No-Crossing + Distality",
+         "group": "Concept", "wells": "data_set_biozone_distality/wells.txt",
          "description": "2 wells combining no-crossing constraint (BIOZONES) "
                         "with distality. Biozone datums cannot swap order — "
                         "demonstrates hard stratigraphic anchoring.",
@@ -1570,11 +1570,11 @@ def _get_demo_opts(demo_id: str) -> dict:
     for each dataset's specific geological concept.
     """
     _DEMO_OPTS = {
-        "ds3": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
+        "distality": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                 "dist-scaling": 1.0, "order": "distality",
                 "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                 "min-dist": 0.3, "out-min-dist": 0.15},
-        "ds4": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
+        "biozone_distality": {"dist-distal": "DISTAL", "dist-facies": "FACIES_1",
                 "no-crossing": "BIOZONES", "order": "distality",
                 "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                 "min-dist": 0.3, "out-min-dist": 0.15},

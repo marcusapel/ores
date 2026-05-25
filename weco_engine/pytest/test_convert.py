@@ -12,7 +12,7 @@ import pytest
 
 from weco.convert import main
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_1.1")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_variance_weights")
 WELLS_FILE = os.path.join(DATA_DIR, "wells.txt")
 
 
@@ -23,7 +23,7 @@ def _have_data():
 @pytest.fixture(autouse=True)
 def _skip_no_data():
     if not _have_data():
-        pytest.skip("data_set_1.1 not available")
+        pytest.skip("data_set_variance_weights not available")
 
 
 class TestWeCoConvertCLI:

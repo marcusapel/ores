@@ -551,9 +551,9 @@ class TestExistingDatasets:
     DATA = os.path.join(ROOT, "demo", "data")
 
     @pytest.mark.parametrize("ds,opt", [
-        ("data_set_1.1", "option_1.txt"),
-        ("data_set_1.2", "option.txt"),
-        ("data_set_1.3", "option.txt"),
+        ("data_set_variance_weights", "option_1.txt"),
+        ("data_set_no_crossing_regions", "option.txt"),
+        ("data_set_same_region", "option.txt"),
     ])
     def test_shipped_dataset(self, ds, opt):
         """Each shipped dataset produces ≥1 result with finite cost."""
@@ -571,7 +571,7 @@ class TestExistingDatasets:
         assert math.isfinite(res.get_result_cost(0))
 
     @pytest.mark.parametrize("ds,opt", [
-        ("data_set_1.1", "option_1.txt"),
+        ("data_set_variance_weights", "option_1.txt"),
     ])
     def test_result_monotonicity(self, ds, opt):
         """Correlation paths are monotonic in every well."""
@@ -684,11 +684,11 @@ class TestDistalityB3D:
     """Verify that distality + B3D normalisation work together."""
 
     def test_combined_distality_b3d(self):
-        """Run with both dist-facies/dist-distal and b3d options on data_set_3."""
-        data_dir = os.path.join(ROOT, "demo", "data", "data_set_3")
+        """Run with both dist-facies/dist-distal and b3d options on data_set_distality."""
+        data_dir = os.path.join(ROOT, "demo", "data", "data_set_distality")
         well_file = os.path.join(data_dir, "wells.txt")
         if not os.path.exists(well_file):
-            pytest.skip("data_set_3 not available")
+            pytest.skip("data_set_distality not available")
 
         engine = ProjectExt()
         engine.set_option_ext("no-crossing", "")  # clear global state

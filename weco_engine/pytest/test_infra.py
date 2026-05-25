@@ -23,7 +23,7 @@ from weco.data import Well, WellList
 
 # Paths to test datasets
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data")
-DATA_11 = os.path.join(DATA_DIR, "data_set_1.1")
+DATA_11 = os.path.join(DATA_DIR, "data_set_variance_weights")
 WELLS_11 = os.path.join(DATA_11, "wells.txt")
 
 
@@ -411,35 +411,35 @@ class TestRegression:
                 f"Well count mismatch: got {rf.nbr_well()}, expected {ref['n_wells']}"
 
     def test_dataset_1_1(self):
-        self._check_dataset("data_set_1.1", "1")
+        self._check_dataset("data_set_variance_weights", "1")
 
     def test_dataset_1_2(self):
-        self._check_dataset("data_set_1.2")
+        self._check_dataset("data_set_no_crossing_regions")
 
     def test_dataset_2(self):
-        self._check_dataset("data_set_2")
+        self._check_dataset("data_set_gap_cost")
 
     def test_dataset_3(self):
-        self._check_dataset("data_set_3")
+        self._check_dataset("data_set_distality")
 
     def test_dataset_4(self):
-        self._check_dataset("data_set_4")
+        self._check_dataset("data_set_biozone_distality")
 
     def test_dataset_1_1_option_2(self):
-        self._check_dataset("data_set_1.1", "2")
+        self._check_dataset("data_set_variance_weights", "2")
 
     def test_dataset_1_1_option_3(self):
-        self._check_dataset("data_set_1.1", "3")
+        self._check_dataset("data_set_variance_weights", "3")
 
     def test_dataset_1_1_option_4(self):
-        self._check_dataset("data_set_1.1", "4")
+        self._check_dataset("data_set_variance_weights", "4")
 
     def test_dataset_1_1_option_5(self):
-        self._check_dataset("data_set_1.1", "5")
+        self._check_dataset("data_set_variance_weights", "5")
 
     def test_result_deterministic(self):
         """Same input → same output (determinism check)."""
-        ds = os.path.join(DATA_DIR, "data_set_1.1")
+        ds = os.path.join(DATA_DIR, "data_set_variance_weights")
         wells = os.path.join(ds, "wells.txt")
         opts = os.path.join(ds, "option_1.txt")
         if not os.path.isfile(wells):

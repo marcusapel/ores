@@ -445,7 +445,7 @@ def generate_prograding_delta(
     (shifts basinward), creating lateral facies changes.
     GR and DEN logs are generated from a facies model.
 
-    Extends data_set_eage2024 concept.
+    Extends data_set_hugin_tidal concept.
     """
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed)

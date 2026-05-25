@@ -5,7 +5,7 @@ Tests for weco.export — Zonation, horizon picks, CSV/JSON/LAS export
 Tests res_to_zonation_log, res_to_horizon_picks,
 export_zonation_csv, export_horizon_picks_csv, export_horizon_picks_json,
 export_zonation_las, and correlation_summary.
-Uses real data from data/data_set_1.1 for integration tests.
+Uses real data from data/data_set_variance_weights for integration tests.
 """
 
 import csv
@@ -26,7 +26,7 @@ from weco.export import (
     correlation_summary,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_1.1")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_variance_weights")
 WELLS_FILE = os.path.join(DATA_DIR, "wells.txt")
 OUTCOME_FILE = os.path.join(DATA_DIR, "outcome_1.txt")
 
@@ -38,7 +38,7 @@ def _have_data():
 @pytest.fixture(autouse=True)
 def _skip_no_data():
     if not _have_data():
-        pytest.skip("data_set_1.1 not available")
+        pytest.skip("data_set_variance_weights not available")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

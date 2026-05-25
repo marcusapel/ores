@@ -223,7 +223,7 @@ def _make_hugin_well(
         data["DT"] = _dt_from_gr(gr)
     if distality is not None:
         # Engine's dist-distal looks up a REGION list, not data.
-        # Real datasets (data_set_3/4) store distality as both data + region.
+        # Real datasets (data_set_distality/4) store distality as both data + region.
         data["DISTAL"] = [float(distality)] * size
 
     regions: Dict[str, List[Tuple[int, int, int]]] = {}
@@ -560,7 +560,7 @@ class TestHuginTransect:
     """7-well shoreface-to-offshore transect modelling Gudrun-Sigrun
     field geometry, with realistic UTM coordinates and marker counts."""
 
-    # Real-ish well metadata (inspired by data_set_3)
+    # Real-ish well metadata (inspired by data_set_distality)
     WELLS_META = [
         # (name, size, x_utm, y_utm, gr_func, seed, distality)
         ("W01", 72, 429600.0, 6526900.0, _gr_parasq_stacking, 10, 2),
@@ -920,7 +920,7 @@ class TestParasequencePatterns:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  TEST CLASS 5 — Real dataset regression (data_set_3 and data_set_4)
+#  TEST CLASS 5 — Real dataset regression (data_set_distality and data_set_biozone_distality)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestRealDatasetRegression:
@@ -941,28 +941,28 @@ class TestRealDatasetRegression:
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_3", "wells_A.txt",
+            "demo", "data", "data_set_distality", "wells_A.txt",
         )),
-        reason="data_set_3 not available",
+        reason="data_set_distality not available",
     )
     def test_dataset3_hugin_default(self):
         """Hugin 7-well dataset (wells_A.txt) with default options."""
-        path = self._dataset_path("data_set_3", "wells_A.txt")
+        path = self._dataset_path("data_set_distality", "wells_A.txt")
         r = _run_engine_subprocess(path, {"max-cor": "50"})
-        assert r["ok"], f"data_set_3 default failed: {r.get('error')}"
+        assert r["ok"], f"data_set_distality default failed: {r.get('error')}"
         assert r["n_wells"] == 7
         _assert_reasonable_cost(r["cost"])
 
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_3", "wells_A.txt",
+            "demo", "data", "data_set_distality", "wells_A.txt",
         )),
-        reason="data_set_3 not available",
+        reason="data_set_distality not available",
     )
     def test_dataset3_hugin_distality(self):
         """Hugin 7-well with distality cost function."""
-        path = self._dataset_path("data_set_3", "wells_A.txt")
+        path = self._dataset_path("data_set_distality", "wells_A.txt")
         r = _run_engine_subprocess(
             path,
             options={
@@ -972,21 +972,21 @@ class TestRealDatasetRegression:
                 "order": "distality",
             },
         )
-        assert r["ok"], f"data_set_3 distality failed: {r.get('error')}"
+        assert r["ok"], f"data_set_distality distality failed: {r.get('error')}"
         _assert_reasonable_cost(r["cost"])
 
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_3", "wells_B.txt",
+            "demo", "data", "data_set_distality", "wells_B.txt",
         )),
-        reason="data_set_3/wells_B.txt not available",
+        reason="data_set_distality/wells_B.txt not available",
     )
     def test_dataset3_subset_B(self):
         """Hugin subset B (2 wells: W04 + W11)."""
-        path = self._dataset_path("data_set_3", "wells_B.txt")
+        path = self._dataset_path("data_set_distality", "wells_B.txt")
         r = _run_engine_subprocess(path, {"max-cor": "50"})
-        assert r["ok"], f"data_set_3 subset B failed: {r.get('error')}"
+        assert r["ok"], f"data_set_distality subset B failed: {r.get('error')}"
         assert r["n_wells"] == 2
         _assert_reasonable_cost(r["cost"])
 
@@ -994,28 +994,28 @@ class TestRealDatasetRegression:
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_4", "wells.txt",
+            "demo", "data", "data_set_biozone_distality", "wells.txt",
         )),
-        reason="data_set_4 not available",
+        reason="data_set_biozone_distality not available",
     )
     def test_dataset4_sigrun_default(self):
         """Sigrun 2-well with default options."""
-        path = self._dataset_path("data_set_4")
+        path = self._dataset_path("data_set_biozone_distality")
         r = _run_engine_subprocess(path, {"max-cor": "50"})
-        assert r["ok"], f"data_set_4 default failed: {r.get('error')}"
+        assert r["ok"], f"data_set_biozone_distality default failed: {r.get('error')}"
         assert r["n_wells"] == 2
         _assert_reasonable_cost(r["cost"])
 
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_4", "wells.txt",
+            "demo", "data", "data_set_biozone_distality", "wells.txt",
         )),
-        reason="data_set_4 not available",
+        reason="data_set_biozone_distality not available",
     )
     def test_dataset4_sigrun_distality(self):
         """Sigrun 2-well with distality + facies cost."""
-        path = self._dataset_path("data_set_4")
+        path = self._dataset_path("data_set_biozone_distality")
         r = _run_engine_subprocess(
             path,
             options={
@@ -1024,41 +1024,41 @@ class TestRealDatasetRegression:
                 "dist-facies": "FACIES_1",
             },
         )
-        assert r["ok"], f"data_set_4 distality failed: {r.get('error')}"
+        assert r["ok"], f"data_set_biozone_distality distality failed: {r.get('error')}"
         _assert_reasonable_cost(r["cost"])
 
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_4", "wells.txt",
+            "demo", "data", "data_set_biozone_distality", "wells.txt",
         )),
-        reason="data_set_4 not available",
+        reason="data_set_biozone_distality not available",
     )
     def test_dataset4_biozone_constraint(self):
         """Sigrun 2-well with biozone no-crossing."""
-        path = self._dataset_path("data_set_4")
+        path = self._dataset_path("data_set_biozone_distality")
         r = _run_engine_subprocess(
             path,
             options={"max-cor": "50", "no-crossing": "BIOZONES"},
         )
-        assert r["ok"], f"data_set_4 biozone failed: {r.get('error')}"
+        assert r["ok"], f"data_set_biozone_distality biozone failed: {r.get('error')}"
         _assert_reasonable_cost(r["cost"])
 
     @pytest.mark.skipif(
         not os.path.isfile(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "demo", "data", "data_set_4", "wells.txt",
+            "demo", "data", "data_set_biozone_distality", "wells.txt",
         )),
-        reason="data_set_4 not available",
+        reason="data_set_biozone_distality not available",
     )
     def test_dataset4_sequence_constraint(self):
         """Sigrun 2-well with sequence no-crossing."""
-        path = self._dataset_path("data_set_4")
+        path = self._dataset_path("data_set_biozone_distality")
         r = _run_engine_subprocess(
             path,
             options={"max-cor": "50", "no-crossing": "SEQUENCE"},
         )
-        assert r["ok"], f"data_set_4 sequence failed: {r.get('error')}"
+        assert r["ok"], f"data_set_biozone_distality sequence failed: {r.get('error')}"
         _assert_reasonable_cost(r["cost"])
 
 

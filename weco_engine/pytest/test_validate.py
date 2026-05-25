@@ -4,7 +4,7 @@ Tests for weco.validate — Reference comparison + quality scoring
 
 Tests load_reference_csv, load_reference_from_resfile, compare_correlations,
 score_correlation_quality, and compare_n_best.
-Uses real data from data/data_set_1.1 for integration tests.
+Uses real data from data/data_set_variance_weights for integration tests.
 """
 
 import csv
@@ -22,7 +22,7 @@ from weco.validate import (
     compare_n_best,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_1.1")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "data", "data_set_variance_weights")
 WELLS_FILE = os.path.join(DATA_DIR, "wells.txt")
 OUTCOME_FILE = os.path.join(DATA_DIR, "outcome_1.txt")
 
@@ -97,7 +97,7 @@ class TestLoadReferenceFromResfile:
     @pytest.fixture(autouse=True)
     def _skip_no_data(self):
         if not _have_data():
-            pytest.skip("data_set_1.1 not available")
+            pytest.skip("data_set_variance_weights not available")
 
     def test_basic(self):
         lines = load_reference_from_resfile(OUTCOME_FILE, WELLS_FILE, cor_num=0)
@@ -132,7 +132,7 @@ class TestCompareCorrelations:
     @pytest.fixture(autouse=True)
     def _skip_no_data(self):
         if not _have_data():
-            pytest.skip("data_set_1.1 not available")
+            pytest.skip("data_set_variance_weights not available")
 
     def test_self_comparison(self):
         """Comparing a result against itself should yield perfect match."""
@@ -183,7 +183,7 @@ class TestScoreCorrelationQuality:
     @pytest.fixture(autouse=True)
     def _skip_no_data(self):
         if not _have_data():
-            pytest.skip("data_set_1.1 not available")
+            pytest.skip("data_set_variance_weights not available")
 
     def test_without_reference(self):
         scores = score_correlation_quality(OUTCOME_FILE, WELLS_FILE, cor_num=0)
@@ -220,7 +220,7 @@ class TestCompareNBest:
     @pytest.fixture(autouse=True)
     def _skip_no_data(self):
         if not _have_data():
-            pytest.skip("data_set_1.1 not available")
+            pytest.skip("data_set_variance_weights not available")
 
     def test_basic(self):
         results = compare_n_best(OUTCOME_FILE, WELLS_FILE, n_best=5)
