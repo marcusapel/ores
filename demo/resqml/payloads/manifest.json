@@ -1,6 +1,6 @@
 [
   {
-    "generated": "2026-05-25T11:31:28.077330+00:00",
+    "generated": "2026-05-25T11:34:57.234600+00:00",
     "generator": "demo/resqml/generate_payloads.py",
     "target_dataspace": "maap/weco",
     "datasets": {
@@ -69,6 +69,13 @@
         "well_objects": 46,
         "log_objects": 23,
         "region_objects": 69
+      },
+      "hugin_tidal": {
+        "dataset": "hugin_tidal",
+        "wells": 2,
+        "well_objects": 4,
+        "log_objects": 4,
+        "region_objects": 2
       }
     }
   }

@@ -2,12 +2,12 @@
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "1ddf9fc5-25e5-4429-8784-aabf0f00e3d6",
+    "Uuid": "9cbcf947-e16f-4549-bd80-c423d3f19769",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_001_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.003610+00:00",
+      "Creation": "2026-05-25T11:34:57.166722+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -97,19 +97,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "e45afe22-ca89-4030-baec-87db50eabe75",
+      "UUID": "7a476028-6f1d-4559-8923-7a3d4706a6e7",
       "Title": "QW_001_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "4944a9e6-530d-44ac-8ec6-c2046fe09efb",
+    "Uuid": "49f9b4cc-e6b4-49f6-b1cf-6237ec8a4191",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_001_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.003624+00:00",
+      "Creation": "2026-05-25T11:34:57.166734+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -199,19 +199,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "e45afe22-ca89-4030-baec-87db50eabe75",
+      "UUID": "7a476028-6f1d-4559-8923-7a3d4706a6e7",
       "Title": "QW_001_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "cb253255-85f7-4788-9575-60a8a130910e",
+    "Uuid": "4750e384-b3ba-4bb4-bc56-609858476c37",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_001_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.003700+00:00",
+      "Creation": "2026-05-25T11:34:57.166744+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -301,19 +301,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "e45afe22-ca89-4030-baec-87db50eabe75",
+      "UUID": "7a476028-6f1d-4559-8923-7a3d4706a6e7",
       "Title": "QW_001_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "bb192fa8-296b-4560-ad6f-71d4eaa12f44",
+    "Uuid": "80f2b8a7-7803-465f-b6f9-1e601003a814",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_001_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.003829+00:00",
+      "Creation": "2026-05-25T11:34:57.166753+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -403,19 +403,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "e45afe22-ca89-4030-baec-87db50eabe75",
+      "UUID": "7a476028-6f1d-4559-8923-7a3d4706a6e7",
       "Title": "QW_001_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "0ed59c4c-758b-4201-b8f3-c9058a07521c",
+    "Uuid": "15b61a9d-b19f-43af-b260-6fa4f2b4df42",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_001_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.003855+00:00",
+      "Creation": "2026-05-25T11:34:57.166762+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -505,19 +505,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "e45afe22-ca89-4030-baec-87db50eabe75",
+      "UUID": "7a476028-6f1d-4559-8923-7a3d4706a6e7",
       "Title": "QW_001_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "6b386e66-8348-4747-a187-a8dd26ba6558",
+    "Uuid": "b36646d8-b1bc-4c07-86ae-28b877293f87",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_001_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.003875+00:00",
+      "Creation": "2026-05-25T11:34:57.166771+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -607,19 +607,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "e45afe22-ca89-4030-baec-87db50eabe75",
+      "UUID": "7a476028-6f1d-4559-8923-7a3d4706a6e7",
       "Title": "QW_001_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "84096c48-5e00-4fde-9cd4-aaeb490b7a0d",
+    "Uuid": "6fa7567d-8a02-4694-8661-5606967d6762",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_002_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004103+00:00",
+      "Creation": "2026-05-25T11:34:57.166940+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -719,19 +719,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "16de9b63-1108-431f-99dd-54fd6e9657da",
+      "UUID": "2ecdf8bf-463d-4ebd-851f-7b0c6e2c1c70",
       "Title": "QW_002_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "cc2beacc-07c6-495d-8797-09f9d92e4c9e",
+    "Uuid": "ce6776be-5113-4c54-8c67-a1910be6f848",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_002_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004121+00:00",
+      "Creation": "2026-05-25T11:34:57.166950+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -831,19 +831,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "16de9b63-1108-431f-99dd-54fd6e9657da",
+      "UUID": "2ecdf8bf-463d-4ebd-851f-7b0c6e2c1c70",
       "Title": "QW_002_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "a24b8ab4-4e6b-4d7d-8b3e-9de1a21d324e",
+    "Uuid": "9dfbd1df-b06b-4f0a-915f-97cbbdfd28a7",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_002_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004237+00:00",
+      "Creation": "2026-05-25T11:34:57.166959+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -943,19 +943,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "16de9b63-1108-431f-99dd-54fd6e9657da",
+      "UUID": "2ecdf8bf-463d-4ebd-851f-7b0c6e2c1c70",
       "Title": "QW_002_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "eff4c59d-b433-4dcc-87ea-5e5639221407",
+    "Uuid": "f6387a4d-dfb0-4777-9ee7-261a563e6ef5",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_002_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004277+00:00",
+      "Creation": "2026-05-25T11:34:57.166968+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1055,19 +1055,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "16de9b63-1108-431f-99dd-54fd6e9657da",
+      "UUID": "2ecdf8bf-463d-4ebd-851f-7b0c6e2c1c70",
       "Title": "QW_002_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "8d9a53c9-35c0-4c6c-86db-f1c24126985d",
+    "Uuid": "62b52a4b-3b32-47f9-bc51-c7b540552299",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_002_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004298+00:00",
+      "Creation": "2026-05-25T11:34:57.166976+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1167,19 +1167,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "16de9b63-1108-431f-99dd-54fd6e9657da",
+      "UUID": "2ecdf8bf-463d-4ebd-851f-7b0c6e2c1c70",
       "Title": "QW_002_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "525df85c-1de1-4792-83a7-05da1ce7898b",
+    "Uuid": "3f9fbffc-e8ed-471e-9bb8-a579a46414d9",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_002_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004317+00:00",
+      "Creation": "2026-05-25T11:34:57.166985+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1279,19 +1279,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "16de9b63-1108-431f-99dd-54fd6e9657da",
+      "UUID": "2ecdf8bf-463d-4ebd-851f-7b0c6e2c1c70",
       "Title": "QW_002_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "aa17b793-ad93-49a3-912b-d5cf8f6396f5",
+    "Uuid": "c2f6faa8-1f36-4736-9162-2037f6b1ce8e",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_003_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004670+00:00",
+      "Creation": "2026-05-25T11:34:57.167167+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1406,19 +1406,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "72515814-3283-483e-b08d-b961c8eec389",
+      "UUID": "610cdff2-2750-4c3c-854f-7c2190f9348f",
       "Title": "QW_003_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "d95dad75-252c-4a1b-98c4-78adca298d73",
+    "Uuid": "f9ab3d03-f3bf-455e-941f-65adb70968ee",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_003_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004684+00:00",
+      "Creation": "2026-05-25T11:34:57.167177+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1533,19 +1533,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "72515814-3283-483e-b08d-b961c8eec389",
+      "UUID": "610cdff2-2750-4c3c-854f-7c2190f9348f",
       "Title": "QW_003_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "b8b663e2-bb3a-4cfa-821d-d558d3b7061f",
+    "Uuid": "e9985125-1e2e-4bbf-9a14-9a466819ba04",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_003_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004697+00:00",
+      "Creation": "2026-05-25T11:34:57.167187+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1660,19 +1660,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "72515814-3283-483e-b08d-b961c8eec389",
+      "UUID": "610cdff2-2750-4c3c-854f-7c2190f9348f",
       "Title": "QW_003_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "a66c5adf-ff4e-4427-a5bb-c20ee77aff86",
+    "Uuid": "024e1af3-6f00-4f43-a608-28f5fc5eb8cb",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_003_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004708+00:00",
+      "Creation": "2026-05-25T11:34:57.167196+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1787,19 +1787,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "72515814-3283-483e-b08d-b961c8eec389",
+      "UUID": "610cdff2-2750-4c3c-854f-7c2190f9348f",
       "Title": "QW_003_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "329dcd9a-a676-427a-b542-5592a762ebc1",
+    "Uuid": "fb7df7aa-4bb3-4aea-96dc-55b22cf28847",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_003_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004719+00:00",
+      "Creation": "2026-05-25T11:34:57.167205+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -1914,19 +1914,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "72515814-3283-483e-b08d-b961c8eec389",
+      "UUID": "610cdff2-2750-4c3c-854f-7c2190f9348f",
       "Title": "QW_003_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "d48444b4-6878-4d42-8063-2b8a7a4cb028",
+    "Uuid": "6da1919f-b23f-4c7d-972c-5af3cf0bab8d",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_003_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.004730+00:00",
+      "Creation": "2026-05-25T11:34:57.167214+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2041,19 +2041,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "72515814-3283-483e-b08d-b961c8eec389",
+      "UUID": "610cdff2-2750-4c3c-854f-7c2190f9348f",
       "Title": "QW_003_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "facbc6dd-fb89-4738-a995-af3d7a9949f5",
+    "Uuid": "f4098a2e-6c10-44e4-9fed-cca8a6ebd69c",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_004_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005144+00:00",
+      "Creation": "2026-05-25T11:34:57.167380+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2155,19 +2155,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "861d5ebd-0b1f-439a-9b35-f81ea0144570",
+      "UUID": "248037f0-a055-4d5e-b051-773cb5e7f40f",
       "Title": "QW_004_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "fd762b3f-0c45-4acb-be66-57e959d22e5a",
+    "Uuid": "52fe5b59-72a3-4616-baab-c48fd8fb8a16",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_004_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005164+00:00",
+      "Creation": "2026-05-25T11:34:57.167388+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2269,19 +2269,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "861d5ebd-0b1f-439a-9b35-f81ea0144570",
+      "UUID": "248037f0-a055-4d5e-b051-773cb5e7f40f",
       "Title": "QW_004_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "dee3e2c6-f3ed-4b49-a891-339ec2ccc5d6",
+    "Uuid": "081d0372-aac0-4a78-a6e5-695b245a428e",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_004_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005183+00:00",
+      "Creation": "2026-05-25T11:34:57.167398+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2383,19 +2383,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "861d5ebd-0b1f-439a-9b35-f81ea0144570",
+      "UUID": "248037f0-a055-4d5e-b051-773cb5e7f40f",
       "Title": "QW_004_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "27aacf07-7fd7-4b65-aff3-23a09acd631c",
+    "Uuid": "680efb9e-6a35-49b7-a60f-ed2f929a88a6",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_004_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005200+00:00",
+      "Creation": "2026-05-25T11:34:57.167407+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2497,19 +2497,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "861d5ebd-0b1f-439a-9b35-f81ea0144570",
+      "UUID": "248037f0-a055-4d5e-b051-773cb5e7f40f",
       "Title": "QW_004_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "14b9cca2-ff72-4cdb-b19a-5c6188527a08",
+    "Uuid": "b50689bc-c0ce-4751-8fc3-b8194395aa67",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_004_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005217+00:00",
+      "Creation": "2026-05-25T11:34:57.167415+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2611,19 +2611,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "861d5ebd-0b1f-439a-9b35-f81ea0144570",
+      "UUID": "248037f0-a055-4d5e-b051-773cb5e7f40f",
       "Title": "QW_004_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "d27ebec6-2576-46cc-9b42-45821b1953b4",
+    "Uuid": "8d486a88-aead-40d2-a9b7-aaa5913fcb44",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_004_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005235+00:00",
+      "Creation": "2026-05-25T11:34:57.167424+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2725,19 +2725,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "861d5ebd-0b1f-439a-9b35-f81ea0144570",
+      "UUID": "248037f0-a055-4d5e-b051-773cb5e7f40f",
       "Title": "QW_004_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "fcb92939-f14c-4e8e-8cff-f956620d27f9",
+    "Uuid": "96066e4d-1a9e-4c78-97e7-54d3592066da",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_005_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005513+00:00",
+      "Creation": "2026-05-25T11:34:57.167834+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2806,19 +2806,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "db3dc81d-c3b8-47b7-ac2e-615f23b003f7",
+      "UUID": "b52e9a06-4fb5-485b-94bf-20c2748e2b25",
       "Title": "QW_005_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "b971ba30-2230-48cb-94ed-ed20ff829d94",
+    "Uuid": "b4bb297a-3109-40b6-a82a-570e1390e396",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_005_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005559+00:00",
+      "Creation": "2026-05-25T11:34:57.167873+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2887,19 +2887,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "db3dc81d-c3b8-47b7-ac2e-615f23b003f7",
+      "UUID": "b52e9a06-4fb5-485b-94bf-20c2748e2b25",
       "Title": "QW_005_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "be60cc90-b5fd-4266-9a3c-9be3e8da5c59",
+    "Uuid": "e3853f6d-1ff4-421f-8c7b-72e36cdc7166",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_005_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005579+00:00",
+      "Creation": "2026-05-25T11:34:57.167890+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -2968,19 +2968,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "db3dc81d-c3b8-47b7-ac2e-615f23b003f7",
+      "UUID": "b52e9a06-4fb5-485b-94bf-20c2748e2b25",
       "Title": "QW_005_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "898dcaa7-ba21-4fe6-aded-3a0e32908124",
+    "Uuid": "4db74fa6-5767-4dc2-9a48-ba875b6a4abd",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_005_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005596+00:00",
+      "Creation": "2026-05-25T11:34:57.167903+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3049,19 +3049,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "db3dc81d-c3b8-47b7-ac2e-615f23b003f7",
+      "UUID": "b52e9a06-4fb5-485b-94bf-20c2748e2b25",
       "Title": "QW_005_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "e8023965-0918-4981-bf4c-b67b6e58be03",
+    "Uuid": "378bf28a-b90e-477d-a290-93830d44f783",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_005_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005611+00:00",
+      "Creation": "2026-05-25T11:34:57.167915+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3130,19 +3130,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "db3dc81d-c3b8-47b7-ac2e-615f23b003f7",
+      "UUID": "b52e9a06-4fb5-485b-94bf-20c2748e2b25",
       "Title": "QW_005_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "9bebdbf7-b165-4024-82c6-b9578a8269c5",
+    "Uuid": "9c233a39-61d3-4d32-8097-300dbb89b711",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_005_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005627+00:00",
+      "Creation": "2026-05-25T11:34:57.167930+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3211,19 +3211,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "db3dc81d-c3b8-47b7-ac2e-615f23b003f7",
+      "UUID": "b52e9a06-4fb5-485b-94bf-20c2748e2b25",
       "Title": "QW_005_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "f756e03f-d750-4d49-88da-c2cad9bc2b6f",
+    "Uuid": "5c980857-8540-4682-8628-9eb0ae3bf77f",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_006_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005929+00:00",
+      "Creation": "2026-05-25T11:34:57.168119+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3313,19 +3313,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "961d8c6a-657f-4591-9c20-1387e52ee526",
+      "UUID": "c48aee78-972d-45d3-9a52-cb65839191d9",
       "Title": "QW_006_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "04655d6e-c083-4676-a142-9f274019f5f4",
+    "Uuid": "1fb32117-2da9-4d1b-aaa3-d0f75bbe1a9b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_006_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.005947+00:00",
+      "Creation": "2026-05-25T11:34:57.168133+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3415,19 +3415,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "961d8c6a-657f-4591-9c20-1387e52ee526",
+      "UUID": "c48aee78-972d-45d3-9a52-cb65839191d9",
       "Title": "QW_006_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "97b66747-9ed3-4d4c-8ccd-2f5e35f375b2",
+    "Uuid": "e378ed6c-0997-463c-a9af-6d680c3f7f36",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_006_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006001+00:00",
+      "Creation": "2026-05-25T11:34:57.168149+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3517,19 +3517,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "961d8c6a-657f-4591-9c20-1387e52ee526",
+      "UUID": "c48aee78-972d-45d3-9a52-cb65839191d9",
       "Title": "QW_006_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "6cd7e0cf-4f6d-4c3e-b879-19e65d6f2f38",
+    "Uuid": "31771534-ecf7-4f17-850d-eeb3bec03688",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_006_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006065+00:00",
+      "Creation": "2026-05-25T11:34:57.168166+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3619,19 +3619,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "961d8c6a-657f-4591-9c20-1387e52ee526",
+      "UUID": "c48aee78-972d-45d3-9a52-cb65839191d9",
       "Title": "QW_006_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "9b62080f-f026-404d-a137-61292d8bc457",
+    "Uuid": "ecc61da2-acb6-4b82-936f-6bf28cf74001",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_006_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006093+00:00",
+      "Creation": "2026-05-25T11:34:57.168182+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3721,19 +3721,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "961d8c6a-657f-4591-9c20-1387e52ee526",
+      "UUID": "c48aee78-972d-45d3-9a52-cb65839191d9",
       "Title": "QW_006_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "7c551707-635d-4c0e-a2be-d87f6ba8f105",
+    "Uuid": "ea396cd9-df7e-4234-a200-3a904d4f7098",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_006_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006137+00:00",
+      "Creation": "2026-05-25T11:34:57.168199+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3823,19 +3823,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "961d8c6a-657f-4591-9c20-1387e52ee526",
+      "UUID": "c48aee78-972d-45d3-9a52-cb65839191d9",
       "Title": "QW_006_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "2d528859-8066-4235-a861-0bc59a792f06",
+    "Uuid": "6a4a2d8b-a147-41da-8473-ebceea67e48e",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_007_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006472+00:00",
+      "Creation": "2026-05-25T11:34:57.168522+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3907,19 +3907,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "7374537a-48e4-421e-b60d-36c2b0e1991c",
+      "UUID": "d937eaae-c74e-4e64-abca-3a3d5cb29f3a",
       "Title": "QW_007_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "dffd1afa-ffdf-4604-b5ca-a6a11cc71aad",
+    "Uuid": "6907b606-319c-4d9d-bba5-b5490a40e405",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_007_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006496+00:00",
+      "Creation": "2026-05-25T11:34:57.168540+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -3991,19 +3991,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "7374537a-48e4-421e-b60d-36c2b0e1991c",
+      "UUID": "d937eaae-c74e-4e64-abca-3a3d5cb29f3a",
       "Title": "QW_007_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "2c878fa8-595b-4ac1-b28e-7160eb138741",
+    "Uuid": "6c88af25-ea19-40d6-9d0d-f1313ba57fd3",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_007_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006536+00:00",
+      "Creation": "2026-05-25T11:34:57.168569+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4075,19 +4075,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "7374537a-48e4-421e-b60d-36c2b0e1991c",
+      "UUID": "d937eaae-c74e-4e64-abca-3a3d5cb29f3a",
       "Title": "QW_007_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "b9d7e29d-6344-4a4f-8e85-a5e593a63ef0",
+    "Uuid": "c4847c41-c2c5-4adc-923d-e575b0d9f74c",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_007_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006555+00:00",
+      "Creation": "2026-05-25T11:34:57.168585+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4159,19 +4159,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "7374537a-48e4-421e-b60d-36c2b0e1991c",
+      "UUID": "d937eaae-c74e-4e64-abca-3a3d5cb29f3a",
       "Title": "QW_007_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "7bea11cb-d6bf-4986-b6fe-1dc7e521a540",
+    "Uuid": "7f63e65d-a92c-4452-ac64-99cbe237ec7a",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_007_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006570+00:00",
+      "Creation": "2026-05-25T11:34:57.168597+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4243,19 +4243,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "7374537a-48e4-421e-b60d-36c2b0e1991c",
+      "UUID": "d937eaae-c74e-4e64-abca-3a3d5cb29f3a",
       "Title": "QW_007_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "05c196c5-7cbe-4de5-9162-072be8cde1ce",
+    "Uuid": "c6ec839a-df5e-4c32-9cc4-89dcc37ebb87",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_007_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006586+00:00",
+      "Creation": "2026-05-25T11:34:57.168610+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4327,19 +4327,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "7374537a-48e4-421e-b60d-36c2b0e1991c",
+      "UUID": "d937eaae-c74e-4e64-abca-3a3d5cb29f3a",
       "Title": "QW_007_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "e5f30545-27ee-416a-90e2-f1f6487e434c",
+    "Uuid": "99d66c92-6647-497c-acf4-ec29aff5544a",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_008_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006830+00:00",
+      "Creation": "2026-05-25T11:34:57.168812+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4446,19 +4446,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "f531d2ac-d173-4b1e-b673-58a216a3735d",
+      "UUID": "b9f34afc-25b1-43ef-b844-3f2671181694",
       "Title": "QW_008_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "1190e7bd-39b5-4222-9045-e63d6070b2e4",
+    "Uuid": "1f31e3b7-1f20-44cb-be69-74d37cadad21",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_008_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006849+00:00",
+      "Creation": "2026-05-25T11:34:57.168827+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4565,19 +4565,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "f531d2ac-d173-4b1e-b673-58a216a3735d",
+      "UUID": "b9f34afc-25b1-43ef-b844-3f2671181694",
       "Title": "QW_008_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "81ec5071-8582-41f4-977e-4e07f09b8eee",
+    "Uuid": "d2dee7e7-bc16-4984-9f2a-afa0f00a5d88",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_008_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006866+00:00",
+      "Creation": "2026-05-25T11:34:57.168841+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4684,19 +4684,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "f531d2ac-d173-4b1e-b673-58a216a3735d",
+      "UUID": "b9f34afc-25b1-43ef-b844-3f2671181694",
       "Title": "QW_008_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "8e89f303-8511-465d-95bd-412577d35486",
+    "Uuid": "0722af39-b9fc-478d-9062-493ca8e37442",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_008_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006885+00:00",
+      "Creation": "2026-05-25T11:34:57.168856+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4803,19 +4803,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "f531d2ac-d173-4b1e-b673-58a216a3735d",
+      "UUID": "b9f34afc-25b1-43ef-b844-3f2671181694",
       "Title": "QW_008_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "2aee5ecb-08b4-4315-8100-e52491302984",
+    "Uuid": "bc04cd48-4a50-4559-8914-af42b93bfab3",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_008_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006902+00:00",
+      "Creation": "2026-05-25T11:34:57.168869+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -4922,19 +4922,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "f531d2ac-d173-4b1e-b673-58a216a3735d",
+      "UUID": "b9f34afc-25b1-43ef-b844-3f2671181694",
       "Title": "QW_008_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "ca719889-28a9-4ae3-95d9-b16cff706f0c",
+    "Uuid": "f386cedc-73d0-4d9a-baae-b7add4d15404",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_008_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.006919+00:00",
+      "Creation": "2026-05-25T11:34:57.168882+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5041,19 +5041,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "f531d2ac-d173-4b1e-b673-58a216a3735d",
+      "UUID": "b9f34afc-25b1-43ef-b844-3f2671181694",
       "Title": "QW_008_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "50ab946b-a3cb-4003-9037-17eeb69ef724",
+    "Uuid": "69fe1e7f-59eb-4c47-9dd0-578355e4529c",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_009_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007251+00:00",
+      "Creation": "2026-05-25T11:34:57.168993+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5124,19 +5124,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "81068005-f73b-4edd-bf19-d912b6c893f9",
+      "UUID": "0180248e-6632-426b-b96b-7c3ca297611a",
       "Title": "QW_009_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "0eb22c64-c9f2-463b-91da-f3d8ea8f5276",
+    "Uuid": "0a581011-93bf-4924-baf4-4ebb186d2304",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_009_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007335+00:00",
+      "Creation": "2026-05-25T11:34:57.169015+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5207,19 +5207,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "81068005-f73b-4edd-bf19-d912b6c893f9",
+      "UUID": "0180248e-6632-426b-b96b-7c3ca297611a",
       "Title": "QW_009_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "9a801264-b18e-4373-9cd8-bc73f4e3f0a2",
+    "Uuid": "db84a996-1db2-459d-b7e9-72c2162a813a",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_009_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007367+00:00",
+      "Creation": "2026-05-25T11:34:57.169028+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5290,19 +5290,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "81068005-f73b-4edd-bf19-d912b6c893f9",
+      "UUID": "0180248e-6632-426b-b96b-7c3ca297611a",
       "Title": "QW_009_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "e0fcb764-b3e8-4bd2-ba0d-c6ab644ea499",
+    "Uuid": "5760aa47-e65b-4912-b6b8-b5fc0dbece7d",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_009_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007385+00:00",
+      "Creation": "2026-05-25T11:34:57.169039+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5373,19 +5373,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "81068005-f73b-4edd-bf19-d912b6c893f9",
+      "UUID": "0180248e-6632-426b-b96b-7c3ca297611a",
       "Title": "QW_009_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "2999a832-634e-41f7-84f9-d1b5b51d51d1",
+    "Uuid": "eab8d109-e7eb-4770-8325-169cffca71f8",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_009_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007401+00:00",
+      "Creation": "2026-05-25T11:34:57.169051+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5456,19 +5456,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "81068005-f73b-4edd-bf19-d912b6c893f9",
+      "UUID": "0180248e-6632-426b-b96b-7c3ca297611a",
       "Title": "QW_009_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "d4139202-2bc2-4a1a-b3c5-85ae52c3022a",
+    "Uuid": "b248a48f-240c-4021-b997-c3eb9724f3a0",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_009_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007416+00:00",
+      "Creation": "2026-05-25T11:34:57.169062+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5539,19 +5539,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "81068005-f73b-4edd-bf19-d912b6c893f9",
+      "UUID": "0180248e-6632-426b-b96b-7c3ca297611a",
       "Title": "QW_009_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "f8652c5d-1e55-48ba-b3aa-9dd28480a618",
+    "Uuid": "1cf703e6-3a14-466e-b574-ce5b090b24bc",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_010_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007693+00:00",
+      "Creation": "2026-05-25T11:34:57.169205+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5640,19 +5640,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "d51583ad-f9dd-4a2d-9f56-ce6dca1d1757",
+      "UUID": "2b921ee9-591a-4c7b-8a34-b3ed7dacc5c3",
       "Title": "QW_010_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "dbca465e-dedd-4457-b5fb-074dffc25e60",
+    "Uuid": "1b94bf98-ed37-4eea-824d-94b62a924267",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_010_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007707+00:00",
+      "Creation": "2026-05-25T11:34:57.169218+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5741,19 +5741,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "d51583ad-f9dd-4a2d-9f56-ce6dca1d1757",
+      "UUID": "2b921ee9-591a-4c7b-8a34-b3ed7dacc5c3",
       "Title": "QW_010_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "619a220c-6878-4d9a-8586-c3d55ad5e1ed",
+    "Uuid": "d5fba4ca-623b-4c33-b3c8-abdfa82641de",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_010_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007718+00:00",
+      "Creation": "2026-05-25T11:34:57.169231+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5842,19 +5842,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "d51583ad-f9dd-4a2d-9f56-ce6dca1d1757",
+      "UUID": "2b921ee9-591a-4c7b-8a34-b3ed7dacc5c3",
       "Title": "QW_010_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "1c6800d8-a260-473e-b2f6-5cd11a0819cb",
+    "Uuid": "6dbe0fdb-9423-4403-88ba-07fe421d861b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_010_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007728+00:00",
+      "Creation": "2026-05-25T11:34:57.169243+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -5943,19 +5943,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "d51583ad-f9dd-4a2d-9f56-ce6dca1d1757",
+      "UUID": "2b921ee9-591a-4c7b-8a34-b3ed7dacc5c3",
       "Title": "QW_010_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "5313b0ca-1315-4c1e-905c-c62f1a77b70b",
+    "Uuid": "9e72b043-3b81-41f3-bafb-ca370d4f94eb",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_010_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007736+00:00",
+      "Creation": "2026-05-25T11:34:57.169255+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6044,19 +6044,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "d51583ad-f9dd-4a2d-9f56-ce6dca1d1757",
+      "UUID": "2b921ee9-591a-4c7b-8a34-b3ed7dacc5c3",
       "Title": "QW_010_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "7d79a3d6-ca32-42c7-9a2b-d5cbb87287e2",
+    "Uuid": "96e3ec74-6c03-4d22-8432-f11b88ca2767",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_010_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007746+00:00",
+      "Creation": "2026-05-25T11:34:57.169268+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6145,19 +6145,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "d51583ad-f9dd-4a2d-9f56-ce6dca1d1757",
+      "UUID": "2b921ee9-591a-4c7b-8a34-b3ed7dacc5c3",
       "Title": "QW_010_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "bdf18b9a-c761-4951-98ac-17e9ace90bee",
+    "Uuid": "dbc4e959-b334-45e0-a7e0-e96b21c96221",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_011_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007881+00:00",
+      "Creation": "2026-05-25T11:34:57.169424+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6235,19 +6235,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "6ceede30-b447-42f2-a035-1fa383f2ba13",
+      "UUID": "f4fe7fc4-b70d-43d2-a44d-1c19cfb17300",
       "Title": "QW_011_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "b04afc84-ca59-4e96-8cf0-93f522022d8b",
+    "Uuid": "1e9e95ad-4c7d-4cb6-8b85-ceb984f1a06b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_011_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007890+00:00",
+      "Creation": "2026-05-25T11:34:57.169437+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6325,19 +6325,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "6ceede30-b447-42f2-a035-1fa383f2ba13",
+      "UUID": "f4fe7fc4-b70d-43d2-a44d-1c19cfb17300",
       "Title": "QW_011_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "085fc68b-443a-4b33-985b-79812ab7be7e",
+    "Uuid": "0902f4ff-f5f0-4e75-8eeb-94ad9eb14857",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_011_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007900+00:00",
+      "Creation": "2026-05-25T11:34:57.169451+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6415,19 +6415,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "6ceede30-b447-42f2-a035-1fa383f2ba13",
+      "UUID": "f4fe7fc4-b70d-43d2-a44d-1c19cfb17300",
       "Title": "QW_011_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "580581aa-82fa-4432-b115-5b01c2fc638f",
+    "Uuid": "29b2620e-8748-4de9-91e2-37b34d59231f",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_011_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007909+00:00",
+      "Creation": "2026-05-25T11:34:57.169475+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6505,19 +6505,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "6ceede30-b447-42f2-a035-1fa383f2ba13",
+      "UUID": "f4fe7fc4-b70d-43d2-a44d-1c19cfb17300",
       "Title": "QW_011_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "8356730a-0e0f-428b-9fc1-8a675626933a",
+    "Uuid": "0fddd706-f730-4447-89e8-e4a858a740d4",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_011_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007917+00:00",
+      "Creation": "2026-05-25T11:34:57.169493+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6595,19 +6595,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "6ceede30-b447-42f2-a035-1fa383f2ba13",
+      "UUID": "f4fe7fc4-b70d-43d2-a44d-1c19cfb17300",
       "Title": "QW_011_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "8e09b0f8-a7ca-48f4-b95b-cc135ab519c3",
+    "Uuid": "491feea4-85c0-4aa5-bed3-3519bbbe0d36",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_011_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.007926+00:00",
+      "Creation": "2026-05-25T11:34:57.169506+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6685,19 +6685,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "6ceede30-b447-42f2-a035-1fa383f2ba13",
+      "UUID": "f4fe7fc4-b70d-43d2-a44d-1c19cfb17300",
       "Title": "QW_011_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "6bcf8e58-cc44-4725-8cb9-1240baa89337",
+    "Uuid": "cdeba0c0-0c89-4859-bed2-fbce0244d2b4",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_012_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008098+00:00",
+      "Creation": "2026-05-25T11:34:57.169684+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6797,19 +6797,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "fc6f9095-858f-4a36-b23a-52aa59349037",
+      "UUID": "3eba471f-0867-4ce7-bea4-333de81fbe97",
       "Title": "QW_012_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "d4dfaca3-9107-4d7c-acc0-ca3b659e4a69",
+    "Uuid": "a3c1adcc-fe7b-40dd-9bbc-b334a5a8e668",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_012_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008108+00:00",
+      "Creation": "2026-05-25T11:34:57.169699+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -6909,19 +6909,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "fc6f9095-858f-4a36-b23a-52aa59349037",
+      "UUID": "3eba471f-0867-4ce7-bea4-333de81fbe97",
       "Title": "QW_012_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "71259b23-caf8-430a-8b23-4db357d58b45",
+    "Uuid": "2aa4584e-45fc-40f2-9648-4462bd9ff5ae",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_012_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008118+00:00",
+      "Creation": "2026-05-25T11:34:57.169714+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7021,19 +7021,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "fc6f9095-858f-4a36-b23a-52aa59349037",
+      "UUID": "3eba471f-0867-4ce7-bea4-333de81fbe97",
       "Title": "QW_012_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "ae75d05b-31fb-4d8a-80b1-b8b6d557425b",
+    "Uuid": "99518b80-faa2-4135-8ea5-8a26bdda5499",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_012_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008127+00:00",
+      "Creation": "2026-05-25T11:34:57.169729+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7133,19 +7133,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "fc6f9095-858f-4a36-b23a-52aa59349037",
+      "UUID": "3eba471f-0867-4ce7-bea4-333de81fbe97",
       "Title": "QW_012_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "1ccd5bc8-fc30-4e77-9c3f-a497e6e7d572",
+    "Uuid": "94bacdc9-dad8-48ed-8a6b-d7e62298c409",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_012_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008136+00:00",
+      "Creation": "2026-05-25T11:34:57.169742+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7245,19 +7245,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "fc6f9095-858f-4a36-b23a-52aa59349037",
+      "UUID": "3eba471f-0867-4ce7-bea4-333de81fbe97",
       "Title": "QW_012_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "21a915de-483c-4af8-93e1-346449a23fd8",
+    "Uuid": "47b96fa0-a77e-443d-be04-08eaaae70faf",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_012_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008146+00:00",
+      "Creation": "2026-05-25T11:34:57.169756+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7357,19 +7357,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "fc6f9095-858f-4a36-b23a-52aa59349037",
+      "UUID": "3eba471f-0867-4ce7-bea4-333de81fbe97",
       "Title": "QW_012_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "30ba51b9-7ae0-4c17-971f-4a4404bad02d",
+    "Uuid": "12e3fb6b-a49b-4132-b048-580073914b3f",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_013_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008396+00:00",
+      "Creation": "2026-05-25T11:34:57.170022+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7498,19 +7498,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "ea4dc93a-5749-4d1a-9f92-8bd9b3243169",
+      "UUID": "f25cc4ee-cb22-4d67-a444-82383f10b652",
       "Title": "QW_013_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "b9ae95ae-5790-4e65-be52-012eb8388c7e",
+    "Uuid": "1d4b2a68-d145-4915-89c1-2d8feea32a8b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_013_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008407+00:00",
+      "Creation": "2026-05-25T11:34:57.170037+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7639,19 +7639,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "ea4dc93a-5749-4d1a-9f92-8bd9b3243169",
+      "UUID": "f25cc4ee-cb22-4d67-a444-82383f10b652",
       "Title": "QW_013_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "3f4b5b17-b034-4180-8368-119e744392c6",
+    "Uuid": "a16c31a2-b5f4-4118-b769-b2f03f3efc67",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_013_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008418+00:00",
+      "Creation": "2026-05-25T11:34:57.170055+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7780,19 +7780,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "ea4dc93a-5749-4d1a-9f92-8bd9b3243169",
+      "UUID": "f25cc4ee-cb22-4d67-a444-82383f10b652",
       "Title": "QW_013_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "0ea813d4-07b8-4cca-bb04-f7ca3650e56d",
+    "Uuid": "b93d95dd-eb3b-4f77-9446-0b8e2a75541b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_013_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008428+00:00",
+      "Creation": "2026-05-25T11:34:57.170072+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -7921,19 +7921,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "ea4dc93a-5749-4d1a-9f92-8bd9b3243169",
+      "UUID": "f25cc4ee-cb22-4d67-a444-82383f10b652",
       "Title": "QW_013_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "dd509158-a65f-4384-b4fe-bb49a64e86c2",
+    "Uuid": "cd6d95f2-52b1-4e05-a2a2-4f83a1d07de7",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_013_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008438+00:00",
+      "Creation": "2026-05-25T11:34:57.170089+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8062,19 +8062,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "ea4dc93a-5749-4d1a-9f92-8bd9b3243169",
+      "UUID": "f25cc4ee-cb22-4d67-a444-82383f10b652",
       "Title": "QW_013_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "25a94d52-2ed9-42ce-99cd-3f5e37b1cd28",
+    "Uuid": "5bb3d831-e006-4819-ab2c-fd5b61f47b68",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_013_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008450+00:00",
+      "Creation": "2026-05-25T11:34:57.170105+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8203,19 +8203,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "ea4dc93a-5749-4d1a-9f92-8bd9b3243169",
+      "UUID": "f25cc4ee-cb22-4d67-a444-82383f10b652",
       "Title": "QW_013_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "accd5a38-a407-4a7a-bc56-be5b1f020e99",
+    "Uuid": "5f15b1ee-11cc-4a6e-aa8d-73d9c19d18c5",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_014_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008660+00:00",
+      "Creation": "2026-05-25T11:34:57.170382+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8333,19 +8333,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "351ed802-a99d-4843-b386-d10e58094896",
+      "UUID": "03a85f73-1d43-48f8-b476-854ff310d272",
       "Title": "QW_014_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "6fab0404-1a0a-4466-b1e3-dd10b0a37dbd",
+    "Uuid": "e32dfb47-bf23-4615-b376-160837f6df17",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_014_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008670+00:00",
+      "Creation": "2026-05-25T11:34:57.170399+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8463,19 +8463,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "351ed802-a99d-4843-b386-d10e58094896",
+      "UUID": "03a85f73-1d43-48f8-b476-854ff310d272",
       "Title": "QW_014_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "3789d12a-8232-421f-a44d-018324a34df4",
+    "Uuid": "c07c5d9c-c7fc-4bd8-a86f-4b1c00ee3d75",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_014_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008680+00:00",
+      "Creation": "2026-05-25T11:34:57.170434+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8593,19 +8593,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "351ed802-a99d-4843-b386-d10e58094896",
+      "UUID": "03a85f73-1d43-48f8-b476-854ff310d272",
       "Title": "QW_014_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "a2c00c20-104d-4568-96c4-4731193058a4",
+    "Uuid": "e903f5a6-770e-4544-8e91-8f98492465d6",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_014_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008691+00:00",
+      "Creation": "2026-05-25T11:34:57.170451+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8723,19 +8723,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "351ed802-a99d-4843-b386-d10e58094896",
+      "UUID": "03a85f73-1d43-48f8-b476-854ff310d272",
       "Title": "QW_014_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "96c14d2a-b0fe-4d38-b6ce-deb9c98bc97c",
+    "Uuid": "f1b45812-ecd4-4d9e-bacf-556c85510701",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_014_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008701+00:00",
+      "Creation": "2026-05-25T11:34:57.170467+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8853,19 +8853,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "351ed802-a99d-4843-b386-d10e58094896",
+      "UUID": "03a85f73-1d43-48f8-b476-854ff310d272",
       "Title": "QW_014_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "bb5a97e4-6c31-447a-bcdf-42fe8c8f4789",
+    "Uuid": "4a370103-d2af-4cd8-9f9a-727e23b2267f",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_014_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.008711+00:00",
+      "Creation": "2026-05-25T11:34:57.170482+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -8983,19 +8983,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "351ed802-a99d-4843-b386-d10e58094896",
+      "UUID": "03a85f73-1d43-48f8-b476-854ff310d272",
       "Title": "QW_014_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "6968ea08-2160-40dc-8a36-a29a70a0de19",
+    "Uuid": "a04b7c3a-5eaa-4aec-b4b0-0b50a103da63",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_015_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009037+00:00",
+      "Creation": "2026-05-25T11:34:57.170930+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9123,19 +9123,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "4e534fa5-e8ec-4273-8d06-fe4a307bb7c6",
+      "UUID": "d77cbdf7-581f-4cb7-bc8b-b8d7b7cd8484",
       "Title": "QW_015_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "48b58c9a-2e65-44d4-bf4f-1d67fc3d6359",
+    "Uuid": "37b264a9-fb5e-4b73-931a-9db69b4d682c",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_015_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009049+00:00",
+      "Creation": "2026-05-25T11:34:57.170943+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9263,19 +9263,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "4e534fa5-e8ec-4273-8d06-fe4a307bb7c6",
+      "UUID": "d77cbdf7-581f-4cb7-bc8b-b8d7b7cd8484",
       "Title": "QW_015_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "64d68612-9cf1-4880-a798-037700eedc6d",
+    "Uuid": "2af7bfdd-8e22-4817-b366-341f50127baf",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_015_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009059+00:00",
+      "Creation": "2026-05-25T11:34:57.170954+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9403,19 +9403,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "4e534fa5-e8ec-4273-8d06-fe4a307bb7c6",
+      "UUID": "d77cbdf7-581f-4cb7-bc8b-b8d7b7cd8484",
       "Title": "QW_015_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "9d90012c-a4ea-4fe8-bac9-77b10f60eea7",
+    "Uuid": "040bcba9-6aa3-4ece-9e9a-eba6dbc7d92f",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_015_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009070+00:00",
+      "Creation": "2026-05-25T11:34:57.170965+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9543,19 +9543,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "4e534fa5-e8ec-4273-8d06-fe4a307bb7c6",
+      "UUID": "d77cbdf7-581f-4cb7-bc8b-b8d7b7cd8484",
       "Title": "QW_015_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "89c6397e-b223-41aa-b395-98c94f2f7112",
+    "Uuid": "056c57a6-e9a0-410c-8765-ede118a64e8a",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_015_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009081+00:00",
+      "Creation": "2026-05-25T11:34:57.170974+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9683,19 +9683,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "4e534fa5-e8ec-4273-8d06-fe4a307bb7c6",
+      "UUID": "d77cbdf7-581f-4cb7-bc8b-b8d7b7cd8484",
       "Title": "QW_015_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "053e8c1f-ec6a-4ebd-9d77-4b018e6a7528",
+    "Uuid": "d8f2f958-bbc0-499f-8b0d-619b864e20c5",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_015_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009091+00:00",
+      "Creation": "2026-05-25T11:34:57.170984+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9823,19 +9823,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "4e534fa5-e8ec-4273-8d06-fe4a307bb7c6",
+      "UUID": "d77cbdf7-581f-4cb7-bc8b-b8d7b7cd8484",
       "Title": "QW_015_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "7d216d71-6236-443c-b289-867c05b6acef",
+    "Uuid": "58a8b832-007a-4ec6-a8f4-691d3d41a02b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_016_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009259+00:00",
+      "Creation": "2026-05-25T11:34:57.171179+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -9919,19 +9919,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "3b54462d-a730-4a15-b8f0-ebf27f35013e",
+      "UUID": "d873641e-fea4-42c2-9a88-e4855f45a4a0",
       "Title": "QW_016_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "4abf56cf-c3db-47cc-86d7-36b4cdede1f9",
+    "Uuid": "21ed51c6-32ab-446c-b5bb-a5b7e41b16b8",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_016_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009270+00:00",
+      "Creation": "2026-05-25T11:34:57.171195+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10015,19 +10015,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "3b54462d-a730-4a15-b8f0-ebf27f35013e",
+      "UUID": "d873641e-fea4-42c2-9a88-e4855f45a4a0",
       "Title": "QW_016_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "03f9fe77-88de-44c1-98c4-1056feca1f8c",
+    "Uuid": "2697f975-9cee-4248-a024-da8a386f49d1",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_016_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009280+00:00",
+      "Creation": "2026-05-25T11:34:57.171206+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10111,19 +10111,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "3b54462d-a730-4a15-b8f0-ebf27f35013e",
+      "UUID": "d873641e-fea4-42c2-9a88-e4855f45a4a0",
       "Title": "QW_016_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "1d952a7d-d700-4f86-81da-31e0698fd19e",
+    "Uuid": "445ade5e-858d-4d27-afe0-bb28f5dceb90",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_016_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009288+00:00",
+      "Creation": "2026-05-25T11:34:57.171217+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10207,19 +10207,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "3b54462d-a730-4a15-b8f0-ebf27f35013e",
+      "UUID": "d873641e-fea4-42c2-9a88-e4855f45a4a0",
       "Title": "QW_016_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "e24e405c-abc0-4cac-97da-6ea6b2456d08",
+    "Uuid": "432ce15a-e2c6-4efd-a422-adc03f24aa00",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_016_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009298+00:00",
+      "Creation": "2026-05-25T11:34:57.171226+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10303,19 +10303,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "3b54462d-a730-4a15-b8f0-ebf27f35013e",
+      "UUID": "d873641e-fea4-42c2-9a88-e4855f45a4a0",
       "Title": "QW_016_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "fa6e3009-4946-4a20-9841-3ead10f331eb",
+    "Uuid": "ee02b645-ad89-4eb7-a28e-9de929d0272d",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_016_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009306+00:00",
+      "Creation": "2026-05-25T11:34:57.171234+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10399,19 +10399,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "3b54462d-a730-4a15-b8f0-ebf27f35013e",
+      "UUID": "d873641e-fea4-42c2-9a88-e4855f45a4a0",
       "Title": "QW_016_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "e57ecacd-5ac0-42fb-9840-4e8a940d7364",
+    "Uuid": "985f7f1e-6f58-4fd4-8b5a-c4fb627bba67",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_017_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009465+00:00",
+      "Creation": "2026-05-25T11:34:57.171376+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10500,19 +10500,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "26da14b3-715f-4020-930a-03d6bc5e9676",
+      "UUID": "e3e9c98d-dfc7-45d7-b0ea-db1dbcfddbd6",
       "Title": "QW_017_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "768fbaf1-be55-4bf5-92a6-3d96075155ff",
+    "Uuid": "e3e2ce64-d36a-4fa7-9aae-57434360bc52",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_017_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009474+00:00",
+      "Creation": "2026-05-25T11:34:57.171386+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10601,19 +10601,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "26da14b3-715f-4020-930a-03d6bc5e9676",
+      "UUID": "e3e9c98d-dfc7-45d7-b0ea-db1dbcfddbd6",
       "Title": "QW_017_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "a74c27e1-dd79-4906-a302-4f9f4513af60",
+    "Uuid": "8ce2a5f5-69fb-42a0-b1bf-4f3b09d81ee2",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_017_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009483+00:00",
+      "Creation": "2026-05-25T11:34:57.171395+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10702,19 +10702,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "26da14b3-715f-4020-930a-03d6bc5e9676",
+      "UUID": "e3e9c98d-dfc7-45d7-b0ea-db1dbcfddbd6",
       "Title": "QW_017_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "00b67da4-eefb-4eff-be44-a8aebb4dd2c0",
+    "Uuid": "394675ef-d4ed-4b6c-bf4f-27e8f7c26a23",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_017_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009573+00:00",
+      "Creation": "2026-05-25T11:34:57.171402+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10803,19 +10803,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "26da14b3-715f-4020-930a-03d6bc5e9676",
+      "UUID": "e3e9c98d-dfc7-45d7-b0ea-db1dbcfddbd6",
       "Title": "QW_017_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "4fb10b62-cc0a-4c6b-8200-9f469026c9d6",
+    "Uuid": "7a61a11e-7aee-4ead-8516-7b4a1e71675f",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_017_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009591+00:00",
+      "Creation": "2026-05-25T11:34:57.171410+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -10904,19 +10904,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "26da14b3-715f-4020-930a-03d6bc5e9676",
+      "UUID": "e3e9c98d-dfc7-45d7-b0ea-db1dbcfddbd6",
       "Title": "QW_017_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "614c47ca-6f69-42af-9aa7-558d80df1ee9",
+    "Uuid": "d8d8375f-8ef6-4f8d-8c93-c4788317f454",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_017_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009604+00:00",
+      "Creation": "2026-05-25T11:34:57.171418+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11005,19 +11005,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "26da14b3-715f-4020-930a-03d6bc5e9676",
+      "UUID": "e3e9c98d-dfc7-45d7-b0ea-db1dbcfddbd6",
       "Title": "QW_017_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "f121e506-1a5c-441c-b7d2-8e368d253da8",
+    "Uuid": "e008fc17-46a3-427e-902f-35e56e97448d",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_018_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009856+00:00",
+      "Creation": "2026-05-25T11:34:57.171534+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11099,19 +11099,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "c10917f6-a827-4582-a703-c14164dbed80",
+      "UUID": "429db52c-9103-4d66-b514-7ba920af5379",
       "Title": "QW_018_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "431d74fb-8bd0-45b2-aa43-138233e50685",
+    "Uuid": "e92cd534-d41b-4da8-a7a0-602c6db826cd",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_018_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009871+00:00",
+      "Creation": "2026-05-25T11:34:57.171542+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11193,19 +11193,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "c10917f6-a827-4582-a703-c14164dbed80",
+      "UUID": "429db52c-9103-4d66-b514-7ba920af5379",
       "Title": "QW_018_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "a768c115-9e8f-4111-afe9-eddd69b93928",
+    "Uuid": "2d3373f3-0d46-4256-8bac-db381d848398",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_018_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009881+00:00",
+      "Creation": "2026-05-25T11:34:57.171550+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11287,19 +11287,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "c10917f6-a827-4582-a703-c14164dbed80",
+      "UUID": "429db52c-9103-4d66-b514-7ba920af5379",
       "Title": "QW_018_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "ec6fa506-057f-4c59-94c5-b9bf487d603a",
+    "Uuid": "48172b8c-3f7f-40fd-bfac-342b51e8bf5e",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_018_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009890+00:00",
+      "Creation": "2026-05-25T11:34:57.171558+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11381,19 +11381,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "c10917f6-a827-4582-a703-c14164dbed80",
+      "UUID": "429db52c-9103-4d66-b514-7ba920af5379",
       "Title": "QW_018_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "5e2ce2c8-9370-4336-bfe9-abebbab3f687",
+    "Uuid": "f424ebcc-299b-4047-b160-9f266886db01",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_018_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009899+00:00",
+      "Creation": "2026-05-25T11:34:57.171584+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11475,19 +11475,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "c10917f6-a827-4582-a703-c14164dbed80",
+      "UUID": "429db52c-9103-4d66-b514-7ba920af5379",
       "Title": "QW_018_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "f675f331-528f-4871-9932-18e8815d2973",
+    "Uuid": "1e88f80f-c5c2-4b33-b511-0f83ee6fd698",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_018_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009907+00:00",
+      "Creation": "2026-05-25T11:34:57.171599+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11569,19 +11569,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "c10917f6-a827-4582-a703-c14164dbed80",
+      "UUID": "429db52c-9103-4d66-b514-7ba920af5379",
       "Title": "QW_018_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "fb21ceb5-bfea-4b77-ac84-e6b8c0445dbb",
+    "Uuid": "09dc5fb1-3f16-43f4-957d-674dfe3fa12b",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_019_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009947+00:00",
+      "Creation": "2026-05-25T11:34:57.171661+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11607,19 +11607,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "2238f948-095c-4dea-928a-56ba268dadf3",
+      "UUID": "7a99896e-c834-4bc0-92b2-3a736f5cdae1",
       "Title": "QW_019_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "31476d93-fbc2-4074-bbdc-ed2862d19a6c",
+    "Uuid": "c6575570-a4aa-4961-a730-c40dca09bdb2",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_019_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009954+00:00",
+      "Creation": "2026-05-25T11:34:57.171669+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11645,19 +11645,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "2238f948-095c-4dea-928a-56ba268dadf3",
+      "UUID": "7a99896e-c834-4bc0-92b2-3a736f5cdae1",
       "Title": "QW_019_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "82dbc642-789a-4233-a339-dffda20002bd",
+    "Uuid": "616c444c-af8e-4d0d-b8c2-9118d4f79fcd",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_019_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009960+00:00",
+      "Creation": "2026-05-25T11:34:57.171675+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11683,19 +11683,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "2238f948-095c-4dea-928a-56ba268dadf3",
+      "UUID": "7a99896e-c834-4bc0-92b2-3a736f5cdae1",
       "Title": "QW_019_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "3aa72bce-7746-439a-891e-1a0f6795ad3d",
+    "Uuid": "f9512bd6-4d3d-4e39-90ac-5c17e7c49b9a",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_019_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009966+00:00",
+      "Creation": "2026-05-25T11:34:57.171681+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11721,19 +11721,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "2238f948-095c-4dea-928a-56ba268dadf3",
+      "UUID": "7a99896e-c834-4bc0-92b2-3a736f5cdae1",
       "Title": "QW_019_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "e219a449-e943-4904-854c-ef8adb1c970b",
+    "Uuid": "d8a1aadc-9fa1-4378-9a0e-a1083b16dd79",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_019_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009972+00:00",
+      "Creation": "2026-05-25T11:34:57.171687+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11759,19 +11759,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "2238f948-095c-4dea-928a-56ba268dadf3",
+      "UUID": "7a99896e-c834-4bc0-92b2-3a736f5cdae1",
       "Title": "QW_019_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "f6fe1f7a-c040-4737-82b5-07eeb946611d",
+    "Uuid": "ccac3df4-e4d9-4317-b530-1c6308444353",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_019_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.009979+00:00",
+      "Creation": "2026-05-25T11:34:57.171693+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11797,19 +11797,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "2238f948-095c-4dea-928a-56ba268dadf3",
+      "UUID": "7a99896e-c834-4bc0-92b2-3a736f5cdae1",
       "Title": "QW_019_WC"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "66e67933-2e1e-4bcd-8852-d024aea978b7",
+    "Uuid": "4c021def-8cba-4953-ae31-e3a8ad0e5237",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_020_GR",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.010090+00:00",
+      "Creation": "2026-05-25T11:34:57.171789+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11883,19 +11883,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "753db753-7153-4e23-ba13-de6d501e0732",
+      "UUID": "2a6be95c-ca59-4241-a919-c817651e503f",
       "Title": "QW_020_GR"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "4e4d8779-252c-49b7-89ee-61c3475a8ff2",
+    "Uuid": "de20a412-a6e2-4fd0-9b0b-92e1232a7386",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_020_RT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.010098+00:00",
+      "Creation": "2026-05-25T11:34:57.171797+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -11969,19 +11969,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "753db753-7153-4e23-ba13-de6d501e0732",
+      "UUID": "2a6be95c-ca59-4241-a919-c817651e503f",
       "Title": "QW_020_RT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "552b1254-492f-4e49-8fc8-eaf1e52cdbf6",
+    "Uuid": "fc14747b-e781-4276-a29b-4e2bffefaa8e",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_020_SPT",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.010106+00:00",
+      "Creation": "2026-05-25T11:34:57.171804+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -12055,19 +12055,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "753db753-7153-4e23-ba13-de6d501e0732",
+      "UUID": "2a6be95c-ca59-4241-a919-c817651e503f",
       "Title": "QW_020_SPT"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "d4912a54-5c84-4975-b169-de53212da93f",
+    "Uuid": "2ad8c00b-e65b-434d-a409-ba185090620a",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_020_COND",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.010114+00:00",
+      "Creation": "2026-05-25T11:34:57.171811+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -12141,19 +12141,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "753db753-7153-4e23-ba13-de6d501e0732",
+      "UUID": "2a6be95c-ca59-4241-a919-c817651e503f",
       "Title": "QW_020_COND"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "5f59a158-b6b4-4a44-8980-6c7a32c7c4ea",
+    "Uuid": "1424047d-c3c7-4294-92b2-a1b6fef60cda",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_020_MS",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.010122+00:00",
+      "Creation": "2026-05-25T11:34:57.171818+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -12227,19 +12227,19 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "753db753-7153-4e23-ba13-de6d501e0732",
+      "UUID": "2a6be95c-ca59-4241-a919-c817651e503f",
       "Title": "QW_020_MS"
     }
   },
   {
     "$type": "resqml20.obj_ContinuousProperty",
     "SchemaVersion": "2.0",
-    "Uuid": "c20b8253-377e-4069-8be1-f94ccf2518a3",
+    "Uuid": "362bbd38-a759-4b92-a9ac-d1e61217bf48",
     "Citation": {
       "$type": "eml20.Citation",
       "Title": "QW_020_WC",
       "Originator": "WeCo Demo Ingestion",
-      "Creation": "2026-05-25T11:31:28.010131+00:00",
+      "Creation": "2026-05-25T11:34:57.171826+00:00",
       "Format": "WeCo RESQML Payload Generator"
     },
     "PropertyKind": {
@@ -12313,7 +12313,7 @@
     "SupportingRepresentation": {
       "$type": "eml20.DataObjectReference",
       "ContentType": "application/x-resqml+xml;version=2.0;type=obj_WellboreFrameRepresentation",
-      "UUID": "753db753-7153-4e23-ba13-de6d501e0732",
+      "UUID": "2a6be95c-ca59-4241-a919-c817651e503f",
       "Title": "QW_020_WC"
     }
   }

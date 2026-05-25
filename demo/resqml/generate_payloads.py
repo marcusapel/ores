@@ -305,6 +305,12 @@ DATASETS = {
         "logs": ["MD"],
         "regions": ["FACIES", "BIOZONE", "DISTALITY", "SEQUENCE"],
     },
+    "hugin_tidal": {
+        "path": "demo/data/data_set_hugin_tidal/facies.wells.txt",
+        "title": "Hugin Fm – Tidal Distality (Real Wells)",
+        "logs": ["DISTALITY"],
+        "regions": ["FACIES_1", "FACIES_2", "FACIES1", "FACIES2", "BIOZONES"],
+    },
 }
 
 

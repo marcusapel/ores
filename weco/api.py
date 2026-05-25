@@ -1624,6 +1624,10 @@ def _get_demo_opts(demo_id: str) -> dict:
         "troll": {"var-data": "FACIES",
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.5, "out-min-dist": 0.25},
+        "hugin_tidal": {"dist-distal": "DISTALITY", "dist-facies": "FACIES_1",
+                        "dist-scaling": 1.0, "order": "distality",
+                        "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
+                        "min-dist": 0.3, "out-min-dist": 0.15},
     }
     return _DEMO_OPTS.get(demo_id, {})
 
