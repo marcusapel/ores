@@ -465,11 +465,12 @@ class CorrelationWorker(QThread):
     finished = pyqtSignal(str, object, object, str)  # run_name, res_file, well_list, log_text
     progress = pyqtSignal(str)  # status message
 
-    def __init__(self, run_name, wells_path, opts, parent=None):
+    def __init__(self, run_name, wells_path, opts, parent=None, seistiles_path=None):
         super().__init__(parent)
         self.run_name = run_name
         self.wells_path = wells_path
         self.opts = opts
+        self.seistiles_path = seistiles_path
 
     def run(self):
         log_buf = io.StringIO()
@@ -478,6 +479,8 @@ class CorrelationWorker(QThread):
                 project = ProjectExt()
                 project.set_options_ext(**RESET_OPTS)
                 project.set_options_ext(**self.opts)
+                if self.seistiles_path:
+                    project.set_options_ext(seistiles=self.seistiles_path)
                 project.run(str(self.wells_path))
 
             res_file = project.get_res_file()
@@ -1226,7 +1229,10 @@ class DemoRunnerWindow(QMainWindow):
 
         self.tabs.addTab(export_widget, "RDDMS Export")
 
-        # Tab 5: Settings
+        # Tab 5: Tools (presets, conditioning, export, sweep, etc.)
+        self._build_tools_tab()
+
+        # Tab 6: Settings
         self._build_settings_tab()
 
         # Progress bar
@@ -1242,6 +1248,527 @@ class DemoRunnerWindow(QMainWindow):
         self._load_settings()
 
         self.statusBar().showMessage("Ready — select a dataset and click Run")
+
+    # ─── Tools Tab ─────────────────────────────────────────────────────
+
+    def _build_tools_tab(self):
+        """Build the Tools tab: presets, data conditioning, export, sweep, sensitivity."""
+        tools_widget = QWidget()
+        tools_layout = QVBoxLayout(tools_widget)
+        tools_layout.setContentsMargins(6, 6, 6, 6)
+
+        # ── Presets ──────────────────────────────────────────────────
+        presets_group = QGroupBox("Geological Presets")
+        presets_form = QFormLayout()
+
+        self._preset_combo = QComboBox()
+        self._preset_combo.addItem("(none)")
+        self._preset_combo.setToolTip(
+            "Select a depositional environment preset to auto-configure parameters")
+        presets_form.addRow("Preset:", self._preset_combo)
+
+        self._preset_desc_label = QLabel("")
+        self._preset_desc_label.setWordWrap(True)
+        self._preset_desc_label.setFont(QFont("", 9))
+        presets_form.addRow(self._preset_desc_label)
+
+        preset_btn_lo = QHBoxLayout()
+        self._preset_load_btn = QPushButton("Load Presets")
+        self._preset_load_btn.clicked.connect(self._load_presets)
+        preset_btn_lo.addWidget(self._preset_load_btn)
+        self._preset_apply_btn = QPushButton("Apply to Parameters")
+        self._preset_apply_btn.clicked.connect(self._apply_preset)
+        preset_btn_lo.addWidget(self._preset_apply_btn)
+
+        self._suggest_defaults_btn = QPushButton("Suggest Defaults")
+        self._suggest_defaults_btn.setToolTip(
+            "Auto-suggest parameters based on current well data")
+        self._suggest_defaults_btn.clicked.connect(self._suggest_defaults)
+        preset_btn_lo.addWidget(self._suggest_defaults_btn)
+        preset_btn_lo.addStretch()
+        presets_form.addRow(preset_btn_lo)
+
+        presets_group.setLayout(presets_form)
+        tools_layout.addWidget(presets_group)
+
+        # ── Data Conditioning ────────────────────────────────────────
+        cond_group = QGroupBox("Data Conditioning")
+        cond_form = QFormLayout()
+
+        self._cond_vshale_cb = QCheckBox("Compute Vshale from GR")
+        self._cond_normalize_cb = QCheckBox("Normalise logs (percentile)")
+        self._cond_smooth_cb = QCheckBox("Smooth (moving average)")
+        self._cond_efacies_cb = QCheckBox("Compute electrofacies")
+        cond_form.addRow(self._cond_vshale_cb)
+        cond_form.addRow(self._cond_normalize_cb)
+        cond_form.addRow(self._cond_smooth_cb)
+        cond_form.addRow(self._cond_efacies_cb)
+
+        self._cond_smooth_window = QSpinBox()
+        self._cond_smooth_window.setRange(3, 31)
+        self._cond_smooth_window.setValue(5)
+        self._cond_smooth_window.setSuffix(" samples")
+        cond_form.addRow("Smooth window:", self._cond_smooth_window)
+
+        cond_btn_lo = QHBoxLayout()
+        self._cond_apply_btn = QPushButton("Apply Conditioning")
+        self._cond_apply_btn.clicked.connect(self._apply_conditioning)
+        cond_btn_lo.addWidget(self._cond_apply_btn)
+        self._cond_auto_btn = QPushButton("Auto-preprocess")
+        self._cond_auto_btn.setToolTip("Run AI-guided auto preprocessing")
+        self._cond_auto_btn.clicked.connect(self._auto_preprocess)
+        cond_btn_lo.addWidget(self._cond_auto_btn)
+        cond_btn_lo.addStretch()
+        cond_form.addRow(cond_btn_lo)
+
+        cond_group.setLayout(cond_form)
+        tools_layout.addWidget(cond_group)
+
+        # ── Export ────────────────────────────────────────────────────
+        export_group = QGroupBox("Export Results")
+        export_form = QFormLayout()
+
+        self._export_format_combo = QComboBox()
+        self._export_format_combo.addItems(["CSV (markers)", "CSV (zones)",
+                                            "RMS package", "JSON"])
+        export_form.addRow("Format:", self._export_format_combo)
+
+        self._export_path_edit = QLineEdit()
+        self._export_path_edit.setPlaceholderText("Output path (file or directory)")
+        export_form.addRow("Path:", self._export_path_edit)
+
+        export_btn_lo = QHBoxLayout()
+        self._export_file_btn = QPushButton("Export")
+        self._export_file_btn.clicked.connect(self._export_to_file)
+        export_btn_lo.addWidget(self._export_file_btn)
+        self._export_browse_btn = QPushButton("Browse…")
+        self._export_browse_btn.clicked.connect(self._browse_export_path)
+        export_btn_lo.addWidget(self._export_browse_btn)
+        export_btn_lo.addStretch()
+        export_form.addRow(export_btn_lo)
+
+        export_group.setLayout(export_form)
+        tools_layout.addWidget(export_group)
+
+        # ── Parameter Sweep ──────────────────────────────────────────
+        sweep_group = QGroupBox("Parameter Sweep")
+        sweep_form = QFormLayout()
+
+        self._sweep_param_combo = QComboBox()
+        self._sweep_param_combo.addItems([
+            "max_thick", "max_gap", "gap_penalty", "sim_weight",
+            "nbr_cor", "max_cor"])
+        sweep_form.addRow("Parameter:", self._sweep_param_combo)
+
+        self._sweep_from = QDoubleSpinBox()
+        self._sweep_from.setRange(0, 9999)
+        self._sweep_from.setValue(1.0)
+        sweep_form.addRow("From:", self._sweep_from)
+
+        self._sweep_to = QDoubleSpinBox()
+        self._sweep_to.setRange(0, 9999)
+        self._sweep_to.setValue(10.0)
+        sweep_form.addRow("To:", self._sweep_to)
+
+        self._sweep_steps = QSpinBox()
+        self._sweep_steps.setRange(3, 30)
+        self._sweep_steps.setValue(7)
+        sweep_form.addRow("Steps:", self._sweep_steps)
+
+        sweep_btn_lo = QHBoxLayout()
+        self._sweep_run_btn = QPushButton("Run Sweep")
+        self._sweep_run_btn.clicked.connect(self._run_sweep)
+        sweep_btn_lo.addWidget(self._sweep_run_btn)
+        self._sensitivity_btn = QPushButton("Sensitivity Test")
+        self._sensitivity_btn.setToolTip("Test correlation robustness across merge orders")
+        self._sensitivity_btn.clicked.connect(self._run_sensitivity)
+        sweep_btn_lo.addWidget(self._sensitivity_btn)
+        sweep_btn_lo.addStretch()
+        sweep_form.addRow(sweep_btn_lo)
+
+        sweep_group.setLayout(sweep_form)
+        tools_layout.addWidget(sweep_group)
+
+        # ── RDDMS Import ─────────────────────────────────────────────
+        import_group = QGroupBox("RDDMS Import")
+        import_form = QFormLayout()
+
+        self._import_url_edit = QLineEdit()
+        self._import_url_edit.setPlaceholderText("RDDMS URL (or use Settings default)")
+        import_form.addRow("URL:", self._import_url_edit)
+
+        self._import_dataspace_edit = QLineEdit()
+        self._import_dataspace_edit.setPlaceholderText("Dataspace")
+        import_form.addRow("Dataspace:", self._import_dataspace_edit)
+
+        import_btn_lo = QHBoxLayout()
+        self._import_list_btn = QPushButton("List Wells")
+        self._import_list_btn.clicked.connect(self._rddms_list_wells)
+        import_btn_lo.addWidget(self._import_list_btn)
+        self._import_fetch_btn = QPushButton("Import Wells")
+        self._import_fetch_btn.clicked.connect(self._rddms_import_wells)
+        import_btn_lo.addWidget(self._import_fetch_btn)
+        import_btn_lo.addStretch()
+        import_form.addRow(import_btn_lo)
+
+        self._import_well_list = QListWidget()
+        self._import_well_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self._import_well_list.setMaximumHeight(80)
+        import_form.addRow(self._import_well_list)
+
+        import_group.setLayout(import_form)
+        tools_layout.addWidget(import_group)
+
+        # ── Seismic Tiles ─────────────────────────────────────────────
+        seis_group = QGroupBox("Seismic Tiles Constraint")
+        seis_form = QFormLayout()
+
+        self._seis_dir_edit = QLineEdit()
+        self._seis_dir_edit.setPlaceholderText("Path to seismic tiles directory")
+        seis_form.addRow("Tiles path:", self._seis_dir_edit)
+
+        self._seis_weight = QDoubleSpinBox()
+        self._seis_weight.setRange(0.0, 10.0)
+        self._seis_weight.setValue(1.0)
+        self._seis_weight.setSingleStep(0.1)
+        seis_form.addRow("Weight:", self._seis_weight)
+
+        self._seis_enable_cb = QCheckBox("Enable seismic constraint in next run")
+        seis_form.addRow(self._seis_enable_cb)
+
+        seis_group.setLayout(seis_form)
+        tools_layout.addWidget(seis_group)
+
+        # Status
+        self._tools_status_label = QLabel("")
+        self._tools_status_label.setWordWrap(True)
+        tools_layout.addWidget(self._tools_status_label)
+        tools_layout.addStretch()
+
+        self.tabs.addTab(tools_widget, "Tools")
+
+    # ─── Tools Tab Handlers ───────────────────────────────────────────
+
+    def _load_presets(self):
+        """Load geological presets from weco.preset module."""
+        try:
+            from weco.preset import PRESETS
+            self._preset_combo.clear()
+            self._preset_combo.addItem("(none)")
+            for key, p in PRESETS.items():
+                self._preset_combo.addItem(f"{p.get('name', key)} — {p.get('environment', '')}", key)
+            self._tools_status_label.setText(f"Loaded {len(PRESETS)} presets.")
+        except Exception as e:
+            self._tools_status_label.setText(f"Failed to load presets: {e}")
+
+    def _apply_preset(self):
+        """Apply selected preset to current parameters."""
+        idx = self._preset_combo.currentIndex()
+        if idx <= 0:
+            self._tools_status_label.setText("Select a preset first.")
+            return
+        preset_key = self._preset_combo.currentData()
+        try:
+            from weco.preset import PRESETS
+            preset = PRESETS.get(preset_key, {})
+            opts = preset.get("options", {})
+            for key, val in opts.items():
+                if key in self.param_widgets:
+                    w = self.param_widgets[key]
+                    if isinstance(w, (QDoubleSpinBox, QSpinBox)):
+                        w.setValue(val)
+                    elif isinstance(w, QComboBox):
+                        idx = w.findText(str(val))
+                        if idx >= 0:
+                            w.setCurrentIndex(idx)
+                    elif isinstance(w, QLineEdit):
+                        w.setText(str(val))
+            self._tools_status_label.setText(
+                f"Applied preset '{preset.get('name', preset_key)}' — "
+                f"{len(opts)} parameters set.")
+        except Exception as e:
+            self._tools_status_label.setText(f"Preset error: {e}")
+
+    def _suggest_defaults(self):
+        """Suggest optimal parameters from loaded well data."""
+        if not hasattr(self, '_last_well_list') or self._last_well_list is None:
+            self._tools_status_label.setText("Run a correlation first (need well data).")
+            return
+        try:
+            from weco.api import _suggest_defaults_for_wells
+            suggestions, reasoning = _suggest_defaults_for_wells(self._last_well_list)
+            applied = 0
+            for key, val in suggestions.items():
+                if key in self.param_widgets:
+                    w = self.param_widgets[key]
+                    if isinstance(w, (QDoubleSpinBox, QSpinBox)):
+                        w.setValue(val)
+                        applied += 1
+                    elif isinstance(w, QLineEdit):
+                        w.setText(str(val))
+                        applied += 1
+            self._tools_status_label.setText(
+                f"Suggested {applied} parameters. Reasoning: {reasoning}")
+        except Exception as e:
+            self._tools_status_label.setText(f"Suggestion error: {e}")
+
+    def _apply_conditioning(self):
+        """Apply data conditioning to loaded wells."""
+        if not hasattr(self, '_last_well_list') or self._last_well_list is None:
+            self._tools_status_label.setText("No well data loaded yet.")
+            return
+        try:
+            from weco.preprocessing import (compute_vshale, normalise_log,
+                                            compute_moving_average, compute_electrofacies)
+            wl = self._last_well_list
+            steps = []
+            if self._cond_vshale_cb.isChecked():
+                for w in wl.wells:
+                    compute_vshale(w)
+                steps.append("Vshale")
+            if self._cond_normalize_cb.isChecked():
+                # Normalise the first log
+                log_names = [n for n in wl.wells[0].data if n.upper() not in ("DEPTH", "MD")]
+                if log_names:
+                    normalise_log(wl, log_names[0])
+                    steps.append(f"normalise({log_names[0]})")
+            if self._cond_smooth_cb.isChecked():
+                window = self._cond_smooth_window.value()
+                log_names = [n for n in wl.wells[0].data if n.upper() not in ("DEPTH", "MD")]
+                if log_names:
+                    for w in wl.wells:
+                        compute_moving_average(w, log_names[0], window=window)
+                    steps.append(f"smooth(w={window})")
+            if self._cond_efacies_cb.isChecked():
+                log_names = [n for n in wl.wells[0].data if n.upper() not in ("DEPTH", "MD")]
+                if log_names:
+                    compute_electrofacies(wl, log_names[:3])
+                    steps.append("electrofacies")
+            self._tools_status_label.setText(f"Applied: {', '.join(steps) or 'nothing selected'}")
+        except Exception as e:
+            self._tools_status_label.setText(f"Conditioning error: {e}")
+
+    def _auto_preprocess(self):
+        """Run AI-guided auto-preprocessing."""
+        if not hasattr(self, '_last_well_list') or self._last_well_list is None:
+            self._tools_status_label.setText("No well data loaded yet.")
+            return
+        try:
+            from weco.preprocessing import auto_preprocess
+            result = auto_preprocess(self._last_well_list)
+            steps = result.get("steps_applied", [])
+            errors = result.get("errors", [])
+            msg = f"Auto-preprocess: {len(steps)} steps applied"
+            if steps:
+                msg += f" ({', '.join(steps)})"
+            if errors:
+                msg += f" | {len(errors)} error(s)"
+            self._tools_status_label.setText(msg)
+        except Exception as e:
+            self._tools_status_label.setText(f"Auto-preprocess error: {e}")
+
+    def _browse_export_path(self):
+        """Open file dialog for export path."""
+        from PyQt6.QtWidgets import QFileDialog
+        fmt = self._export_format_combo.currentText()
+        if "RMS" in fmt:
+            path = QFileDialog.getExistingDirectory(self, "Select output directory")
+        else:
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Export file", "",
+                "CSV Files (*.csv);;JSON Files (*.json);;All Files (*)")
+        if path:
+            self._export_path_edit.setText(path)
+
+    def _export_to_file(self):
+        """Export current results to file."""
+        if not hasattr(self, '_last_res_file') or self._last_res_file is None:
+            self._tools_status_label.setText("No results to export.")
+            return
+        path = self._export_path_edit.text().strip()
+        if not path:
+            self._tools_status_label.setText("Enter an output path.")
+            return
+        try:
+            from weco.export import export_marker_set
+            from weco.rms_export import export_rms_package
+            fmt_text = self._export_format_combo.currentText()
+            cor_num = self.result_spin.value()
+
+            if "RMS" in fmt_text:
+                result = export_rms_package(
+                    self._last_res_file, self._last_well_list, path,
+                    cor_num=cor_num)
+                self._tools_status_label.setText(
+                    f"✓ RMS package exported to {path} "
+                    f"({result.get('n_files', '?')} files)")
+            elif "JSON" in fmt_text:
+                out = export_marker_set(
+                    self._last_res_file, self._last_well_list, path,
+                    fmt="json", cor_num=cor_num)
+                self._tools_status_label.setText(f"✓ Exported JSON: {out}")
+            elif "zones" in fmt_text.lower():
+                from weco.export import export_zone_thickness_table
+                out = export_zone_thickness_table(
+                    self._last_res_file, self._last_well_list, path,
+                    cor_num=cor_num)
+                self._tools_status_label.setText(f"✓ Exported zone table: {out}")
+            else:
+                out = export_marker_set(
+                    self._last_res_file, self._last_well_list, path,
+                    fmt="csv", cor_num=cor_num)
+                self._tools_status_label.setText(f"✓ Exported CSV: {out}")
+        except Exception as e:
+            self._tools_status_label.setText(f"Export error: {e}")
+
+    def _run_sweep(self):
+        """Run parameter sweep with current well data."""
+        if not hasattr(self, '_last_well_list') or self._last_well_list is None:
+            self._tools_status_label.setText("No well data loaded yet.")
+            return
+
+        param = self._sweep_param_combo.currentText()
+        start = self._sweep_from.value()
+        end = self._sweep_to.value()
+        steps = self._sweep_steps.value()
+
+        step_size = (end - start) / max(steps - 1, 1)
+        values = [start + i * step_size for i in range(steps)]
+
+        self._tools_status_label.setText(f"Sweeping {param}...")
+        QApplication.processEvents()
+
+        try:
+            from weco.ext import ProjectExt
+            from weco.option import reset_options
+
+            # Get current options from last run
+            base_opts = getattr(self, '_last_opts', {})
+            results = []
+            for val in values:
+                opts = dict(base_opts)
+                opts[param] = val
+                try:
+                    reset_options()
+                    pe = ProjectExt()
+                    pe.set_well_list(self._last_well_list)
+                    pe.set_options(opts)
+                    pe.run()
+                    rf = pe.get_res_file()
+                    cost = rf.get_result_cost(0) if rf.get_nbr_results() > 0 else float("inf")
+                except Exception:
+                    cost = float("inf")
+                results.append((val, cost))
+
+            # Find best
+            best_val, best_cost = min(results, key=lambda x: x[1])
+            summary_parts = [f"{v:.2f}→{c:.4f}" for v, c in results]
+            self._tools_status_label.setText(
+                f"Sweep done. Best {param}={best_val:.2f} (cost={best_cost:.4f})\n"
+                f"Values: {', '.join(summary_parts)}")
+        except Exception as e:
+            self._tools_status_label.setText(f"Sweep error: {e}")
+
+    def _run_sensitivity(self):
+        """Test correlation robustness across merge orders."""
+        if not hasattr(self, '_last_well_list') or self._last_well_list is None:
+            self._tools_status_label.setText("No well data loaded yet.")
+            return
+
+        self._tools_status_label.setText("Testing sensitivity...")
+        QApplication.processEvents()
+
+        try:
+            from weco.ext import ProjectExt
+            from weco.option import reset_options
+
+            base_opts = getattr(self, '_last_opts', {})
+            orders = ["linear", "pyramidal", "position", "random"]
+            costs = {}
+
+            for order in orders:
+                opts = dict(base_opts)
+                opts["order"] = order
+                try:
+                    reset_options()
+                    pe = ProjectExt()
+                    pe.set_well_list(self._last_well_list)
+                    pe.set_options(opts)
+                    pe.run()
+                    rf = pe.get_res_file()
+                    cost = rf.get_result_cost(0) if rf.get_nbr_results() > 0 else float("inf")
+                    costs[order] = cost
+                except Exception:
+                    costs[order] = float("inf")
+
+            finite = [c for c in costs.values() if c < float("inf")]
+            if finite:
+                robustness = max(0, 1.0 - ((max(finite) - min(finite)) /
+                                           max(sum(finite) / len(finite), 1e-9)))
+                best = min(costs, key=costs.get)
+                self._tools_status_label.setText(
+                    f"Robustness: {robustness:.2f} | Best order: '{best}'\n"
+                    f"Costs: {', '.join(f'{k}={v:.4f}' for k, v in costs.items())}")
+            else:
+                self._tools_status_label.setText("All orders failed.")
+        except Exception as e:
+            self._tools_status_label.setText(f"Sensitivity error: {e}")
+
+    def _rddms_list_wells(self):
+        """List wells available in RDDMS."""
+        url = (self._import_url_edit.text().strip() or
+               self._settings_rddms_url.text().strip())
+        dataspace = (self._import_dataspace_edit.text().strip() or
+                     self._settings_rddms_dataspace.text().strip())
+        if not url or not dataspace:
+            self._tools_status_label.setText("Enter RDDMS URL and dataspace.")
+            return
+
+        self._tools_status_label.setText("Querying RDDMS...")
+        QApplication.processEvents()
+
+        try:
+            from weco.osdu_auth import get_token
+            from weco.rddms import rddms_list_wells as _list
+            token = get_token()
+            wells = _list(url, token, dataspace)
+            self._import_well_list.clear()
+            for w in wells:
+                name = w.get("name", w.get("uid", "?"))
+                self._import_well_list.addItem(name)
+            self._tools_status_label.setText(f"Found {len(wells)} wells in RDDMS.")
+        except Exception as e:
+            self._tools_status_label.setText(f"RDDMS list error: {e}")
+
+    def _rddms_import_wells(self):
+        """Import selected wells from RDDMS."""
+        url = (self._import_url_edit.text().strip() or
+               self._settings_rddms_url.text().strip())
+        dataspace = (self._import_dataspace_edit.text().strip() or
+                     self._settings_rddms_dataspace.text().strip())
+        if not url or not dataspace:
+            self._tools_status_label.setText("Enter RDDMS URL and dataspace.")
+            return
+
+        selected = [item.text() for item in self._import_well_list.selectedItems()]
+        if not selected:
+            self._tools_status_label.setText("Select wells to import.")
+            return
+
+        self._tools_status_label.setText(f"Importing {len(selected)} wells...")
+        QApplication.processEvents()
+
+        try:
+            from weco.osdu_auth import get_token
+            from weco.rddms import rddms_import_wells as _import
+            token = get_token()
+            wl = _import(url, token, dataspace, well_names=selected)
+            self._last_well_list = wl
+            self._tools_status_label.setText(
+                f"✓ Imported {len(selected)} wells from RDDMS. "
+                f"Ready for correlation.")
+        except Exception as e:
+            self._tools_status_label.setText(f"RDDMS import error: {e}")
 
     # ─── Settings Tab ─────────────────────────────────────────────────
 
@@ -1675,10 +2202,20 @@ class DemoRunnerWindow(QMainWindow):
                             opts[key] = text
 
         run_label = f"{ds['title']} / {run['name']}"
+        self._last_opts = dict(opts)  # store for sweep/sensitivity
         self.statusBar().showMessage(f"Running: {run_label}...")
         self.log_text.append(f"\n{'─'*60}\n  Running: {run_label}\n{'─'*60}\n")
 
-        worker = CorrelationWorker(run_label, ds["wells"], opts)
+        # Check seismic tiles constraint from Tools tab
+        seis_path = None
+        if (hasattr(self, '_seis_enable_cb') and self._seis_enable_cb.isChecked()):
+            seis_dir = self._seis_dir_edit.text().strip()
+            if seis_dir:
+                seis_path = seis_dir
+                opts["seis_weight"] = self._seis_weight.value()
+
+        worker = CorrelationWorker(run_label, ds["wells"], opts,
+                                   seistiles_path=seis_path)
         worker.finished.connect(lambda name, rf, wl, log: self._on_run_finished(name, rf, wl, log))
         self._workers.append(worker)
         worker.start()
