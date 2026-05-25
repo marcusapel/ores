@@ -987,9 +987,22 @@ class CorrelationPlotWindow(QMainWindow):
         order_grp = QGroupBox("Well Order")
         order_lo = QVBoxLayout(order_grp)
         self._order_combo = QComboBox()
-        self._order_combo.addItems(["Result order", "Input order", "By X coord", "By Y coord"])
+        self._order_combo.addItems([
+            "Result order", "Input order", "By X coord", "By Y coord",
+            "By azimuth", "By distality", "Principal direction (PCA)",
+        ])
         self._order_combo.currentIndexChanged.connect(self._on_order_change)
         order_lo.addWidget(self._order_combo)
+        # Azimuth input (shown only when "By azimuth" selected)
+        azimuth_lo = QHBoxLayout()
+        azimuth_lo.addWidget(QLabel("Azimuth (°N):"))
+        self._azimuth_spin = QSpinBox()
+        self._azimuth_spin.setRange(0, 359)
+        self._azimuth_spin.setValue(0)
+        self._azimuth_spin.setSuffix("°")
+        self._azimuth_spin.valueChanged.connect(self._on_order_change)
+        azimuth_lo.addWidget(self._azimuth_spin)
+        order_lo.addLayout(azimuth_lo)
         # Move up / down buttons
         btn_lo = QHBoxLayout()
         self._btn_up = QPushButton("Move Up")
@@ -1189,10 +1202,51 @@ class CorrelationPlotWindow(QMainWindow):
         elif mode == 3:
             # sort by Y
             self._well_order = sorted(range(n), key=lambda i: self._wells.wells[i].y)
+        elif mode == 4:
+            # sort by azimuth projection
+            import math
+            az = math.radians(self._azimuth_spin.value())
+            self._well_order = sorted(range(n), key=lambda i: (
+                self._wells.wells[i].x * math.sin(az) +
+                self._wells.wells[i].y * math.cos(az)))
+        elif mode == 5:
+            # sort by distality region (if exists)
+            self._well_order = self._order_by_distality()
+        elif mode == 6:
+            # PCA principal direction
+            self._well_order = self._order_by_pca()
         else:
             # input order
             self._well_order = list(range(n))
         self.refresh()
+
+    def _order_by_distality(self):
+        """Sort wells by DISTALITY region value (proximal first)."""
+        n = len(self._wells.wells)
+        distality_vals = []
+        for i, w in enumerate(self._wells.wells):
+            d = 0
+            if hasattr(w, 'region') and 'DISTALITY' in w.region:
+                entries = w.region['DISTALITY']
+                if entries:
+                    d = entries[0][0]  # first region id = distality value
+            distality_vals.append((d, i))
+        distality_vals.sort()
+        return [i for _, i in distality_vals]
+
+    def _order_by_pca(self):
+        """Sort wells by projection onto principal XY spread axis."""
+        import numpy as np
+        n = len(self._wells.wells)
+        coords = np.array([[w.x, w.y] for w in self._wells.wells])
+        if coords.std() < 1e-6:
+            return list(range(n))  # all at same location
+        centered = coords - coords.mean(axis=0)
+        # Principal direction via SVD
+        _, _, Vt = np.linalg.svd(centered, full_matrices=False)
+        direction = Vt[0]  # first principal component
+        projections = centered @ direction
+        return list(np.argsort(projections))
 
     def _on_well_clicked(self, idx):
         self._selected_well = idx

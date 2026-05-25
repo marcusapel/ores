@@ -520,5 +520,19 @@ def main(seed=2026, n_wells=10, output_dir=None):
     return wells
 
 
+def _export_json(output_dir):
+    """Export wells.weco.json from the generated wells.txt."""
+    import json
+    from weco.data import WellList
+    from weco.json_format import welllist_to_json
+    wl = WellList(os.path.join(output_dir, "wells.txt"))
+    doc = welllist_to_json(wl)
+    json_path = os.path.join(output_dir, "wells.weco.json")
+    with open(json_path, "w") as f:
+        json.dump(doc, f, indent=2)
+    print(f"Wrote: {json_path}")
+
+
 if __name__ == "__main__":
     main()
+    _export_json(os.path.dirname(os.path.abspath(__file__)))

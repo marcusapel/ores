@@ -213,6 +213,17 @@ def main(
         f.write("min-dist=0.3\n")
         f.write("out-min-dist=0.1\n")
 
+    # Export JSON
+    import json as _json
+    from weco.data import WellList
+    from weco.json_format import welllist_to_json
+    wl = WellList(wells_path)
+    doc = welllist_to_json(wl)
+    json_path = os.path.join(output_dir, "wells.weco.json")
+    with open(json_path, "w") as f:
+        _json.dump(doc, f, indent=2)
+    print(f"Wrote: {json_path}")
+
     print(f"Generated {n_wells} wells in {wells_path}")
     return wells_path, opts_path
 

@@ -1,7 +1,6 @@
 # Fluvial channel belt correlation options
-# Laterally discontinuous channels: LOW gap cost = isolated lenses (correct),
-# HIGH gap cost = forced sheet connectivity (incorrect but useful contrast).
-# min-dist ensures output scenarios are genuinely different geometries.
+# Low gap cost: channels don't connect everywhere.
+# min-dist ensures genuinely different scenario geometries.
 cost-function=composite
 var-data=GR
 var-weight=1.0

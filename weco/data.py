@@ -241,6 +241,48 @@ class Well:
 
         return list(float(i) / float(self.size - 1) for i in range(self.size))
 
+    def resample(self, step: int):
+        """Downsample this well by taking every *step*-th sample.
+
+        Regions are re-encoded to match the new sample indices.
+        Updates size, h, data, and region in-place.
+        """
+        if step <= 1:
+            return
+        indices = list(range(0, self.size, step))
+        # Always include last sample
+        if indices[-1] != self.size - 1:
+            indices.append(self.size - 1)
+        new_size = len(indices)
+        # Resample data
+        for name in list(self.data.keys()):
+            vals = self.data[name]
+            self.data[name] = tuple(vals[i] for i in indices)
+        # Resample regions — rebuild from the new sample grid
+        for name in list(self.region.keys()):
+            # Expand region to per-sample ID array, then re-compress
+            full = [0] * self.size
+            for rid, start, length in self.region[name]:
+                for i in range(start, min(start + length, self.size)):
+                    full[i] = rid
+            sampled = [full[i] for i in indices]
+            # Re-encode as (rid, start, length) runs
+            runs = []
+            if sampled:
+                cur_val, cur_start = sampled[0], 0
+                for j in range(1, len(sampled)):
+                    if sampled[j] != cur_val:
+                        if cur_val != 0:
+                            runs.append((cur_val, cur_start, j - cur_start))
+                        cur_val, cur_start = sampled[j], j
+                    # last
+                if cur_val != 0:
+                    runs.append((cur_val, cur_start, len(sampled) - cur_start))
+            self.region[name] = tuple(runs)
+        # Update well metrics
+        self.h = self.h * (new_size - 1) / max(self.size - 1, 1) if new_size > 1 else 0.0
+        self.size = new_size
+
 
 class WellList:
     wells: List[Well] = None
