@@ -112,6 +112,34 @@ RESET_OPTS = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  .weco.env loader — populate os.environ from project secrets file
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _load_weco_env():
+    """Load .weco.env from project root or home dir into os.environ."""
+    candidates = [
+        SCRIPT_DIR / ".weco.env",
+        Path.home() / ".weco.env",
+    ]
+    for envfile in candidates:
+        if envfile.is_file():
+            with open(envfile) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        key, _, val = line.partition("=")
+                        key = key.strip()
+                        val = val.strip().strip("\"'")
+                        if key and val:
+                            os.environ.setdefault(key, val)
+            break  # use first found
+
+_load_weco_env()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  Option Presets  (quick-start parameter sets for common scenarios)
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -629,6 +657,279 @@ DEMOS = [
             "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 20,
         },
         "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
+    },
+
+    # ── Troll Field (Upper Jurassic, North Sea) ─────────────────────
+    {
+        "id": "troll-basic",
+        "title": "Troll — Basic Facies",
+        "group": "North Sea",
+        "wells": "data_set_troll/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "23 wells, Sognefjord Fm (Troll field).\n"
+            "Unconstrained facies variance correlation.\n"
+            "Shows ambiguity without chronostrat constraints."
+        ),
+        "opts": {
+            "cost_function": "var", "order": "position",
+            "var_data": "FACIES",
+            "max_cor": 100, "nbr_cor": 50, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["var_data", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "troll-distal",
+        "title": "Troll — Distality + Biozone",
+        "group": "North Sea",
+        "wells": "data_set_troll/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "23 wells, Sognefjord Fm. Distality cost with\n"
+            "BIOZONE no-crossing (hard chrono tie-points).\n"
+            "Proximal distributary → distal prodelta transect."
+        ),
+        "opts": {
+            "cost_function": "distal", "order": "position",
+            "dist_distal": "DISTALITY", "dist_facies": "FACIES",
+            "dist_scaling": 1.0, "no_crossing": "BIOZONE",
+            "max_cor": 100, "nbr_cor": 50, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["dist_scaling", "no_crossing", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "troll-sequence",
+        "title": "Troll — Sequence Constrained",
+        "group": "North Sea",
+        "wells": "data_set_troll/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "23 wells. FACIES variance with SEQUENCE same-region\n"
+            "and BIOZONE no-crossing. Tests whether sequence\n"
+            "boundaries improve or over-constrain the correlation."
+        ),
+        "opts": {
+            "cost_function": "var", "order": "position",
+            "var_data": "FACIES", "same_region": "SEQUENCE",
+            "no_crossing": "BIOZONE",
+            "max_cor": 100, "nbr_cor": 50, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["same_region", "no_crossing", "max_cor", "nbr_cor", "order"],
+    },
+
+    # ── Sigrun Field (Upper Jurassic, block 15/3) ───────────────────
+    {
+        "id": "sigrun-baseline",
+        "title": "Sigrun — GR Baseline",
+        "group": "North Sea",
+        "wells": "data_set_sigrun/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "Hugin Fm, Sigrun field. GR-only correlation\n"
+            "without constraints — full uncertainty envelope.\n"
+            "Reference for evaluating constraint benefit."
+        ),
+        "opts": {
+            "cost_function": "composite", "order": "position",
+            "var_data": "GR", "var_weight": 1.0,
+            "max_cor": 100, "nbr_cor": 30, "out_nbr_cor": 15,
+        },
+        "editable_keys": ["var_data", "var_weight", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "sigrun-sequence",
+        "title": "Sigrun — GR + Flooding Surfaces",
+        "group": "North Sea",
+        "wells": "data_set_sigrun/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "GR correlation constrained by 4 flooding surfaces\n"
+            "(no-crossing). Shows how hard tie-points reduce\n"
+            "ambiguity in tide-influenced sequences."
+        ),
+        "opts": {
+            "cost_function": "composite", "order": "position",
+            "var_data": "GR", "var_weight": 1.0,
+            "no_crossing": "SEQUENCE",
+            "max_cor": 100, "nbr_cor": 30, "out_nbr_cor": 15,
+        },
+        "editable_keys": ["var_data", "no_crossing", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "sigrun-facies",
+        "title": "Sigrun — GR + 5-Class Facies",
+        "group": "North Sea",
+        "wells": "data_set_sigrun/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "GR + distality from 5-class facies scheme\n"
+            "(Channel, Shoreface, Lagoon, Prodelta, Continental).\n"
+            "Tests whether facies adds signal vs. noise."
+        ),
+        "opts": {
+            "cost_function": "composite", "order": "position",
+            "var_data": "GR", "var_weight": 0.5,
+            "dist_distal": "DISTALITY", "dist_facies": "FACIES_5",
+            "dist_scaling": 0.5,
+            "max_cor": 100, "nbr_cor": 30, "out_nbr_cor": 15,
+        },
+        "editable_keys": ["var_weight", "dist_scaling", "dist_facies", "max_cor", "order"],
+    },
+
+    # ── Bryson Canyon (Cretaceous, Book Cliffs) ─────────────────────
+    {
+        "id": "bryson-basic",
+        "title": "Bryson — Facies Variance",
+        "group": "Clastic Sequences",
+        "wells": "data_set_bryson/wells.txt",
+        "geology": "coastal_plain",
+        "description": (
+            "7 wells, Neslen Fm (Book Cliffs, Utah).\n"
+            "Unconstrained facies correlation — coal seams\n"
+            "create strong markers but cause lateral ambiguity."
+        ),
+        "opts": {
+            "cost_function": "var", "order": "position",
+            "var_data": "FACIES",
+            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 5,
+        },
+        "editable_keys": ["var_data", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "bryson-distal",
+        "title": "Bryson — Distality CCF",
+        "group": "Clastic Sequences",
+        "wells": "data_set_bryson/wells.txt",
+        "geology": "coastal_plain",
+        "description": (
+            "Neslen Fm coastal plain. Distality cost using\n"
+            "interpreted facies/DISTALITY curves. Walther's Law\n"
+            "based correlation for coal-bearing sequences."
+        ),
+        "opts": {
+            "cost_function": "distal", "order": "position",
+            "dist_distal": "DISTALITY", "dist_facies": "FACIES",
+            "dist_scaling": 1.0,
+            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 5,
+        },
+        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "bryson-seqstrat",
+        "title": "Bryson — Sequence Strat",
+        "group": "Clastic Sequences",
+        "wells": "data_set_bryson/wells.txt",
+        "geology": "coastal_plain",
+        "description": (
+            "FACIES variance with SEQSTRAT same-region and\n"
+            "ZONE no-crossing constraints. 4th/5th order boundaries\n"
+            "guide correlation within reservoir units."
+        ),
+        "opts": {
+            "cost_function": "var", "order": "position",
+            "var_data": "FACIES", "same_region": "SEQSTRAT",
+            "no_crossing": "ZONE",
+            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 5,
+        },
+        "editable_keys": ["same_region", "no_crossing", "max_cor", "nbr_cor", "order"],
+    },
+
+    # ── Carbonate ────────────────────────────────────────────────────
+    {
+        "id": "carbonate",
+        "title": "Carbonate Platform",
+        "group": "Carbonates",
+        "wells": "data_set_carbonate/wells.txt",
+        "geology": "carbonate",
+        "description": (
+            "Synthetic carbonate platform wells.\n"
+            "Tests facies-based correlation in reef/lagoon/slope\n"
+            "settings with sharp lateral transitions."
+        ),
+        "opts": {
+            "cost_function": "var", "order": "position",
+            "var_data": "FACIES",
+            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["var_data", "max_cor", "nbr_cor", "order"],
+    },
+
+    # ── Polarity / Dip ───────────────────────────────────────────────
+    {
+        "id": "polarity-dip",
+        "title": "Polarity & Dip Cost",
+        "group": "Advanced",
+        "wells": "data_set_polarity_dip/wells.txt",
+        "description": (
+            "Tests the polarity cost function: penalises\n"
+            "correlations where dip directions conflict.\n"
+            "Useful for structural/tectonic settings."
+        ),
+        "opts": {
+            "cost_function": "composite", "order": "position",
+            "var_data": "VarData1",
+            "polarity_region": "POLARITY",
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["polarity_region", "var_data", "max_cor", "order"],
+    },
+
+    # ── Same Region ──────────────────────────────────────────────────
+    {
+        "id": "same-region",
+        "title": "Same-Region Constraint",
+        "group": "Constraints",
+        "wells": "data_set_same_region/wells.txt",
+        "description": (
+            "Demonstrates same-region grouping: correlation\n"
+            "lines stay within matching zone intervals.\n"
+            "Compare unconstrained vs. constrained results."
+        ),
+        "opts": {
+            "cost_function": "var", "order": "linear",
+            "var_data": "VarData1", "same_region": "ZONE",
+            "max_cor": 30, "nbr_cor": 20, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["same_region", "var_data", "max_cor", "order"],
+    },
+
+    # ── Gap Cost ─────────────────────────────────────────────────────
+    {
+        "id": "gap-cost",
+        "title": "Gap Cost Exploration",
+        "group": "Advanced",
+        "wells": "data_set_gap_cost/wells.txt",
+        "description": (
+            "Demonstrates const_gap_cost behaviour.\n"
+            "Vary the gap penalty to control how freely\n"
+            "the engine introduces stratigraphic gaps."
+        ),
+        "opts": {
+            "cost_function": "composite", "order": "position",
+            "var_data": "VarData1", "const_gap_cost": 0.0,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["const_gap_cost", "var_data", "max_cor", "order"],
+    },
+
+    # ── Multi-Distality ──────────────────────────────────────────────
+    {
+        "id": "multi-distality",
+        "title": "Multi-Distality",
+        "group": "Advanced",
+        "wells": "data_set_multi_distality/wells.txt",
+        "description": (
+            "Multiple possible distal-to-proximal orderings.\n"
+            "Engine evaluates all candidate distality profiles\n"
+            "and selects the best-fitting one."
+        ),
+        "opts": {
+            "cost_function": "distal", "order": "position",
+            "dist_distal": "DISTALITY", "dist_facies": "FACIES",
+            "multi_dist_distal": "multi_distal.txt",
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["dist_scaling", "max_cor", "nbr_cor", "order"],
     },
 ]
 
@@ -2518,7 +2819,7 @@ class DataPage(QWidget):
         lo.setContentsMargins(12, 12, 12, 12)
 
         lo.addWidget(StepBanner(
-            "Step 1 of 4:  Load well data. Browse for a file or use a demo from the Welcome page."))
+            "Step 1 of 4:  Load well data. Browse for a file, connect to RDDMS, or use a demo from the Welcome page."))
         lo.addSpacing(4)
 
         # File bar
@@ -2547,6 +2848,34 @@ class DataPage(QWidget):
         btn_erosion.clicked.connect(self._pick_erosion_surfaces)
         fbar.addWidget(btn_erosion)
         lo.addLayout(fbar)
+
+        # RDDMS quick-connect bar (alternative to file browse)
+        rddms_bar = QHBoxLayout()
+        rddms_bar.addWidget(QLabel("RDDMS:"))
+        self._rddms_quick_url = QLineEdit()
+        self._rddms_quick_url.setPlaceholderText("http://localhost:3000/api/reservoir-ddms/v2")
+        _env_url = os.environ.get("WECO_RDDMS_URL", "")
+        if _env_url:
+            self._rddms_quick_url.setText(_env_url)
+        rddms_bar.addWidget(self._rddms_quick_url, 1)
+        rddms_bar.addWidget(QLabel("Dataspace:"))
+        self._rddms_quick_ds = QLineEdit()
+        self._rddms_quick_ds.setFixedWidth(140)
+        _env_ds = os.environ.get("WECO_DATASPACE",
+                                 os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
+        self._rddms_quick_ds.setText(_env_ds)
+        rddms_bar.addWidget(self._rddms_quick_ds)
+        self._btn_rddms_connect = QPushButton("Connect")
+        self._btn_rddms_connect.setToolTip("Import wells from RDDMS into the project")
+        self._btn_rddms_connect.setStyleSheet(
+            "QPushButton {font-weight:bold; padding:4px 12px; "
+            "background-color:#8e44ad; color:white; border-radius:3px;}")
+        self._btn_rddms_connect.clicked.connect(self._quick_rddms_import)
+        rddms_bar.addWidget(self._btn_rddms_connect)
+        self._rddms_quick_status = QLabel("")
+        self._rddms_quick_status.setStyleSheet("color: #666; font-size: 11px;")
+        rddms_bar.addWidget(self._rddms_quick_status)
+        lo.addLayout(rddms_bar)
 
         lo.addWidget(HLine())
 
@@ -2760,6 +3089,10 @@ class DataPage(QWidget):
         rddms_import_row.addWidget(QLabel("EPC file or RDDMS URL:"))
         self._rddms_source = QLineEdit()
         self._rddms_source.setPlaceholderText("path/to/file.epc or https://rddms.example.com")
+        # Pre-fill from .weco.env
+        _env_url = os.environ.get("WECO_RDDMS_URL", "")
+        if _env_url:
+            self._rddms_source.setText(_env_url)
         rddms_import_row.addWidget(self._rddms_source, 1)
         btn_rddms_browse = QPushButton("Browse EPC…")
         btn_rddms_browse.clicked.connect(self._browse_epc)
@@ -2771,7 +3104,7 @@ class DataPage(QWidget):
         ds_row.addWidget(QLabel("Dataspace:"))
         self._rddms_dataspace = QLineEdit()
         _default_ds = os.environ.get(
-            "RDDMS_DATASPACE",
+            "WECO_DATASPACE",
             os.environ.get("WECO_DEFAULT_DATASPACE", "maap/weco"))
         self._rddms_dataspace.setText(_default_ds)
         self._rddms_dataspace.setPlaceholderText("e.g. maap/weco")
@@ -2967,6 +3300,59 @@ class DataPage(QWidget):
 
     # ── RDDMS / Strat Column methods ──────────────────────────────
 
+    def _quick_rddms_import(self):
+        """Import wells from the RDDMS quick-connect bar at top of Data page."""
+        url = self._rddms_quick_url.text().strip()
+        if not url:
+            self._rddms_quick_status.setText("Enter RDDMS URL")
+            return
+        dataspace = self._rddms_quick_ds.text().strip() or "maap/weco"
+        token = os.environ.get("WECO_TOKEN") or os.environ.get("OSDU_TOKEN", "")
+
+        # Also populate the RDDMS tab fields for consistency
+        self._rddms_source.setText(url)
+        self._rddms_dataspace.setText(dataspace)
+
+        if os.path.isfile(url):
+            # It's a local EPC file
+            try:
+                from weco.rddms import epc_import_wells
+                wl = epc_import_wells(url)
+                self._rddms_import_done(wl, url)
+                self._rddms_quick_status.setText(
+                    f"✓ {wl.nbr_wells()} wells from EPC")
+            except Exception as e:
+                self._rddms_quick_status.setText(f"✗ {e}")
+            return
+
+        # RDDMS server import
+        self._rddms_quick_status.setText("⏳ Connecting…")
+        self._btn_rddms_connect.setEnabled(False)
+        self._rddms_elapsed = 0
+        self._rddms_timer = QTimer(self)
+        self._rddms_timer.timeout.connect(self._rddms_tick)
+        self._rddms_timer.start(1000)
+        self._rddms_worker = _RddmsImportWorker(url, token, dataspace)
+        self._rddms_worker.finished.connect(self._quick_rddms_done)
+        self._rddms_worker.error.connect(self._quick_rddms_error)
+        self._rddms_worker.start()
+
+    def _quick_rddms_done(self, wl):
+        self._rddms_timer.stop()
+        self._btn_rddms_connect.setEnabled(True)
+        source = self._rddms_quick_url.text().strip()
+        self._rddms_import_done(wl, source)
+        self._rddms_quick_status.setText(
+            f"✓ {wl.nbr_wells()} wells, "
+            f"{len(wl.get_data_names())} logs")
+        self._rddms_quick_status.setStyleSheet("color: #27ae60; font-size: 11px;")
+
+    def _quick_rddms_error(self, msg):
+        self._rddms_timer.stop()
+        self._btn_rddms_connect.setEnabled(True)
+        self._rddms_quick_status.setText(f"✗ {msg}")
+        self._rddms_quick_status.setStyleSheet("color: #c0392b; font-size: 11px;")
+
     def _browse_epc(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Open EPC File", "",
@@ -2991,10 +3377,10 @@ class DataPage(QWidget):
             except Exception as e:
                 self._rddms_status.setText(f"Import error: {e}")
         else:
-            token = os.environ.get("OSDU_TOKEN", "")
+            token = os.environ.get("WECO_TOKEN") or os.environ.get("OSDU_TOKEN", "")
             if not token:
                 self._rddms_status.setText(
-                    "Set OSDU_TOKEN environment variable for RDDMS access.")
+                    "Set WECO_TOKEN in .weco.env (or OSDU_TOKEN) for RDDMS access.")
                 return
             dataspace = self._rddms_dataspace.text().strip() or "maap/weco"
             # Start elapsed timer
@@ -4245,6 +4631,20 @@ class ResultsPage(QWidget):
         sbs_lo.addWidget(self._sbs_right, 1)
         self.view_tabs.addTab(sidebyside, "Side-by-Side")
 
+        # Tab: Wheeler Diagram (chronostratigraphic gap visualisation)
+        wheeler_widget = QWidget()
+        wheeler_lo = QVBoxLayout(wheeler_widget)
+        wheeler_lo.setContentsMargins(4, 4, 4, 4)
+        if HAS_MPL_CANVAS:
+            self._wheeler_fig, self._wheeler_ax = plt.subplots(1, 1, figsize=(10, 4))
+            self._wheeler_canvas = FigureCanvasQTAgg(self._wheeler_fig)
+            self._wheeler_canvas.setMinimumHeight(200)
+            wheeler_lo.addWidget(self._wheeler_canvas, 1)
+        else:
+            self._wheeler_canvas = None
+            wheeler_lo.addWidget(QLabel("Wheeler diagram requires matplotlib"))
+        self.view_tabs.addTab(wheeler_widget, "Wheeler Diagram")
+
         # ── Run History (multi-run comparison) ────────────────────────
         hist_group = QGroupBox("Run History (compare parameter sets)")
         hist_lo = QVBoxLayout(hist_group)
@@ -4353,6 +4753,72 @@ class ResultsPage(QWidget):
                 self._corplot.set_result(self._res_file, idx)
             except Exception:
                 pass
+        # Update Wheeler diagram
+        self._render_wheeler(idx)
+
+    def _render_wheeler(self, cor_idx):
+        """Draw a Wheeler-style chronostratigraphic diagram for correlation cor_idx."""
+        if self._wheeler_canvas is None or self._res_file is None or self._well_list is None:
+            return
+
+        ax = self._wheeler_ax
+        ax.clear()
+
+        try:
+            path = self._res_file.get_result_full_path(cor_idx)
+            n_wells = self._res_file.nbr_well()
+            well_names = [w.name for w in self._well_list.wells[:n_wells]]
+        except Exception:
+            return
+
+        if not path or n_wells == 0:
+            ax.text(0.5, 0.5, "No path data",
+                    ha='center', va='center', transform=ax.transAxes)
+            self._wheeler_canvas.draw()
+            return
+
+        # Deduplicate consecutive identical steps
+        deduped = []
+        prev = None
+        for step in path:
+            if step != prev:
+                deduped.append(step)
+                prev = step
+
+        n_steps = len(deduped)
+        if n_steps < 2:
+            ax.text(0.5, 0.5, "Too few path steps",
+                    ha='center', va='center', transform=ax.transAxes)
+            self._wheeler_canvas.draw()
+            return
+
+        # For each well, identify gap intervals (well doesn't advance)
+        colors = WELL_COLORS
+        for wi in range(n_wells):
+            for si in range(n_steps - 1):
+                top_idx = deduped[si][wi]
+                base_idx = deduped[si + 1][wi]
+                thickness = base_idx - top_idx
+                if thickness > 0:
+                    # Present — filled bar
+                    ax.barh(wi, 1, left=si, height=0.8,
+                            color=colors[wi % len(colors)], alpha=0.75, edgecolor='none')
+                else:
+                    # Gap — hatched
+                    ax.barh(wi, 1, left=si, height=0.8,
+                            color='#f8f8f8', alpha=1.0, edgecolor='#ccc',
+                            linewidth=0.3, hatch='///')
+
+        ax.set_yticks(range(n_wells))
+        ax.set_yticklabels(well_names, fontsize=8)
+        ax.set_xlabel("Correlation step (relative time →)", fontsize=9)
+        ax.set_title(f"Wheeler Diagram — Correlation #{cor_idx}  "
+                     f"({n_steps - 1} intervals, {n_wells} wells)", fontsize=10)
+        ax.set_xlim(-0.5, n_steps - 0.5)
+        ax.set_ylim(-0.5, n_wells - 0.5)
+        ax.invert_yaxis()
+        self._wheeler_fig.tight_layout(pad=0.5)
+        self._wheeler_canvas.draw()
 
     def _cor_prev(self):
         val = self.cor_spin.value()

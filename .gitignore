@@ -17,6 +17,10 @@ chat.txt
 /wells.txt
 /options.txt
 
+# RDDMS / OSDU connection config (local secrets — never commit)
+.weco.env
+*.weco.env
+
 # Temp directory (test/demo results)
 /tmp/*
 !/tmp/.gitkeep
