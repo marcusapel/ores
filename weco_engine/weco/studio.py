@@ -611,6 +611,25 @@ DEMOS = [
         },
         "editable_keys": ["var_weight", "const_gap_cost", "max_cor", "order"],
     },
+    # ── §14.7 Hugin Fm — Tidal Distality (Real Wells) ────────────
+    {
+        "id": "hugin_tidal",
+        "title": "Hugin Fm — Tidal Distality",
+        "group": "Advanced",
+        "wells": "data_set_hugin_tidal/facies.wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "2 real North Sea wells (Hugin Fm). Distality cost\n"
+            "on tide-dominated shallow marine with interpreted facies."
+        ),
+        "opts": {
+            "cost_function": "composite", "order": "distality",
+            "dist_distal": "DISTALITY", "dist_facies": "FACIES_1",
+            "dist_scaling": 1.0,
+            "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 20,
+        },
+        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
+    },
 ]
 
 

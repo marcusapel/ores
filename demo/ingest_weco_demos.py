@@ -91,6 +91,8 @@ DATASETS = {
                "title": "Sigrun – North Sea"},
     "troll": {"path": "demo/data/data_set_troll", "wells_file": "wells.txt",
               "title": "Troll – North Sea"},
+    "hugin_tidal": {"path": "demo/data/data_set_hugin_tidal", "wells_file": "facies.wells.txt",
+                    "title": "Hugin Fm – Tidal Distality (Real Wells)"},
 }
 
 

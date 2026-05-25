@@ -426,6 +426,33 @@ DATASETS = {
                         "min_dist": 0.1, "out_min_dist": 0.05},
         "ai": {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False},
     },
+    "11_hugin_tidal": {
+        "title": "Hugin Fm – Tidal Distality (Real Wells)",
+        "subtitle": "2 real North Sea wells · distality cost",
+        "description": (
+            "Real subsurface wells from the Hugin Formation (Gudrun–Sigrun area).\n"
+            "Tide-dominated shallow marine with interpreted depositional facies.\n"
+            "Demonstrates distality cost on real data — Walther's Law constrains\n"
+            "lateral facies ordering across the proximal-distal gradient."
+        ),
+        "geology_note": (
+            "Setting: Hugin Formation, South Viking Graben (Upper Jurassic).\n"
+            "Tide-dominated shallow marine to coastal plain succession.\n"
+            "Wells span proximal (tidal channel/bar) to distal (prodelta/offshore).\n"
+            "Reference: Baville et al. (2024), EAGE Annual Conference, Oslo."
+        ),
+        "wells": DATA_DIR / "data_set_hugin_tidal" / "facies.wells.txt",
+        "runs": [
+            {"name": "Distality (FACIES_1)", "opts": {
+                "dist_distal": "DISTALITY", "dist_facies": "FACIES_1", "dist_scaling": 1.0}},
+            {"name": "Distality (FACIES_2)", "opts": {
+                "dist_distal": "DISTALITY", "dist_facies": "FACIES_2", "dist_scaling": 1.0}},
+        ],
+        "common_opts": {"cost_function": "composite", "order": "distality",
+                        "max_cor": 200, "nbr_cor": 100, "out_nbr_cor": 20,
+                        "min_dist": 0.1, "out_min_dist": 0.05},
+        "ai": {"quality": True, "anomaly": False, "uncertainty": False, "log_qc": False},
+    },
 }
 
 
