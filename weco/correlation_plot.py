@@ -92,24 +92,62 @@ LITHO_PALETTE = [
     "#f0f0f0",   # 20 chalk / white limestone
 ]
 
-#: Named log colours for common log types
+#: Named log colours for common log types (CPI-style)
 LOG_STYLES = {
-    "GR":    {"color": "#2ca02c", "fill": "right", "fill_alpha": 0.15, "lw": 1.0},
-    "RT":    {"color": "#d62728", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0, "log_scale": True},
-    "DEN":   {"color": "#1f77b4", "fill": "left",   "fill_alpha": 0.10, "lw": 1.0},
-    "CAL":   {"color": "#9467bd", "fill": None,     "fill_alpha": 0.0,  "lw": 0.8},
-    "SPT":   {"color": "#8c564b", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0},
-    "COND":  {"color": "#ff7f0e", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0},
-    "MS":    {"color": "#e377c2", "fill": None,     "fill_alpha": 0.0,  "lw": 0.8},
-    "WC":    {"color": "#17becf", "fill": "right",  "fill_alpha": 0.10, "lw": 0.8},
-    "SON":   {"color": "#bcbd22", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0},
-    "NEU":   {"color": "#7f7f7f", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0},
-    "FACIES": {"color": "#444444", "fill": None,    "fill_alpha": 0.0,  "lw": 0.6},
-    "LITH":  {"color": "#444444", "fill": None,     "fill_alpha": 0.0,  "lw": 0.6},
+    "GR":    {"color": "#2ca02c", "fill": "right", "fill_alpha": 0.15, "lw": 1.0,
+              "scale": (0, 150), "unit": "API"},
+    "SGR":   {"color": "#2ca02c", "fill": "right", "fill_alpha": 0.15, "lw": 1.0,
+              "scale": (0, 150), "unit": "API"},
+    "RT":    {"color": "#d62728", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "log_scale": True, "scale": (0.2, 2000), "unit": "Ωm"},
+    "RDEEP": {"color": "#d62728", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "log_scale": True, "scale": (0.2, 2000), "unit": "Ωm"},
+    "RSHAL": {"color": "#ff7f0e", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "log_scale": True, "scale": (0.2, 2000), "unit": "Ωm"},
+    "DEN":   {"color": "#1f77b4", "fill": "left",   "fill_alpha": 0.10, "lw": 1.0,
+              "scale": (1.95, 2.95), "unit": "g/cc"},
+    "RHOB":  {"color": "#1f77b4", "fill": "left",   "fill_alpha": 0.10, "lw": 1.0,
+              "scale": (1.95, 2.95), "unit": "g/cc"},
+    "NEU":   {"color": "#7f7f7f", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (-0.05, 0.45), "unit": "v/v"},
+    "NPHI":  {"color": "#7f7f7f", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (-0.05, 0.45), "unit": "v/v"},
+    "CAL":   {"color": "#9467bd", "fill": None,     "fill_alpha": 0.0,  "lw": 0.8,
+              "scale": (6, 16), "unit": "in"},
+    "SON":   {"color": "#bcbd22", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (40, 140), "unit": "µs/ft"},
+    "DT":    {"color": "#bcbd22", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (40, 140), "unit": "µs/ft"},
+    "SP":    {"color": "#8c564b", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (-100, 50), "unit": "mV"},
+    "SPT":   {"color": "#8c564b", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (0, 200), "unit": ""},
+    "COND":  {"color": "#ff7f0e", "fill": None,     "fill_alpha": 0.0,  "lw": 1.0,
+              "scale": (0, 5000), "unit": "mS/m"},
+    "MS":    {"color": "#e377c2", "fill": None,     "fill_alpha": 0.0,  "lw": 0.8,
+              "scale": (0, 100), "unit": "SI×10⁻⁵"},
+    "WC":    {"color": "#17becf", "fill": "right",  "fill_alpha": 0.10, "lw": 0.8,
+              "scale": (0, 100), "unit": "%"},
+    "FACIES": {"color": "#444444", "fill": None,    "fill_alpha": 0.0,  "lw": 0.6,
+               "scale": None, "unit": ""},
+    "LITH":  {"color": "#444444", "fill": None,     "fill_alpha": 0.0,  "lw": 0.6,
+              "scale": None, "unit": ""},
 }
 
 # Default style for unknown logs
-_DEFAULT_LOG_STYLE = {"color": "#555555", "fill": None, "fill_alpha": 0.0, "lw": 1.0}
+_DEFAULT_LOG_STYLE = {"color": "#555555", "fill": None, "fill_alpha": 0.0, "lw": 1.0,
+                      "scale": None, "unit": ""}
+
+
+def _get_log_style(name: str) -> dict:
+    """Get style for a log, trying exact match then prefix match."""
+    if name in LOG_STYLES:
+        return LOG_STYLES[name]
+    up = name.upper()
+    for key, style in LOG_STYLES.items():
+        if up.startswith(key) or key in up:
+            return style
+    return _DEFAULT_LOG_STYLE
 
 # Well column colours (for headers / outlines)
 WELL_COLORS = [
@@ -527,10 +565,12 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
 
         # Get log data
         raw = _get_log(well, log_name)
-        style = LOG_STYLES.get(log_name, _DEFAULT_LOG_STYLE)
+        style = _get_log_style(log_name)
         lcolor = style["color"]
         lw = style.get("lw", 1.0)
         is_log_scale = style.get("log_scale", False)
+        typical_scale = style.get("scale")
+        unit = style.get("unit", "")
 
         if raw is None:
             ax.set_xlim(0, 1)
@@ -546,16 +586,37 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                 pos = vals[vals > 0]
                 if len(pos) > 0:
                     ax.set_xscale("log")
-                    vmin = np.percentile(pos, 2)
-                    vmax = np.percentile(pos, 98)
+                    # Use typical scale if available, else percentile
+                    if typical_scale:
+                        vmin, vmax = typical_scale
+                    else:
+                        vmin = np.percentile(pos, 2)
+                        vmax = np.percentile(pos, 98)
                 else:
                     vmin, vmax = 0.1, 100.0
             else:
-                vmin = np.nanpercentile(vals, 1)
-                vmax = np.nanpercentile(vals, 99)
-                pad = max(0.01, (vmax - vmin) * 0.05)
-                vmin -= pad
-                vmax += pad
+                # Use typical scale if data is within range, else percentile
+                if typical_scale:
+                    ts_min, ts_max = typical_scale
+                    data_min = np.nanpercentile(vals, 1)
+                    data_max = np.nanpercentile(vals, 99)
+                    data_range = data_max - data_min
+                    typ_range = ts_max - ts_min
+                    if (data_range > 0 and data_range < typ_range * 3 and
+                            data_min >= ts_min - typ_range * 0.5 and
+                            data_max <= ts_max + typ_range * 0.5):
+                        vmin, vmax = ts_min, ts_max
+                    else:
+                        vmin, vmax = data_min, data_max
+                        pad = max(0.01, (vmax - vmin) * 0.05)
+                        vmin -= pad
+                        vmax += pad
+                else:
+                    vmin = np.nanpercentile(vals, 1)
+                    vmax = np.nanpercentile(vals, 99)
+                    pad = max(0.01, (vmax - vmin) * 0.05)
+                    vmin -= pad
+                    vmax += pad
 
             ax.set_xlim(vmin, vmax)
             ax.plot(vals, dep, color=lcolor, linewidth=lw, zorder=5)
@@ -577,10 +638,27 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
         ax.tick_params(axis="x", labelsize=6, rotation=45)
         ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=3))
 
-        # Top label (log name)
-        ax.text(0.5, 1.01, log_name, transform=ax.transAxes,
+        # Top label: log name (bold, coloured) + scale range with unit
+        label = log_name
+        if raw is not None and unit:
+            label += f" ({unit})"
+        ax.text(0.5, 1.01, label, transform=ax.transAxes,
                 ha="center", va="bottom", fontsize=7, color=lcolor,
                 fontweight="bold")
+
+        # Scale min/max labels at top corners
+        if raw is not None:
+            xlim = ax.get_xlim()
+            if is_log_scale:
+                smin_str = f"{xlim[0]:.1g}"
+                smax_str = f"{xlim[1]:.0f}"
+            else:
+                smin_str = f"{xlim[0]:.1f}" if abs(xlim[0]) < 100 else f"{xlim[0]:.0f}"
+                smax_str = f"{xlim[1]:.1f}" if abs(xlim[1]) < 100 else f"{xlim[1]:.0f}"
+            ax.text(0.0, 1.005, smin_str, transform=ax.transAxes,
+                    ha="left", va="bottom", fontsize=5.5, color="#888")
+            ax.text(1.0, 1.005, smax_str, transform=ax.transAxes,
+                    ha="right", va="bottom", fontsize=5.5, color="#888")
 
         # Subtle well outline
         for spine in ax.spines.values():
