@@ -1601,6 +1601,16 @@ def list_demos():
          "opts": {"var-data": "FACIES", "no-crossing": "ZONE",
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.5, "out-min-dist": 0.25}},
+        {"id": "bryson_distality", "title": "Bryson – Distality Ordering",
+         "group": "Domain", "wells": "data_set_bryson/wells.txt",
+         "geology": "fluvial",
+         "description": "7 Appalachian wells with DISTALITY variance cost and "
+                        "distality well-ordering + ZONE no-crossing. Correlates "
+                        "along depositional dip direction.",
+         "opts": {"var-data": "DISTALITY", "order": "distality",
+                  "no-crossing": "ZONE",
+                  "max-cor": 80, "nbr-cor": 50, "out-nbr-cor": 10,
+                  "min-dist": 0.5, "out-min-dist": 0.25}},
         # ── Domain: Fluvial Channel Belt ──────────────────────────────
         {"id": "fluvial", "title": "Fluvial – Gap Cost + Channel Connectivity",
          "group": "Domain", "wells": "data_set_fluvial/wells.txt",
@@ -1648,6 +1658,17 @@ def list_demos():
          "opts": {"var-data": "FACIES",
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.5, "out-min-dist": 0.25}},
+        {"id": "troll_distality", "title": "Troll – Distality Ordered + Biozone",
+         "group": "Domain", "wells": "data_set_troll/wells.txt",
+         "geology": "shallow_marine",
+         "description": "23 Troll wells with distality ordering + biozone "
+                        "constraint. DISTALITY cost with proximal→distal well "
+                        "ordering explores lateral facies variation within "
+                        "biostratigraphic framework.",
+         "opts": {"var-data": "DISTALITY", "order": "distality",
+                  "no-crossing": "BIOZONE",
+                  "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 15,
+                  "min-dist": 0.3, "out-min-dist": 0.15}},
         # ── Real Data: Hugin Fm (EAGE 2024) ──────────────────────────
         {"id": "hugin_tidal", "title": "Hugin Fm – Tidal Distality (Real Wells)",
          "group": "Domain", "wells": "data_set_hugin_tidal/facies.wells.txt",
@@ -1709,6 +1730,10 @@ def _get_demo_opts(demo_id: str) -> dict:
         "bryson": {"var-data": "FACIES", "no-crossing": "ZONE",
                    "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                    "min-dist": 0.5, "out-min-dist": 0.25},
+        "bryson_distality": {"var-data": "DISTALITY", "order": "distality",
+                             "no-crossing": "ZONE",
+                             "max-cor": 80, "nbr-cor": 50, "out-nbr-cor": 10,
+                             "min-dist": 0.5, "out-min-dist": 0.25},
         "fluvial": {"var-data": "GR", "var-weight": 1.0,
                     "max-cor": 20, "nbr-cor": 10, "out-nbr-cor": 10,
                     "min-dist": 0.4, "out-min-dist": 0.2,
@@ -1724,6 +1749,10 @@ def _get_demo_opts(demo_id: str) -> dict:
         "troll": {"var-data": "FACIES",
                   "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,
                   "min-dist": 0.5, "out-min-dist": 0.25},
+        "troll_distality": {"var-data": "DISTALITY", "order": "distality",
+                            "no-crossing": "BIOZONE",
+                            "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 15,
+                            "min-dist": 0.3, "out-min-dist": 0.15},
         "hugin_tidal": {"dist-distal": "DISTALITY", "dist-facies": "FACIES_1",
                         "dist-scaling": 1.0, "order": "distality",
                         "max-cor": 50, "nbr-cor": 30, "out-nbr-cor": 10,

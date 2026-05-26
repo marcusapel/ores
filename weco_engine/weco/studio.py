@@ -178,6 +178,9 @@ OPTION_PRESETS = {
 # ═══════════════════════════════════════════════════════════════════════════
 
 DEMOS = [
+    # ══════════════════════════════════════════════════════════════════════
+    #  Concept Demos — teaching specific constraints (2-3 wells, instant)
+    # ══════════════════════════════════════════════════════════════════════
     {
         "id": "variance_weights",
         "title": "Variance Weight Sweep",
@@ -189,65 +192,12 @@ DEMOS = [
             "the cost function steers the correlation."
         ),
         "opts": {
-            "cost_function": "composite", "order": "linear",
             "var_data": "VarData1", "var_weight": 1.0,
             "var_data2": "VarData2", "var_weight2": 0.0,
+            "order": "linear",
             "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10,
         },
         "editable_keys": ["var_weight", "var_weight2", "max_cor", "nbr_cor", "order"],
-    },
-    {
-        "id": "no_crossing_regions",
-        "title": "No-Crossing Constraint",
-        "group": "Constraints",
-        "wells": "data_set_no_crossing_regions/wells.txt",
-        "description": (
-            "Same wells + a region 'NoCrossing' that enforces\n"
-            "stratigraphic ordering. Correlation lines cannot\n"
-            "cross zone boundaries."
-        ),
-        "opts": {
-            "cost_function": "composite", "order": "linear",
-            "var_data": "VarData1", "no_crossing": "NoCrossing",
-            "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10,
-        },
-        "editable_keys": ["var_data", "no_crossing", "max_cor", "order"],
-    },
-    {
-        "id": "distality",
-        "title": "Distality-Facies Cost",
-        "group": "Advanced",
-        "wells": "data_set_distality/wells.txt",
-        "description": (
-            "2 real wells (A, B) with distality & facies.\n"
-            "The distality cost penalises thickness ratios\n"
-            "inconsistent with palaeo-geographic position."
-        ),
-        "opts": {
-            "cost_function": "composite", "order": "distality",
-            "dist_distal": "DISTAL", "dist_facies": "FACIES_1",
-            "dist_scaling": 1.0,
-            "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 50,
-        },
-        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
-    },
-    {
-        "id": "biozone_distality",
-        "title": "Gap Cost Exploration",
-        "group": "Advanced",
-        "wells": "data_set_biozone_distality/wells.txt",
-        "description": (
-            "2 real wells. Vary const-gap-cost to control\n"
-            "how the engine penalises stratigraphic gaps\n"
-            "(hiatuses / condensation). 0 = free gaps."
-        ),
-        "opts": {
-            "cost_function": "composite", "order": "distality",
-            "dist_distal": "DISTAL", "dist_facies": "FACIES_1",
-            "const_gap_cost": 0.0,
-            "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 50,
-        },
-        "editable_keys": ["const_gap_cost", "dist_scaling", "max_cor", "nbr_cor", "order"],
     },
     {
         "id": "ordering_strategies",
@@ -260,128 +210,141 @@ DEMOS = [
             "affects the optimal correlation."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "VarData1", "var_weight": 1.0,
             "order": "pyramidal",
             "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10,
         },
         "editable_keys": ["order", "var_weight", "max_cor", "nbr_cor"],
     },
+    {
+        "id": "no_crossing_regions",
+        "title": "No-Crossing Constraint",
+        "group": "Constraints",
+        "wells": "data_set_no_crossing_regions/wells.txt",
+        "description": (
+            "Same wells + a region 'NoCrossing' that enforces\n"
+            "stratigraphic ordering. Correlation lines cannot\n"
+            "cross zone boundaries."
+        ),
+        "opts": {
+            "var_data": "VarData1", "no_crossing": "NoCrossing",
+            "order": "linear",
+            "max_cor": 10, "nbr_cor": 10, "out_nbr_cor": 10,
+        },
+        "editable_keys": ["var_data", "no_crossing", "max_cor", "order"],
+    },
+    {
+        "id": "distality",
+        "title": "Distality Cost (Walther's Law)",
+        "group": "Advanced",
+        "wells": "data_set_distality/wells.txt",
+        "description": (
+            "2 wells demonstrating the distality cost function.\n"
+            "Penalises correlations that violate lateral\n"
+            "facies-belt ordering (Walther's Law)."
+        ),
+        "opts": {
+            "order": "distality",
+            "dist_distal": "DISTAL", "dist_facies": "FACIES_1",
+            "dist_scaling": 1.0,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "biozone_distality",
+        "title": "Biozone No-Crossing + Distality",
+        "group": "Advanced",
+        "wells": "data_set_biozone_distality/wells.txt",
+        "description": (
+            "2 wells combining no-crossing (BIOZONES) with\n"
+            "distality. Biozone datums cannot swap order —\n"
+            "demonstrates hard stratigraphic anchoring."
+        ),
+        "opts": {
+            "order": "distality",
+            "dist_distal": "DISTAL", "dist_facies": "FACIES_1",
+            "no_crossing": "BIOZONES",
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["const_gap_cost", "dist_scaling", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "hugin_tidal",
+        "title": "Hugin Fm — Tidal Distality (Real Wells)",
+        "group": "Advanced",
+        "wells": "data_set_hugin_tidal/facies.wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "2 real North Sea wells (Hugin Fm, Gudrun–Sigrun).\n"
+            "Tide-dominated shallow marine with interpreted\n"
+            "facies. Walther's Law on real subsurface data."
+        ),
+        "opts": {
+            "order": "distality",
+            "dist_distal": "DISTALITY", "dist_facies": "FACIES_1",
+            "dist_scaling": 1.0,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "same-region",
+        "title": "Same-Region Constraint",
+        "group": "Constraints",
+        "wells": "data_set_same_region/wells_A.txt",
+        "description": (
+            "5 wells with Distality/Facies channels.\n"
+            "Demonstrates distality cost with region constraint.\n"
+            "Same-region grouping keeps correlation within zones."
+        ),
+        "opts": {
+            "order": "distality",
+            "dist_distal": "Distality", "dist_facies": "Facies",
+            "dist_scaling": 1.0,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["dist_scaling", "max_cor", "nbr_cor", "order"],
+    },
+    {
+        "id": "multi-distality",
+        "title": "Multi-Distality",
+        "group": "Advanced",
+        "wells": "data_set_multi_distality/wells_A.weco",
+        "description": (
+            "5 wells with multiple possible distality orderings.\n"
+            "Engine evaluates all candidate profiles and\n"
+            "selects the best-fitting one."
+        ),
+        "opts": {
+            "order": "distality",
+            "dist_distal": "Distality", "dist_facies": "Facies",
+            "dist_scaling": 1.0,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["dist_scaling", "max_cor", "nbr_cor", "order"],
+    },
 
-    # ── Quaternary Hydrogeology ─────────────────────────────────────
-    {
-        "id": "quat-basic",
-        "title": "Quaternary — Basic (GR+RT)",
-        "group": "Quaternary Hydrogeology",
-        "wells": "data_set_quaternary/wells_20.txt",
-        "geology": "quaternary",
-        "description": (
-            "20 shallow Quaternary wells (glacial lowland).\n"
-            "Basic GR+RT variance correlation for quick\n"
-            "aquifer/aquitard overview."
-        ),
-        "geology_doc": (
-            "<b>Geological Setting:</b> Northern European glacial lowland "
-            "(Pleistocene). 5 lithostratigraphic units from Holocene through "
-            "Elsterian.<br><br>"
-            "<b>Periglacial Features:</b> Eiskeil (ice-wedge casts), "
-            "cryoturbation, dropstones, frost cracks in permafrost zone.<br><br>"
-            "<b>Logs:</b> GR (gamma), RT (resistivity), SPT (penetration test), "
-            "COND (hydraulic conductivity), MS (magnetic susceptibility), "
-            "WC (water content).<br><br>"
-            "<b>Correlation Strategy:</b> GR distinguishes sand (low) from "
-            "till/clay (high). RT separates aquifer (high) from aquitard (low)."
-        ),
-        "opts": {
-            "cost_function": "composite",
-            "var_data": "GR", "var_weight": 0.7,
-            "var_data2": "RT", "var_weight2": 0.3,
-            "order": "position", "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 5,
-            "const_gap_cost": 1.5,
-        },
-        "editable_keys": [
-            "var_weight", "var_weight2", "max_cor", "const_gap_cost", "order",
-        ],
-    },
-    {
-        "id": "quat-hydro",
-        "title": "Quaternary — Hydrogeological",
-        "group": "Quaternary Hydrogeology",
-        "wells": "data_set_quaternary/wells_20.txt",
-        "geology": "quaternary",
-        "description": (
-            "Three-log correlation (GR+RT+SPT) with gap cost\n"
-            "tuned for aquifer bed tracing in glacial deposits.\n"
-            "SPT adds geotechnical discrimination."
-        ),
-        "geology_doc": (
-            "<b>Why three logs?</b> GR separates lithology, RT maps "
-            "permeability, SPT identifies compact till vs loose sand. "
-            "Adding SPT improves discrimination of sand channels within till.<br><br>"
-            "<b>Gap Cost = 2.0:</b> Moderate — allows hiatuses where Eemian "
-            "interglacial is missing (~30% of wells) but penalises spurious "
-            "gaps within continuous units."
-        ),
-        "opts": {
-            "cost_function": "composite",
-            "var_data": "GR", "var_weight": 0.50,
-            "var_data2": "RT", "var_weight2": 0.25,
-            "var_data3": "SPT", "var_weight3": 0.25,
-            "order": "position", "max_cor": 80, "nbr_cor": 80, "out_nbr_cor": 5,
-            "const_gap_cost": 2.0,
-            "const_gap_cost_start": 0.0,
-            "const_gap_cost_end": 0.5,
-        },
-        "editable_keys": [
-            "var_weight", "var_weight2", "var_weight3",
-            "max_cor", "const_gap_cost", "const_gap_cost_start", "const_gap_cost_end",
-            "order",
-        ],
-    },
-    {
-        "id": "quat-constrained",
-        "title": "Quaternary — Constrained",
-        "group": "Quaternary Hydrogeology",
-        "wells": "data_set_quaternary/wells_20.txt",
-        "geology": "quaternary",
-        "description": (
-            "GR+RT+SPT with HYDRO same-region constraint.\n"
-            "Enforces aquifer/aquitard grouping:\n"
-            "aquifer=gravel+sand, leaky=silt, aquitard=till+clay."
-        ),
-        "geology_doc": (
-            "<b>same-region = HYDRO:</b> Forces correlated samples to share "
-            "the same hydrogeological class (aquifer / leaky / aquitard). "
-            "This prevents the engine from correlating sand with till.<br><br>"
-            "<b>When to use:</b> When you have reliable facies interpretation "
-            "and want to enforce hydrogeological consistency."
-        ),
-        "opts": {
-            "cost_function": "composite",
-            "var_data": "GR", "var_weight": 0.50,
-            "var_data2": "RT", "var_weight2": 0.30,
-            "var_data3": "SPT", "var_weight3": 0.20,
-            "same_region": "HYDRO",
-            "order": "position", "max_cor": 80, "nbr_cor": 80, "out_nbr_cor": 5,
-            "const_gap_cost": 2.0,
-        },
-        "editable_keys": [
-            "var_weight", "var_weight2", "var_weight3",
-            "same_region", "max_cor", "const_gap_cost", "order",
-        ],
-    },
+    # ══════════════════════════════════════════════════════════════════════
+    #  Domain Demos — real geological settings (consistent with api.py)
+    # ══════════════════════════════════════════════════════════════════════
 
-    # ── Coal Basin ──────────────────────────────────────────────────
+    # ── Coal Basin (10 wells) ───────────────────────────────────────────
     {
-        "id": "coal-basic",
-        "title": "Coal — Basic (GR+DEN)",
+        "id": "coal",
+        "title": "Coal — DEN+GR+SON Multi-Log",
         "group": "Coal Basin",
         "wells": "data_set_coal/wells_10.txt",
         "geology": "coal",
         "description": (
-            "10 coal exploration boreholes with 6 named seams.\n"
-            "Quick two-log correlation using GR + bulk density.\n"
-            "DEN is the primary coal indicator (1.3 g/cc)."
+            "10 coal boreholes with seam splitting/absence.\n"
+            "Gap cost (3.0) penalises missing seams.\n"
+            "DEN (coal=1.3 g/cc vs rock=2.5) + GR + SON."
         ),
         "geology_doc": (
             "<b>Geological Setting:</b> Intracratonic coal basin with cyclic "
@@ -391,30 +354,32 @@ DEMOS = [
             "therefore the strongest discriminator.<br><br>"
             "<b>Seams:</b> Katharina (3m), Sonnenschein (1.5m), Präsident (2.5m), "
             "Zollverein (1.8m), Flöz 9 (1.2m), Flöz 10 (0.8m).<br><br>"
-            "<b>Special markers:</b> Tonstein (volcanic ash), marine bands, "
-            "Brandschiefer (burnt shale)."
+            "<b>Strategy:</b> DEN dominates (50%), GR adds lithology (30%), "
+            "SON adds compaction discrimination (20%)."
         ),
         "opts": {
-            "cost_function": "composite",
-            "var_data": "GR", "var_weight": 0.5,
-            "var_data2": "DEN", "var_weight2": 0.5,
-            "order": "position", "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 5,
-            "const_gap_cost": 3.0,
+            "var_data": "DEN", "var_weight": 0.5,
+            "var_data2": "GR", "var_weight2": 0.3,
+            "var_data3": "SON", "var_weight3": 0.2,
+            "max_cor": 30, "nbr_cor": 15, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.15,
+            "const_gap_cost": 3.0, "band_width": 20,
         },
         "editable_keys": [
-            "var_weight", "var_weight2", "max_cor", "const_gap_cost", "order",
+            "var_weight", "var_weight2", "var_weight3",
+            "max_cor", "const_gap_cost", "band_width", "order",
         ],
     },
     {
         "id": "coal-full",
-        "title": "Coal — Multi-Log (5 logs)",
+        "title": "Coal — 5-Log Full Suite",
         "group": "Coal Basin",
         "wells": "data_set_coal/wells_10.txt",
         "geology": "coal",
         "description": (
             "Five-log coal correlation: GR+RT+DEN+SON+NEU.\n"
-            "DEN dominates (35%), supplemented by sonic (15%)\n"
-            "and neutron (10%) for maximum discrimination."
+            "DEN dominates (35%), supplemented by sonic\n"
+            "and neutron for maximum discrimination."
         ),
         "geology_doc": (
             "<b>Log Weights Rationale:</b><br>"
@@ -423,25 +388,22 @@ DEMOS = [
             "• SON (15%): Coal is slow (120 µs/ft) vs sand (60)<br>"
             "• RT (15%): Coal is extremely resistive (500+ Ω·m)<br>"
             "• NEU (10%): Coal shows high apparent porosity (55%)<br><br>"
-            "<b>Gap Cost = 3.0:</b> High — penalises missing seams to "
-            "force the engine to find all coal horizons."
+            "<b>Gap Cost = 3.0:</b> Penalises missing seams."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "GR", "var_weight": 0.25,
             "var_data2": "RT", "var_weight2": 0.15,
             "var_data3": "DEN", "var_weight3": 0.35,
             "var_data4": "SON", "var_weight4": 0.15,
             "var_data5": "NEU", "var_weight5": 0.10,
-            "order": "position", "max_cor": 100, "nbr_cor": 100, "out_nbr_cor": 5,
-            "const_gap_cost": 3.0,
-            "const_gap_cost_start": 0.0,
-            "const_gap_cost_end": 0.3,
+            "max_cor": 30, "nbr_cor": 15, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.15,
+            "const_gap_cost": 3.0, "band_width": 20,
+            "const_gap_cost_start": 0.0, "const_gap_cost_end": 0.3,
         },
         "editable_keys": [
             "var_weight", "var_weight2", "var_weight3", "var_weight4", "var_weight5",
-            "max_cor", "const_gap_cost", "const_gap_cost_start", "const_gap_cost_end",
-            "order",
+            "max_cor", "const_gap_cost", "band_width", "order",
         ],
     },
     {
@@ -461,19 +423,16 @@ DEMOS = [
             "constraint for mine planning when seam identification is "
             "reliable.<br><br>"
             "<b>Gap Cost = 4.0:</b> Very high — strongly penalises uncorrelated "
-            "seams. Combined with same-region, this produces a strict "
-            "seam-for-seam correlation."
+            "seams."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "DEN", "var_weight": 0.5,
             "var_data2": "GR", "var_weight2": 0.3,
             "var_data3": "SON", "var_weight3": 0.2,
             "same_region": "SEAM",
-            "order": "position", "max_cor": 100, "nbr_cor": 100, "out_nbr_cor": 5,
-            "const_gap_cost": 4.0,
-            "const_gap_cost_start": 0.0,
-            "const_gap_cost_end": 0.0,
+            "max_cor": 30, "nbr_cor": 15, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.15,
+            "const_gap_cost": 4.0, "band_width": 20,
         },
         "editable_keys": [
             "var_weight", "var_weight2", "var_weight3",
@@ -481,260 +440,257 @@ DEMOS = [
         ],
     },
 
-    # ── Shallow Marine (Hugin Fm analogue) ──────────────────────────
+    # ── Quaternary Hydrogeology (20 wells) ──────────────────────────────
     {
-        "id": "sm-basic",
-        "title": "Shallow Marine — Basic (GR+RHOB+DT)",
-        "group": "Shallow Marine (Oil Reservoir)",
+        "id": "quaternary",
+        "title": "Quaternary — GR+RT Multi-Log",
+        "group": "Quaternary Hydrogeology",
+        "wells": "data_set_quaternary/wells_20.txt",
+        "geology": "quaternary",
+        "description": (
+            "20 shallow Quaternary wells with unit absence.\n"
+            "Gap cost (1.5) + GR (sand/clay) + RT (permeability).\n"
+            "Demonstrates aquifer connectivity uncertainty."
+        ),
+        "geology_doc": (
+            "<b>Geological Setting:</b> Northern European glacial lowland "
+            "(Pleistocene). 5 lithostratigraphic units from Holocene through "
+            "Elsterian.<br><br>"
+            "<b>Logs:</b> GR (gamma), RT (resistivity), SPT (penetration test), "
+            "COND (hydraulic conductivity), MS (magnetic susceptibility), "
+            "WC (water content).<br><br>"
+            "<b>Correlation Strategy:</b> GR distinguishes sand (low) from "
+            "till/clay (high). RT separates aquifer (high) from aquitard (low)."
+        ),
+        "opts": {
+            "var_data": "GR", "var_weight": 0.7,
+            "var_data2": "RT", "var_weight2": 0.3,
+            "max_cor": 20, "nbr_cor": 10, "out_nbr_cor": 10,
+            "min_dist": 0.2, "out_min_dist": 0.1,
+            "const_gap_cost": 1.5, "band_width": 20,
+        },
+        "editable_keys": [
+            "var_weight", "var_weight2", "max_cor",
+            "const_gap_cost", "band_width", "order",
+        ],
+    },
+    {
+        "id": "quat-hydro",
+        "title": "Quaternary — 3-Log Hydrogeological",
+        "group": "Quaternary Hydrogeology",
+        "wells": "data_set_quaternary/wells_20.txt",
+        "geology": "quaternary",
+        "description": (
+            "Three-log correlation (GR+RT+SPT) with gap cost\n"
+            "tuned for aquifer bed tracing in glacial deposits.\n"
+            "SPT adds geotechnical discrimination."
+        ),
+        "geology_doc": (
+            "<b>Why three logs?</b> GR separates lithology, RT maps "
+            "permeability, SPT identifies compact till vs loose sand.<br><br>"
+            "<b>Gap Cost = 2.0:</b> Moderate — allows hiatuses where Eemian "
+            "interglacial is missing (~30% of wells)."
+        ),
+        "opts": {
+            "var_data": "GR", "var_weight": 0.50,
+            "var_data2": "RT", "var_weight2": 0.25,
+            "var_data3": "SPT", "var_weight3": 0.25,
+            "max_cor": 20, "nbr_cor": 10, "out_nbr_cor": 10,
+            "min_dist": 0.2, "out_min_dist": 0.1,
+            "const_gap_cost": 2.0, "band_width": 20,
+        },
+        "editable_keys": [
+            "var_weight", "var_weight2", "var_weight3",
+            "max_cor", "const_gap_cost", "band_width", "order",
+        ],
+    },
+    # ── Shallow Marine (10 wells, Hugin Fm analogue) ────────────────────
+    {
+        "id": "shallow_marine",
+        "title": "Shallow Marine — GR+RHOB+DT + Biozone",
+        "group": "Shallow Marine",
         "wells": "data_set_shallow_marine/wells.txt",
         "geology": "shallow_marine",
         "description": (
-            "10 wells along depositional dip (Hugin Fm analogue).\n"
-            "Wave-dominated shoreface with clinoform geometry.\n"
-            "GR+RHOB+DT variance for basic facies correlation."
+            "10 wells with repeated shoreface parasequences.\n"
+            "3-log (GR 50% + RHOB 30% + DT 20%) + gap cost.\n"
+            "BIOZONE no-crossing locks key flooding surfaces."
         ),
         "geology_doc": (
             "<b>Geological Setting:</b> Upper Jurassic prograding "
-            "wave-dominated shoreface / bay-fill system, inspired by "
-            "the Hugin Formation (Viking Graben, North Sea).<br><br>"
+            "wave-dominated shoreface / bay-fill system (Hugin Fm analogue).<br><br>"
             "<b>8 Facies:</b> Offshore mud, offshore transition, lower "
             "shoreface, upper shoreface, foreshore, bay-fill mud, tidal "
             "channel, transgressive lag.<br><br>"
             "<b>5 Parasequences:</b> PS1–PS5 with clinoform thickening "
-            "downdip (10–20% per well step).<br><br>"
-            "<b>Logs:</b> GR (lithology), RT (permeability), RHOB "
-            "(porosity), NPHI (porosity), DT (compaction).<br><br>"
-            "<b>Correlation Strategy:</b> GR separates shoreface sand "
-            "(low GR, 25–65 API) from offshore mud (high GR, 90–120 API). "
-            "RHOB distinguishes porous sand (2.15) from tight shale (2.50). "
-            "DT adds compaction discrimination."
+            "downdip.<br><br>"
+            "<b>Strategy:</b> GR separates shoreface sand (low) from "
+            "offshore mud (high). RHOB distinguishes porous sand from tight "
+            "shale. DT adds compaction discrimination."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "GR", "var_weight": 0.5,
             "var_data2": "RHOB", "var_weight2": 0.3,
             "var_data3": "DT", "var_weight3": 0.2,
-            "order": "position", "max_cor": 80, "nbr_cor": 80, "out_nbr_cor": 5,
-            "const_gap_cost": 2.0,
+            "no_crossing": "BIOZONE",
+            "max_cor": 50, "nbr_cor": 20, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.2,
+            "const_gap_cost": 2.0, "band_width": 30,
         },
         "editable_keys": [
             "var_weight", "var_weight2", "var_weight3",
-            "max_cor", "const_gap_cost", "order",
+            "no_crossing", "max_cor", "const_gap_cost", "band_width", "order",
         ],
     },
     {
         "id": "sm-distality",
         "title": "Shallow Marine — Distality Cost",
-        "group": "Shallow Marine (Oil Reservoir)",
+        "group": "Shallow Marine",
         "wells": "data_set_shallow_marine/wells.txt",
         "geology": "shallow_marine",
         "description": (
             "GR+RHOB+DT with distality cost on FACIES region.\n"
-            "Distality penalises correlating facies that shouldn't\n"
-            "be laterally equivalent (e.g. offshore ↔ foreshore)."
+            "Distality penalises correlating facies that\n"
+            "shouldn't be laterally equivalent."
         ),
         "geology_doc": (
             "<b>Why Distality?</b> In a prograding system, distal wells "
             "see offshore mud while proximal wells see shoreface sand. "
             "The distality cost assigns low penalty to lateral equivalents "
-            "(e.g., offshore mud ↔ bay-fill mud) and high penalty to "
-            "non-equivalents (e.g., foreshore ↔ offshore mud).<br><br>"
-            "<b>dist-facies = FACIES:</b> Uses the facies region to compute "
-            "distality. Ordered from deepest (1=Offshore) to shallowest "
-            "(5=Foreshore), with bay-fill (6) as offshore equivalent."
+            "and high penalty to non-equivalents.<br><br>"
+            "<b>dist-facies = FACIES:</b> Ordered from deepest (Offshore) "
+            "to shallowest (Foreshore)."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "GR", "var_weight": 0.4,
             "var_data2": "RHOB", "var_weight2": 0.3,
             "var_data3": "DT", "var_weight3": 0.2,
             "dist_facies": "FACIES",
-            "order": "position", "max_cor": 80, "nbr_cor": 80, "out_nbr_cor": 5,
-            "const_gap_cost": 2.0,
+            "max_cor": 50, "nbr_cor": 20, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.2,
+            "const_gap_cost": 2.0, "band_width": 30,
         },
         "editable_keys": [
             "var_weight", "var_weight2", "var_weight3",
             "dist_facies", "dist_scaling",
-            "max_cor", "const_gap_cost", "order",
-        ],
-    },
-    {
-        "id": "sm-biozones",
-        "title": "Shallow Marine — Biozone Constrained",
-        "group": "Shallow Marine (Oil Reservoir)",
-        "wells": "data_set_shallow_marine/wells.txt",
-        "geology": "shallow_marine",
-        "description": (
-            "GR+RHOB+DT constrained by BIOZONE no-crossing.\n"
-            "Two biozones (BZ1, BZ2) lock parasequence boundaries,\n"
-            "reducing search space and preventing noise correlation."
-        ),
-        "geology_doc": (
-            "<b>Biozone Constraints:</b> Two biostratigraphic markers "
-            "subdivide the section into three intervals:<br>"
-            "• Below BZ1 (PS1 only)<br>"
-            "• BZ1–BZ2 (PS2–PS3)<br>"
-            "• Above BZ2 (PS4–PS5)<br><br>"
-            "<b>no-crossing = BIOZONE:</b> Correlations cannot cross "
-            "biozone boundaries. This is the strongest constraint for "
-            "reservoir zonation when biostratigraphy is available.<br><br>"
-            "<b>When to use:</b> When you have reliable biostratigraphic "
-            "picks (palynology, microfossils) that subdivide the section."
-        ),
-        "opts": {
-            "cost_function": "composite",
-            "var_data": "GR", "var_weight": 0.5,
-            "var_data2": "RHOB", "var_weight2": 0.3,
-            "var_data3": "DT", "var_weight3": 0.2,
-            "no_crossing": "BIOZONE",
-            "order": "position", "max_cor": 80, "nbr_cor": 80, "out_nbr_cor": 5,
-            "const_gap_cost": 2.0,
-        },
-        "editable_keys": [
-            "var_weight", "var_weight2", "var_weight3",
-            "no_crossing", "max_cor", "const_gap_cost", "order",
+            "max_cor", "const_gap_cost", "band_width", "order",
         ],
     },
 
-    # ── §14.6 Delta Front / Prodelta ──────────────────────────────
+    # ── Delta Front (8 wells) ───────────────────────────────────────────
     {
-        "id": "delta-basic",
-        "title": "Delta — Prograding Parasequences",
+        "id": "delta",
+        "title": "Delta — Sequence Boundaries + GR+DEN",
         "group": "Delta Front",
         "wells": "data_set_delta/wells.txt",
         "geology": "delta",
         "description": (
-            "8 wells through a prograding delta with GR/DEN/NPHI.\n"
-            "Shingled parasequences with lateral facies variation.\n"
-            "no_crossing=SEQSTRAT locks parasequence boundaries."
+            "8 wells through a prograding delta with variable\n"
+            "thickness parasequences. GR (60%) + DEN (40%).\n"
+            "SEQSTRAT no-crossing locks parasequence boundaries."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "GR", "var_weight": 0.6,
             "var_data2": "DEN", "var_weight2": 0.4,
             "no_crossing": "SEQSTRAT",
-            "const_gap_cost": 1.0,
-            "order": "position", "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 5,
+            "max_cor": 50, "nbr_cor": 20, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.2,
+            "const_gap_cost": 1.5, "band_width": 30,
         },
-        "editable_keys": ["var_weight", "var_weight2", "max_cor", "order",
-                          "no_crossing", "const_gap_cost"],
+        "editable_keys": [
+            "var_weight", "var_weight2", "no_crossing",
+            "max_cor", "const_gap_cost", "band_width", "order",
+        ],
     },
 
-    # ── §14.6 Fluvial Channel Belt ────────────────────────────────
+    # ── Fluvial Channel Belt (12 wells) ─────────────────────────────────
     {
-        "id": "fluvial-basic",
-        "title": "Fluvial — Channel Belt",
+        "id": "fluvial",
+        "title": "Fluvial — Channel Belt (Gap Cost)",
         "group": "Fluvial",
         "wells": "data_set_fluvial/wells.txt",
         "geology": "fluvial",
         "description": (
-            "Laterally discontinuous channel sandbodies.\n"
-            "High well count needed. Gap cost is critical."
+            "12 wells through discontinuous channel sandbodies.\n"
+            "Gap cost forces decision: connected or isolated?\n"
+            "Band-width limits vertical stretch."
         ),
         "opts": {
-            "cost_function": "composite",
             "var_data": "GR", "var_weight": 1.0,
-            "order": "position", "max_cor": 80, "nbr_cor": 80, "out_nbr_cor": 5,
-            "const_gap_cost": 0.5,
+            "max_cor": 50, "nbr_cor": 20, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.2,
+            "const_gap_cost": 0.5, "band_width": 30,
         },
-        "editable_keys": ["var_weight", "const_gap_cost", "max_cor", "order"],
-    },
-    # ── §14.7 Hugin Fm — Tidal Distality (Real Wells) ────────────
-    {
-        "id": "hugin_tidal",
-        "title": "Hugin Fm — Tidal Distality",
-        "group": "Advanced",
-        "wells": "data_set_hugin_tidal/facies.wells.txt",
-        "geology": "shallow_marine",
-        "description": (
-            "2 real North Sea wells (Hugin Fm). Distality cost\n"
-            "on tide-dominated shallow marine with interpreted facies."
-        ),
-        "opts": {
-            "cost_function": "composite", "order": "distality",
-            "dist_distal": "DISTALITY", "dist_facies": "FACIES_1",
-            "dist_scaling": 1.0,
-            "max_cor": 50, "nbr_cor": 50, "out_nbr_cor": 20,
-        },
-        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
+        "editable_keys": [
+            "var_weight", "const_gap_cost", "band_width",
+            "max_cor", "min_dist", "order",
+        ],
     },
 
-    # ── Troll Field (Upper Jurassic, North Sea) ─────────────────────
+    # ── Bryson Canyon (7 wells, Cretaceous) ─────────────────────────────
     {
-        "id": "troll-basic",
-        "title": "Troll — Basic Facies",
-        "group": "North Sea",
-        "wells": "data_set_troll/wells.txt",
-        "geology": "shallow_marine",
+        "id": "bryson",
+        "title": "Bryson — Facies + Zone Constraint",
+        "group": "Clastic Sequences",
+        "wells": "data_set_bryson/wells.txt",
+        "geology": "coastal_plain",
         "description": (
-            "23 wells, Sognefjord Fm (Troll field).\n"
-            "Unconstrained facies variance correlation.\n"
-            "Shows ambiguity without chronostrat constraints."
+            "7 Appalachian Basin wells with categorical FACIES\n"
+            "cost + ZONE no-crossing constraint. Demonstrates\n"
+            "hard biozone anchoring with categorical data."
         ),
         "opts": {
-            "cost_function": "var", "order": "position",
-            "var_data": "FACIES",
-            "max_cor": 100, "nbr_cor": 50, "out_nbr_cor": 10,
+            "var_data": "FACIES", "no_crossing": "ZONE",
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.5, "out_min_dist": 0.25,
         },
-        "editable_keys": ["var_data", "max_cor", "nbr_cor", "order"],
+        "editable_keys": ["var_data", "no_crossing", "max_cor", "nbr_cor", "order"],
     },
     {
-        "id": "troll-distal",
-        "title": "Troll — Distality + Biozone",
-        "group": "North Sea",
-        "wells": "data_set_troll/wells.txt",
-        "geology": "shallow_marine",
+        "id": "bryson-distality",
+        "title": "Bryson — Distality Ordering",
+        "group": "Clastic Sequences",
+        "wells": "data_set_bryson/wells.txt",
+        "geology": "coastal_plain",
         "description": (
-            "23 wells, Sognefjord Fm. Distality cost with\n"
-            "BIOZONE no-crossing (hard chrono tie-points).\n"
-            "Proximal distributary → distal prodelta transect."
+            "7 Appalachian wells ordered by depositional\n"
+            "distality. DISTALITY variance cost + distality\n"
+            "well-ordering + ZONE no-crossing constraint."
+        ),
+        "geology_doc": (
+            "<b>Distality ordering:</b> Wells sorted proximal→distal so "
+            "correlations respect depositional dip direction.<br><br>"
+            "<b>ZONE constraint:</b> Prevents correlations crossing "
+            "established zone boundaries — anchors within packages."
         ),
         "opts": {
-            "cost_function": "distal", "order": "position",
-            "dist_distal": "DISTALITY", "dist_facies": "FACIES",
-            "dist_scaling": 1.0, "no_crossing": "BIOZONE",
-            "max_cor": 100, "nbr_cor": 50, "out_nbr_cor": 10,
+            "var_data": "DISTALITY", "order": "distality",
+            "no_crossing": "ZONE",
+            "max_cor": 80, "nbr_cor": 50, "out_nbr_cor": 10,
+            "min_dist": 0.5, "out_min_dist": 0.25,
         },
-        "editable_keys": ["dist_scaling", "no_crossing", "max_cor", "nbr_cor", "order"],
-    },
-    {
-        "id": "troll-sequence",
-        "title": "Troll — Sequence Constrained",
-        "group": "North Sea",
-        "wells": "data_set_troll/wells.txt",
-        "geology": "shallow_marine",
-        "description": (
-            "23 wells. FACIES variance with SEQUENCE same-region\n"
-            "and BIOZONE no-crossing. Tests whether sequence\n"
-            "boundaries improve or over-constrain the correlation."
-        ),
-        "opts": {
-            "cost_function": "var", "order": "position",
-            "var_data": "FACIES", "same_region": "SEQUENCE",
-            "no_crossing": "BIOZONE",
-            "max_cor": 100, "nbr_cor": 50, "out_nbr_cor": 10,
-        },
-        "editable_keys": ["same_region", "no_crossing", "max_cor", "nbr_cor", "order"],
+        "editable_keys": ["var_data", "no_crossing", "max_cor", "nbr_cor", "order"],
     },
 
-    # ── Sigrun Field (Upper Jurassic, block 15/3) ───────────────────
+    # ── Sigrun Field (6 wells, Upper Jurassic) ──────────────────────────
     {
-        "id": "sigrun-baseline",
-        "title": "Sigrun — GR Baseline",
+        "id": "sigrun",
+        "title": "Sigrun — GR+NPHI Multi-Log",
         "group": "North Sea",
         "wells": "data_set_sigrun/wells.txt",
         "geology": "shallow_marine",
         "description": (
-            "Hugin Fm, Sigrun field. GR-only correlation\n"
-            "without constraints — full uncertainty envelope.\n"
-            "Reference for evaluating constraint benefit."
+            "6 North Sea wells (Sigrun field, Hugin Fm).\n"
+            "GR (60%) + NPHI (40%) two-log variance for\n"
+            "well-tie in marine sequence."
         ),
         "opts": {
-            "cost_function": "composite", "order": "position",
-            "var_data": "GR", "var_weight": 1.0,
-            "max_cor": 100, "nbr_cor": 30, "out_nbr_cor": 15,
+            "var_data": "GR", "var_weight": 0.6,
+            "var_data2": "NPHI", "var_weight2": 0.4,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
         },
-        "editable_keys": ["var_data", "var_weight", "max_cor", "nbr_cor", "order"],
+        "editable_keys": ["var_weight", "var_weight2", "max_cor", "nbr_cor", "order"],
     },
     {
         "id": "sigrun-sequence",
@@ -748,190 +704,122 @@ DEMOS = [
             "ambiguity in tide-influenced sequences."
         ),
         "opts": {
-            "cost_function": "composite", "order": "position",
             "var_data": "GR", "var_weight": 1.0,
             "no_crossing": "SEQUENCE",
-            "max_cor": 100, "nbr_cor": 30, "out_nbr_cor": 15,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
         },
         "editable_keys": ["var_data", "no_crossing", "max_cor", "nbr_cor", "order"],
     },
     {
         "id": "sigrun-facies",
-        "title": "Sigrun — GR + 5-Class Facies",
+        "title": "Sigrun — GR + Distality (FACIES)",
         "group": "North Sea",
         "wells": "data_set_sigrun/wells.txt",
         "geology": "shallow_marine",
         "description": (
-            "GR + distality from 5-class facies scheme\n"
-            "(Channel, Shoreface, Lagoon, Prodelta, Continental).\n"
-            "Tests whether facies adds signal vs. noise."
+            "GR (80%) + distality from 5-class facies scheme.\n"
+            "Tests whether facies-based distality cost adds\n"
+            "geological signal vs. GR-only baseline."
         ),
         "opts": {
-            "cost_function": "composite", "order": "position",
-            "var_data": "GR", "var_weight": 0.5,
-            "dist_distal": "DISTALITY", "dist_facies": "FACIES_5",
-            "dist_scaling": 0.5,
-            "max_cor": 100, "nbr_cor": 30, "out_nbr_cor": 15,
-        },
-        "editable_keys": ["var_weight", "dist_scaling", "dist_facies", "max_cor", "order"],
-    },
-
-    # ── Bryson Canyon (Cretaceous, Book Cliffs) ─────────────────────
-    {
-        "id": "bryson-basic",
-        "title": "Bryson — Facies Variance",
-        "group": "Clastic Sequences",
-        "wells": "data_set_bryson/wells.txt",
-        "geology": "coastal_plain",
-        "description": (
-            "7 wells, Neslen Fm (Book Cliffs, Utah).\n"
-            "Unconstrained facies correlation — coal seams\n"
-            "create strong markers but cause lateral ambiguity."
-        ),
-        "opts": {
-            "cost_function": "var", "order": "position",
-            "var_data": "FACIES",
-            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 5,
-        },
-        "editable_keys": ["var_data", "max_cor", "nbr_cor", "order"],
-    },
-    {
-        "id": "bryson-distal",
-        "title": "Bryson — Distality CCF",
-        "group": "Clastic Sequences",
-        "wells": "data_set_bryson/wells.txt",
-        "geology": "coastal_plain",
-        "description": (
-            "Neslen Fm coastal plain. Distality cost using\n"
-            "interpreted facies/DISTALITY curves. Walther's Law\n"
-            "based correlation for coal-bearing sequences."
-        ),
-        "opts": {
-            "cost_function": "distal", "order": "position",
+            "var_data": "GR", "var_weight": 0.8,
             "dist_distal": "DISTALITY", "dist_facies": "FACIES",
-            "dist_scaling": 1.0,
-            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 5,
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
         },
-        "editable_keys": ["dist_scaling", "dist_facies", "max_cor", "nbr_cor", "order"],
-    },
-    {
-        "id": "bryson-seqstrat",
-        "title": "Bryson — Sequence Strat",
-        "group": "Clastic Sequences",
-        "wells": "data_set_bryson/wells.txt",
-        "geology": "coastal_plain",
-        "description": (
-            "FACIES variance with SEQSTRAT same-region and\n"
-            "ZONE no-crossing constraints. 4th/5th order boundaries\n"
-            "guide correlation within reservoir units."
-        ),
-        "opts": {
-            "cost_function": "var", "order": "position",
-            "var_data": "FACIES", "same_region": "SEQSTRAT",
-            "no_crossing": "ZONE",
-            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 5,
-        },
-        "editable_keys": ["same_region", "no_crossing", "max_cor", "nbr_cor", "order"],
+        "editable_keys": ["var_weight", "dist_facies", "max_cor", "nbr_cor", "order"],
     },
 
-    # ── Carbonate ────────────────────────────────────────────────────
+    # ── Troll Field (23 wells, Upper Jurassic) ──────────────────────────
+    {
+        "id": "troll",
+        "title": "Troll — Categorical Facies",
+        "group": "North Sea",
+        "wells": "data_set_troll/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "23 Troll field wells with categorical FACIES.\n"
+            "No continuous logs — correlation driven purely\n"
+            "by facies similarity. Shows genuine ambiguity."
+        ),
+        "opts": {
+            "var_data": "FACIES",
+            "max_cor": 30, "nbr_cor": 20, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["var_data", "max_cor", "nbr_cor", "min_dist", "order"],
+    },
+    {
+        "id": "troll-biozone",
+        "title": "Troll — Biozone Constrained",
+        "group": "North Sea",
+        "wells": "data_set_troll/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "23 wells, Sognefjord Fm. FACIES variance with\n"
+            "BIOZONE no-crossing (hard chrono tie-points).\n"
+            "Constrains correlation within biozone intervals."
+        ),
+        "opts": {
+            "var_data": "FACIES", "no_crossing": "BIOZONE",
+            "max_cor": 30, "nbr_cor": 20, "out_nbr_cor": 10,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["no_crossing", "max_cor", "nbr_cor", "min_dist", "order"],
+    },
+    {
+        "id": "troll-distality",
+        "title": "Troll — Distality Ordered + Biozone",
+        "group": "North Sea",
+        "wells": "data_set_troll/wells.txt",
+        "geology": "shallow_marine",
+        "description": (
+            "23 Troll wells with distality ordering.\n"
+            "DISTALITY cost + proximal→distal ordering +\n"
+            "BIOZONE constraint for chrono framework."
+        ),
+        "geology_doc": (
+            "<b>Distality ordering:</b> Sognefjord Fm shoreface wells "
+            "sorted by depositional environment position.<br><br>"
+            "<b>Biozone anchoring:</b> Prevents crossing established "
+            "biostratigraphic boundaries while exploring lateral facies "
+            "variation within each biozone."
+        ),
+        "opts": {
+            "var_data": "DISTALITY", "order": "distality",
+            "no_crossing": "BIOZONE",
+            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 15,
+            "min_dist": 0.3, "out_min_dist": 0.15,
+        },
+        "editable_keys": ["var_data", "no_crossing", "max_cor", "nbr_cor",
+                          "min_dist", "order"],
+    },
+
+    # ── Carbonate Platform (20 wells) ───────────────────────────────────
     {
         "id": "carbonate",
-        "title": "Carbonate Platform",
+        "title": "Carbonate — GR+DEN+RT Multi-Log",
         "group": "Carbonates",
         "wells": "data_set_carbonate/wells.txt",
         "geology": "carbonate",
         "description": (
-            "Synthetic carbonate platform wells.\n"
-            "Tests facies-based correlation in reef/lagoon/slope\n"
+            "20 synthetic carbonate platform wells.\n"
+            "Multi-log (GR+DEN+RT) in reef/lagoon/slope\n"
             "settings with sharp lateral transitions."
         ),
         "opts": {
-            "cost_function": "var", "order": "position",
-            "var_data": "FACIES",
-            "max_cor": 80, "nbr_cor": 30, "out_nbr_cor": 10,
+            "var_data": "GR", "var_weight": 0.5,
+            "var_data2": "DEN", "var_weight2": 0.3,
+            "var_data3": "RT", "var_weight3": 0.2,
+            "max_cor": 30, "nbr_cor": 15, "out_nbr_cor": 5,
+            "min_dist": 0.4, "out_min_dist": 0.2,
         },
-        "editable_keys": ["var_data", "max_cor", "nbr_cor", "order"],
-    },
-
-    # ── Polarity / Dip ───────────────────────────────────────────────
-    {
-        "id": "polarity-dip",
-        "title": "Polarity & Dip Cost",
-        "group": "Advanced",
-        "wells": "data_set_polarity_dip/wells.txt",
-        "description": (
-            "Tests the polarity cost function: penalises\n"
-            "correlations where dip directions conflict.\n"
-            "Useful for structural/tectonic settings."
-        ),
-        "opts": {
-            "cost_function": "composite", "order": "position",
-            "var_data": "VarData1",
-            "polarity_region": "POLARITY",
-            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
-        },
-        "editable_keys": ["polarity_region", "var_data", "max_cor", "order"],
-    },
-
-    # ── Same Region ──────────────────────────────────────────────────
-    {
-        "id": "same-region",
-        "title": "Same-Region Constraint",
-        "group": "Constraints",
-        "wells": "data_set_same_region/wells.txt",
-        "description": (
-            "Demonstrates same-region grouping: correlation\n"
-            "lines stay within matching zone intervals.\n"
-            "Compare unconstrained vs. constrained results."
-        ),
-        "opts": {
-            "cost_function": "var", "order": "linear",
-            "var_data": "VarData1", "same_region": "ZONE",
-            "max_cor": 30, "nbr_cor": 20, "out_nbr_cor": 10,
-        },
-        "editable_keys": ["same_region", "var_data", "max_cor", "order"],
-    },
-
-    # ── Gap Cost ─────────────────────────────────────────────────────
-    {
-        "id": "gap-cost",
-        "title": "Gap Cost Exploration",
-        "group": "Advanced",
-        "wells": "data_set_gap_cost/wells.txt",
-        "description": (
-            "Demonstrates const_gap_cost behaviour.\n"
-            "Vary the gap penalty to control how freely\n"
-            "the engine introduces stratigraphic gaps."
-        ),
-        "opts": {
-            "cost_function": "composite", "order": "position",
-            "var_data": "VarData1", "const_gap_cost": 0.0,
-            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
-        },
-        "editable_keys": ["const_gap_cost", "var_data", "max_cor", "order"],
-    },
-
-    # ── Multi-Distality ──────────────────────────────────────────────
-    {
-        "id": "multi-distality",
-        "title": "Multi-Distality",
-        "group": "Advanced",
-        "wells": "data_set_multi_distality/wells.txt",
-        "description": (
-            "Multiple possible distal-to-proximal orderings.\n"
-            "Engine evaluates all candidate distality profiles\n"
-            "and selects the best-fitting one."
-        ),
-        "opts": {
-            "cost_function": "distal", "order": "position",
-            "dist_distal": "DISTALITY", "dist_facies": "FACIES",
-            "multi_dist_distal": "multi_distal.txt",
-            "max_cor": 50, "nbr_cor": 30, "out_nbr_cor": 10,
-        },
-        "editable_keys": ["dist_scaling", "max_cor", "nbr_cor", "order"],
+        "editable_keys": ["var_weight", "var_weight2", "var_weight3",
+                          "max_cor", "min_dist", "order"],
     },
 ]
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2065,6 +1953,27 @@ class _RddmsImportWorker(QThread):
             self.error.emit(str(e))
 
 
+class _PlotRenderWorker(QThread):
+    """Render correlation plot PNG in background thread (avoids GUI freeze)."""
+    finished = pyqtSignal(bytes, int)  # png_bytes, cor_idx
+
+    def __init__(self, well_list, res_file, title, cor_idx, parent=None):
+        super().__init__(parent)
+        self._well_list = well_list
+        self._res_file = res_file
+        self._title = title
+        self._cor_idx = cor_idx
+
+    def run(self):
+        try:
+            png = render_correlation_plot(
+                self._well_list, self._res_file, self._title, self._cor_idx)
+            if png:
+                self.finished.emit(png, self._cor_idx)
+        except Exception:
+            pass
+
+
 class EngineWorker(QThread):
     """Run correlation in background thread."""
     log_line = pyqtSignal(str)
@@ -2123,9 +2032,12 @@ class EngineWorker(QThread):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def render_correlation_plot(well_list, res_file, title="", cor_index=0):
-    """Return a matplotlib figure as a PNG byte buffer."""
+    """Return a matplotlib figure as a PNG byte buffer (thread-safe)."""
     if res_file is None or res_file.get_nbr_results() == 0:
         return None
+
+    from matplotlib.figure import Figure
+    import matplotlib.patches
 
     n_wells = len(res_file.well_id)
     wells = [well_list.wells[wid] for wid in res_file.well_id]
@@ -2144,7 +2056,9 @@ def render_correlation_plot(well_list, res_file, title="", cor_index=0):
 
     depths = [get_depth(w) for w in wells]
     fig_w = max(7, 2.2 * n_wells + 1.5)
-    fig, axes = plt.subplots(1, n_wells, figsize=(fig_w, 6), sharey=False)
+    fig_h = max(8, 6 + n_wells * 0.3)
+    fig = Figure(figsize=(fig_w, fig_h))
+    axes = fig.subplots(1, n_wells, sharey=False)
     if n_wells == 1:
         axes = [axes]
 
@@ -2187,11 +2101,10 @@ def render_correlation_plot(well_list, res_file, title="", cor_index=0):
     fig.text(0.5, 0.01,
              f"Cor #{cid}  |  Cost: {cost:.4f}  |  {n_cor} total",
              ha="center", fontsize=9, style="italic")
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=130, bbox_inches="tight")
-    plt.close(fig)
+    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
     buf.seek(0)
     return buf.read()
 
@@ -4521,6 +4434,7 @@ class ResultsPage(QWidget):
 
         # Viewer tabs
         self.view_tabs = QTabWidget()
+        self.view_tabs.currentChanged.connect(self._on_view_tab_changed)
         lo.addWidget(self.view_tabs, 1)
 
         # Tab 0: Professional Correlation Plot (matplotlib interactive)
@@ -4635,6 +4549,7 @@ class ResultsPage(QWidget):
         wheeler_widget = QWidget()
         wheeler_lo = QVBoxLayout(wheeler_widget)
         wheeler_lo.setContentsMargins(4, 4, 4, 4)
+        self._wheeler_pending = None
         if HAS_MPL_CANVAS:
             self._wheeler_fig, self._wheeler_ax = plt.subplots(1, 1, figsize=(10, 4))
             self._wheeler_canvas = FigureCanvasQTAgg(self._wheeler_fig)
@@ -4718,6 +4633,8 @@ class ResultsPage(QWidget):
             except Exception as e:
                 print(f"CorResView update error: {e}")
 
+        self._plot_worker = None  # background render worker
+        self._wheeler_pending = None  # deferred wheeler render
         self._render(0)
 
     def _render(self, cor_idx):
@@ -4726,24 +4643,31 @@ class ResultsPage(QWidget):
         cost = self._res_file.get_result_cost(cor_idx)
         self.cost_label.setText(f"Cost: {cost:.4f}")
 
-        # Preserve scroll position so plot doesn't jump when switching realisations
-        h_scroll = self.plot_scroll.horizontalScrollBar().value()
-        v_scroll = self.plot_scroll.verticalScrollBar().value()
+        # Cancel any in-flight render
+        if self._plot_worker is not None and self._plot_worker.isRunning():
+            self._plot_worker.finished.disconnect()
+            self._plot_worker = None
 
-        png = render_correlation_plot(
-            self._well_list, self._res_file, self._title, cor_idx)
-        if png:
-            self._png_bytes = png
-            pm = QPixmap()
-            pm.loadFromData(png)
-            w = min(self.width() - 60, 1100)
-            if pm.width() > w:
-                pm = pm.scaledToWidth(w, Qt.TransformationMode.SmoothTransformation)
-            self.plot_label.setPixmap(pm)
+        # Launch background render
+        worker = _PlotRenderWorker(
+            self._well_list, self._res_file, self._title, cor_idx, self)
+        worker.finished.connect(self._on_plot_ready)
+        self._plot_worker = worker
+        worker.start()
 
-        # Restore scroll position
-        self.plot_scroll.horizontalScrollBar().setValue(h_scroll)
-        self.plot_scroll.verticalScrollBar().setValue(v_scroll)
+    def _on_plot_ready(self, png_bytes, cor_idx):
+        """Slot: background plot render finished — display the pixmap."""
+        self._png_bytes = png_bytes
+        pm = QPixmap()
+        pm.loadFromData(png_bytes)
+        available_w = self.plot_scroll.viewport().width() - 20
+        if available_w < 400:
+            available_w = self.width() - 60
+        if pm.width() > available_w:
+            pm = pm.scaledToWidth(available_w, Qt.TransformationMode.SmoothTransformation)
+        elif pm.width() < available_w * 0.9:
+            pm = pm.scaledToWidth(int(available_w * 0.95), Qt.TransformationMode.SmoothTransformation)
+        self.plot_label.setPixmap(pm)
 
     def _on_cor_change(self, idx):
         self._render(idx)
@@ -4753,13 +4677,24 @@ class ResultsPage(QWidget):
                 self._corplot.set_result(self._res_file, idx)
             except Exception:
                 pass
-        # Update Wheeler diagram
+        # Update Wheeler diagram (lightweight — keep on main thread)
         self._render_wheeler(idx)
+
+    def _on_view_tab_changed(self, _tab_idx):
+        """When user switches to Wheeler tab, render any pending diagram."""
+        if self._wheeler_pending is not None:
+            self._render_wheeler(self._wheeler_pending)
 
     def _render_wheeler(self, cor_idx):
         """Draw a Wheeler-style chronostratigraphic diagram for correlation cor_idx."""
         if self._wheeler_canvas is None or self._res_file is None or self._well_list is None:
             return
+        # Only render if Wheeler tab is visible (avoid wasted work)
+        wheeler_tab_idx = self.view_tabs.indexOf(self._wheeler_canvas.parent())
+        if wheeler_tab_idx >= 0 and self.view_tabs.currentIndex() != wheeler_tab_idx:
+            self._wheeler_pending = cor_idx
+            return
+        self._wheeler_pending = None
 
         ax = self._wheeler_ax
         ax.clear()
