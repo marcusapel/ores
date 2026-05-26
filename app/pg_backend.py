@@ -145,6 +145,7 @@ def notify_instance_changed(pg_conn_string: str = "") -> None:
     """
     global _PG_CONN_STRING, _pool
     old = _PG_CONN_STRING
+    _clear_schema_cache()
     # Local dev: GRAPHQL_PG_CONN_STRING is set → always use Docker PG.
     # Radix:     GRAPHQL_PG_CONN_STRING absent → use per-instance PG.
     _PG_CONN_STRING = _PG_CONN_STRING_GLOBAL or pg_conn_string
@@ -200,19 +201,33 @@ ARY_TYPE_FMT = {0: "i", 1: "d", 2: "f", 3: "q", 4: "i", 5: "h"}  # int32, float6
 # input, but we validate anyway).
 _SAFE_SCHEMA_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
+# In-memory schema cache: dataspace path → schema name (or None).
+# Cleared on instance change.  Avoids repeated admin.spaces lookups.
+_schema_cache: Dict[str, Optional[str]] = {}
+
+
+def _clear_schema_cache() -> None:
+    """Clear the schema cache (called on instance change)."""
+    _schema_cache.clear()
+
 
 async def pg_schema_for_dataspace(pool, dataspace: str) -> Optional[str]:
-    """Resolve a dataspace path to the PostgreSQL schema name."""
+    """Resolve a dataspace path to the PostgreSQL schema name (cached)."""
+    if dataspace in _schema_cache:
+        return _schema_cache[dataspace]
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT dbfile FROM admin.spaces WHERE path=$1 OR uid=$1", dataspace
         )
         if not row:
+            _schema_cache[dataspace] = None
             return None
         schema = row["dbfile"]
         if not _SAFE_SCHEMA_RE.match(schema):
             log.error("Unsafe PG schema name %r for dataspace %r - refusing to query", schema, dataspace)
+            _schema_cache[dataspace] = None
             return None
+        _schema_cache[dataspace] = schema
         return schema
 
 
@@ -381,6 +396,134 @@ async def pg_read_array(pool, dataspace: str, uuid: str, path: str) -> List[floa
 
         # Determine element format
         fmt_char = ARY_TYPE_FMT.get(ary["type"] if ary["type"] is not None else 1, "d")
+        elem_size = struct.calcsize(fmt_char)
+        n_elements = len(raw) // elem_size if elem_size else 0
+        if n_elements == 0:
+            return []
+        values = list(struct.unpack_from(f"<{n_elements}{fmt_char}", raw))
+        return [float(v) for v in values]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Batch queries (optimised for deep_search - eliminate N+1)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+async def pg_batch_property_sources(pool, dataspace: str, obj_ids: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+    """For a batch of obj_ids, find all property sources that reference them.
+
+    Returns: {target_obj_id: [{p_obj_id, p_guid, p_name, p_typ_xml, p_ml}, ...]}
+    """
+    schema = await pg_schema_for_dataspace(pool, dataspace)
+    if not schema or not obj_ids:
+        return {}
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT rel.dst_id as target_id,
+                   r2.obj_id as p_obj_id, r2.guid as p_guid, r2.name as p_name,
+                   t2.xml as p_typ_xml, u2.ml as p_ml
+            FROM {schema}.rel rel
+            JOIN {schema}.res r2 ON rel.obj_id = r2.obj_id
+            JOIN {schema}.typ t2 ON r2.typ_id = t2.id
+            JOIN {schema}.uri u2 ON t2.uri_id = u2.id
+            WHERE rel.dst_id = ANY($1::int[])
+            AND t2.xml IN ('obj_ContinuousProperty', 'obj_DiscreteProperty',
+                           'obj_CategoricalProperty', 'obj_PointsProperty')
+        """, obj_ids)
+        result: Dict[int, List[Dict[str, Any]]] = {}
+        for r in rows:
+            tid = r["target_id"]
+            result.setdefault(tid, []).append({
+                "p_obj_id": r["p_obj_id"],
+                "p_guid": str(r["p_guid"]),
+                "p_name": r["p_name"],
+                "p_typ_xml": r["p_typ_xml"],
+                "p_ml": r["p_ml"],
+            })
+        return result
+
+
+async def pg_batch_relations(pool, dataspace: str, obj_ids: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+    """Batch fetch relations (targets+sources) for multiple obj_ids.
+
+    Returns: {obj_id: [{uuid, name, type_name, direction, content_type}, ...]}
+    """
+    schema = await pg_schema_for_dataspace(pool, dataspace)
+    if not schema or not obj_ids:
+        return {}
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT rel.obj_id as src_id, r2.guid, r2.name, t2.xml as typ_xml, u2.ml,
+                   'target' as direction
+            FROM {schema}.rel rel
+            JOIN {schema}.res r2 ON rel.dst_id = r2.obj_id
+            JOIN {schema}.typ t2 ON r2.typ_id = t2.id
+            JOIN {schema}.uri u2 ON t2.uri_id = u2.id
+            WHERE rel.obj_id = ANY($1::int[])
+            UNION ALL
+            SELECT rel.dst_id as src_id, r2.guid, r2.name, t2.xml as typ_xml, u2.ml,
+                   'source' as direction
+            FROM {schema}.rel rel
+            JOIN {schema}.res r2 ON rel.obj_id = r2.obj_id
+            JOIN {schema}.typ t2 ON r2.typ_id = t2.id
+            JOIN {schema}.uri u2 ON t2.uri_id = u2.id
+            WHERE rel.dst_id = ANY($1::int[])
+        """, obj_ids)
+        result: Dict[int, List[Dict[str, Any]]] = {}
+        for r in rows:
+            sid = r["src_id"]
+            result.setdefault(sid, []).append({
+                "uuid": str(r["guid"]),
+                "name": r["name"],
+                "type_name": f"{r['ml']}.{r['typ_xml']}",
+                "direction": r["direction"],
+                "content_type": f"{r['ml']}.{r['typ_xml']}",
+            })
+        return result
+
+
+async def pg_batch_arrays_for_objects(pool, dataspace: str, obj_ids: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+    """Batch fetch array metadata for multiple obj_ids.
+
+    Returns: {obj_id: [{ary_id, path, type, dimensions, total_elements}, ...]}
+    """
+    schema = await pg_schema_for_dataspace(pool, dataspace)
+    if not schema or not obj_ids:
+        return {}
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT obj_id, id, path, type, rank1, dim1, dim2, dim3, dim4, usize
+            FROM {schema}.ary WHERE obj_id = ANY($1::int[])
+        """, obj_ids)
+        result: Dict[int, List[Dict[str, Any]]] = {}
+        for r in rows:
+            dims = [int(r[f"dim{i}"]) for i in range(1, 5) if r[f"dim{i}"] is not None and r[f"dim{i}"] > 0]
+            total = 1
+            for d in dims:
+                total *= d
+            result.setdefault(r["obj_id"], []).append({
+                "ary_id": int(r["id"]),
+                "path": r["path"] or "",
+                "type": int(r["type"]) if r["type"] is not None else 1,
+                "dimensions": dims,
+                "total_elements": total,
+            })
+        return result
+
+
+async def pg_read_array_by_id(pool, dataspace: str, ary_id: int, ary_type: int = 1) -> List[float]:
+    """Read array binary data by ary_id directly (avoids extra obj_id lookup)."""
+    schema = await pg_schema_for_dataspace(pool, dataspace)
+    if not schema:
+        return []
+    async with pool.acquire() as conn:
+        bins = await conn.fetch(f"""
+            SELECT value FROM {schema}.bin WHERE ary_id=$1 ORDER BY idx
+        """, ary_id)
+        if not bins:
+            return []
+        raw = b"".join(b["value"] for b in bins)
+        fmt_char = ARY_TYPE_FMT.get(ary_type, "d")
         elem_size = struct.calcsize(fmt_char)
         n_elements = len(raw) // elem_size if elem_size else 0
         if n_elements == 0:

@@ -41,6 +41,8 @@ from .graphql_search import (
     RelationInfo, ResqmlObject, DataspaceInfo, TypeSummary,
     DeepSearchResult, FederatedHit, FederatedSearchResult,
     ArrayFilter, PropertyFilter,
+    # Type registry
+    RESQML_TYPE_CATEGORIES, ALL_COMMON_RESQML_TYPES, resolve_type_names,
     # REST wrappers (used by basic resolvers here)
     _parse_eml_entry,
     _rest_list_dataspaces, _rest_list_types, _rest_list_resources,
@@ -96,6 +98,18 @@ class Query:
         token = _get_token_from_info(info)
         items = await _rest_list_dataspaces(token)
         return [DataspaceInfo(path=i["path"], uri=i.get("uri", "")) for i in items]
+
+    @strawberry.field(
+        description=(
+            "List available RESQML type categories for use with deep_search(category:). "
+            "Each category groups related RESQML types (e.g. 'grid', 'well', 'structural')."
+        )
+    )
+    async def resqml_categories(self) -> List[TypeSummary]:
+        return [
+            TypeSummary(name=cat, count=len(types))
+            for cat, types in RESQML_TYPE_CATEGORIES.items()
+        ]
 
     @strawberry.field(description="List resource types in a dataspace with counts")
     async def resource_types(self, info: Info, dataspace: str) -> List[TypeSummary]:
@@ -291,7 +305,10 @@ class Query:
         description=(
             "Deep search: find representations with attached properties matching "
             "kind and cell-value criteria. Queries the RESQML graph + array data. "
-            "Supports multiple dataspaces via the 'dataspaces' list parameter."
+            "Supports multiple dataspaces via the 'dataspaces' list parameter. "
+            "Use 'category' instead of type_name to search entire RESQML categories: "
+            "grid, surface, well, structural, stratigraphic, property, seismic, crs, representation. "
+            "type_name also accepts category names or wildcards (e.g. '*Grid*')."
         )
     )
     async def deep_search(
@@ -300,6 +317,7 @@ class Query:
         dataspace: Optional[str] = None,
         dataspaces: Optional[List[str]] = None,
         type_name: str = "resqml20.obj_Grid2dRepresentation",
+        category: Optional[str] = None,
         title_contains: Optional[str] = None,
         property_filter: Optional[PropertyFilter] = None,
         include_relations: bool = False,
@@ -317,12 +335,14 @@ class Query:
           4. Optionally load array values and apply threshold filter
 
         Supports querying multiple dataspaces at once via 'dataspaces' param.
+        Use 'category' to search all types in a category (e.g. "grid", "well").
         """
         token = _get_token_from_info(info)
         return await deep_search_impl(
             token, dataspace, dataspaces, type_name, title_contains,
             property_filter, include_relations, include_statistics,
             include_sample_values, sample_size, limit, relation_filter,
+            category=category,
         )
 
     @strawberry.field(

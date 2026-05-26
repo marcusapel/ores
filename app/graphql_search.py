@@ -36,9 +36,128 @@ from .pg_backend import (
     pg_list_relations as _pg_list_relations,
     pg_list_arrays as _pg_list_arrays,
     pg_read_array as _pg_read_array,
+    pg_batch_property_sources as _pg_batch_property_sources,
+    pg_batch_relations as _pg_batch_relations,
+    pg_batch_arrays_for_objects as _pg_batch_arrays_for_objects,
+    pg_read_array_by_id as _pg_read_array_by_id,
 )
 
 log = logging.getLogger("rddms-admin.graphql")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# RESQML type registry - categories and common types
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Mapping: category → list of RESQML types in that category
+RESQML_TYPE_CATEGORIES: Dict[str, List[str]] = {
+    "grid": [
+        "resqml20.obj_IjkGridRepresentation",
+        "resqml20.obj_UnstructuredGridRepresentation",
+        "resqml20.obj_Grid2dRepresentation",
+        "resqml20.obj_GridConnectionSetRepresentation",
+        "resqml22.obj_IjkGridRepresentation",
+        "resqml22.obj_Grid2dRepresentation",
+    ],
+    "surface": [
+        "resqml20.obj_TriangulatedSetRepresentation",
+        "resqml20.obj_PolylineSetRepresentation",
+        "resqml20.obj_PointSetRepresentation",
+        "resqml20.obj_Grid2dRepresentation",
+        "resqml22.obj_TriangulatedSetRepresentation",
+        "resqml22.obj_PolylineSetRepresentation",
+    ],
+    "well": [
+        "resqml20.obj_WellboreFeature",
+        "resqml20.obj_WellboreTrajectoryRepresentation",
+        "resqml20.obj_WellboreFrameRepresentation",
+        "resqml20.obj_WellboreMarkerFrameRepresentation",
+        "resqml20.obj_DeviationSurveyRepresentation",
+        "resqml20.obj_WellboreInterpretation",
+        "resqml20.obj_BlockedWellboreRepresentation",
+        "resqml22.obj_WellboreFeature",
+        "resqml22.obj_WellboreTrajectoryRepresentation",
+        "resqml22.obj_WellboreFrameRepresentation",
+    ],
+    "structural": [
+        "resqml20.obj_FaultInterpretation",
+        "resqml20.obj_HorizonInterpretation",
+        "resqml20.obj_GeobodyBoundaryInterpretation",
+        "resqml20.obj_GeobodyInterpretation",
+        "resqml20.obj_StructuralOrganizationInterpretation",
+        "resqml20.obj_BoundaryFeature",
+        "resqml20.obj_GeneticBoundaryFeature",
+        "resqml20.obj_TectonicBoundaryFeature",
+        "resqml22.obj_FaultInterpretation",
+        "resqml22.obj_HorizonInterpretation",
+    ],
+    "stratigraphic": [
+        "resqml20.obj_StratigraphicColumn",
+        "resqml20.obj_StratigraphicColumnRankInterpretation",
+        "resqml20.obj_StratigraphicUnitInterpretation",
+        "resqml20.obj_StratigraphicOccurrenceInterpretation",
+        "resqml22.obj_StratigraphicColumn",
+        "resqml22.obj_StratigraphicColumnRankInterpretation",
+    ],
+    "property": [
+        "resqml20.obj_ContinuousProperty",
+        "resqml20.obj_DiscreteProperty",
+        "resqml20.obj_CategoricalProperty",
+        "resqml20.obj_PointsProperty",
+        "resqml20.obj_CommentProperty",
+        "resqml22.obj_ContinuousProperty",
+        "resqml22.obj_DiscreteProperty",
+        "resqml22.obj_CategoricalProperty",
+    ],
+    "seismic": [
+        "resqml20.obj_SeismicLatticeFeature",
+        "resqml20.obj_SeismicLineFeature",
+        "resqml20.obj_Grid2dRepresentation",
+    ],
+    "crs": [
+        "resqml20.obj_LocalDepth3dCrs",
+        "resqml20.obj_LocalTime3dCrs",
+        "resqml22.obj_LocalDepth3dCrs",
+        "resqml22.obj_LocalTime3dCrs",
+    ],
+    "representation": [
+        "resqml20.obj_IjkGridRepresentation",
+        "resqml20.obj_UnstructuredGridRepresentation",
+        "resqml20.obj_Grid2dRepresentation",
+        "resqml20.obj_TriangulatedSetRepresentation",
+        "resqml20.obj_PolylineSetRepresentation",
+        "resqml20.obj_PointSetRepresentation",
+        "resqml20.obj_WellboreTrajectoryRepresentation",
+        "resqml20.obj_WellboreFrameRepresentation",
+    ],
+}
+
+# Flat list of all commonly-used types (for default scanning)
+ALL_COMMON_RESQML_TYPES: List[str] = sorted(set(
+    t for types in RESQML_TYPE_CATEGORIES.values() for t in types
+    if t.startswith("resqml20.")  # default to v2.0 unless user specifies v2.2
+))
+
+
+def resolve_type_names(type_name: Optional[str] = None, category: Optional[str] = None) -> List[str]:
+    """Resolve a type_name or category to a list of concrete RESQML types.
+
+    - If type_name is given and is a known category key, expand it.
+    - If type_name contains a wildcard (*), match against all known types.
+    - Otherwise return [type_name] as-is.
+    """
+    if category:
+        return RESQML_TYPE_CATEGORIES.get(category.lower(), [])
+    if not type_name:
+        return []
+    # Check if type_name is a category alias
+    if type_name.lower() in RESQML_TYPE_CATEGORIES:
+        return RESQML_TYPE_CATEGORIES[type_name.lower()]
+    # Wildcard match
+    if "*" in type_name:
+        import fnmatch
+        return [t for t in ALL_COMMON_RESQML_TYPES if fnmatch.fnmatch(t, type_name)]
+    return [type_name]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -449,7 +568,11 @@ async def _deep_search_pg(
     limit: int,
     relation_filter: Optional[List[str]] = None,
 ) -> DeepSearchResult:
-    """Deep search using direct PostgreSQL access - significantly faster."""
+    """Deep search using direct PostgreSQL access - batch-optimised.
+
+    Strategy: Fetch objects in bulk, then use batch queries for properties
+    and relations instead of N+1 individual queries.
+    """
     pg_schema = await _pg_schema_for_dataspace(pool, dataspace)
     if not pg_schema:
         return DeepSearchResult(
@@ -458,94 +581,138 @@ async def _deep_search_pg(
             backend="PostgreSQL",
         )
 
+    # Resolve type_name (may be a category or wildcard)
+    type_names = resolve_type_names(type_name)
+    if not type_names:
+        type_names = [type_name]
+
     async with pool.acquire() as conn:
-        # Step 1: List objects of type_name
-        parts = type_name.split(".", 1)
-        if len(parts) == 2:
-            resources = await conn.fetch(f"""
-                SELECT r.obj_id, r.guid, r.name, t.xml as typ_xml, u.ml
-                FROM {pg_schema}.res r
-                JOIN {pg_schema}.typ t ON r.typ_id = t.id
-                JOIN {pg_schema}.uri u ON t.uri_id = u.id
-                WHERE u.ml = $1 AND t.xml = $2
-                ORDER BY r.obj_id
-            """, parts[0], parts[1])
-        else:
-            resources = await conn.fetch(f"""
-                SELECT r.obj_id, r.guid, r.name, t.xml as typ_xml, u.ml
-                FROM {pg_schema}.res r
-                JOIN {pg_schema}.typ t ON r.typ_id = t.id
-                JOIN {pg_schema}.uri u ON t.uri_id = u.id
-                WHERE t.xml ILIKE '%' || $1 || '%'
-                ORDER BY r.obj_id
-            """, type_name)
+        # Step 1: List objects of type_name(s) in batch
+        all_resources = []
+        for tn in type_names:
+            parts = tn.split(".", 1)
+            if len(parts) == 2:
+                resources = await conn.fetch(f"""
+                    SELECT r.obj_id, r.guid, r.name, t.xml as typ_xml, u.ml
+                    FROM {pg_schema}.res r
+                    JOIN {pg_schema}.typ t ON r.typ_id = t.id
+                    JOIN {pg_schema}.uri u ON t.uri_id = u.id
+                    WHERE u.ml = $1 AND t.xml = $2
+                    ORDER BY r.obj_id
+                """, parts[0], parts[1])
+            else:
+                resources = await conn.fetch(f"""
+                    SELECT r.obj_id, r.guid, r.name, t.xml as typ_xml, u.ml
+                    FROM {pg_schema}.res r
+                    JOIN {pg_schema}.typ t ON r.typ_id = t.id
+                    JOIN {pg_schema}.uri u ON t.uri_id = u.id
+                    WHERE t.xml ILIKE '%' || $1 || '%'
+                    ORDER BY r.obj_id
+                """, tn)
+            for r in resources:
+                all_resources.append((r, f"{r['ml']}.{r['typ_xml']}"))
 
-        total_scanned = len(resources)
+        total_scanned = len(all_resources)
+
+        # Apply title filter early
+        if title_contains:
+            all_resources = [
+                (r, tn) for r, tn in all_resources
+                if title_contains.lower() in r["name"].lower()
+            ]
+
+        # Cap candidates for batch processing
+        candidates = all_resources[:limit * 3]
+        candidate_obj_ids = [r["obj_id"] for r, _ in candidates]
+
+        # Step 2: Batch-fetch property sources for all candidates
+        prop_sources_map = await _pg_batch_property_sources(pool, dataspace, candidate_obj_ids)
+
+        # Step 3: If property filter requires kind, batch-fetch XML for property objects
+        # to determine kind (only for properties that need it)
+        kind_cache: Dict[int, str] = {}
+        if property_filter and (property_filter.kind or property_filter.title_contains):
+            all_prop_obj_ids = [
+                ps["p_obj_id"]
+                for sources in prop_sources_map.values()
+                for ps in sources
+            ]
+            if all_prop_obj_ids:
+                xml_rows = await conn.fetch(f"""
+                    SELECT id, xml FROM {pg_schema}.obj
+                    WHERE id = ANY($1::int[])
+                """, all_prop_obj_ids)
+                import xml.etree.ElementTree as ET
+                for xr in xml_rows:
+                    kind = "Unknown"
+                    xml_str = str(xr["xml"]) if xr["xml"] else ""
+                    if "PropertyKind" in xml_str or "LocalPropertyKind" in xml_str:
+                        try:
+                            root = ET.fromstring(xml_str)
+                            for elem in root.iter():
+                                tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                                if "PropertyKind" in tag:
+                                    title_elem = elem.find(
+                                        ".//{http://www.energistics.org/energyml/data/commonv2}Title"
+                                    )
+                                    if title_elem is not None and title_elem.text:
+                                        kind = title_elem.text
+                                        break
+                        except ET.ParseError:
+                            pass
+                    kind_cache[xr["id"]] = kind
+
+        # Step 4: Batch-fetch arrays for property objects (if needed)
+        need_arrays = include_statistics or include_sample_values or (
+            property_filter and property_filter.array_filter
+        )
+        arrays_map: Dict[int, List[Dict[str, Any]]] = {}
+        if need_arrays:
+            all_prop_ids = [
+                ps["p_obj_id"]
+                for sources in prop_sources_map.values()
+                for ps in sources
+            ]
+            if all_prop_ids:
+                arrays_map = await _pg_batch_arrays_for_objects(pool, dataspace, all_prop_ids)
+
+        # Step 5: Batch-fetch relations (if needed)
+        relations_map: Dict[int, List[Dict[str, Any]]] = {}
+        if include_relations:
+            relations_map = await _pg_batch_relations(pool, dataspace, candidate_obj_ids)
+
+        # Step 6: Assemble results
         matched: List[ResqmlObject] = []
-
-        for res in resources:
+        for res, res_type_name in candidates:
             if len(matched) >= limit:
                 break
 
-            title = res["name"]
-            if title_contains and title_contains.lower() not in title.lower():
-                continue
-
             obj_id = res["obj_id"]
             uuid = str(res["guid"])
+            title = res["name"]
 
-            # Step 2: Find property sources that reference this object
-            prop_sources = await conn.fetch(f"""
-                SELECT r2.obj_id as p_obj_id, r2.guid as p_guid, r2.name as p_name,
-                       t2.xml as p_typ_xml, u2.ml as p_ml
-                FROM {pg_schema}.rel rel
-                JOIN {pg_schema}.res r2 ON rel.obj_id = r2.obj_id
-                JOIN {pg_schema}.typ t2 ON r2.typ_id = t2.id
-                JOIN {pg_schema}.uri u2 ON t2.uri_id = u2.id
-                WHERE rel.dst_id = $1
-                AND t2.xml IN ('obj_ContinuousProperty', 'obj_DiscreteProperty', 'obj_CategoricalProperty')
-            """, obj_id)
+            # Process properties for this object
+            prop_sources = prop_sources_map.get(obj_id, [])
 
             if property_filter and property_filter.kind and not prop_sources:
                 continue
 
-            # Step 3: Process properties
             property_results: List[PropertyInfo] = []
             passes_filter = not (property_filter and property_filter.array_filter)
 
             for ps in prop_sources:
                 p_name = ps["p_name"]
-                p_uuid = str(ps["p_guid"])
+                p_uuid = ps["p_guid"]
                 p_type = f"{ps['p_ml']}.{ps['p_typ_xml']}"
                 p_obj_id = ps["p_obj_id"]
 
-                # Title filter: skip properties whose name doesn't match
+                # Title filter on property
                 if property_filter and property_filter.title_contains:
                     if property_filter.title_contains.lower() not in p_name.lower():
                         continue
 
-                # Determine kind from XML object content
-                kind = "Unknown"
-                try:
-                    import xml.etree.ElementTree as ET
-                    obj_row = await conn.fetchrow(
-                        f"SELECT xml FROM {pg_schema}.obj WHERE id=$1", p_obj_id
-                    )
-                    if obj_row and obj_row["xml"]:
-                        xml_str = str(obj_row["xml"])
-                        if "PropertyKind" in xml_str or "LocalPropertyKind" in xml_str:
-                            try:
-                                root = ET.fromstring(xml_str)
-                                for elem in root.iter():
-                                    if "PropertyKind" in (elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag):
-                                        title_elem = elem.find(".//{http://www.energistics.org/energyml/data/commonv2}Title")
-                                        if title_elem is not None and title_elem.text:
-                                            kind = title_elem.text
-                                            break
-                            except ET.ParseError:
-                                pass
-                except Exception:
-                    pass
+                # Kind from batch cache
+                kind = kind_cache.get(p_obj_id, "Unknown")
 
                 # Kind filter
                 if property_filter and property_filter.kind:
@@ -557,19 +724,16 @@ async def _deep_search_pg(
                     uuid=p_uuid, title=p_name, type_name=p_type, kind=kind,
                 )
 
-                # Step 4: Arrays
-                if include_statistics or include_sample_values or (property_filter and property_filter.array_filter):
-                    p_arrays = await conn.fetch(f"""
-                        SELECT id, path, type, rank1, dim1, dim2, usize
-                        FROM {pg_schema}.ary WHERE obj_id=$1
-                    """, p_obj_id)
-
+                # Arrays (from batch cache)
+                if need_arrays:
+                    p_arrays = arrays_map.get(p_obj_id, [])
                     array_infos: List[ArrayInfo] = []
                     for pa in p_arrays:
-                        pa_path = pa["path"]
-                        ai = ArrayInfo(path=pa_path)
+                        ai = ArrayInfo(path=pa["path"])
                         try:
-                            values = await _pg_read_array(pool, dataspace, p_uuid, pa_path)
+                            values = await _pg_read_array_by_id(
+                                pool, dataspace, pa["ary_id"], pa["type"]
+                            )
                         except Exception:
                             values = []
                         if values:
@@ -581,7 +745,9 @@ async def _deep_search_pg(
                                 ai.sample_values = values[:sample_size]
                             if property_filter and property_filter.array_filter:
                                 af = property_filter.array_filter
-                                match_result = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
+                                match_result = _check_threshold(
+                                    values, af.threshold, af.operator, af.threshold_high
+                                )
                                 prop_info.matching_cells = match_result
                                 if match_result.count > 0:
                                     passes_filter = True
@@ -595,39 +761,22 @@ async def _deep_search_pg(
             if property_filter and property_filter.array_filter and not passes_filter:
                 continue
 
-            # Step 5: Relations (targets + sources) - optional
+            # Relations (from batch cache)
             relation_results: Optional[List[RelationInfo]] = None
             if include_relations:
-                rels = await conn.fetch(f"""
-                    SELECT rel.dst_id, r2.guid, r2.name, t2.xml as typ_xml, u2.ml,
-                           'target' as direction
-                    FROM {pg_schema}.rel rel
-                    JOIN {pg_schema}.res r2 ON rel.dst_id = r2.obj_id
-                    JOIN {pg_schema}.typ t2 ON r2.typ_id = t2.id
-                    JOIN {pg_schema}.uri u2 ON t2.uri_id = u2.id
-                    WHERE rel.obj_id = $1
-                    UNION ALL
-                    SELECT rel.obj_id, r2.guid, r2.name, t2.xml as typ_xml, u2.ml,
-                           'source' as direction
-                    FROM {pg_schema}.rel rel
-                    JOIN {pg_schema}.res r2 ON rel.obj_id = r2.obj_id
-                    JOIN {pg_schema}.typ t2 ON r2.typ_id = t2.id
-                    JOIN {pg_schema}.uri u2 ON t2.uri_id = u2.id
-                    WHERE rel.dst_id = $1
-                """, obj_id)
                 raw_rels = [
                     RelationInfo(
-                        uuid=str(r["guid"]), name=r["name"],
-                        type_name=f"{r['ml']}.{r['typ_xml']}",
+                        uuid=r["uuid"], name=r["name"],
+                        type_name=r["type_name"],
                         direction=r["direction"],
-                        content_type=f"{r['ml']}.{r['typ_xml']}",
+                        content_type=r["content_type"],
                     )
-                    for r in rels
+                    for r in relations_map.get(obj_id, [])
                 ]
                 relation_results = _filter_relations(raw_rels, relation_filter)
 
             matched.append(ResqmlObject(
-                uuid=uuid, title=title, type_name=type_name,
+                uuid=uuid, title=title, type_name=res_type_name,
                 relations=relation_results,
                 properties=property_results if property_results else None,
             ))
@@ -697,44 +846,78 @@ async def _deep_search_rest(
         limit: int,
         relation_filter: Optional[List[str]] = None,
 ) -> DeepSearchResult:
-    """REST-based deep search for a single dataspace."""
+    """REST-based deep search for a single dataspace (concurrent enrichment)."""
     backend = "REST"
     warnings: List[str] = []
 
     # Property kind cache: uuid → kind string (avoids re-fetching same property)
     _kind_cache: Dict[str, str] = {}
 
-    # Step 1: List target objects
-    try:
-        resources = await _rest_list_resources(token, dataspace, type_name, limit * 3)
-    except Exception as e:
+    # Resolve type names (supports categories/wildcards)
+    type_names = resolve_type_names(type_name)
+    if not type_names:
+        type_names = [type_name]
+
+    # Step 1: List target objects (across resolved types)
+    all_resources: List[Dict[str, Any]] = []
+    for tn in type_names:
+        try:
+            resources = await _rest_list_resources(token, dataspace, tn, limit * 3)
+            for r in resources:
+                r["_resolved_type"] = tn
+            all_resources.extend(resources)
+        except Exception as e:
+            warnings.append(f"Failed to list {tn}: {e}")
+
+    if not all_resources:
         return DeepSearchResult(
             objects=[], total_scanned=0, total_matched=0,
-            query_description=f"ERROR listing {type_name}: {e}", backend=backend,
-            warnings=[f"Failed to list {type_name} in {dataspace}: {e}"],
+            query_description=f"ERROR listing {type_name}: no results",
+            backend=backend, warnings=warnings or None,
         )
 
-    total_scanned = len(resources)
+    total_scanned = len(all_resources)
+
+    # Pre-filter by title
+    if title_contains:
+        all_resources = [
+            r for r in all_resources
+            if title_contains.lower() in r["title"].lower()
+        ]
+
+    # Limit candidates
+    candidates = [r for r in all_resources if r["uuid"]][:limit * 2]
+
+    # Step 2: Concurrent source fetching (batch of up to 10 at a time)
+    _CONCURRENCY = 10
+
+    async def _fetch_sources(r: Dict[str, Any]) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        tn = r["_resolved_type"]
+        try:
+            sources = await _rest_list_sources(token, dataspace, tn, r["uuid"])
+            return (r, sources)
+        except Exception as e:
+            warnings.append(f"{r['title']}: sources failed: {e}")
+            return (r, [])
+
+    # Process in batches for controlled concurrency
+    source_results: List[Tuple[Dict[str, Any], List[Dict[str, Any]]]] = []
+    for i in range(0, len(candidates), _CONCURRENCY):
+        batch = candidates[i:i + _CONCURRENCY]
+        batch_results = await asyncio.gather(*[_fetch_sources(r) for r in batch])
+        source_results.extend(batch_results)
+        if sum(1 for _ in source_results if _[1]) >= limit:
+            break  # have enough candidates with properties
+
     matched: List[ResqmlObject] = []
 
-    for r in resources:
+    for r, sources in source_results:
         if len(matched) >= limit:
             break
 
-        title = r["title"]
-        if title_contains and title_contains.lower() not in title.lower():
-            continue
-
         uuid = r["uuid"]
-        if not uuid:
-            continue
-
-        # Step 2: find attached properties (sources that point to this object)
-        try:
-            sources = await _rest_list_sources(token, dataspace, type_name, uuid)
-        except Exception as e:
-            sources = []
-            warnings.append(f"{title}: failed to list sources: {e}")
+        title = r["title"]
+        tn = r["_resolved_type"]
 
         # Parse each source to extract uuid/type from URI
         parsed_sources = [_parse_eml_entry(s) for s in sources]
@@ -743,7 +926,8 @@ async def _deep_search_rest(
         prop_sources = [
             ps for ps in parsed_sources
             if any(k in ps["contentType"]
-                   for k in ("ContinuousProperty", "DiscreteProperty", "CategoricalProperty"))
+                   for k in ("ContinuousProperty", "DiscreteProperty",
+                             "CategoricalProperty", "PointsProperty"))
         ]
 
         if property_filter and property_filter.kind and not prop_sources:
@@ -767,13 +951,15 @@ async def _deep_search_rest(
                 p_type = "resqml20.obj_DiscreteProperty"
             elif "CategoricalProperty" in p_ct:
                 p_type = "resqml20.obj_CategoricalProperty"
+            elif "PointsProperty" in p_ct:
+                p_type = "resqml20.obj_PointsProperty"
             else:
                 continue
 
             # Fetch property object to get kind (with cache)
             if p_uuid in _kind_cache:
                 kind = _kind_cache[p_uuid]
-                p_obj: Dict[str, Any] = {}  # won't need full object for cached kind
+                p_obj: Dict[str, Any] = {}
                 uom = None
             else:
                 try:
@@ -813,7 +999,6 @@ async def _deep_search_rest(
                     p_arrays = []
 
                 if not p_arrays and (include_statistics or (property_filter and property_filter.array_filter)):
-                    # Only warn once per search, not per property
                     _no_array_msg = "REST backend: array values not available (statistics/threshold need PG or ETP)"
                     if _no_array_msg not in warnings:
                         warnings.append(_no_array_msg)
@@ -949,8 +1134,20 @@ async def deep_search_impl(
     sample_size: int,
     limit: int,
     relation_filter: Optional[List[str]] = None,
+    category: Optional[str] = None,
 ) -> DeepSearchResult:
-    """Core deep_search implementation, independent of Strawberry context."""
+    """Core deep_search implementation, independent of Strawberry context.
+
+    When *category* is provided, it overrides *type_name* and searches all
+    types in that category (e.g. "grid", "well", "structural").
+    type_name also supports category names and wildcards (e.g. "*Grid*").
+    """
+    # Resolve effective type_name: category takes priority
+    effective_type = type_name
+    if category:
+        # Use category as the type_name (resolve_type_names handles expansion)
+        effective_type = category
+
     # Resolve dataspace list (backwards-compatible: single 'dataspace' still works)
     ds_list: List[str] = []
     if dataspaces:
@@ -976,20 +1173,20 @@ async def deep_search_impl(
         pool = await _get_pool()
         if pool:
             result = await _deep_search_pg(
-                pool, ds_list[0], type_name, title_contains,
+                pool, ds_list[0], effective_type, title_contains,
                 property_filter, include_relations, include_statistics,
                 include_sample_values, sample_size, limit, relation_filter,
             )
             # Fall back to REST if this dataspace isn't in PG
             if result.total_scanned == 0 and "not found in PG" in result.query_description:
                 return await _deep_search_rest(
-                    token, ds_list[0], type_name, title_contains,
+                    token, ds_list[0], effective_type, title_contains,
                     property_filter, include_relations, include_statistics,
                     include_sample_values, sample_size, limit, relation_filter,
                 )
             return result
         return await _deep_search_rest(
-            token, ds_list[0], type_name, title_contains,
+            token, ds_list[0], effective_type, title_contains,
             property_filter, include_relations, include_statistics,
             include_sample_values, sample_size, limit, relation_filter,
         )
@@ -1001,7 +1198,7 @@ async def deep_search_impl(
         """Search a single dataspace: PG first, REST fallback."""
         if pool:
             pg_result = await _deep_search_pg(
-                pool, ds, type_name, title_contains,
+                pool, ds, effective_type, title_contains,
                 property_filter, include_relations, include_statistics,
                 include_sample_values, sample_size, limit, relation_filter,
             )
@@ -1009,7 +1206,7 @@ async def deep_search_impl(
                 return pg_result
             # Dataspace not in PG → try REST
         return await _deep_search_rest(
-            token, ds, type_name, title_contains,
+            token, ds, effective_type, title_contains,
             property_filter, include_relations, include_statistics,
             include_sample_values, sample_size, limit, relation_filter,
         )
@@ -1090,18 +1287,33 @@ def _extract_resqml_type(kind: str, data: Dict[str, Any]) -> Optional[str]:
 
 # Default RESQML types to search when no type_name is specified
 _FEDERATED_TYPES = [
+    # Grids
     "resqml20.obj_IjkGridRepresentation",
+    "resqml20.obj_UnstructuredGridRepresentation",
     "resqml20.obj_Grid2dRepresentation",
-    "resqml20.obj_WellboreFrameRepresentation",
+    # Wells
     "resqml20.obj_WellboreFeature",
-    "resqml20.obj_HorizonInterpretation",
+    "resqml20.obj_WellboreTrajectoryRepresentation",
+    "resqml20.obj_WellboreFrameRepresentation",
+    "resqml20.obj_WellboreMarkerFrameRepresentation",
+    "resqml20.obj_DeviationSurveyRepresentation",
+    # Surfaces
     "resqml20.obj_TriangulatedSetRepresentation",
     "resqml20.obj_PolylineSetRepresentation",
-    "resqml20.obj_ContinuousProperty",
-    "resqml20.obj_DiscreteProperty",
-    "resqml20.obj_StratigraphicColumn",
+    "resqml20.obj_PointSetRepresentation",
+    # Structural
+    "resqml20.obj_HorizonInterpretation",
     "resqml20.obj_FaultInterpretation",
     "resqml20.obj_GeobodyBoundaryInterpretation",
+    "resqml20.obj_StructuralOrganizationInterpretation",
+    # Stratigraphic
+    "resqml20.obj_StratigraphicColumn",
+    "resqml20.obj_StratigraphicColumnRankInterpretation",
+    "resqml20.obj_StratigraphicUnitInterpretation",
+    # Properties
+    "resqml20.obj_ContinuousProperty",
+    "resqml20.obj_DiscreteProperty",
+    "resqml20.obj_CategoricalProperty",
 ]
 
 
