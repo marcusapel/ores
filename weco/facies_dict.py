@@ -292,3 +292,35 @@ class FaciesDictionary:
                 fd.add(zid)
 
         return fd
+
+    @classmethod
+    def from_geology(cls, geology_key: str,
+                     region_name: str = "FACIES") -> "FaciesDictionary":
+        """Build from OSDU facies scheme for a depositional environment.
+
+        Uses the osdu_facies module to look up the standard facies scheme
+        for the geological setting and build a FaciesDictionary with
+        OSDU-canonical names, lithology types, and standard colours.
+
+        Args:
+            geology_key: Geological setting key (e.g. "shallow_marine",
+                "coal", "fluvial", "quaternary", "carbonate").
+            region_name: The region channel this applies to.
+
+        Returns:
+            FaciesDictionary with OSDU-standard labels and colours.
+
+        Example::
+
+            fd = FaciesDictionary.from_geology("shallow_marine")
+            print(fd.get_label(1))  # "Tidal Channel"
+        """
+        try:
+            from weco.osdu_facies import get_facies_scheme
+        except ImportError:
+            return cls(region_name=region_name)
+
+        scheme = get_facies_scheme(geology_key)
+        if scheme is None:
+            return cls(region_name=region_name)
+        return scheme.to_facies_dict(region_name=region_name)

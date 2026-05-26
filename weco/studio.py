@@ -277,6 +277,7 @@ DEMOS = [
         "group": "Advanced",
         "wells": "data_set_hugin_tidal/facies.wells.txt",
         "geology": "shallow_marine",
+        "strat_column": "data_set_sigrun/gudrun_sigrun_strat_column.json",
         "description": (
             "2 real North Sea wells (Hugin Fm, Gudrun–Sigrun).\n"
             "Tide-dominated shallow marine with interpreted\n"
@@ -679,6 +680,7 @@ DEMOS = [
         "group": "North Sea",
         "wells": "data_set_sigrun/wells.txt",
         "geology": "shallow_marine",
+        "strat_column": "data_set_sigrun/gudrun_sigrun_strat_column.json",
         "description": (
             "6 North Sea wells (Sigrun field, Hugin Fm).\n"
             "GR (60%) + NPHI (40%) two-log variance for\n"
@@ -698,6 +700,7 @@ DEMOS = [
         "group": "North Sea",
         "wells": "data_set_sigrun/wells.txt",
         "geology": "shallow_marine",
+        "strat_column": "data_set_sigrun/gudrun_sigrun_strat_column.json",
         "description": (
             "GR correlation constrained by 4 flooding surfaces\n"
             "(no-crossing). Shows how hard tie-points reduce\n"
@@ -717,6 +720,7 @@ DEMOS = [
         "group": "North Sea",
         "wells": "data_set_sigrun/wells.txt",
         "geology": "shallow_marine",
+        "strat_column": "data_set_sigrun/gudrun_sigrun_strat_column.json",
         "description": (
             "GR (80%) + distality from 5-class facies scheme.\n"
             "Tests whether facies-based distality cost adds\n"
