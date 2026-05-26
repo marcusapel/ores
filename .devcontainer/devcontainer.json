@@ -17,7 +17,17 @@
   "containerEnv": {
     "SECRET_KEY": "codespace-dev-key",
     "LOG_LEVEL": "INFO",
-    "HTTPS_ONLY": "false"
+    "HTTPS_ONLY": "false",
+    "DEFAULT_INSTANCE": "interop",
+    "INSTANCE_INTEROP_AUTH_MODE": "client_credentials",
+    "INSTANCE_INTEROP_HOSTNAME": "admeinterop.energy.azure.com",
+    "INSTANCE_INTEROP_DATA_PARTITION_ID": "opendes",
+    "INSTANCE_INTEROP_AUTHORITY": "osdu",
+    "INSTANCE_INTEROP_SCHEMA_SOURCE": "wks",
+    "INSTANCE_INTEROP_DEFAULT_LEGAL_TAG": "opendes-ReservoirDDMS-Legal-Tag",
+    "INSTANCE_INTEROP_DEFAULT_OWNERS": "data.default.owners@opendes.dataservices.energy",
+    "INSTANCE_INTEROP_DEFAULT_VIEWERS": "data.default.viewers@opendes.dataservices.energy",
+    "INSTANCE_INTEROP_DEFAULT_COUNTRIES": "US"
   },
   "customizations": {
     "vscode": {
