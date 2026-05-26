@@ -1001,7 +1001,7 @@ async def _smda_auth(request: Request) -> dict:
     if not kw:
         raise HTTPException(
             403,
-            "SMDA auth not available. Set SMDA_API_KEY in .env, "
+            "SMDA auth not available. Set SMDA_API_KEY in Radix secrets, "
             "or run 'az login' to authenticate.",
         )
     if not kw.get("access_token"):

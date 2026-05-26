@@ -139,6 +139,8 @@ spec:
       # Secrets - set via Radix Console
       secrets:
         - SECRET_KEY
+        - SMDA_API_KEY
+        - SMDA_CLIENT_ID
         - INSTANCE_EQNDEV_TENANT_ID
         - INSTANCE_EQNDEV_CLIENT_ID
         - INSTANCE_EQNDEV_CLIENT_SECRET
