@@ -1,0 +1,234 @@
+{
+  "name": "Gudrun-Sigrun Stratigraphic Column",
+  "description": "Middle–Upper Jurassic stratigraphic column for the Gudrun-Sigrun field complex, blocks 15/3-15/5, South Viking Graben, Norwegian North Sea. Based on NPD Factpages and Equinor internal nomenclature.",
+  "field": "Gudrun-Sigrun",
+  "basin": "Viking Graben",
+  "country": "Norway",
+  "ranks": [
+    {
+      "name": "Group",
+      "kind": "litho",
+      "level": 1,
+      "ordering": "OlderToYounger",
+      "units": [
+        {
+          "name": "Viking Group",
+          "top_age_ma": 145.0,
+          "base_age_ma": 170.3,
+          "depositional_environment": "Shallow Marine",
+          "color_html": "#4A90D9"
+        }
+      ]
+    },
+    {
+      "name": "Formation",
+      "kind": "litho",
+      "level": 2,
+      "ordering": "OlderToYounger",
+      "units": [
+        {
+          "name": "Draupne Formation",
+          "top_age_ma": 145.0,
+          "base_age_ma": 152.1,
+          "parent_name": "Viking Group",
+          "depositional_environment": "Deep Marine",
+          "color_html": "#2F4F4F"
+        },
+        {
+          "name": "Heather Formation",
+          "top_age_ma": 152.1,
+          "base_age_ma": 163.5,
+          "parent_name": "Viking Group",
+          "depositional_environment": "Offshore",
+          "color_html": "#708090"
+        },
+        {
+          "name": "Hugin Formation",
+          "top_age_ma": 163.5,
+          "base_age_ma": 168.3,
+          "parent_name": "Viking Group",
+          "depositional_environment": "Shallow Marine",
+          "color_html": "#F5D76E"
+        },
+        {
+          "name": "Sleipner Formation",
+          "top_age_ma": 168.3,
+          "base_age_ma": 170.3,
+          "parent_name": "Viking Group",
+          "depositional_environment": "Deltaic",
+          "color_html": "#DAA520"
+        }
+      ]
+    },
+    {
+      "name": "Member",
+      "kind": "litho",
+      "level": 3,
+      "ordering": "OlderToYounger",
+      "units": [
+        {
+          "name": "Upper Hugin Member",
+          "top_age_ma": 163.5,
+          "base_age_ma": 165.0,
+          "parent_name": "Hugin Formation",
+          "depositional_environment": "Upper Shoreface",
+          "color_html": "#F5D76E"
+        },
+        {
+          "name": "Middle Hugin Member",
+          "top_age_ma": 165.0,
+          "base_age_ma": 166.5,
+          "parent_name": "Hugin Formation",
+          "depositional_environment": "Lower Shoreface",
+          "color_html": "#C8B560"
+        },
+        {
+          "name": "Lower Hugin Member",
+          "top_age_ma": 166.5,
+          "base_age_ma": 168.3,
+          "parent_name": "Hugin Formation",
+          "depositional_environment": "Offshore Transition",
+          "color_html": "#808080"
+        }
+      ]
+    },
+    {
+      "name": "Biozone",
+      "kind": "chrono",
+      "level": 4,
+      "ordering": "OlderToYounger",
+      "units": [
+        {
+          "name": "J66",
+          "top_age_ma": 152.1,
+          "base_age_ma": 155.0,
+          "color_html": "#E6E6FA"
+        },
+        {
+          "name": "J64",
+          "top_age_ma": 155.0,
+          "base_age_ma": 160.0,
+          "color_html": "#D8BFD8"
+        },
+        {
+          "name": "J62",
+          "top_age_ma": 160.0,
+          "base_age_ma": 163.5,
+          "color_html": "#DDA0DD"
+        },
+        {
+          "name": "J56",
+          "top_age_ma": 163.5,
+          "base_age_ma": 166.1,
+          "color_html": "#BA55D3"
+        },
+        {
+          "name": "J54",
+          "top_age_ma": 166.1,
+          "base_age_ma": 168.3,
+          "color_html": "#9932CC"
+        },
+        {
+          "name": "J52",
+          "top_age_ma": 168.3,
+          "base_age_ma": 170.3,
+          "color_html": "#800080"
+        }
+      ]
+    },
+    {
+      "name": "Sequence",
+      "kind": "chrono",
+      "level": 5,
+      "ordering": "OlderToYounger",
+      "units": [
+        {
+          "name": "SQ4 (HST-TST)",
+          "top_age_ma": 152.1,
+          "base_age_ma": 158.0,
+          "color_html": "#ADD8E6"
+        },
+        {
+          "name": "SQ3 (HST-FSST)",
+          "top_age_ma": 158.0,
+          "base_age_ma": 163.5,
+          "color_html": "#87CEEB"
+        },
+        {
+          "name": "SQ2 (TST-HST)",
+          "top_age_ma": 163.5,
+          "base_age_ma": 166.5,
+          "color_html": "#6495ED"
+        },
+        {
+          "name": "SQ1 (LST-TST)",
+          "top_age_ma": 166.5,
+          "base_age_ma": 170.3,
+          "color_html": "#4169E1"
+        }
+      ]
+    }
+  ],
+  "horizons": [
+    {
+      "name": "Top Draupne",
+      "age_ma": 145.0,
+      "unit_name": "Draupne Formation",
+      "boundary_type": "Top"
+    },
+    {
+      "name": "Base Cretaceous Unconformity",
+      "age_ma": 145.0,
+      "unit_name": "Draupne Formation",
+      "boundary_type": "Top"
+    },
+    {
+      "name": "Top Hugin",
+      "age_ma": 163.5,
+      "unit_name": "Hugin Formation",
+      "boundary_type": "Top"
+    },
+    {
+      "name": "Intra Hugin (MFS)",
+      "age_ma": 165.0,
+      "unit_name": "Upper Hugin Member",
+      "boundary_type": "Base"
+    },
+    {
+      "name": "Base Hugin",
+      "age_ma": 168.3,
+      "unit_name": "Hugin Formation",
+      "boundary_type": "Base"
+    },
+    {
+      "name": "Top Sleipner",
+      "age_ma": 168.3,
+      "unit_name": "Sleipner Formation",
+      "boundary_type": "Top"
+    },
+    {
+      "name": "J56 base",
+      "age_ma": 166.1,
+      "unit_name": "J56",
+      "boundary_type": "Base"
+    },
+    {
+      "name": "J54 base",
+      "age_ma": 168.3,
+      "unit_name": "J54",
+      "boundary_type": "Base"
+    },
+    {
+      "name": "SB2 (Sequence Boundary)",
+      "age_ma": 163.5,
+      "unit_name": "SQ2 (TST-HST)",
+      "boundary_type": "Top"
+    },
+    {
+      "name": "MFS (Maximum Flooding Surface)",
+      "age_ma": 165.0,
+      "unit_name": "SQ2 (TST-HST)",
+      "boundary_type": "Base"
+    }
+  ]
+}
