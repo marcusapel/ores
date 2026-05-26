@@ -34,6 +34,7 @@ SCOPES = (os.getenv("AZURE_SCOPE", "") or os.getenv("INSTANCE_EQNDEV_SCOPE", "op
 
 # SMDA API resource App ID (audience) - used by az CLI to mint tokens.
 SMDA_CLIENT_ID = os.getenv("SMDA_CLIENT_ID", "")
+SMDA_SCOPE = os.getenv("SMDA_SCOPE", "")
 
 AUTH_BASE = f"https://login.microsoftonline.com/{TENANT}/oauth2/v2.0"
 AUTHORIZE_URL = f"{AUTH_BASE}/authorize"
@@ -348,34 +349,113 @@ async def tokens_from_session(request: Request) -> Optional[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────
 
 async def smda_access_token(request: Request) -> Optional[str]:
-    """Return SMDA access token via Azure CLI.
+    """Return SMDA access token.
 
-    Uses `az account get-access-token --resource <SMDA_CLIENT_ID>` which
-    leverages Microsoft's first-party app registration with broad consent
-    in Equinor's tenant.  Requires the user to have run `az login`.
+    Strategy order:
+      1. Per-user cache (keyed by session OID) still valid → return immediately.
+      2. Azure CLI (`az account get-access-token`) → works locally with `az login`.
+      3. User's session refresh token exchanged for SMDA scope → works on Radix.
 
-    Returns None if az CLI is unavailable or not logged in.
+    Returns None if all strategies fail.
     """
     if not SMDA_CLIENT_ID:
         log.debug("SMDA_CLIENT_ID not configured")
         return None
 
-    global _smda_cached_token, _smda_cached_exp
-    if _smda_cached_token and time.time() < _smda_cached_exp:
-        return _smda_cached_token
+    # 1. Check per-user cache
+    oid = request.session.get("oid", "") if hasattr(request, "session") else ""
+    cache_key = oid or "__global__"
+    cached = _smda_token_cache.get(cache_key)
+    if cached and time.time() < cached[1]:
+        return cached[0]
 
+    # 2. Try az CLI (works locally)
     result = await _smda_token_from_az_cli()
     if result:
-        _smda_cached_token = result["access_token"]
-        _smda_cached_exp = result["exp"]
+        _smda_token_cache[cache_key] = (result["access_token"], result["exp"])
         return result["access_token"]
 
-    log.debug("No SMDA token available - run 'az login'")
+    # 3. Fallback: mint SMDA token from user's session refresh token
+    result = await _smda_token_from_session(request)
+    if result:
+        _smda_token_cache[cache_key] = (result["access_token"], result["exp"])
+        return result["access_token"]
+
+    log.debug("No SMDA token available (az CLI unavailable, no session RT)")
     return None
 
 
-_smda_cached_token: Optional[str] = None
-_smda_cached_exp: float = 0.0
+# Per-user SMDA token cache: {cache_key: (access_token, expiry_timestamp)}
+_smda_token_cache: Dict[str, tuple] = {}
+
+
+async def _smda_token_from_session(request: Request) -> Optional[Dict[str, Any]]:
+    """Mint SMDA-scoped token using the user's session refresh token.
+
+    Uses the same refresh token from PKCE login but requests SMDA_SCOPE
+    instead of the OSDU scope.  Requires SMDA_SCOPE to be configured and
+    the app registration to have consent for the SMDA API.
+    """
+    smda_scope = SMDA_SCOPE or f"{SMDA_CLIENT_ID}/user_impersonation openid offline_access"
+
+    oid = request.session.get("oid", "") if hasattr(request, "session") else ""
+    instance_name = request.session.get("instance_name", "") if hasattr(request, "session") else ""
+    if not oid:
+        log.debug("SMDA session fallback: no user session (oid)")
+        return None
+
+    # Get the user's refresh token from the token store
+    rt = _ts_fetch(oid, instance_name)
+    if not rt:
+        log.debug("SMDA session fallback: no stored RT for oid=%s", oid[:8])
+        return None
+
+    # Resolve instance config for client_id/secret/token_url
+    try:
+        from .instances import get_instances, get_active
+        instances = get_instances()
+        inst = instances.get(instance_name) or get_active()
+        client_id = inst.client_id
+        client_secret = inst.client_secret or ""
+        token_url = inst.token_url
+    except Exception:
+        client_id = CLIENT_ID
+        client_secret = _get_client_secret()
+        token_url = TOKEN_URL
+
+    try:
+        import httpx
+        data: Dict[str, str] = {
+            "grant_type": "refresh_token",
+            "client_id": client_id,
+            "refresh_token": rt,
+            "scope": smda_scope,
+        }
+        if client_secret:
+            data["client_secret"] = client_secret
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(token_url, data=data)
+            if r.status_code >= 400:
+                log.warning("SMDA session token failed (%d): %s", r.status_code, r.text[:200])
+                return None
+            body = r.json()
+
+        at = body.get("access_token", "")
+        if not at:
+            return None
+
+        # Rotate refresh token if a new one was issued
+        new_rt = body.get("refresh_token")
+        if new_rt and new_rt != rt:
+            _ts_upsert(oid, instance_name, new_rt)
+
+        exp = time.time() + max(int(body.get("expires_in", 3600)) - 60, 60)
+        log.info("Got SMDA token via session RT for oid=%s", oid[:8])
+        return {"access_token": at, "exp": exp}
+    except Exception as e:
+        log.warning("SMDA session token error: %s", e)
+        return None
 
 
 async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
