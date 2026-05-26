@@ -14,7 +14,7 @@ data:
   APP_KEY: "test-app"
 
   # Which instance to activate at startup
-  DEFAULT_INSTANCE: "eqndev"
+  DEFAULT_INSTANCE: "interop"
 
   # ── GraphQL deep-search (optional) ──
   # GRAPHQL_PG_CONN_STRING lives in secret.yaml (contains password).
