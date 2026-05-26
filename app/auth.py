@@ -156,15 +156,6 @@ async def login(request: Request):
         login_scopes.append("openid")
         log.warning("openid missing from SCOPES - added for PKCE login")
 
-    # Include SMDA scope so user consents to both OSDU and SMDA in one login.
-    # The access_token will target the OSDU resource, but the refresh_token
-    # will be multi-resource and can later be exchanged for an SMDA token.
-    if SMDA_CLIENT_ID:
-        smda_scope = SMDA_SCOPE or f"{SMDA_CLIENT_ID}/.default"
-        for s in smda_scope.split():
-            if s not in login_scopes:
-                login_scopes.append(s)
-
     client_secret = _get_client_secret()
     oauth_kwargs: Dict[str, Any] = dict(
         client_id=CLIENT_ID,
