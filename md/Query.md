@@ -76,12 +76,14 @@ graph LR
 |-------|---------|
 | `status` | Backend check (PG version or REST info) |
 | `dataspaces { path uri }` | List dataspaces |
+| `resqmlCategories { name count }` | List type categories (grid, well, surface, …) |
 | `resourceTypes(dataspace)` | Types + counts |
 | `resqmlObjects(dataspace, typeName)` | Browse objects |
 | `objectRelations(dataspace, typeName, uuid, direction)` | Graph traversal |
 | `objectArrays(dataspace, typeName, uuid)` | Arrays + statistics |
 | `deepSearch(dataspace, typeName, propertyFilter)` | Combined filter |
 | `deepSearch(dataspaces: [...])` | Multi-dataspace |
+| `deepSearch(category: "well")` | Search by category (all types in group) |
 | `federatedSearch(text, dataspaces, kind)` | OSDU catalog + RDDMS dual-path |
 
 ### PropertyFilter Reference
@@ -100,8 +102,25 @@ graph LR
 ```graphql
 { status }
 { dataspaces { path uri } }
+{ resqmlCategories { name count } }
 { resourceTypes(dataspace: "maap/drogon") { name count } }
 ```
+
+**Available categories** (use with `deepSearch(category: "...")`):
+
+| Category | Includes | Count |
+|----------|----------|-------|
+| `grid` | IjkGrid, UnstructuredGrid, Grid2d, GridConnectionSet | 6 |
+| `surface` | TriangulatedSet, PolylineSet, PointSet, Grid2d | 6 |
+| `well` | WellboreFeature, Trajectory, Frame, MarkerFrame, DeviationSurvey, BlockedWellbore | 10 |
+| `structural` | FaultInterpretation, HorizonInterpretation, GeobodyBoundary, StructuralOrg, BoundaryFeature | 10 |
+| `stratigraphic` | StratigraphicColumn, ColumnRankInterp, UnitInterp, OccurrenceInterp | 6 |
+| `property` | ContinuousProperty, DiscreteProperty, CategoricalProperty, PointsProperty, CommentProperty | 8 |
+| `seismic` | SeismicLatticeFeature, SeismicLineFeature, Grid2d | 3 |
+| `crs` | LocalDepth3dCrs, LocalTime3dCrs | 4 |
+| `representation` | IjkGrid, UnstructuredGrid, Grid2d, TriangulatedSet, PolylineSet, PointSet, Trajectory, Frame | 8 |
+
+`typeName` also accepts category names or wildcards: `typeName: "*Grid*"` matches all grid types.
 
 ```graphql
 # Browse objects of a type (swap typeName for any RESQML type)
@@ -179,6 +198,39 @@ Common traversal patterns (same query, swap `typeName`, `uuid`, `direction`):
         matchingCells { count total fraction }
       }
     }
+  }
+}
+```
+
+```graphql
+# Search by category - find all structural objects with their relations
+{
+  deepSearch(
+    dataspace: "demo/drogon"
+    category: "structural"
+    includeRelations: true
+    limit: 10
+  ) {
+    backend totalScanned totalMatched
+    objects {
+      title typeName
+      relations { name typeName direction }
+    }
+  }
+}
+```
+
+```graphql
+# Search all well types across multiple dataspaces
+{
+  deepSearch(
+    dataspaces: ["demo/drogon", "maap/weco"]
+    category: "well"
+    includeStatistics: true
+    limit: 10
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects { title typeName properties { title kind statistics { count minValue maxValue } } }
   }
 }
 ```
@@ -367,7 +419,9 @@ Works with any object type - swap `typeName` + `uuid` for IjkGrids, WellboreFram
 |----------|------|
 | Find BusinessDecision records for Drogon | OSDU Search |
 | What types are in a dataspace? | GraphQL `resourceTypes` |
-| List all wells | GraphQL `resqmlObjects` |
+| What type categories exist? | GraphQL `resqmlCategories` |
+| List all wells | GraphQL `deepSearch(category:"well")` |
+| All structural objects across 2 dataspaces | GraphQL `deepSearch(category:"structural", dataspaces:[...])` |
 | What does an object reference? | GraphQL `objectRelations(targets)` |
 | Which properties are on this grid? | GraphQL `objectRelations(sources)` |
 | Grids with porosity > 0.25 | GraphQL `deepSearch` |
@@ -527,17 +581,22 @@ curl /api/graphql/resolve-alias?term=sat
 
 ### RESQML Type Categories
 
-| Category | Example types |
-|---|---|
-| Grid | IjkGrid, UnstructuredGrid |
-| Surface | Grid2d, TriangulatedSet |
-| Well | WellboreFeature, WellboreInterpretation, WellboreTrajectory, WellboreFrame |
-| Property | ContinuousProperty, DiscreteProperty, CategoricalProperty |
-| Stratigraphy | StratigraphicColumn, HorizonInterpretation, FaultInterpretation |
-| Organization | StructuralOrganization, StratigraphicColumnRankInterpretation |
-| CRS | LocalDepth3dCrs, LocalTime3dCrs |
-| Provenance | Activity, ActivityTemplate |
-| Container | EpcExternalPartReference |
+| Category | Example types | GraphQL `category` |
+|---|---|---|
+| Grid | IjkGrid, UnstructuredGrid, Grid2d, GridConnectionSet | `"grid"` |
+| Surface | TriangulatedSet, PolylineSet, PointSet, Grid2d | `"surface"` |
+| Well | WellboreFeature, Trajectory, Frame, MarkerFrame, DeviationSurvey, BlockedWellbore | `"well"` |
+| Structural | FaultInterpretation, HorizonInterpretation, GeobodyBoundary, BoundaryFeature, TectonicBoundary | `"structural"` |
+| Stratigraphic | StratigraphicColumn, ColumnRankInterp, UnitInterp, OccurrenceInterp | `"stratigraphic"` |
+| Property | ContinuousProperty, DiscreteProperty, CategoricalProperty, PointsProperty | `"property"` |
+| Seismic | SeismicLatticeFeature, SeismicLineFeature | `"seismic"` |
+| CRS | LocalDepth3dCrs, LocalTime3dCrs | `"crs"` |
+| Representation | IjkGrid, UnstructuredGrid, Grid2d, TriangulatedSet, PolylineSet, PointSet, Trajectory, Frame | `"representation"` |
+| Provenance | Activity, ActivityTemplate | — |
+| Container | EpcExternalPartReference | — |
+
+> **Tip:** Pass `category: "structural"` to `deepSearch` to query all types in that group at once.
+> `typeName` also accepts wildcards: `"*Grid*"` matches all grid types.
 
 ---
 
@@ -551,7 +610,7 @@ _Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates - di
 |-----------|----------|-------------|------------|
 | **Simple listing** (50 objects) | 80–200 ms | **5–15 ms** | 10–30 ms |
 | **Object + relations + arrays** | 300–600 ms | **10–30 ms** | 15–50 ms |
-| **Deep search** (10 grids, PORO > 0.25) | 5–15 s | **0.1–0.5 s** | 0.1–0.4 s |
+| **Deep search** (10 grids, PORO > 0.25) | 5–15 s | **0.1–0.3 s** | 0.1–0.4 s |
 | **Large array read** (500K float64) | 1–3 s | **0.1–0.3 s** | 0.05–0.2 s |
 | **Setup complexity** | None (just URL) | PG access needed | ETP client + discovery impl |
 | **Portability** | Any OSDU | Co-located only | Any ETP server |
@@ -561,7 +620,7 @@ _Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates - di
 
 | Factor | REST | GraphQL + PG |
 |--------|------|-------------|
-| **N+1 queries** | Deep search = `O(G × P × A)` serial HTTP calls | `O(1)` - server-side SQL joins on the `rel` adjacency table |
+| **N+1 queries** | Deep search = `O(G × P × A)` serial HTTP calls | `O(1)` - batch SQL with `ANY($1::int[])` on the `rel` adjacency table |
 | **Array transfer** | JSON text (`[0.123, …]`) ~1.5 MB per 100K floats | Binary `bytea` ~800 KB, decoded via `struct.unpack` in ~5 ms |
 | **Network hops** | 2–3 (TLS → Azure Front Door → NestJS → PG) | 0 (co-located asyncpg → PG, binary wire protocol) |
 | **Per-call overhead** | ~40–100 ms (TLS amortised, gateway, JSON serialization) | ~1–5 ms (binary protocol, connection pool) |
@@ -569,11 +628,15 @@ _Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates - di
 ### Performance Tips
 
 1. **Always prefer GraphQL + PG** when `GRAPHQL_PG_CONN_STRING` is set - the resolver auto-selects the fastest backend.
-2. **Avoid REST for deep queries** - 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). The same query takes ~0.2 s on PG.
-3. **Large arrays:** PG binary transfer is 5–10× faster than JSON. If you must use REST, avoid reading arrays > 100K elements in tight loops.
-4. **Federated search** runs OSDU catalog + RDDMS in parallel - enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
-5. **Connection pooling** is automatic: `httpx.AsyncClient` for REST, `asyncpg` pool (min=2, max=10) for PG.
-6. **ETP** currently covers bulk import/export only. When discovery protocol is implemented, expect REST-like portability with PG-like speed (binary Avro over persistent WebSocket).
+2. **Use `category` for broad searches** - `category: "well"` searches all 10 well-related types in one query. Use `typeName` only when you know the exact type.
+3. **Avoid REST for deep queries** - 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). The same query takes ~0.2 s on PG.
+4. **Batch optimization (PG):** The PG path uses batch SQL queries (`ANY($1::int[])`) for properties, relations, arrays, and XML kind extraction - a deep search of 20 objects with properties now requires ~6 SQL round-trips instead of ~80.
+5. **Concurrent REST:** The REST fallback path fetches sources for up to 10 objects in parallel via `asyncio.gather`, reducing latency by ~5×.
+6. **Schema cache:** Dataspace→schema lookups are cached in-memory (cleared on instance switch). Avoid calling `deepSearch` in a tight loop per-object - use `limit` and `dataspaces:[...]` instead.
+7. **Large arrays:** PG binary transfer is 5–10× faster than JSON. If you must use REST, avoid reading arrays > 100K elements in tight loops.
+8. **Federated search** runs OSDU catalog + RDDMS in parallel - enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
+9. **Connection pooling** is automatic: `httpx.AsyncClient` for REST, `asyncpg` pool (min=2, max=10) for PG.
+10. **ETP** currently covers bulk import/export only. When discovery protocol is implemented, expect REST-like portability with PG-like speed (binary Avro over persistent WebSocket).
 
 ---
 

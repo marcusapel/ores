@@ -354,7 +354,12 @@ async def smda_access_token(request: Request) -> Optional[str]:
     Strategy order:
       1. Per-user cache (keyed by session OID) still valid → return immediately.
       2. Azure CLI (`az account get-access-token`) → works locally with `az login`.
-      3. User's session refresh token exchanged for SMDA scope → works on Radix.
+      3. User's session refresh token exchanged for SMDA scope → works on Radix
+         when user has done a PKCE login.
+      4. Shared env refresh token exchanged for SMDA scope → works on Radix
+         when ENV_REFRESH_TOKEN is set (no per-user login needed).
+      5. Client credentials grant (app-level permission on SMDA) → works when
+         the app registration has application-level access to the SMDA API.
 
     Returns None if all strategies fail.
     """
@@ -381,7 +386,19 @@ async def smda_access_token(request: Request) -> Optional[str]:
         _smda_token_cache[cache_key] = (result["access_token"], result["exp"])
         return result["access_token"]
 
-    log.debug("No SMDA token available (az CLI unavailable, no session RT)")
+    # 4. Fallback: use shared ENV_REFRESH_TOKEN to get SMDA token
+    result = await _smda_token_from_env_rt()
+    if result:
+        _smda_token_cache["__global__"] = (result["access_token"], result["exp"])
+        return result["access_token"]
+
+    # 5. Fallback: client_credentials grant (app-level permission)
+    result = await _smda_token_from_client_credentials()
+    if result:
+        _smda_token_cache["__global__"] = (result["access_token"], result["exp"])
+        return result["access_token"]
+
+    log.debug("No SMDA token available (all strategies failed)")
     return None
 
 
@@ -497,6 +514,92 @@ async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
     except Exception as e:
         log.debug("az CLI SMDA token error: %s", e)
     return None
+
+
+async def _smda_token_from_env_rt() -> Optional[Dict[str, Any]]:
+    """Mint SMDA-scoped token using the shared ENV_REFRESH_TOKEN.
+
+    This works on Radix when no per-user PKCE login has occurred but a
+    shared refresh token is configured (env_token mode).  Exchanges the
+    shared RT for an SMDA-scoped access token.
+    """
+    if not ENV_REFRESH_TOKEN or not CLIENT_ID or not TENANT:
+        log.debug("SMDA env-RT strategy: no ENV_REFRESH_TOKEN or CLIENT_ID")
+        return None
+
+    smda_scope = SMDA_SCOPE or f"{SMDA_CLIENT_ID}/.default"
+    client_secret = _get_client_secret()
+
+    try:
+        import httpx
+        data: Dict[str, str] = {
+            "grant_type": "refresh_token",
+            "client_id": CLIENT_ID,
+            "refresh_token": ENV_REFRESH_TOKEN,
+            "scope": smda_scope,
+        }
+        if client_secret:
+            data["client_secret"] = client_secret
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(TOKEN_URL, data=data)
+            if r.status_code >= 400:
+                log.debug("SMDA env-RT token failed (%d): %s", r.status_code, r.text[:200])
+                return None
+            body = r.json()
+
+        at = body.get("access_token", "")
+        if not at:
+            return None
+
+        exp = time.time() + max(int(body.get("expires_in", 3600)) - 60, 60)
+        log.info("Got SMDA token via shared env refresh token")
+        return {"access_token": at, "exp": exp}
+    except Exception as e:
+        log.debug("SMDA env-RT token error: %s", e)
+        return None
+
+
+async def _smda_token_from_client_credentials() -> Optional[Dict[str, Any]]:
+    """Mint SMDA token using client_credentials grant (app-level permission).
+
+    This requires the app registration (CLIENT_ID) to have an application-level
+    permission on the SMDA API resource.  Uses client_id + client_secret to
+    obtain a token with scope '{SMDA_CLIENT_ID}/.default'.
+    """
+    client_secret = _get_client_secret()
+    if not client_secret or not CLIENT_ID or not TENANT:
+        log.debug("SMDA client_credentials: missing client_secret/CLIENT_ID/TENANT")
+        return None
+
+    smda_scope = f"{SMDA_CLIENT_ID}/.default"
+
+    try:
+        import httpx
+        data: Dict[str, str] = {
+            "grant_type": "client_credentials",
+            "client_id": CLIENT_ID,
+            "client_secret": client_secret,
+            "scope": smda_scope,
+        }
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(TOKEN_URL, data=data)
+            if r.status_code >= 400:
+                log.debug("SMDA client_credentials failed (%d): %s", r.status_code, r.text[:200])
+                return None
+            body = r.json()
+
+        at = body.get("access_token", "")
+        if not at:
+            return None
+
+        exp = time.time() + max(int(body.get("expires_in", 3600)) - 60, 60)
+        log.info("Got SMDA token via client_credentials grant")
+        return {"access_token": at, "exp": exp}
+    except Exception as e:
+        log.debug("SMDA client_credentials error: %s", e)
+        return None
 
 
 # ─────────────────────────────────────────────────────────────
