@@ -800,7 +800,7 @@
       const hint = document.getElementById('smda-auth-hint');
       if (!hint) return;
       if (d.smda_api_id) {
-        hint.innerHTML = '<span style="color:#4caf50;">&#x2713; SMDA configured (az CLI auth)</span>';
+        hint.innerHTML = '<span style="color:#4caf50;">&#x2713; SMDA configured</span>';
       } else {
         hint.innerHTML = '<span style="color:#e65100;">&#x26A0; SMDA_CLIENT_ID not set</span>';
       }

@@ -1004,12 +1004,6 @@ async def _smda_auth(request: Request) -> dict:
             "SMDA auth not available. Set SMDA_API_KEY in Radix secrets, "
             "or run 'az login' to authenticate.",
         )
-    if not kw.get("access_token"):
-        raise HTTPException(
-            403,
-            "SMDA Bearer token not available. Log in via /login first, "
-            "or run 'az login' locally.",
-        )
     return kw
 
 
