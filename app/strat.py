@@ -2569,3 +2569,104 @@ async def rddms_verify_column(request: Request):
         "objects": verification,
     }
     return JSONResponse(push_result)
+
+
+# ─────────────────────────────────────────────────────────────
+# Diagnostic: SMDA auth status
+# ─────────────────────────────────────────────────────────────
+
+
+@router.get("/api/strat/smda/auth-status")
+async def smda_auth_status(request: Request):
+    """Diagnostic: show which SMDA auth strategies succeed/fail."""
+    import httpx
+
+    diag: dict = {
+        "smda_client_id_set": bool(_auth.SMDA_CLIENT_ID),
+        "smda_scope_configured": _auth.SMDA_SCOPE or "(default)",
+        "smda_api_key_set": bool(SMDA_API_KEY),
+        "session_oid": "",
+        "session_instance": "",
+        "has_stored_rt": False,
+        "strategies": {},
+    }
+
+    oid = request.session.get("oid", "") if hasattr(request, "session") else ""
+    instance_name = request.session.get("instance_name", "") if hasattr(request, "session") else ""
+    diag["session_oid"] = oid[:8] + "..." if oid else "(none)"
+    diag["session_instance"] = instance_name or "(none)"
+
+    # Check if we have a stored refresh token
+    from .tokenstore import fetch as _ts_fetch_tok
+    rt = _ts_fetch_tok(oid, instance_name) if oid else None
+    diag["has_stored_rt"] = bool(rt)
+
+    # Strategy 3: session RT → SMDA scope
+    if rt and _auth.SMDA_CLIENT_ID:
+        smda_scope = _auth.SMDA_SCOPE or f"{_auth.SMDA_CLIENT_ID}/user_impersonation openid offline_access"
+        try:
+            from .instances import get_instances, get_active
+            instances = get_instances()
+            inst = instances.get(instance_name) or get_active()
+            client_id = inst.client_id
+            client_secret = inst.client_secret or ""
+            token_url = inst.token_url
+        except Exception:
+            client_id = _auth.CLIENT_ID
+            client_secret = ""
+            token_url = _auth.TOKEN_URL
+
+        data = {
+            "grant_type": "refresh_token",
+            "client_id": client_id,
+            "refresh_token": rt,
+            "scope": smda_scope,
+        }
+        if client_secret:
+            data["client_secret"] = client_secret
+
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.post(token_url, data=data)
+            if r.status_code < 400:
+                diag["strategies"]["session_rt"] = "OK"
+            else:
+                err = r.json() if "json" in r.headers.get("content-type", "") else {}
+                diag["strategies"]["session_rt"] = {
+                    "status": r.status_code,
+                    "error": err.get("error", ""),
+                    "description": err.get("error_description", r.text[:200]),
+                    "scope_requested": smda_scope,
+                    "client_id_used": client_id,
+                    "token_url": token_url,
+                }
+        except Exception as e:
+            diag["strategies"]["session_rt"] = f"exception: {e}"
+    else:
+        diag["strategies"]["session_rt"] = "skipped (no RT or no SMDA_CLIENT_ID)"
+
+    # Check if OSDU token works as fallback against SMDA
+    osdu_token = _access_token(request) if oid else None
+    if osdu_token and SMDA_API_KEY:
+        headers = {
+            "Authorization": f"Bearer {osdu_token}",
+            "Ocp-Apim-Subscription-Key": SMDA_API_KEY,
+            "Accept": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15, verify=False) as client:
+                r = await client.get(
+                    "https://api.gateway.equinor.com/smda/v2.0/smda-api/strat-column?_items=1",
+                    headers=headers,
+                )
+            diag["strategies"]["osdu_token_fallback"] = {
+                "status": r.status_code,
+                "works": r.status_code < 400,
+                "body_preview": r.text[:150] if r.status_code >= 400 else "(ok)",
+            }
+        except Exception as e:
+            diag["strategies"]["osdu_token_fallback"] = f"exception: {e}"
+    else:
+        diag["strategies"]["osdu_token_fallback"] = "skipped (no OSDU token or no API key)"
+
+    return JSONResponse(diag)
