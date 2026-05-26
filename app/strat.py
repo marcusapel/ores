@@ -989,11 +989,23 @@ async def _smda_auth(request: Request) -> dict:
     """Return SMDA auth kwargs for stratcolumnhandler calls.
 
     Returns a dict with access_token and/or api_key.
-    The API Gateway needs both a Bearer token (targeting the SMDA resource)
-    and an Ocp-Apim-Subscription-Key.
+    The API Gateway needs a Bearer token and an Ocp-Apim-Subscription-Key.
+
+    Strategy:
+      1. Try dedicated SMDA-audience token (az CLI / session RT exchange / client_credentials).
+      2. Fall back to the user's current OSDU access token — the Equinor APIM
+         gateway accepts any valid Azure AD token from the same tenant when
+         combined with a valid subscription key.
     """
     kw: dict = {}
     token = await _auth.smda_access_token(request)
+    if not token:
+        # Fallback: use the user's OSDU session token (same tenant, different audience).
+        # APIM validates the subscription key primarily; the Bearer just proves identity.
+        osdu_token = _access_token(request)
+        if osdu_token:
+            token = osdu_token
+            log.info("SMDA: using OSDU session token as Bearer fallback")
     if token:
         kw["access_token"] = token
     if SMDA_API_KEY:
@@ -1002,7 +1014,7 @@ async def _smda_auth(request: Request) -> dict:
         raise HTTPException(
             403,
             "SMDA auth not available. Set SMDA_API_KEY in Radix secrets, "
-            "or run 'az login' to authenticate.",
+            "or log in via the PKCE flow.",
         )
     return kw
 
@@ -1100,7 +1112,7 @@ async def list_smda_columns(
                         detail = (
                             "SMDA API returned 401 Unauthorized. "
                             "The Bearer token may have expired or target the wrong audience. "
-                            "Run 'az login' to re-authenticate."
+                            "Please log in again (PKCE) or run 'az login' locally."
                         )
                         if body:
                             detail += f" Gateway response: {body[:200]}"
