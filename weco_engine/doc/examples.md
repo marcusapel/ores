@@ -79,11 +79,11 @@ complexity:
 
 ## Python API Examples
 
-All examples are in `examples/`. Run from within that directory
+All examples are in `demo/`. Run from within that directory
 (they reference `test_wells.txt` locally):
 
 ```bash
-cd examples
+cd demo
 python ex1_run_weco_from_python.py
 ```
 
@@ -260,15 +260,15 @@ All datasets live in `demo/data/`. Each folder contains:
 | **data_set_sigrun** | 2 | North Sea marine shale/sand | GR, NPHI | 2-log well-tie | Real data |
 | **data_set_troll** | 5 | Troll field (categorical) | FACIES, DISTALITY | Categorical + distality (Walther's Law) | Real data |
 
-### Relationship Between `data/` and `examples/`
+### Relationship Between `data/` and `demo/`
 
 | Folder | Purpose | Used by |
-|--------|---------|---------|
-| `data/` | **Datasets** — geological input files (wells, options, results) | Studio demos, `bin/auto_run_examples.py`, your own scripts |
-| `examples/` | **Code examples** — Python scripts showing API usage | Learning the API, extending WeCo |
+|--------|---------|--------|
+| `demo/data/` | **Datasets** — geological input files (wells, options, results) | Studio demos, `bin/auto_run_examples.py`, your own scripts |
+| `demo/` | **Code examples** — Python scripts showing API usage | Learning the API, extending WeCo |
 
-They serve complementary purposes. `data/` is the input; `examples/` shows
-how to *process* that input. Studio can load any dataset from `data/`
+They serve complementary purposes. `demo/data/` is the input; `demo/ex*.py` shows
+how to *process* that input. Studio can load any dataset from `demo/data/`
 directly via its demo picker.
 
 ---
@@ -439,7 +439,6 @@ viewer.show()
 |--------|----------|---------|
 | `weco.sh` | root | Build, test, run helper (all-in-one) |
 | `auto_run_examples.py` | `bin/` | Run all demo/ examples headless (batch) |
-| `demo_gui.py` | `bin/` | Interactive demo runner GUI (10 datasets) |
 | `demo_rddms.py` | `bin/` | OSDU/RDDMS live demo |
 | `gocad_extract.py` | `bin/` | GOCAD .wl → WeCo converter |
 | `generate_quaternary.py` | `demo/data/data_set_quaternary/` | Generate synthetic Quaternary dataset |

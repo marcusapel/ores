@@ -159,6 +159,14 @@ _md_extensions = [
 ]
 
 
+def _mermaid_fence(source, language, class_name, options, md, **kw):
+    """Render mermaid fenced blocks as <pre class="mermaid"> with HTML-escaped
+    source so that browsers don't interpret <br/> or & as HTML before
+    mermaid.js reads the textContent."""
+    import html
+    return f'<pre class="mermaid">{html.escape(source)}</pre>'
+
+
 def _render_md(filename: str) -> tuple[str, str]:
     """Read a WeCo markdown doc and return (html_body, toc_html)."""
     md_path = _WECO_DOC_DIR / filename
@@ -171,9 +179,7 @@ def _render_md(filename: str) -> tuple[str, str]:
             "custom_fences": [{
                 "name": "mermaid",
                 "class": "mermaid",
-                "format": lambda source, language, class_name, options, md, **kw: (
-                    f'<pre class="mermaid">{source}</pre>'
-                ),
+                "format": _mermaid_fence,
             }],
         },
     })
