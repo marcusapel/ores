@@ -4537,6 +4537,7 @@ class ResultsPage(QWidget):
 
         # Viewer tabs
         self.view_tabs = QTabWidget()
+        self._wheeler_pending = None  # init before signal can fire
         self.view_tabs.currentChanged.connect(self._on_view_tab_changed)
         lo.addWidget(self.view_tabs, 1)
 
