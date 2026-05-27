@@ -1257,6 +1257,60 @@ PARAM_HELP = {
         "tier": "advanced",
         "auto_value": 0.0,
     },
+    "diversity_mode": {
+        "label": "Diversity Mode",
+        "type": "select", "default": "",
+        "values": ["", "topology", "architecture"],
+        "help": (
+            "Post-processing diversity strategy for output scenarios.\n\n"
+            "  (empty) — Default cost-based k-best (may give near-identical scenarios).\n"
+            "  topology — Filter results by topology distance (horizon count,\n"
+            "             connectivity, gap fraction). Retains only architecturally\n"
+            "             distinct scenarios.\n"
+            "  architecture — Run multiple gap-cost values to force genuinely\n"
+            "                 different geological models with different horizon counts.\n\n"
+            "Recommended: 'topology' for fast post-filtering, 'architecture' for\n"
+            "maximum diversity at the cost of longer runtime."
+        ),
+        "category": "Graph",
+        "tier": "recommended",
+        "scenario_test": True,
+        "scenario_hint": "Use 'topology' or 'architecture' to capture plausible alternative models",
+    },
+    "log_screening": {
+        "label": "Log Screening",
+        "type": "select", "default": "",
+        "values": ["", "auto", "report"],
+        "help": (
+            "Automatic log relevance screening before running correlation.\n\n"
+            "  (empty) — No screening (use all specified logs).\n"
+            "  auto — Automatically remove logs with low relevance scores\n"
+            "         (flat, noisy, or scale-mismatched logs).\n"
+            "  report — Screen logs and report scores but don't modify options.\n\n"
+            "This prevents costly errors like using GR for coal correlation\n"
+            "(where DEN is the correct choice) or combining logs with\n"
+            "incompatible scales (GR in API units + NPHI in fractions)."
+        ),
+        "category": "Variance",
+        "tier": "recommended",
+    },
+    "normalize_mode": {
+        "label": "Normalise Logs",
+        "type": "select", "default": "",
+        "values": ["", "percentile", "zscore", "minmax"],
+        "help": (
+            "Cross-well log normalisation before correlation.\n\n"
+            "  (empty) — No normalisation (use raw values).\n"
+            "  percentile — Map P5–P95 to [0,1]. Robust to outliers.\n"
+            "  zscore — Mean=0, Std=1. Good for combining multiple logs.\n"
+            "  minmax — Global min–max to [0,1].\n\n"
+            "Critical when combining logs with different scales:\n"
+            "GR (0–150 API) + NPHI (0–0.5 fraction) → without normalisation\n"
+            "the GR dominates purely due to scale, not geological relevance."
+        ),
+        "category": "Variance",
+        "tier": "recommended",
+    },
 
     # ── Variance ────────────────────────────────────────────────────
     "var_data": {
@@ -4292,6 +4346,24 @@ class RunPage(QWidget):
         )
         btn_lo.addWidget(self.btn_run)
 
+        # Quick Run — zero-config intelligent correlation
+        self.btn_quick_run = QPushButton("  ⚡ Quick Run  ")
+        self.btn_quick_run.setToolTip(
+            "Zero-configuration intelligent correlation:\n"
+            "• Auto-detects geological environment\n"
+            "• Screens & selects best logs\n"
+            "• Applies preprocessing (normalise, QC)\n"
+            "• Suggests optimal parameters\n"
+            "• Runs correlation with diversity analysis"
+        )
+        self.btn_quick_run.setStyleSheet(
+            "QPushButton {font-weight:bold; padding:10px 20px; "
+            "background-color:#0078d4; color:white; border-radius:4px;} "
+            "QPushButton:hover {background-color:#106ebe;} "
+            "QPushButton:disabled {background-color:#888;}"
+        )
+        btn_lo.addWidget(self.btn_quick_run)
+
         # §11.3.3 — Well Order Sensitivity button
         self.btn_sensitivity = QPushButton("  Well Order Sensitivity  ")
         self.btn_sensitivity.setToolTip(
@@ -4305,6 +4377,21 @@ class RunPage(QWidget):
         )
         self.btn_sensitivity.clicked.connect(self._run_sensitivity)
         btn_lo.addWidget(self.btn_sensitivity)
+
+        # Fine-Tune button — differential evolution parameter optimisation
+        self.btn_fine_tune = QPushButton("  🔧 Fine-Tune  ")
+        self.btn_fine_tune.setToolTip(
+            "Optimise correlation parameters using differential evolution.\n"
+            "Automatically finds optimal log weights and gap cost\n"
+            "by running ~20 engine iterations and minimising misfit.\n"
+            "Uses current result as the reference target."
+        )
+        self.btn_fine_tune.setStyleSheet(
+            "QPushButton {padding:10px 16px; border:1px solid #6c3483; "
+            "border-radius:4px; color:#6c3483; font-weight:bold;} "
+            "QPushButton:hover {background-color:#f5eef8;}"
+        )
+        btn_lo.addWidget(self.btn_fine_tune)
 
         self._worker = None
 
@@ -4413,6 +4500,18 @@ class ResultsPage(QWidget):
             "background-color:#8e44ad; color:white; border-radius:3px;}")
         btn_auto_analyse.clicked.connect(self._ai_auto_analyse)
         btn_row.addWidget(btn_auto_analyse)
+
+        # Diversity Analysis button
+        btn_diversity = QPushButton("Diversity Analysis")
+        btn_diversity.setToolTip(
+            "Analyse topology diversity of n-best scenarios.\n"
+            "Identifies architecturally distinct results, screens logs,\n"
+            "and diagnoses whether data is conclusive or algorithm limited.")
+        btn_diversity.setStyleSheet(
+            "QPushButton {font-weight:bold; padding:4px 12px; "
+            "background-color:#0078d4; color:white; border-radius:3px;}")
+        btn_diversity.clicked.connect(self._diversity_analysis)
+        btn_row.addWidget(btn_diversity)
 
         # §15.16 — Export Wizard
         btn_export_wizard = QPushButton("Export Wizard…")
@@ -4931,6 +5030,69 @@ class ResultsPage(QWidget):
             lines.append(f"  {w1} <-> {w2}:  mean={mean_std:.3f}  max={max_std:.3f}")
 
         QMessageBox.information(self, "Uncertainty Analysis", "\n".join(lines))
+
+    def _diversity_analysis(self):
+        """Analyse topology diversity of n-best correlation scenarios."""
+        if self._res_file is None or self._well_list is None:
+            QMessageBox.information(self, "WeCo", "No results to analyse.")
+            return
+
+        try:
+            from weco.diversity import analyse_scenario_diversity
+            report = analyse_scenario_diversity(
+                self._res_file,
+                self._well_list,
+                options=self._last_options if hasattr(self, '_last_options') else None,
+                run_cross_validation=False,
+                run_architecture_enum=False,
+            )
+
+            # Format report for display
+            lines = ["═══ Diversity Analysis Report ═══", ""]
+            lines.append(f"Diagnosis: {report.get('diagnosis', 'N/A')}")
+            lines.append(f"Cost spread: {report.get('cost_spread_pct', 0):.4f}%")
+            lines.append(f"Raw scenarios: {report.get('n_raw_scenarios', 0)}")
+            lines.append(f"Diverse scenarios: {report.get('n_diverse', 0)}")
+            lines.append("")
+
+            topo = report.get("topology_summary", {})
+            if topo:
+                lines.append("── Topology Summary ──")
+                lines.append(f"  Horizon count range: {topo.get('horizon_count_range', '-')}")
+                lines.append(f"  Gap fraction range: {topo.get('gap_fraction_range', '-')}")
+                lines.append(f"  Unique architectures: {topo.get('unique_horizon_counts', 0)}")
+                lines.append(f"  Architecturally distinct: {topo.get('architecturally_distinct', False)}")
+                lines.append("")
+
+            logs = report.get("log_screening", [])
+            if logs:
+                lines.append("── Log Relevance Screening ──")
+                for l in logs[:8]:
+                    status = "✓" if l["relevant"] else "✗"
+                    lines.append(f"  {status} {l['log']}: score={l['score']:.3f} ({l['reason']})")
+                lines.append("")
+
+            recs = report.get("recommendations", [])
+            if recs:
+                lines.append("── Recommendations ──")
+                for r in recs:
+                    lines.append(f"  • {r}")
+
+            # Show in AI output panel
+            text = "\n".join(lines)
+            if hasattr(self, '_ai_output'):
+                self._ai_output.setPlainText(text)
+                # Switch to AI tab
+                for i in range(self.view_tabs.count()):
+                    if "AI" in (self.view_tabs.tabText(i) or ""):
+                        self.view_tabs.setCurrentIndex(i)
+                        break
+            else:
+                QMessageBox.information(self, "Diversity Analysis", text)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Diversity Analysis",
+                                f"Analysis failed: {e}")
 
     def _ai_auto_analyse(self):
         """AI: Run quality + uncertainty + anomaly with environment-tuned thresholds."""
@@ -6028,6 +6190,8 @@ class WeCoStudio(QMainWindow):
 
         # Run page
         self.page_run.btn_run.clicked.connect(self._do_run)
+        self.page_run.btn_quick_run.clicked.connect(self._do_quick_run)
+        self.page_run.btn_fine_tune.clicked.connect(self._do_fine_tune)
         self.page_run.run_finished.connect(self._on_run_finished)
 
     # ─── Navigation ───────────────────────────────────────────────────
@@ -6254,6 +6418,176 @@ class WeCoStudio(QMainWindow):
 
         self._go_page(3)  # switch to Run page
         self.page_run.start_run(wells_path, opts)
+
+    def _do_quick_run(self):
+        """Zero-config intelligent correlation: detect → screen → configure → run → diversity."""
+        wells_path = self.page_data.well_path()
+        if not wells_path:
+            QMessageBox.warning(self, "WeCo", "No well file loaded.\nGo to Data page first.")
+            return
+
+        from weco.data import WellList
+        try:
+            wl = WellList(wells_path)
+        except Exception as e:
+            QMessageBox.warning(self, "WeCo", f"Failed to load wells: {e}")
+            return
+
+        # 1) Log screening
+        from weco.diversity import screen_logs
+        screening = screen_logs(wl)
+        relevant_logs = [s["log"] for s in screening if s["relevant"]]
+        if not relevant_logs:
+            relevant_logs = [screening[0]["log"]] if screening else ["GR"]
+
+        # 2) AI parameter suggestion
+        from weco.decision_tree import recommend_preprocessing
+        rec = recommend_preprocessing(wl)
+
+        # 3) Build intelligent options
+        opts = {
+            "var-data": relevant_logs[0],
+            "var-weight": "1.0",
+            "max-cor": "10",
+            "nbr-cor": "5",
+            "out-nbr-cor": "5",
+            "min-dist": "0.3",
+            "out-min-dist": "0.15",
+            "const-gap-cost": "2.0",
+            "normalize-mode": "percentile",
+            "diversity-mode": "topology",
+            "debug_cor_info": 1,
+        }
+        # Add second log if available
+        if len(relevant_logs) > 1:
+            opts["var-data2"] = relevant_logs[1]
+            opts["var-weight2"] = "0.5"
+        if len(relevant_logs) > 2:
+            opts["var-data3"] = relevant_logs[2]
+            opts["var-weight3"] = "0.3"
+
+        # 4) Apply preprocessing recommendations
+        if rec.normalise:
+            opts["normalize-mode"] = "percentile"
+        if rec.smooth:
+            opts["pp-smooth"] = "1"
+
+        self._go_page(3)  # switch to Run page
+        self.page_run.start_run(wells_path, opts)
+
+    def _do_fine_tune(self):
+        """Optimise parameters using differential evolution."""
+        wells_path = self.page_data.well_path()
+        if not wells_path:
+            QMessageBox.warning(self, "WeCo", "No well file loaded.\nGo to Data page first.")
+            return
+
+        opts = self.page_params.get_opts()
+
+        # Determine what to tune based on current config
+        param_bounds = {}
+        if opts.get("var-data"):
+            param_bounds["var-weight"] = (0.1, 5.0)
+        if opts.get("var-data2"):
+            param_bounds["var-weight2"] = (0.0, 5.0)
+        if opts.get("var-data3"):
+            param_bounds["var-weight3"] = (0.0, 5.0)
+        param_bounds["const-gap-cost"] = (0.0, 8.0)
+        param_bounds["min-dist"] = (0.1, 0.8)
+
+        if not param_bounds:
+            param_bounds = {"var-weight": (0.1, 5.0), "const-gap-cost": (0.0, 8.0)}
+
+        # Run in background thread
+        from weco.ai.auto_tune import AutoTuner
+        from weco.data import WellList
+
+        self.page_run.status_label.setText("🔧 Fine-tuning parameters (≈20 iterations)...")
+        self._go_page(3)
+
+        # Use QThread for non-blocking
+        import threading
+
+        def _tune_worker():
+            try:
+                wl = WellList(wells_path)
+                # Run baseline as reference
+                from weco.ext import ProjectExt
+                p = ProjectExt()
+                for k, v in opts.items():
+                    try:
+                        p.set_option_ext(k, str(v))
+                    except (ValueError, TypeError):
+                        pass
+                p.run(wl)
+                reference = p.get_res_file()
+
+                tuner = AutoTuner(
+                    well_list=wl,
+                    reference=reference,
+                    param_bounds=param_bounds,
+                    base_options=opts,
+                )
+                best_params = tuner.optimise(max_iter=20, method="de")
+                sensitivity = tuner.parameter_sensitivity()
+
+                # Format result
+                lines = ["🔧 Fine-Tune Complete\n"]
+                lines.append(f"Iterations: {len(tuner.history)}")
+                best = tuner.best_result()
+                if best:
+                    lines.append(f"Best misfit: {best['misfit']:.4f}\n")
+                lines.append("Optimal parameters:")
+                for k, v in best_params.items():
+                    lines.append(f"  {k} = {v:.3f}")
+                if sensitivity:
+                    lines.append("\nSensitivity (higher = more impactful):")
+                    for k, v in sorted(sensitivity.items(), key=lambda x: -x[1]):
+                        lines.append(f"  {k}: {v:.3f}")
+
+                msg = "\n".join(lines)
+                # Update UI from main thread
+                from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
+                QMetaObject.invokeMethod(
+                    self.page_run.status_label, "setText",
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(str, f"✓ Fine-tune done. Apply optimal params?")
+                )
+                # Show result dialog
+                QMetaObject.invokeMethod(
+                    self, "_show_tune_result",
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(str, msg),
+                    Q_ARG(str, str(best_params)),
+                )
+            except Exception as e:
+                from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
+                QMetaObject.invokeMethod(
+                    self.page_run.status_label, "setText",
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(str, f"Fine-tune failed: {e}")
+                )
+
+        t = threading.Thread(target=_tune_worker, daemon=True)
+        t.start()
+
+    def _show_tune_result(self, msg: str, params_str: str):
+        """Show fine-tune results and offer to apply."""
+        import ast
+        reply = QMessageBox.question(
+            self, "Fine-Tune Results",
+            msg + "\n\nApply these parameters and re-run?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                best_params = ast.literal_eval(params_str)
+                opts = self.page_params.get_opts()
+                opts.update({k: str(v) for k, v in best_params.items()})
+                wells_path = self.page_data.well_path()
+                self.page_run.start_run(wells_path, opts)
+            except Exception as e:
+                QMessageBox.warning(self, "WeCo", f"Failed to apply: {e}")
 
     # ─── Results ──────────────────────────────────────────────────────
 
