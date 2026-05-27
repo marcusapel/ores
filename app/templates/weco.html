@@ -347,6 +347,27 @@
         <div class="row-section">Output</div>
         <label for="p-n-best" title="Number of k-best results to return. Multiple results capture geological uncertainty. 5–20 for exploration, 1 for production.">N-Best Results</label>
         <input id="p-n-best" type="number" value="5" min="1" max="100" title="k-best results (captures geological uncertainty)" />
+
+        <div class="row-section adv" style="display:none;">Diversity &amp; Screening</div>
+        <label for="p-diversity-mode" class="adv" style="display:none;" title="How to ensure output scenarios are genuinely different. 'topology' uses horizon count + connectivity to filter. 'architecture' runs multiple gap costs.">Diversity Mode</label>
+        <select id="p-diversity-mode" class="adv" style="display:none;" title="Scenario diversity strategy">
+          <option value="">-- default (cost-based) --</option>
+          <option value="topology">Topology-aware</option>
+          <option value="architecture">Architecture enumeration</option>
+        </select>
+        <label for="p-log-screening" class="adv" style="display:none;" title="Auto-screen logs for relevance before running. Removes flat/noisy logs that add no correlation value.">Log Screening</label>
+        <select id="p-log-screening" class="adv" style="display:none;" title="Automatic log relevance screening">
+          <option value="">-- off --</option>
+          <option value="auto">Auto (remove irrelevant)</option>
+          <option value="report">Report only</option>
+        </select>
+        <label for="p-normalize-mode" class="adv" style="display:none;" title="Cross-well log normalisation method. Recommended when combining logs with different scales (e.g. GR + NPHI).">Normalise Logs</label>
+        <select id="p-normalize-mode" class="adv" style="display:none;" title="Cross-well normalisation before correlation">
+          <option value="">-- off --</option>
+          <option value="percentile">Percentile (P5–P95)</option>
+          <option value="zscore">Z-score</option>
+          <option value="minmax">Min–Max</option>
+        </select>
       </div>
     </section>
 
@@ -377,6 +398,11 @@
         <span>Smooth window: <input id="pp-smooth-window" type="number" value="5" min="1" max="50" style="width:50px; font-size:12px;" /></span>
         <span style="margin-left:.8rem;">Electrofacies K: <input id="pp-efacies-k" type="number" value="4" min="2" max="12" style="width:50px; font-size:12px;" /></span>
       </div>
+      <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-sm btn-run" id="btn-apply-preprocess" title="Apply checked preprocessing steps to loaded wells NOW (before running correlation)">Apply Conditioning</button>
+        <span id="apply-preprocess-status" class="muted" style="font-size:12px;"></span>
+      </div>
+      <div id="preprocess-reasoning" style="display:none; margin-top:.4rem; font-size:12px; background:#f8f9fa; border-radius:4px; padding:.4rem .6rem; color:#333;"></div>
     </section>
   </div>
 
@@ -429,8 +455,10 @@
           <label>Steps: <input id="sweep-steps" type="number" value="5" min="3" max="20" style="width:40px; font-size:12px;"></label>
           <button class="btn btn-outline btn-sm" id="btn-sweep">Sweep</button>
           <button class="btn btn-outline btn-sm" id="btn-sensitivity">Sensitivity</button>
+          <button class="btn btn-sm" id="btn-auto-tune" style="background:#6c3483;border-color:#6c3483;color:#fff;" title="Optimise weights and gap cost using differential evolution (≈20 engine runs)">&#128295; Fine-Tune</button>
         </div>
         <div id="sweep-results" style="font-size:11px; font-family:monospace; margin-top:.3rem; max-height:80px; overflow-y:auto;"></div>
+        <div id="tune-results" style="font-size:12px; margin-top:.3rem; display:none; background:#f5f0fa; border:1px solid #d4b8e8; border-radius:4px; padding:.4rem .6rem;"></div>
       </div>
     </section>
   </div>
@@ -466,6 +494,23 @@
         <div id="res-ranking" style="margin-bottom:.5rem; padding:6px 8px; background:#fafafa; border:1px solid #e1dfdd; border-radius:4px; font-size:11px; font-family:monospace; display:none; max-height:120px; overflow-y:auto;"></div>
         <!-- AI Analysis results -->
         <div id="ai-results-panel" style="margin-bottom:.5rem; display:none;"></div>
+        <!-- Diversity Analysis Panel -->
+        <div id="diversity-panel" style="margin-bottom:.5rem; display:none;">
+          <div style="padding:8px 12px; background:#f0f6ff; border:1px solid #c7e0f4; border-radius:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.4rem;">
+              <strong style="font-size:12.5px; color:#0078d4;">&#128202; Diversity Analysis</strong>
+              <button class="btn btn-sm btn-outline" id="btn-run-diversity" title="Analyse topology diversity of current results">Analyse</button>
+            </div>
+            <div id="diversity-diagnosis" style="font-size:12px; margin-bottom:.3rem;"></div>
+            <div id="diversity-metrics" style="font-size:11.5px; font-family:monospace; color:#323130;"></div>
+            <div id="diversity-recommendations" style="font-size:11.5px; margin-top:.3rem; color:#605e5c;"></div>
+            <div id="diversity-logs" style="font-size:11.5px; margin-top:.3rem;"></div>
+            <div style="margin-top:.5rem; display:flex; gap:.4rem;">
+              <button class="btn btn-sm btn-outline" id="btn-apply-diversity-recs" style="display:none;" title="Apply recommended settings and re-run">&#9889; Apply &amp; Re-run</button>
+              <button class="btn btn-sm btn-outline" id="btn-deselect-irrelevant" style="display:none;" title="Remove irrelevant logs from correlation">Remove Irrelevant Logs</button>
+            </div>
+          </div>
+        </div>
         <!-- Correlation Plot -->
         <div id="results-plot" style="margin-bottom:.5rem;">
           <div style="border:1px solid #e1dfdd; border-radius:4px; overflow-x:auto; background:#fff;">

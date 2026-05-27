@@ -439,12 +439,56 @@
             if (ek && data.parameters.electrofacies_k) ek.value = data.parameters.electrofacies_k;
           }
           if (preprocessStatus) preprocessStatus.textContent = `\u2713 ${data.environment || 'auto'}`;
+          // Show reasoning
+          const reasonEl = $('#preprocess-reasoning');
+          if (reasonEl && data.reasoning) {
+            reasonEl.style.display = 'block';
+            reasonEl.innerHTML = '<strong>AI Reasoning:</strong> ' +
+              (Array.isArray(data.reasoning) ? data.reasoning.map(r => `<br>• ${r}`).join('') : data.reasoning);
+          }
         } else {
           if (preprocessStatus) preprocessStatus.textContent = 'No recommendations';
         }
       } catch(e) {
         if (preprocessStatus) preprocessStatus.textContent = 'Failed';
       }
+    });
+  }
+
+  // Apply Preprocessing button — runs conditioning immediately on loaded wells
+  const btnApplyPreprocess = $('#btn-apply-preprocess');
+  if (btnApplyPreprocess) {
+    btnApplyPreprocess.addEventListener('click', async () => {
+      const statusEl = $('#apply-preprocess-status');
+      const ppSteps = [];
+      if ($('#pp-normalise') && $('#pp-normalise').checked) ppSteps.push('normalise');
+      if ($('#pp-vshale') && $('#pp-vshale').checked) ppSteps.push('vshale');
+      if ($('#pp-stacking') && $('#pp-stacking').checked) ppSteps.push('stacking_pattern');
+      if ($('#pp-electrofacies') && $('#pp-electrofacies').checked) ppSteps.push('electrofacies');
+      if ($('#pp-smooth') && $('#pp-smooth').checked) ppSteps.push('smooth');
+      if ($('#pp-logqc') && $('#pp-logqc').checked) ppSteps.push('log_qc');
+      if ($('#pp-ai-facies') && $('#pp-ai-facies').checked) ppSteps.push('ai_facies');
+      if ($('#pp-anomaly') && $('#pp-anomaly').checked) ppSteps.push('anomaly');
+      if (!ppSteps.length) {
+        if (statusEl) statusEl.textContent = 'No steps selected';
+        return;
+      }
+      btnApplyPreprocess.disabled = true;
+      if (statusEl) statusEl.textContent = 'Applying...';
+      try {
+        const data = await api('POST', '/preprocess', {
+          steps: ppSteps,
+          smooth_window: parseInt($('#pp-smooth-window')?.value || '5'),
+          electrofacies_k: parseInt($('#pp-efacies-k')?.value || '4'),
+        });
+        if (statusEl) statusEl.textContent = `\u2713 Applied ${ppSteps.length} step(s)` +
+          (data.new_logs ? ` — new logs: ${data.new_logs.join(', ')}` : '');
+        // Refresh log preview if available
+        if (typeof refreshLogPreview === 'function') refreshLogPreview();
+      } catch(e) {
+        if (statusEl) statusEl.textContent = `Failed: ${e.message || e}`;
+      }
+      btnApplyPreprocess.disabled = false;
     });
   }
 
@@ -1030,6 +1074,14 @@
       const sw = parseFloat(val('#p-seistiles-weight'));
       if (!isNaN(sw) && sw !== 1.0) opts['seis-weight'] = sw;
     }
+
+    // Diversity & Screening options
+    const divMode = val('#p-diversity-mode');
+    if (divMode) opts['diversity-mode'] = divMode;
+    const logScreen = val('#p-log-screening');
+    if (logScreen) opts['log-screening'] = logScreen;
+    const normMode = val('#p-normalize-mode');
+    if (normMode) opts['normalize-mode'] = normMode;
 
     return opts;
   }
@@ -2775,6 +2827,65 @@
     });
   }
 
+  // Fine-Tune (Auto-Tune) button
+  const btnAutoTune = $('#btn-auto-tune');
+  const tuneResults = $('#tune-results');
+  if (btnAutoTune) {
+    btnAutoTune.addEventListener('click', async () => {
+      btnAutoTune.disabled = true;
+      btnAutoTune.textContent = '⏳ Tuning...';
+      if (tuneResults) { tuneResults.style.display = 'block'; tuneResults.innerHTML = 'Running differential evolution (~20 engine iterations)...'; }
+      try {
+        const options = gatherOptions();
+        const resp = await api('POST', '/auto-tune', { base_options: options, max_iter: 20, method: 'de' });
+        if (resp.status === 'ok') {
+          let html = `<strong>🔧 Optimal parameters found</strong> (${resp.iterations} iterations, misfit=${resp.best_misfit?.toFixed(4) || '—'})<br>`;
+          for (const [k, v] of Object.entries(resp.best_params || {})) {
+            html += `&nbsp;&nbsp;${k} = <strong>${v.toFixed(3)}</strong><br>`;
+          }
+          if (resp.sensitivity && Object.keys(resp.sensitivity).length) {
+            html += '<em>Sensitivity:</em> ';
+            html += Object.entries(resp.sensitivity).map(([k,v]) => `${k}=${v.toFixed(2)}`).join(', ');
+            html += '<br>';
+          }
+          html += `<button class="btn btn-sm btn-outline" id="btn-apply-tune" style="margin-top:.3rem;">Apply Optimal &amp; Re-run</button>`;
+          if (tuneResults) tuneResults.innerHTML = html;
+          // Wire up apply button
+          const btnApplyTune = $('#btn-apply-tune');
+          if (btnApplyTune) {
+            btnApplyTune.addEventListener('click', () => {
+              for (const [k, v] of Object.entries(resp.best_params || {})) {
+                const paramId = '#p-' + k.replace(/_/g, '-');
+                const el = $(paramId);
+                if (el) el.value = v.toFixed(3);
+              }
+              // Also set specific known fields
+              if (resp.best_params['const-gap-cost'] != null) {
+                const el = $('#p-gap-cost');
+                if (el) el.value = resp.best_params['const-gap-cost'].toFixed(2);
+              }
+              if (resp.best_params['min-dist'] != null) {
+                const el = $('#p-min-dist');
+                if (el) el.value = resp.best_params['min-dist'].toFixed(3);
+              }
+              if (resp.best_params['var-weight'] != null) {
+                const el = $('#p-var-weight');
+                if (el) el.value = resp.best_params['var-weight'].toFixed(3);
+              }
+              // Trigger re-run
+              const btnRun = $('#btn-run');
+              if (btnRun && !btnRun.disabled) btnRun.click();
+            });
+          }
+        }
+      } catch(e) {
+        if (tuneResults) tuneResults.innerHTML = `<span style="color:#c62828;">Tune failed: ${e.message || e}</span>`;
+      }
+      btnAutoTune.disabled = false;
+      btnAutoTune.textContent = '🔧 Fine-Tune';
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════
   //  Geological Presets (loaded from API)
   // ═══════════════════════════════════════════════════════════════════
@@ -2877,6 +2988,146 @@
         btnImportStrat.disabled = false;
         btnImportStrat.textContent = '📈 Import Strat Col';
       }, 3000);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Diversity Analysis
+  // ═══════════════════════════════════════════════════════════════════
+
+  const btnDiversity = $('#btn-run-diversity');
+  const divPanel = $('#diversity-panel');
+  if (btnDiversity) {
+    btnDiversity.addEventListener('click', async () => {
+      btnDiversity.disabled = true;
+      btnDiversity.textContent = 'Analysing...';
+      try {
+        const resp = await api('POST', '/analyse-diversity', {
+          options: gatherOptions(),
+          cross_validate: false,
+          enumerate_architectures: false,
+        });
+        if (resp && resp.status === 'ok') {
+          divPanel.style.display = 'block';
+          // Diagnosis
+          const diagEl = $('#diversity-diagnosis');
+          if (diagEl) {
+            const diag = resp.diagnosis || '';
+            const color = diag.includes('DATA_CONCLUSIVE') ? '#107c10' :
+                          diag.includes('ALGORITHM_LIMITED') ? '#d83b01' :
+                          diag.includes('UNCERTAIN') ? '#0078d4' : '#605e5c';
+            diagEl.innerHTML = `<span style="color:${color}; font-weight:600;">${diag.split(':')[0]}</span>: ${diag.split(':').slice(1).join(':')}`;
+          }
+          // Metrics
+          const metEl = $('#diversity-metrics');
+          if (metEl && resp.topology_summary) {
+            const ts = resp.topology_summary;
+            metEl.innerHTML = `Cost spread: ${resp.cost_spread_pct}% | ` +
+              `Diverse scenarios: ${resp.n_diverse}/${resp.n_raw_scenarios} | ` +
+              `Horizon range: ${ts.horizon_count_range ? ts.horizon_count_range.join('–') : '-'} | ` +
+              `Gap fraction: ${ts.gap_fraction_range ? ts.gap_fraction_range.map(v=>v.toFixed(3)).join('–') : '-'}`;
+          }
+          // Recommendations
+          const recEl = $('#diversity-recommendations');
+          if (recEl && resp.recommendations && resp.recommendations.length) {
+            recEl.innerHTML = '<strong>Recommendations:</strong> ' + resp.recommendations.map(r => `<br>• ${r}`).join('');
+          }
+          // Log screening
+          const logEl = $('#diversity-logs');
+          if (logEl && resp.log_screening && resp.log_screening.length) {
+            const logs = resp.log_screening.slice(0, 6);
+            logEl.innerHTML = '<strong>Log Relevance:</strong> ' +
+              logs.map(l => `<span style="color:${l.relevant ? '#107c10' : '#d83b01'};">${l.log}(${l.score})</span>`).join(' ');
+            // Show deselect button if there are irrelevant logs
+            const hasIrrelevant = resp.log_screening.some(l => !l.relevant);
+            const btnDeselect = $('#btn-deselect-irrelevant');
+            if (btnDeselect && hasIrrelevant) {
+              btnDeselect.style.display = '';
+              btnDeselect._irrelevantLogs = resp.log_screening.filter(l => !l.relevant).map(l => l.log);
+            }
+          }
+          // Show Apply & Re-run button if recommendations exist
+          const btnApplyRecs = $('#btn-apply-diversity-recs');
+          if (btnApplyRecs && resp.recommendations && resp.recommendations.length) {
+            btnApplyRecs.style.display = '';
+            btnApplyRecs._diversityRecs = resp;
+          }
+        }
+      } catch(e) {
+        const diagEl = $('#diversity-diagnosis');
+        if (diagEl) diagEl.textContent = `Error: ${e.message || e}`;
+        divPanel.style.display = 'block';
+      }
+      btnDiversity.disabled = false;
+      btnDiversity.textContent = 'Analyse';
+    });
+  }
+
+  // Apply diversity recommendations & re-run
+  const btnApplyRecs = $('#btn-apply-diversity-recs');
+  if (btnApplyRecs) {
+    btnApplyRecs.addEventListener('click', async () => {
+      const recs = btnApplyRecs._diversityRecs;
+      if (!recs) return;
+      // Extract actionable settings from recommendations
+      const opts = {};
+      for (const r of (recs.recommendations || [])) {
+        // Parse "gap cost" recommendations
+        if (r.toLowerCase().includes('gap cost') || r.toLowerCase().includes('gap_cost')) {
+          const m = r.match(/gap.cost.*?(\d+(?:\.\d+)?)/i);
+          if (m) opts['const-gap-cost'] = m[1];
+        }
+        // Parse diversity mode recommendation
+        if (r.toLowerCase().includes('topology')) {
+          opts['diversity-mode'] = 'topology';
+        }
+        if (r.toLowerCase().includes('architecture')) {
+          opts['diversity-mode'] = 'architecture';
+        }
+        // Parse normalise recommendation
+        if (r.toLowerCase().includes('normalis')) {
+          opts['normalize-mode'] = 'percentile';
+        }
+      }
+      // Apply extracted options to form
+      if (opts['const-gap-cost']) {
+        const el = $('#p-gap-cost');
+        if (el) el.value = opts['const-gap-cost'];
+      }
+      if (opts['diversity-mode']) {
+        const el = $('#p-diversity-mode');
+        if (el) el.value = opts['diversity-mode'];
+      }
+      if (opts['normalize-mode']) {
+        const el = $('#p-normalize-mode');
+        if (el) el.value = opts['normalize-mode'];
+      }
+      // Trigger re-run
+      const btnRun = $('#btn-run');
+      if (btnRun && !btnRun.disabled) btnRun.click();
+    });
+  }
+
+  // Remove irrelevant logs from variance form
+  const btnDeselect = $('#btn-deselect-irrelevant');
+  if (btnDeselect) {
+    btnDeselect.addEventListener('click', () => {
+      const irrelevant = btnDeselect._irrelevantLogs || [];
+      if (!irrelevant.length) return;
+      // Check primary and secondary var-data selects
+      const varInputs = ['#p-var-data', '#p-var-data2', '#p-var-data3', '#p-var-data4', '#p-var-data5'];
+      for (const sel of varInputs) {
+        const el = $(sel);
+        if (el && irrelevant.includes(el.value)) {
+          el.value = '';
+          // Also clear corresponding weight
+          const wSel = sel.replace('var-data', 'var-weight');
+          const wEl = $(wSel);
+          if (wEl) wEl.value = '';
+        }
+      }
+      btnDeselect.textContent = '\u2713 Removed';
+      btnDeselect.disabled = true;
     });
   }
 

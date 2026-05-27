@@ -35,6 +35,8 @@ SCOPES = (os.getenv("AZURE_SCOPE", "") or os.getenv("INSTANCE_EQNDEV_SCOPE", "op
 # SMDA API resource App ID (audience) - used by az CLI to mint tokens.
 SMDA_CLIENT_ID = os.getenv("SMDA_CLIENT_ID", "")
 SMDA_SCOPE = os.getenv("SMDA_SCOPE", "")
+# Dedicated SMDA refresh token (obtained from az CLI session, uses CLI public client)
+SMDA_REFRESH_TOKEN = os.getenv("SMDA_REFRESH_TOKEN", "")
 
 AUTH_BASE = f"https://login.microsoftonline.com/{TENANT}/oauth2/v2.0"
 AUTHORIZE_URL = f"{AUTH_BASE}/authorize"
@@ -386,13 +388,19 @@ async def smda_access_token(request: Request) -> Optional[str]:
         _smda_token_cache[cache_key] = (result["access_token"], result["exp"])
         return result["access_token"]
 
-    # 4. Fallback: use shared ENV_REFRESH_TOKEN to get SMDA token
+    # 4. Fallback: dedicated SMDA refresh token (from az CLI session)
+    result = await _smda_token_from_dedicated_rt()
+    if result:
+        _smda_token_cache["__global__"] = (result["access_token"], result["exp"])
+        return result["access_token"]
+
+    # 5. Fallback: use shared ENV_REFRESH_TOKEN to get SMDA token
     result = await _smda_token_from_env_rt()
     if result:
         _smda_token_cache["__global__"] = (result["access_token"], result["exp"])
         return result["access_token"]
 
-    # 5. Fallback: client_credentials grant (app-level permission)
+    # 6. Fallback: client_credentials grant (app-level permission)
     result = await _smda_token_from_client_credentials()
     if result:
         _smda_token_cache["__global__"] = (result["access_token"], result["exp"])
@@ -514,6 +522,62 @@ async def _smda_token_from_az_cli() -> Optional[Dict[str, Any]]:
     except Exception as e:
         log.debug("az CLI SMDA token error: %s", e)
     return None
+
+
+# Azure CLI public client_id (pre-consented for most APIs, no secret needed)
+_AZ_CLI_CLIENT_ID = "04b07795-ee78-4fb6-8785-8d1300675261"
+
+
+async def _smda_token_from_dedicated_rt() -> Optional[Dict[str, Any]]:
+    """Mint SMDA token using a dedicated SMDA_REFRESH_TOKEN.
+
+    This RT should be obtained locally from 'az login' session and stored
+    as a Radix secret.  It uses the Azure CLI public client_id (no secret)
+    because the ores-dev app lacks consent for the SMDA API.
+
+    The RT auto-rotates (new one returned in response) — we update the
+    module-level variable so subsequent calls use the fresh RT.
+    """
+    global SMDA_REFRESH_TOKEN
+    if not SMDA_REFRESH_TOKEN or not SMDA_CLIENT_ID:
+        return None
+
+    # Azure CLI uses the organization's tenant for token exchange
+    tenant = TENANT or "3aa4a235-b6e2-48d5-9195-7fcf05b459b0"  # Equinor
+    token_url = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+    smda_scope = f"{SMDA_CLIENT_ID}/.default offline_access openid"
+
+    try:
+        import httpx
+        data: Dict[str, str] = {
+            "grant_type": "refresh_token",
+            "client_id": _AZ_CLI_CLIENT_ID,
+            "refresh_token": SMDA_REFRESH_TOKEN,
+            "scope": smda_scope,
+        }
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(token_url, data=data)
+            if r.status_code >= 400:
+                log.warning("SMDA dedicated RT failed (%d): %s", r.status_code, r.text[:200])
+                return None
+            body = r.json()
+
+        at = body.get("access_token", "")
+        if not at:
+            return None
+
+        # Rotate the RT in memory (lasts until pod restart)
+        new_rt = body.get("refresh_token")
+        if new_rt:
+            SMDA_REFRESH_TOKEN = new_rt
+
+        exp = time.time() + max(int(body.get("expires_in", 3600)) - 60, 60)
+        log.info("Got SMDA token via dedicated SMDA_REFRESH_TOKEN")
+        return {"access_token": at, "exp": exp}
+    except Exception as e:
+        log.warning("SMDA dedicated RT error: %s", e)
+        return None
 
 
 async def _smda_token_from_env_rt() -> Optional[Dict[str, Any]]:

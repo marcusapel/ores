@@ -709,10 +709,19 @@ async def weco_preprocess(request: Request):
             resample_interval=resample_interval,
         )
         wells_plot_data = _build_wells_plot_data(_cached_well_list)
+        # Detect new logs created by preprocessing
+        new_logs = []
+        if _cached_well_list.wells:
+            w0 = _cached_well_list.wells[0]
+            all_logs = list(w0.data.keys()) if hasattr(w0, 'data') else []
+            known_derived = ['VSHALE', 'STACK', 'EFACIES', 'AI_FACIES',
+                             'ANOMALY', 'GR_smooth', 'GR_norm']
+            new_logs = [l for l in all_logs if any(d in l for d in known_derived)]
         return {
             "status": "ok",
             "well_count": len(_cached_well_list.wells),
-            "applied": result.get("applied", steps),
+            "applied": result.get("applied", result.get("steps_applied", steps)),
+            "new_logs": new_logs,
             "wells_plot_data": wells_plot_data,
         }
     except Exception as e:
@@ -1098,10 +1107,65 @@ async def weco_run(req: WecoRunRequest, request: Request):
                 log.info(f"Preprocessing applied: {pp_steps}")
             except Exception as pp_err:
                 log.warning(f"Preprocessing failed (continuing): {pp_err}")
+
+        # Log normalisation (pre-engine)
+        norm_mode = safe_opts.pop("normalize-mode", None)
+        if norm_mode and norm_mode in ("percentile", "zscore", "minmax"):
+            try:
+                from weco.preprocessing import normalise_log
+                var_data = safe_opts.get("var-data", "")
+                logs_to_norm = [var_data] if var_data else []
+                for i in range(2, 6):
+                    vd = safe_opts.get(f"var-data{i}", "")
+                    if vd:
+                        logs_to_norm.append(vd)
+                for lname in logs_to_norm:
+                    normalise_log(wl, lname, output_name=f"{lname}_norm", method=norm_mode)
+                    # Replace in options with normalised name
+                    if safe_opts.get("var-data") == lname:
+                        safe_opts["var-data"] = f"{lname}_norm"
+                    for i in range(2, 6):
+                        if safe_opts.get(f"var-data{i}") == lname:
+                            safe_opts[f"var-data{i}"] = f"{lname}_norm"
+                log.info(f"Log normalisation applied: {logs_to_norm} ({norm_mode})")
+            except Exception as ne:
+                log.warning(f"Log normalisation failed (continuing): {ne}")
+
+        # Log screening (pre-engine)
+        log_screen = safe_opts.pop("log-screening", None)
+        screening_report = None
+        if log_screen in ("auto", "report"):
+            try:
+                from weco.diversity import screen_logs
+                screening_report = screen_logs(wl)
+                if log_screen == "auto":
+                    relevant = {r["log"] for r in screening_report if r["relevant"]}
+                    var_data = safe_opts.get("var-data", "")
+                    if var_data and var_data not in relevant and relevant:
+                        # Replace with best relevant log
+                        best = screening_report[0]["log"] if screening_report else var_data
+                        safe_opts["var-data"] = best
+                        log.info(f"Log screening: replaced {var_data} with {best}")
+                log.info(f"Log screening: {[r['log'] for r in (screening_report or []) if r['relevant']]}")
+            except Exception as se:
+                log.warning(f"Log screening failed (continuing): {se}")
+
+        # Diversity mode (post-engine)
+        diversity_mode = safe_opts.pop("diversity-mode", None)
+
         log.info(f"Running correlation: {n_wells} wells, options={safe_opts}, n_best={req.n_best}")
         rf, data, elapsed = _run_engine(wl, safe_opts)
         _cached_res_file = rf
         results = _extract_results(rf, data, req.n_best)
+
+        # Post-run diversity filtering
+        diversity_info = None
+        if diversity_mode == "topology" and rf:
+            try:
+                from weco.diversity import filter_diverse_scenarios
+                diversity_info = filter_diverse_scenarios(rf, wl, max_scenarios=req.n_best)
+            except Exception as de:
+                log.warning(f"Diversity filtering failed: {de}")
     except HTTPException:
         raise
     except Exception as e:
@@ -1113,7 +1177,7 @@ async def weco_run(req: WecoRunRequest, request: Request):
     # Include plot data for visualization
     wells_plot_data = _build_wells_plot_data(wl)
 
-    return {
+    response = {
         "status": "ok",
         "elapsed_ms": round(elapsed, 2),
         "n_wells": len(well_names),
@@ -1124,6 +1188,80 @@ async def weco_run(req: WecoRunRequest, request: Request):
         "wells_plot_data": wells_plot_data,
         "options_used": safe_opts,
     }
+
+    # Include diversity and screening info if available
+    if diversity_info:
+        response["diversity"] = diversity_info
+    if screening_report:
+        response["log_screening"] = screening_report
+
+    return response
+
+
+@router.post("/analyse-diversity")
+async def weco_analyse_diversity(request: Request):
+    """Analyse scenario diversity using topology-aware metrics.
+
+    Post-processes cached results to identify architecturally distinct
+    scenarios, screen logs for relevance, and optionally run cross-validation.
+
+    Request body (optional):
+        {"cross_validate": bool, "enumerate_architectures": bool,
+         "gap_cost_range": [start, stop, step], "options": {...}}
+    """
+    global _cached_well_list, _cached_res_file
+
+    if _cached_res_file is None:
+        raise HTTPException(400, "No results cached. Run /weco/run first.")
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded.")
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+
+    try:
+        from weco.diversity import analyse_scenario_diversity
+        report = analyse_scenario_diversity(
+            _cached_res_file,
+            _cached_well_list,
+            options=body.get("options"),
+            run_cross_validation=body.get("cross_validate", False),
+            run_architecture_enum=body.get("enumerate_architectures", False),
+            gap_cost_range=tuple(body.get("gap_cost_range", [0.0, 5.0, 1.0])),
+        )
+        return {"status": "ok", **report}
+    except Exception as e:
+        log.exception(f"Diversity analysis error: {e}")
+        raise HTTPException(500, f"Diversity analysis error: {e}")
+
+
+@router.post("/screen-logs")
+async def weco_screen_logs(request: Request):
+    """Screen available logs for correlation relevance.
+
+    Returns logs ranked by their suitability for correlation, with scores
+    and recommendations on which to use/avoid.
+    """
+    global _cached_well_list
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    try:
+        from weco.diversity import screen_logs
+        results = screen_logs(_cached_well_list)
+        return {
+            "status": "ok",
+            "logs": results,
+            "recommended": [r["log"] for r in results if r["relevant"]],
+            "not_recommended": [r["log"] for r in results if not r["relevant"]],
+        }
+    except Exception as e:
+        log.exception(f"Log screening error: {e}")
+        raise HTTPException(500, f"Log screening error: {e}")
 
 
 @router.post("/auto")
@@ -2445,3 +2583,113 @@ async def weco_sensitivity(request: Request):
     except Exception as e:
         log.exception("Sensitivity test failed")
         raise HTTPException(500, f"Sensitivity error: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Auto-Tune (parameter optimisation)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/auto-tune")
+async def weco_auto_tune(request: Request):
+    """Optimise correlation parameters using differential evolution.
+
+    Body: {
+      "base_options": {...},          // fixed options
+      "param_bounds": {"var-weight": [0,5], ...},  // optional overrides
+      "max_iter": 20,                 // generations (default 20)
+      "method": "de",                 // "de" | "nelder"
+      "reference_result_idx": 0       // use current result N as reference
+    }
+
+    Returns optimised parameter values and convergence info.
+    """
+    global _cached_well_list, _cached_res_file
+
+    if _cached_well_list is None:
+        raise HTTPException(400, "No wells loaded. Call /weco/import first.")
+
+    body = await request.json()
+    base_options = body.get("base_options", {})
+    param_bounds = body.get("param_bounds", None)
+    max_iter = min(body.get("max_iter", 20), 100)  # cap at 100
+    method = body.get("method", "de")
+    ref_idx = body.get("reference_result_idx", None)
+
+    try:
+        from weco.ai.auto_tune import AutoTuner, DEFAULT_PARAM_BOUNDS
+
+        # Build param bounds from active cost logs
+        if param_bounds:
+            bounds = {k: tuple(v) for k, v in param_bounds.items()}
+        else:
+            # Auto-detect: tune weights for active logs + gap cost
+            bounds = {}
+            if base_options.get("var-data"):
+                bounds["var-weight"] = (0.1, 5.0)
+            if base_options.get("var-data2"):
+                bounds["var-weight2"] = (0.0, 5.0)
+            if base_options.get("var-data3"):
+                bounds["var-weight3"] = (0.0, 5.0)
+            bounds["const-gap-cost"] = (0.0, 8.0)
+            bounds["min-dist"] = (0.1, 0.8)
+            if not bounds:
+                bounds = dict(DEFAULT_PARAM_BOUNDS)
+
+        # Reference: use current best result, or run a baseline
+        reference = None
+        if ref_idx is not None and _cached_res_file is not None:
+            reference = _cached_res_file
+        elif _cached_res_file is not None:
+            reference = _cached_res_file
+        else:
+            # Run baseline to create reference
+            from weco.ext import ProjectExt
+            p = ProjectExt()
+            safe_opts = _apply_memory_guards(
+                dict(base_options), len(_cached_well_list.wells))
+            for k, v in safe_opts.items():
+                try:
+                    p.set_option_ext(k, str(v))
+                except (ValueError, TypeError):
+                    pass
+            p.run(_cached_well_list)
+            reference = p.get_res_file()
+
+        tuner = AutoTuner(
+            well_list=_cached_well_list,
+            reference=reference,
+            param_bounds=bounds,
+            base_options=base_options,
+            misfit_fn=None,  # default marker_offset_misfit
+        )
+
+        best_params = tuner.optimise(max_iter=max_iter, method=method)
+
+        # Sensitivity from history
+        sensitivity = tuner.parameter_sensitivity()
+
+        # Best misfit
+        best_entry = tuner.best_result()
+        convergence = []
+        if tuner.history:
+            _, cum_best = tuner.convergence_curve()
+            convergence = cum_best.tolist()[-10:]  # last 10 points
+
+        return {
+            "status": "ok",
+            "best_params": best_params,
+            "best_misfit": best_entry["misfit"] if best_entry else None,
+            "sensitivity": sensitivity,
+            "convergence_tail": convergence,
+            "iterations": len(tuner.history),
+            "recommendation": (
+                f"Optimal: " + ", ".join(
+                    f"{k}={v:.3f}" for k, v in best_params.items()
+                )
+            ),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("Auto-tune failed")
+        raise HTTPException(500, f"Auto-tune error: {e}")
