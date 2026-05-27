@@ -79,11 +79,11 @@ complexity:
 
 ## Python API Examples
 
-All examples are in `examples/`. Run from within that directory
+All examples are in `demo/`. Run from within that directory
 (they reference `test_wells.txt` locally):
 
 ```bash
-cd examples
+cd demo
 python ex1_run_weco_from_python.py
 ```
 
@@ -260,15 +260,15 @@ All datasets live in `demo/data/`. Each folder contains:
 | **data_set_sigrun** | 2 | North Sea marine shale/sand | GR, NPHI | 2-log well-tie | Real data |
 | **data_set_troll** | 5 | Troll field (categorical) | FACIES, DISTALITY | Categorical + distality (Walther's Law) | Real data |
 
-### Relationship Between `data/` and `examples/`
+### Relationship Between `data/` and `demo/`
 
 | Folder | Purpose | Used by |
-|--------|---------|---------|
-| `data/` | **Datasets** — geological input files (wells, options, results) | Studio demos, `bin/auto_run_examples.py`, your own scripts |
-| `examples/` | **Code examples** — Python scripts showing API usage | Learning the API, extending WeCo |
+|--------|---------|--------|
+| `demo/data/` | **Datasets** — geological input files (wells, options, results) | Studio demos, `bin/auto_run_examples.py`, your own scripts |
+| `demo/` | **Code examples** — Python scripts showing API usage | Learning the API, extending WeCo |
 
-They serve complementary purposes. `data/` is the input; `examples/` shows
-how to *process* that input. Studio can load any dataset from `data/`
+They serve complementary purposes. `demo/data/` is the input; `demo/ex*.py` shows
+how to *process* that input. Studio can load any dataset from `demo/data/`
 directly via its demo picker.
 
 ---
@@ -340,6 +340,64 @@ wf.export_rms("output/")
 - `no_crossing=Biozone` — age constraints
 
 **Output:** Reservoir zonation + horizon picks for Petrel/RMS import.
+
+### Intelligent Workflow — Zero-Config Correlation
+
+**Goal:** Run a complete correlation from raw data with zero manual
+parameter selection using the intelligent pipeline:
+
+```python
+from weco.workflow import CorrelationWorkflow
+
+wf = CorrelationWorkflow("AutoPilot")
+wf.import_las("wells/*.las")
+
+# Screen logs, normalise, auto-configure
+wf.screen_logs()                    # ranks logs by correlation relevance
+wf.condition(normalize="percentile")  # equalise scales
+wf.configure(preset="auto")         # AI-chosen parameters
+
+# Run with diversity analysis
+wf.run()
+diversity = wf.analyse_diversity()  # topology metrics
+
+# Fine-tune if needed
+from weco.ai.auto_tune import AutoTuner
+tuner = AutoTuner(wf.well_list, wf.res_file,
+                  param_bounds={"var-weight": (0.1, 5.0),
+                                "const-gap-cost": (0.0, 8.0)})
+best = tuner.optimise(max_iter=20)
+
+# Re-run with optimal params and export
+wf.configure(**best)
+wf.run()
+wf.export_rms("output/")
+```
+
+**In the GUI:** Click ⚡ **Quick Run** (does steps 1–4 automatically),
+then 🔧 **Fine-Tune** to optimise, then **Export**.
+
+### RDDMS Round-Trip — Cloud Workflow
+
+**Goal:** Load demo data from RDDMS, correlate, push results back:
+
+```python
+from weco.rddms_interface import RddmsInterface
+from weco.workflow import CorrelationWorkflow
+
+# Load from RDDMS
+rddms = RddmsInterface(instance="eqndev")
+wl = rddms.load_wells(dataspace="maap/weco", dataset="shallow_marine")
+
+# Correlate
+wf = CorrelationWorkflow("RDDMS_Demo")
+wf.set_well_list(wl)
+wf.configure(preset="shallow_marine")
+wf.run()
+
+# Push results back as StratigraphicColumn
+rddms.push_results(wf.res_file, dataspace="maap/weco")
+```
 
 ---
 
@@ -439,7 +497,6 @@ viewer.show()
 |--------|----------|---------|
 | `weco.sh` | root | Build, test, run helper (all-in-one) |
 | `auto_run_examples.py` | `bin/` | Run all demo/ examples headless (batch) |
-| `demo_gui.py` | `bin/` | Interactive demo runner GUI (10 datasets) |
 | `demo_rddms.py` | `bin/` | OSDU/RDDMS live demo |
 | `gocad_extract.py` | `bin/` | GOCAD .wl → WeCo converter |
 | `generate_quaternary.py` | `demo/data/data_set_quaternary/` | Generate synthetic Quaternary dataset |

@@ -5,6 +5,14 @@
 > A beginner-friendly introduction for users who are new to
 > stratigraphic well correlation, graph-DTW, and cost functions.
 
+> **Origin & License:**
+> The WeCo correlation engine originates from the
+> [RING team](https://www.ring-team.org/) at Université de Lorraine /
+> ASGA (Association Scientifique pour la Géologie et ses Applications).
+> The core graph-DTW algorithm is based on research by Baville, Lallier,
+> Edwards, Caumon, and Julio at the RING laboratory.
+> See [license.txt](license.txt) for the original ASGA/RING license terms.
+
 ---
 
 ## What is Well Correlation?

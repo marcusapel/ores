@@ -145,6 +145,9 @@ These control the n-best DTW algorithm's quality–speed trade-off.
 | `min_dist` | float | `0.0` | 0–∞ | Minimum cost-distance between two kept paths (diversity filter). 0 = disabled. |
 | `out_nbr_cor` | int | `5` | 1–1000 | Number of alternative correlations in the **final output**. |
 | `out_min_dist` | float | `0.0` | 0–∞ | Minimum cost-distance between output correlations. |
+| `diversity_mode` | string | `""` | `""`, `"topology"`, `"architecture"` | Post-processing diversity strategy (see §2b). |
+| `log_screening` | string | `""` | `""`, `"auto"`, `"report"` | Pre-run log relevance screening (see §3b). |
+| `normalize_mode` | string | `""` | `""`, `"percentile"`, `"zscore"`, `"minmax"` | Cross-well log normalisation before correlation (see §3c). |
 
 ### How they relate
 
@@ -152,7 +155,90 @@ These control the n-best DTW algorithm's quality–speed trade-off.
 DTW step:  explore max_cor paths  →  prune to nbr_cor  →  pass to next merge
                                                               ↓
 Final:     pick out_nbr_cor cheapest (min out_min_dist apart)
+                                                              ↓
+Post:      if diversity_mode → filter by topology or enumerate architectures
 ```
+
+### §2b. Diversity Mode (NEW)
+
+The default k-best algorithm returns cost-ranked paths that typically differ by
+<0.01% in cost — they represent local path variations, not architecturally
+distinct geological models. The `diversity_mode` option adds post-processing:
+
+| Mode | Behaviour | When to use |
+|------|-----------|-------------|
+| `""` | Default: return cost-ranked k-best | Simple problems, data-conclusive cases |
+| `topology` | Filter by topology distance (horizon count, gap fraction, connectivity) | General use — fast, retains only distinct architectures |
+| `architecture` | Re-run with varying `const_gap_cost` (0→5, step=1) to force different horizon counts | Maximum diversity — slower but guarantees different models |
+
+**Topology metrics used:**
+- Horizon count (number of correlation lines)
+- Gap fraction (fraction of well intervals in gaps)
+- Zone size coefficient of variation
+- Connectivity pattern (which well pairs are linked at each level)
+
+### §3b. Log Screening (NEW)
+
+Automatic relevance scoring before running the engine. Prevents costly errors
+like using GR for coal correlation (DEN is correct) or combining logs with
+incompatible scales.
+
+| Mode | Behaviour |
+|------|-----------|
+| `""` | No screening — use all specified logs |
+| `report` | Score all logs, report results, but don't modify options |
+| `auto` | Score logs, **remove irrelevant ones** from the cost function |
+
+Scoring methods: `variance_ratio` (default), `autocorrelation`, `cross_well`.
+
+### §3c. Log Normalisation (NEW)
+
+Cross-well normalisation before multi-log correlation. Critical when combining
+logs with different measurement scales (e.g. GR in API units + NPHI in
+fractional porosity).
+
+| Method | Transform | Best for |
+|--------|-----------|----------|
+| `percentile` | Map P5–P95 to [0,1], clip outliers | General use (robust) |
+| `zscore` | Mean=0, Std=1 | Combining many logs |
+| `minmax` | Global min–max to [0,1] | Simple cases |
+
+### §3d. Auto-Tune (NEW)
+
+Automatic parameter optimisation using differential evolution (via
+`weco.ai.auto_tune.AutoTuner`). Minimises cost of the resulting correlation
+while searching the specified parameter bounds.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `param_bounds` | dict | auto | Parameter ranges to search. Keys = option names, values = (min, max) tuples |
+| `max_iter` | int | 20 | Maximum DE iterations (more = better but slower) |
+| `method` | str | `"de"` | Optimisation method: `"de"` (differential evolution), `"nelder-mead"` |
+
+**Default parameter bounds** (when not specified):
+
+| Parameter | Lower | Upper | Notes |
+|-----------|-------|-------|-------|
+| `var-weight` | 0.1 | 5.0 | Weight for primary log |
+| `var-weight2` | 0.0 | 5.0 | Weight for secondary log (if present) |
+| `const-gap-cost` | 0.0 | 8.0 | Gap penalty |
+| `min-dist` | 0.1 | 0.8 | Path diversity threshold |
+
+**Usage** (Python):
+
+```python
+from weco.ai.auto_tune import AutoTuner
+
+tuner = AutoTuner(well_list, reference_result, param_bounds, base_options)
+optimal = tuner.optimise(max_iter=20, method="de")
+sensitivity = tuner.parameter_sensitivity()
+```
+
+**Usage** (GUI): Click **🔧 Fine-Tune** button on the Run tab. Results display
+optimal parameters and an "Apply & Re-run" button.
+
+**Runtime**: ~20 engine evaluations × single-run time. For a 5-well dataset
+this is typically 5–15 seconds total.
 
 ### Tuning guide
 

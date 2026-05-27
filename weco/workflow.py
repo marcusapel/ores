@@ -1078,6 +1078,46 @@ class CorrelationWorkflow:
         engine = ProjectExt()
         engine.reset_options()
 
+        # ── Pre-run: Log screening and normalisation ──────────────────
+        normalize_mode = self.options.pop("normalize-mode", None)
+        log_screening = self.options.pop("log-screening", None)
+        diversity_mode = self.options.pop("diversity-mode", None)
+
+        # Log screening: auto-detect irrelevant logs
+        if log_screening in ("auto", "report"):
+            from .diversity import screen_logs
+            screening = screen_logs(self.well_list)
+            self._record("log_screening", results=screening)
+            if log_screening == "auto" and hasattr(self, '_cost_logs'):
+                # Remove irrelevant logs from cost function
+                relevant_logs = {r["log"] for r in screening if r["relevant"]}
+                filtered = [(l, w) for l, w in
+                            zip(self._cost_logs, self._cost_weights)
+                            if l in relevant_logs]
+                if filtered:
+                    self._cost_logs = [f[0] for f in filtered]
+                    self._cost_weights = [f[1] for f in filtered]
+                    logger.info(f"Log screening: kept {self._cost_logs}, "
+                                f"removed {[l for l in self._cost_logs if l not in relevant_logs]}")
+
+        # Cross-well normalisation
+        if normalize_mode and normalize_mode in ("percentile", "zscore", "minmax"):
+            from .preprocessing import normalise_log
+            logs_to_norm = getattr(self, '_cost_logs', [])
+            for log_name in logs_to_norm:
+                try:
+                    normalise_log(self.well_list, log_name,
+                                  output_name=f"{log_name}_norm",
+                                  method=normalize_mode)
+                    logger.info(f"Normalised {log_name} → {log_name}_norm ({normalize_mode})")
+                except Exception as e:
+                    logger.warning(f"Normalisation of {log_name} failed: {e}")
+            # Update cost logs to use normalised versions
+            if logs_to_norm and hasattr(self, '_cost_logs'):
+                self._cost_logs = [f"{l}_norm" for l in self._cost_logs]
+
+        # ── Engine configuration ──────────────────────────────────────
+
         # Load options file if provided (must use absolute path)
         if options_file:
             abs_path = os.path.abspath(options_file)
@@ -1114,6 +1154,27 @@ class CorrelationWorkflow:
                       n_results=self.res_file.get_nbr_results()
                       if self.res_file else 0)
 
+        # ── Post-run: Diversity enhancement ───────────────────────────
+        if success and diversity_mode == "topology":
+            from .diversity import filter_diverse_scenarios
+            diverse = filter_diverse_scenarios(
+                self.res_file, self.well_list, max_scenarios=10)
+            self._diversity_report = diverse
+            self._record("diversity_filter",
+                          mode="topology", n_diverse=len(diverse))
+
+        elif success and diversity_mode == "architecture":
+            from .diversity import enumerate_architectures
+            # Re-assemble base options (excluding diversity-mode itself)
+            base_opts = dict(self.options)
+            archs = enumerate_architectures(
+                self.well_list, base_opts,
+                gap_cost_range=(0.0, 5.0, 1.0),
+                n_best_per_architecture=3)
+            self._diversity_report = archs
+            self._record("diversity_filter",
+                          mode="architecture", n_architectures=len(archs))
+
         # Optional sensitivity check
         if sensitivity_check and success:
             from .sensitivity import quick_order_check
@@ -1121,6 +1182,78 @@ class CorrelationWorkflow:
             self._record("sensitivity_check", result=sens)
 
         return self
+
+    # ------------------------------------------------------------------
+    # Step 4b: Diversity Analysis
+    # ------------------------------------------------------------------
+
+    def analyse_diversity(
+        self,
+        *,
+        cross_validate: bool = False,
+        enumerate_architectures: bool = False,
+        gap_cost_range: Tuple[float, float, float] = (0.0, 5.0, 1.0),
+        min_topology_distance: float = 0.1,
+    ) -> dict:
+        """Analyse scenario diversity using topology-aware metrics.
+
+        Post-processes engine results to identify architecturally distinct
+        scenarios and diagnose whether the data is conclusive or the algorithm
+        is limited.
+
+        Parameters
+        ----------
+        cross_validate : bool
+            Run leave-one-out cross-validation (slow for >10 wells).
+        enumerate_architectures : bool
+            Run multiple gap-cost values to force different architectures.
+        gap_cost_range : tuple (start, stop, step)
+            Gap cost values to test during architecture enumeration.
+        min_topology_distance : float
+            Minimum topology distance for diverse scenario selection.
+
+        Returns
+        -------
+        dict
+            Complete diversity analysis report.
+        """
+        if self.res_file is None:
+            raise RuntimeError("Run correlation before analysing diversity")
+
+        from .diversity import analyse_scenario_diversity
+
+        report = analyse_scenario_diversity(
+            self.res_file,
+            self.well_list,
+            options=self.options,
+            run_cross_validation=cross_validate,
+            run_architecture_enum=enumerate_architectures,
+            gap_cost_range=gap_cost_range,
+        )
+
+        self._record("diversity_analysis",
+                      n_diverse=report.get("n_diverse", 0),
+                      diagnosis=report.get("diagnosis", ""),
+                      cost_spread_pct=report.get("cost_spread_pct", 0))
+
+        return report
+
+    def screen_logs(self) -> list:
+        """Screen available logs for correlation relevance.
+
+        Returns sorted list of logs with relevance scores. Use before
+        configure() to choose the best cost logs.
+
+        Returns
+        -------
+        list of dict
+            ``[{"log": str, "score": float, "relevant": bool, "reason": str}]``
+        """
+        if self.well_list is None:
+            raise RuntimeError("Import wells before screening logs")
+
+        from .diversity import screen_logs
+        return screen_logs(self.well_list)
 
     # ------------------------------------------------------------------
     # Step 5: Validate

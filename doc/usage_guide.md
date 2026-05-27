@@ -355,6 +355,113 @@ Scenario 5: Combined best from 2–4
    → Final "recommended" result set
 ```
 
+### NEW: Automated Diversity Analysis
+
+The `weco.diversity` module automates scenario diversity assessment:
+
+```python
+from weco.workflow import CorrelationWorkflow
+
+wf = CorrelationWorkflow("my_project")
+wf.import_wells("wells.txt")
+
+# Screen logs BEFORE choosing cost function
+log_scores = wf.screen_logs()
+# → [{"log": "GR", "score": 0.82, "relevant": True},
+#    {"log": "NPHI", "score": 0.03, "relevant": False, "reason": "flat"}]
+
+wf.configure(
+    preset="shallow_marine",
+    cost_logs=["GR", "RHOB"],  # only relevant logs
+    custom_options={
+        "normalize-mode": "percentile",   # equalise log scales
+        "diversity-mode": "topology",      # topology-aware filtering
+    },
+)
+wf.run()
+
+# Analyse diversity of results
+report = wf.analyse_diversity(
+    cross_validate=True,       # LOO-CV for robustness
+    enumerate_architectures=True,  # multiple gap costs
+    gap_cost_range=(0.0, 8.0, 1.0),
+)
+print(report["diagnosis"])
+# → "ALGORITHM_LIMITED: Multiple scenarios but same architecture..."
+print(report["recommendations"])
+# → ["Run enumerate_architectures() with gap_cost_range=(0, 8, 1)..."]
+```
+
+### Key parameters that create genuinely different scenarios
+
+Based on comprehensive testing across 10 demo datasets:
+
+| Parameter | Effect on Architecture | Impact Level |
+|-----------|----------------------|--------------|
+| `const_gap_cost` | Controls horizon count and lateral continuity | **HIGH** — most impactful single dial |
+| Log choice (`var_data`) | Fundamentally different correlations with different logs | **HIGH** — but only if logs carry independent signal |
+| `order` (distality) | Enforces depositional model, constrains solution space | **MEDIUM** |
+| `no_crossing` constraints | Removes geologically impossible solutions | **MEDIUM** |
+| `min_dist` / `out_min_dist` | Path-space diversity (local variations only) | **LOW** — does not guarantee architectural change |
+| `classification` (FACIES) | Often zero impact (already implicit in log response) | **LOW** |
+| `multiscale` | Convergence to same solution at both scales | **LOW** |
+
+### Fine-Tuning Parameters Automatically
+
+The **Fine-Tune** feature uses differential evolution to optimise log
+weights and gap cost against your current result:
+
+```python
+from weco.ai.auto_tune import AutoTuner
+
+tuner = AutoTuner(
+    well_list=wl,
+    reference=current_res_file,         # your current best result
+    param_bounds={
+        "var-weight": (0.1, 5.0),       # log weight range
+        "var-weight2": (0.0, 5.0),
+        "const-gap-cost": (0.0, 8.0),   # gap cost range
+        "min-dist": (0.1, 0.8),
+    },
+    base_options=current_options,
+)
+best = tuner.optimise(max_iter=20)
+# → {'var-weight': 1.55, 'const-gap-cost': 2.75, ...}
+```
+
+In both GUIs, click **🔧 Fine-Tune** on the Run page. The system runs
+~20 engine iterations and presents optimal parameters with an
+"Apply & Re-run" button.
+
+**When to use Fine-Tune:**
+- After selecting logs and initial gap cost
+- When you have a reasonable baseline but want to refine
+- Before final export (to minimise misfit)
+
+**When NOT to use:**
+- On first run (use Quick Run or AI Suggest first)
+- If you need architecturally different scenarios (use architecture enumeration)
+
+### Complete Intelligent Workflow
+
+The recommended workflow from raw data to export:
+
+```
+┌─────────────────────────────────────────────────┐
+│  1. Import wells (file or RDDMS)                │
+│  2. AI Suggest → screen logs + recommend preprocessing │
+│  3. Apply Conditioning (normalise, Vshale, QC)  │
+│  4. ⚡ Quick Run (or manual configure + Run)     │
+│  5. Diversity Analysis → diagnose conclusive/limited │
+│  6. If limited: Apply Recommendations → Re-run  │
+│  7. Fine-Tune → optimise weights                 │
+│  8. Architecture Enumeration → vary gap cost     │
+│  9. Export best scenarios to RDDMS               │
+└─────────────────────────────────────────────────┘
+```
+
+Each step has a one-click button in both web and desktop GUIs.
+
 ### Evaluating scenario quality
 
 For each scenario, check:
@@ -453,6 +560,49 @@ After running scenarios, work through:
 
 ---
 
+## 10. RDDMS Demo Data
+
+Eleven demo datasets are pre-loaded in three RDDMS (OSDU) instances for
+testing and training:
+
+| Instance | URL | Dataspace |
+|----------|-----|-----------|
+| eqndev | equinorswedev.energy.azure.com | `maap/weco` |
+| interop | admeinterop.energy.azure.com | `maap/weco` |
+| preship | osdu-ship.msft-osdu-test.org | `maap/weco` |
+
+**Available datasets:**
+
+| Dataset | Wells | Logs | Description |
+|---------|-------|------|-------------|
+| shallow_marine | 6 | GR, RT, RHOB, NPHI, DT, FACIES | North Sea shelf |
+| coal | 6 | GR, DEN, FACIES | Coal measures |
+| sigrun | 6 | GR | Deep marine turbidites |
+| delta | 6 | GR, DEN, NPHI | Deltaic sequence |
+| fluvial | 20 | GR, FACIES | Channel-belt complex |
+| bryson | 5 | GR | Synthetic (with constraints) |
+| troll | 5 | FACIES | Categorical-only |
+| hugin | 5 | GR, RT | Shallow marine w/ distality |
+| quaternary | 4 | GR | Glacial sequence |
+| chalk | 4 | GR, RT | Pelagic carbonates |
+| barents_sea | 5 | GR, RT, NPHI | Arctic shelf |
+
+**Loading demo data in the web GUI:**
+1. Go to Data tab → "Import from RDDMS"
+2. Select instance (eqndev/interop/preship)
+3. Browse dataspace `maap/weco` → choose dataset
+4. Wells and logs are loaded automatically
+
+**Loading from Python:**
+```python
+from weco.rddms_interface import RddmsInterface
+
+rddms = RddmsInterface(instance="eqndev")
+wl = rddms.load_wells(dataspace="maap/weco", dataset="shallow_marine")
+```
+
+---
+
 ## See Also
 
 - [Parameter Reference](parameters.md) — exhaustive parameter documentation
@@ -460,3 +610,4 @@ After running scenarios, work through:
 - [Geology Primer](geology_primer.md) — introduction to DTW correlation
 - [Formats](formats.md) — file format specifications
 - [Sigrun Demo](../demo/data/data_set_sigrun/) — real-world example with 6 scenarios
+- [Demo Results Analysis](demo_results_analysis.md) — quantitative analysis of all demo runs
