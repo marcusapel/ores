@@ -247,9 +247,12 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
     def set_wells(self, wl: Optional[WellList]):
         self._wells = wl
         self._well_order = None
+        self._well_axes.clear()  # reset saved zoom — data changed
         self._auto_configure()
 
     def set_result(self, rf: Optional[ResFile], cor_index: int = 0):
+        if rf is not self._res:
+            self._well_axes.clear()  # reset saved zoom — result identity changed
         self._res = rf
         self._cor_index = cor_index
 
@@ -497,12 +500,22 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                           color="#555")
 
         # Restore previous y-axis view limits (preserves user zoom/pan)
+        # Only restore if the saved limits are within the new data range
+        # (prevents stale absolute-depth limits from overriding aligned limits)
         if saved_ylim is not None and self._well_axes:
-            for ax_list in self._well_axes:
-                for ax in ax_list:
-                    ax.set_ylim(saved_ylim)
-            for gap_ax, *_ in self._gap_axes:
-                gap_ax.set_ylim(saved_ylim)
+            new_lo = min(y_lim)
+            new_hi = max(y_lim)
+            old_lo = min(saved_ylim)
+            old_hi = max(saved_ylim)
+            new_range = new_hi - new_lo
+            # Restore only if saved limits are a subset/zoom of the new range
+            if (new_range > 0 and old_lo >= new_lo - new_range * 0.1
+                    and old_hi <= new_hi + new_range * 0.1):
+                for ax_list in self._well_axes:
+                    for ax in ax_list:
+                        ax.set_ylim(saved_ylim)
+                for gap_ax, *_ in self._gap_axes:
+                    gap_ax.set_ylim(saved_ylim)
 
         self.draw()
 
