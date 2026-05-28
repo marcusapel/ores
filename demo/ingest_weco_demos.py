@@ -39,7 +39,7 @@ from typing import Any, Dict, List, Optional
 # ── Paths ─────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
-WECO_ROOT = REPO_ROOT / "weco_engine"   # submodule
+WECO_ROOT = Path(os.environ["WECO_ROOT"]) if "WECO_ROOT" in os.environ else REPO_ROOT / "weco_engine"
 if not WECO_ROOT.exists():
     # Try local weco checkout
     WECO_ROOT = Path(os.environ.get("WECO_ROOT", Path.home() / "weco"))
@@ -75,9 +75,9 @@ DATASETS = {
             "title": "Distality Cost (Walther's Law)"},
     "biozone_distality": {"path": "demo/data/data_set_biozone_distality", "wells_file": "wells.txt",
             "title": "Biozone No-Crossing + Distality"},
-    "coal": {"path": "demo/data/data_set_coal", "wells_file": "wells_10.txt",
+    "coal": {"path": "demo/data/data_set_coal", "wells_file": "wells_demo.txt",
              "title": "Coal Basin – Seam Correlation"},
-    "quaternary": {"path": "demo/data/data_set_quaternary", "wells_file": "wells_20.txt",
+    "quaternary": {"path": "demo/data/data_set_quaternary", "wells_file": "wells_demo.txt",
                    "title": "Quaternary – Hydrogeology"},
     "shallow_marine": {"path": "demo/data/data_set_shallow_marine", "wells_file": "wells.txt",
                        "title": "Shallow Marine – Reservoir"},
@@ -93,6 +93,8 @@ DATASETS = {
               "title": "Troll – North Sea"},
     "hugin_tidal": {"path": "demo/data/data_set_hugin_tidal", "wells_file": "facies.wells.txt",
                     "title": "Hugin Fm – Tidal Distality (Real Wells)"},
+    "carbonate": {"path": "demo/data/data_set_carbonate", "wells_file": "wells_demo.txt",
+                  "title": "Carbonate – Platform"},
 }
 
 
