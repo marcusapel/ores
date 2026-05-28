@@ -1066,6 +1066,14 @@ def _build_wells_plot_data(wl) -> list:
     return wells_plot_data
 
 
+@router.post("/cancel")
+async def weco_cancel():
+    """Cancel a running correlation (if any)."""
+    from weco.api import cancel_running_engine
+    aborted = cancel_running_engine()
+    return {"cancelled": aborted}
+
+
 @router.post("/run")
 async def weco_run(req: WecoRunRequest, request: Request):
     """Run correlation on previously imported wells.

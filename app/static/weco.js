@@ -50,6 +50,7 @@
   // Run tab
   const runSummary = $('#run-summary');
   const btnRun = $('#btn-run');
+  const btnCancel = $('#btn-cancel-run');
   const btnQuickRun = $('#btn-quick-run');
   const btnRunDemo = $('#btn-run-demo');
   const runSpin = $('#run-spinner');
@@ -801,6 +802,10 @@
   btnRun.addEventListener('click', () => runCorrelation());
   if (btnRunDemo) btnRunDemo.addEventListener('click', () => runDemo());
   btnQuickRun.addEventListener('click', () => quickRun());
+  if (btnCancel) btnCancel.addEventListener('click', async () => {
+    try { await api('POST', '/cancel', {}); } catch(e) {}
+    engineLog.textContent += '\n⚠ Cancel requested…\n';
+  });
 
   async function quickRun() {
     switchTab('run');
@@ -843,6 +848,7 @@
     runProgress.classList.add('indeterminate');
     setStatus(runError, '', '');
     btnRun.disabled = true;
+    if (btnCancel) btnCancel.style.display = 'inline-block';
     engineLog.textContent = 'Starting correlation engine...\n';
 
     const options = gatherOptions();
@@ -869,6 +875,7 @@
       runProgress.style.display = 'none';
       runProgress.classList.remove('indeterminate');
       btnRun.disabled = false;
+      if (btnCancel) btnCancel.style.display = 'none';
     }
   }
 
