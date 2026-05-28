@@ -94,22 +94,7 @@ WELL_COLORS = [
     "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
 ]
 
-RESET_OPTS = {
-    "no_crossing": "", "no_crossing2": "", "no_crossing3": "",
-    "same_region": "", "same_region2": "", "same_region3": "",
-    "polarity_region": "", "var_region": "",
-    "var_data": "", "var_data2": "", "var_data3": "",
-    "var_data4": "", "var_data5": "",
-    "var_weight": 1.0, "var_weight2": 1.0, "var_weight3": 1.0,
-    "var_weight4": 1.0, "var_weight5": 1.0,
-    "dist_distal": "", "dist_facies": "",
-    "gap_cost_func": "", "gap_cost_func_mult": 1.0,
-    "const_gap_cost": 0.0, "const_gap_cost_start": -1.0,
-    "const_gap_cost_end": -1.0,
-    "multi_dist_distal": "", "multi_dist_facies": "",
-    "b3d_curve_dip": "", "b3d_curve_azimuth": "",
-    "b3d_curve_depth": "", "b3d_curve_facies": "",
-}
+from weco.ext import RESET_OPTS  # noqa: E402  — single source for engine resets
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  .weco.env loader — populate os.environ from project secrets file
@@ -2028,8 +2013,9 @@ class _PlotRenderWorker(QThread):
                 self._well_list, self._res_file, self._title, self._cor_idx)
             if png:
                 self.finished.emit(png, self._cor_idx)
-        except Exception:
-            pass
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
 
 
 class EngineWorker(QThread):
@@ -6133,6 +6119,26 @@ class WeCoStudio(QMainWindow):
         # Apply OS-detected theme on startup
         if self._dark_mode:
             self._apply_dark_palette()
+
+    def closeEvent(self, event):
+        """Ensure all background threads are stopped before exit."""
+        workers = []
+        # RunPage engine worker
+        if hasattr(self, '_pages'):
+            for page in self._pages.values() if isinstance(self._pages, dict) else []:
+                for attr in ('_worker', '_plot_worker', '_rddms_worker'):
+                    w = getattr(page, attr, None)
+                    if w is not None and w.isRunning():
+                        workers.append(w)
+        # Also check direct attributes on all children
+        for child in self.findChildren(QThread):
+            if child.isRunning():
+                workers.append(child)
+        for w in workers:
+            w.quit()
+        for w in workers:
+            w.wait(3000)  # 3s max per worker
+        event.accept()
 
     @staticmethod
     def _detect_os_dark_mode() -> bool:
