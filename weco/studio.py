@@ -4725,6 +4725,14 @@ class ResultsPage(QWidget):
         self._well_list = well_list
         self._title = title
 
+        # Reset stale state from previous run/demo
+        self._tract_overlay_cb.blockSignals(True)
+        self._tract_overlay_cb.setChecked(False)
+        self._tract_overlay_cb.blockSignals(False)
+        self._sbs_left.setText("Load a reference correlation\nto compare side-by-side.")
+        self._sbs_right.setText("Current WeCo result\nwill appear here.")
+        self._wheeler_pending = None
+
         if res_file is None or res_file.get_nbr_results() == 0:
             self.plot_label.setText("No results to display.")
             return
@@ -5105,6 +5113,18 @@ class ResultsPage(QWidget):
         """Re-render with current well selection and order."""
         if self._res_file is not None:
             self._render(self.cor_spin.value())
+            # Propagate to professional viewer
+            if self._corplot is not None:
+                try:
+                    self._corplot.set_result(self._res_file, self.cor_spin.value())
+                except Exception:
+                    pass
+            # Propagate to legacy viewer
+            if self._resview is not None:
+                try:
+                    self._resview.unlock_update()
+                except Exception:
+                    pass
 
     def _get_visible_well_names(self):
         """Return list of selected well names in display order, or None for all."""
@@ -6819,8 +6839,10 @@ class WeCoStudio(QMainWindow):
             if self._current_demo:
                 title = self._current_demo["title"]
             self.page_results.show_result(res_file, well_list, title)
-            # Record in run history
+            # Save options for diversity analysis
             opts = self.page_params.get_opts()
+            self.page_results._last_options = opts
+            # Record in run history
             elapsed_ms = 0
             try:
                 # Extract elapsed time from RunPage status label text

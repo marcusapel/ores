@@ -15,6 +15,19 @@ including partial copies or modified versions thereof.
 
 */
 #include "ccf_part.h"
+#include <csignal>
+#include <atomic>
+
+namespace {
+	static std::atomic<bool> s_sigint_received{false};
+	static WeCo::Project* s_running_project = nullptr;
+
+	void sigint_handler(int) {
+		s_sigint_received = true;
+		if (s_running_project && s_running_project->scheduler())
+			s_running_project->scheduler()->request_abort();
+	}
+}
 
 namespace WeCo {
 
@@ -43,13 +56,41 @@ public:
 	}
 
 	bool py_run_file(const std::string& data_file) {
-		py::gil_scoped_release rel;
-		return run(data_file);
+		s_sigint_received = false;
+		s_running_project = this;
+		auto old_handler = std::signal(SIGINT, sigint_handler);
+		bool ok;
+		{
+			py::gil_scoped_release rel;
+			ok = run(data_file);
+		}
+		std::signal(SIGINT, old_handler);
+		s_running_project = nullptr;
+		if (s_sigint_received) {
+			throw py::error_already_set();  // raises KeyboardInterrupt
+		}
+		return ok;
 	}
 
 	bool py_run_welllist(const WellList& well_list) {
-		py::gil_scoped_release rel;
-		return run(well_list);
+		s_sigint_received = false;
+		s_running_project = this;
+		auto old_handler = std::signal(SIGINT, sigint_handler);
+		bool ok;
+		{
+			py::gil_scoped_release rel;
+			ok = run(well_list);
+		}
+		std::signal(SIGINT, old_handler);
+		s_running_project = nullptr;
+		if (s_sigint_received) {
+			throw py::error_already_set();
+		}
+		return ok;
+	}
+
+	void py_request_abort() {
+		request_abort();
 	}
 
 

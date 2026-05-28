@@ -105,6 +105,7 @@ MultiScheduler::MultiScheduler(unsigned n):
 
 void MultiScheduler::run_() {
 	stop_ = false;
+	abort_requested_ = false;
 	running_workers_ = 0;
 
 	workers_.reserve(nbr_threads_);
@@ -122,8 +123,10 @@ void MultiScheduler::work(unsigned n) {
     	Task * task;
     	{
 			std::unique_lock<std::mutex> lock(mutex_);
-			condition_.wait(lock,[this]{ return this->stop_ || !this->task_queue_.empty(); });
-			if(stop_ && task_queue_.empty())
+			condition_.wait(lock,[this]{ return this->stop_ || this->abort_requested_ || !this->task_queue_.empty(); });
+			if((stop_ || abort_requested_) && task_queue_.empty())
+			  return;
+			if(abort_requested_)
 			  return;
 			task = task_queue_.front();
 			task_queue_.pop();
