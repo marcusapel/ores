@@ -4579,13 +4579,13 @@ class ResultsPage(QWidget):
         bottom_lo.setContentsMargins(0, 4, 0, 0)
         bottom_lo.setSpacing(4)
 
-        # Summary table
+        # Summary table (hidden — shown via popup button)
         self.summary_table = QTableWidget()
         self.summary_table.setMaximumHeight(160)
         self.summary_table.setAlternatingRowColors(True)
-        bottom_lo.addWidget(self.summary_table)
+        self.summary_table.setVisible(False)
 
-        # ─ Prev/Next navigation (below summary table, side-by-side) ─
+        # ─ Prev/Next navigation + popup buttons ─
         nav_bar = QHBoxLayout()
         nav_bar.addStretch()
         self._btn_prev = QPushButton("◀ Prev")
@@ -4594,6 +4594,17 @@ class ResultsPage(QWidget):
         self._btn_next = QPushButton("Next ▶")
         self._btn_next.clicked.connect(self._cor_next)
         nav_bar.addWidget(self._btn_next)
+        nav_bar.addStretch()
+        # Cost Table popup button
+        btn_cost_table = QPushButton("📊 Cost Table")
+        btn_cost_table.setToolTip("Show the correlation cost table as a popup")
+        btn_cost_table.clicked.connect(self._show_cost_table_popup)
+        nav_bar.addWidget(btn_cost_table)
+        # Well Map popup button
+        btn_well_map = QPushButton("🗺 Well Map")
+        btn_well_map.setToolTip("Show a map with well positions and the current panel section")
+        btn_well_map.clicked.connect(self._show_well_map_popup)
+        nav_bar.addWidget(btn_well_map)
         nav_bar.addStretch()
         bottom_lo.addLayout(nav_bar)
 
@@ -4908,6 +4919,147 @@ class ResultsPage(QWidget):
         val = self.cor_spin.value()
         if val < self.cor_spin.maximum():
             self.cor_spin.setValue(val + 1)
+
+    # ─── Cost Table Popup ─────────────────────────────────────────────
+
+    def _show_cost_table_popup(self):
+        """Show the correlation cost table in a popup dialog."""
+        if self._res_file is None or self._res_file.get_nbr_results() == 0:
+            QMessageBox.information(self, "Cost Table", "No results available.")
+            return
+
+        n = min(self._res_file.get_nbr_results(), 20)
+        n_wells = self._res_file.nbr_well()
+        well_names = [w.name for w in self._well_list.wells[:n_wells]] if self._well_list else [f"W{i}" for i in range(n_wells)]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Correlation Cost Table")
+        dlg.setMinimumSize(500, 300)
+        dlg.resize(700, 450)
+        lo = QVBoxLayout(dlg)
+
+        table = QTableWidget()
+        table.setAlternatingRowColors(True)
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["Correlation #", "Cost", "Nodes", "Quality"])
+        table.setRowCount(n)
+        for i in range(n):
+            cost = self._res_file.get_result_cost(i)
+            path = self._res_file.get_result_full_path(i)
+            table.setItem(i, 0, QTableWidgetItem(str(i)))
+            table.setItem(i, 1, QTableWidgetItem(f"{cost:.6f}"))
+            table.setItem(i, 2, QTableWidgetItem(str(len(path))))
+            table.setItem(i, 3, QTableWidgetItem("—"))
+        table.resizeColumnsToContents()
+        lo.addWidget(table)
+
+        # Also show the line-level detail for the current correlation
+        cur_idx = self.cor_spin.value()
+        path = self._res_file.get_result_full_path(cur_idx)
+        if path and n_wells > 0:
+            lo.addWidget(QLabel(f"<b>Correlation #{cur_idx} — line details:</b>"))
+            detail_table = QTableWidget()
+            detail_table.setAlternatingRowColors(True)
+            detail_table.setColumnCount(n_wells + 1)
+            detail_table.setHorizontalHeaderLabels(["Line"] + well_names)
+            # Deduplicate path
+            deduped = []
+            prev = None
+            for step in path:
+                if step != prev:
+                    deduped.append(step)
+                    prev = step
+            detail_table.setRowCount(len(deduped))
+            for li, node in enumerate(deduped):
+                detail_table.setItem(li, 0, QTableWidgetItem(str(li + 1)))
+                for wi in range(n_wells):
+                    val = node[wi] if wi < len(node) else 0
+                    item = QTableWidgetItem(str(val))
+                    if val == 0:
+                        item.setForeground(QColor("#999999"))
+                    detail_table.setItem(li, wi + 1, item)
+            detail_table.resizeColumnsToContents()
+            lo.addWidget(detail_table)
+
+        btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        btn_box.rejected.connect(dlg.close)
+        lo.addWidget(btn_box)
+        dlg.show()
+
+    # ─── Well Map Popup ───────────────────────────────────────────────
+
+    def _show_well_map_popup(self):
+        """Show a map with well positions and the current panel section."""
+        if self._well_list is None or len(self._well_list.wells) == 0:
+            QMessageBox.information(self, "Well Map", "No well data loaded.")
+            return
+
+        wells = self._well_list.wells
+        pos_wells = [(w.name, w.x, w.y) for w in wells]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Well Location Map")
+        dlg.setMinimumSize(600, 500)
+        dlg.resize(750, 600)
+        lo = QVBoxLayout(dlg)
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        canvas = FigureCanvasQTAgg(fig)
+        lo.addWidget(canvas, 1)
+
+        xs = [p[1] for p in pos_wells]
+        ys = [p[2] for p in pos_wells]
+        names = [p[0] for p in pos_wells]
+
+        # Plot all wells
+        ax.scatter(xs, ys, c='#4BB748', s=60, zorder=5, edgecolors='white', linewidths=1.2)
+        for i, name in enumerate(names):
+            ax.annotate(name, (xs[i], ys[i]), textcoords="offset points",
+                        xytext=(6, 4), fontsize=9)
+
+        # Draw current panel section (well order from correlation)
+        n_wells = self._res_file.nbr_well() if self._res_file else len(wells)
+        panel_coords = [(w.x, w.y) for w in wells[:n_wells]]
+        panel_well_names = [w.name for w in wells[:n_wells]]
+
+        if len(panel_coords) >= 2:
+            px = [c[0] for c in panel_coords]
+            py = [c[1] for c in panel_coords]
+            ax.plot(px, py, '--', color='#0078d4', linewidth=2, zorder=4, label='Panel section')
+            ax.scatter(px, py, c='#0078d4', s=80, zorder=6, edgecolors='white', linewidths=1.5)
+            # Arrow at end
+            if len(px) >= 2:
+                ax.annotate('', xy=(px[-1], py[-1]),
+                            xytext=(px[-2], py[-2]),
+                            arrowprops=dict(arrowstyle='->', color='#0078d4', lw=2))
+            # Re-label panel wells bold
+            for i, name in enumerate(panel_well_names):
+                ax.annotate(name, (px[i], py[i]), textcoords="offset points",
+                            xytext=(6, -10), fontsize=9, fontweight='bold', color='#0078d4')
+
+        ax.set_xlabel('X (Easting)')
+        ax.set_ylabel('Y (Northing)')
+        ax.set_title('Well Location Map')
+        ax.set_aspect('equal', adjustable='datalim')
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc='upper right')
+
+        # Scale bar
+        x_range = max(xs) - min(xs) if len(xs) > 1 else 1
+        scale_len = 10 ** int(np.log10(max(x_range * 0.3, 1)))
+        sb_x = min(xs) + x_range * 0.05
+        sb_y = min(ys) - (max(ys) - min(ys)) * 0.08 if len(ys) > 1 else min(ys) - 1
+        ax.plot([sb_x, sb_x + scale_len], [sb_y, sb_y], 'k-', linewidth=3)
+        ax.text(sb_x + scale_len / 2, sb_y - (max(ys) - min(ys)) * 0.03,
+                f'{scale_len} m', ha='center', fontsize=8)
+
+        fig.tight_layout()
+        canvas.draw()
+
+        btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        btn_box.rejected.connect(dlg.close)
+        lo.addWidget(btn_box)
+        dlg.show()
 
     # ─── Well Selection / Ordering ────────────────────────────────────
 
