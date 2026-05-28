@@ -259,6 +259,14 @@ public:
 	void clear_order_func() 
 		{ order_func_ =nullptr;}
 
+	/// Access scheduler (may be null before run)
+	CorScheduler* scheduler() const { return scheduler_; }
+
+	/// Request abort of running correlation
+	void request_abort() {
+		if (scheduler_) scheduler_->request_abort();
+	}
+
 private :
 	class Task : public CorScheduler::Task {
 	public :

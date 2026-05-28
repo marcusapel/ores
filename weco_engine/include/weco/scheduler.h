@@ -21,6 +21,7 @@ including partial copies or modified versions thereof.
 #include <weco.h>
 #include <queue>
 #include <memory>
+#include <atomic>
 #include <stdexcept>
 #include <functional>
 namespace WeCo {
@@ -136,6 +137,9 @@ public :
 
 	virtual ~CorScheduler();
 
+	/// Request abort from external thread (e.g. Python signal handler)
+	void request_abort() { abort_requested_ = true; }
+	bool is_abort_requested() const { return abort_requested_; }
 
 	void dump_tasks(std::ostream&stream)const;
 
@@ -155,6 +159,7 @@ protected :
 	std::vector<std::unique_ptr<Task>> tasks_;
 	std::queue<Task*> task_queue_;
 	Task * final_task_=nullptr;
+	std::atomic<bool> abort_requested_{false};
 
 	void task_end(Task *);
 
