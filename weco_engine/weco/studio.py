@@ -2027,6 +2027,12 @@ class EngineWorker(QThread):
         super().__init__(parent)
         self.wells_path = str(wells_path)
         self.opts = dict(opts)
+        self._project = None
+
+    def request_abort(self):
+        """Thread-safe abort of running engine."""
+        if self._project is not None:
+            self._project.request_abort()
 
     def run(self):
         import io, sys
@@ -2054,6 +2060,7 @@ class EngineWorker(QThread):
             sys.stderr = cap
 
             project = ProjectExt()
+            self._project = project
             project.set_options_ext(**RESET_OPTS)
             project.set_options_ext(**self.opts)
             project.run(self.wells_path)
@@ -4332,6 +4339,16 @@ class RunPage(QWidget):
         )
         btn_lo.addWidget(self.btn_run)
 
+        self.btn_cancel = QPushButton("  Cancel  ")
+        self.btn_cancel.setStyleSheet(
+            "QPushButton {font-weight:bold; padding:10px 16px; "
+            "background-color:#c62828; color:white; border-radius:4px;} "
+            "QPushButton:hover {background-color:#e53935;}"
+        )
+        self.btn_cancel.setVisible(False)
+        self.btn_cancel.clicked.connect(self._cancel_run)
+        btn_lo.addWidget(self.btn_cancel)
+
         # Quick Run — zero-config intelligent correlation
         self.btn_quick_run = QPushButton("  ⚡ Quick Run  ")
         self.btn_quick_run.setToolTip(
@@ -4400,6 +4417,7 @@ class RunPage(QWidget):
         self.status_label.setText("Running…")
         self.progress.setVisible(True)
         self.btn_run.setEnabled(False)
+        self.btn_cancel.setVisible(True)
         self.log.appendPlainText(f"Wells: {wells_path}")
         self.log.appendPlainText(f"Options: {opts}\n")
 
@@ -4411,9 +4429,17 @@ class RunPage(QWidget):
     def _on_log(self, line):
         self.log.appendPlainText(line)
 
+    def _cancel_run(self):
+        """Abort the currently running correlation engine."""
+        if self._worker is not None:
+            self._worker.request_abort()
+            self.status_label.setText("Cancelling…")
+            self.log.appendPlainText("\n⚠ Abort requested…")
+
     def _on_finished(self, res_file, well_list, elapsed):
         self.progress.setVisible(False)
         self.btn_run.setEnabled(True)
+        self.btn_cancel.setVisible(False)
         if res_file is not None and res_file.get_nbr_results() > 0:
             cost = res_file.get_result_cost(0)
             n = res_file.get_nbr_results()

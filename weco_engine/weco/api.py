@@ -330,6 +330,21 @@ def _validate_options_against_wells(options: dict, well_list) -> None:
 # Canonical option-reset dict — ensures no state leaks between runs.
 from weco.ext import RESET_OPTS as _RESET_OPTS
 
+# Reference to the currently running ProjectExt (for cancel support).
+_active_project = None
+
+
+def cancel_running_engine():
+    """Abort the currently running correlation engine (thread-safe).
+
+    Returns True if an abort was requested, False if nothing was running.
+    """
+    proj = _active_project
+    if proj is not None:
+        proj.request_abort()
+        return True
+    return False
+
 
 def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
     """Run the WeCo engine and return (ResFile, ResAndWL, elapsed_ms).
@@ -340,6 +355,7 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
     3. ``_validate_well_list`` rejects <2 wells / <2 markers.
     4. ``_validate_options_against_wells`` rejects missing data/region refs.
     """
+    global _active_project
     from weco.data import ResAndWL
     from weco.ext import ProjectExt
 
@@ -347,6 +363,7 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
     _validate_well_list(well_list)
 
     proj = ProjectExt()
+    _active_project = proj
 
     # --- reset ALL global options to compiled defaults ---
     proj.reset_options()
@@ -363,7 +380,10 @@ def _run_engine(well_list, options: dict, options_file: Optional[str] = None):
         proj.set_option_ext(key, val)
 
     t0 = time.perf_counter()
-    proj.run(well_list)
+    try:
+        proj.run(well_list)
+    finally:
+        _active_project = None
     elapsed = (time.perf_counter() - t0) * 1000.0
 
     rf = proj.get_res_file()

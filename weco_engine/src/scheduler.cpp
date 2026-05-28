@@ -51,8 +51,10 @@ private:
 
 
 void MonoScheduler::run_() {
+	abort_requested_ = false;
 
 	while (!task_queue_.empty()) {
+		if (abort_requested_) return;
 		Task * task =task_queue_.front();
 		task_queue_.pop();
 
