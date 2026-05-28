@@ -1236,23 +1236,47 @@
   const btnViewPlot = $('#btn-view-plot');
   const btnViewComposite = $('#btn-view-composite');
   const btnViewTable = $('#btn-view-table');
+  const btnViewMap = $('#btn-view-map');
 
   btnViewPlot.addEventListener('click', () => {
     resultsPlot.style.display = 'block';
     resultsComposite.style.display = 'none';
-    resCards.style.display = 'none';
   });
   btnViewComposite.addEventListener('click', () => {
     resultsPlot.style.display = 'none';
     resultsComposite.style.display = 'block';
-    resCards.style.display = 'none';
     drawCompositeView();
   });
+  // Table button → popup modal
   btnViewTable.addEventListener('click', () => {
-    resultsPlot.style.display = 'none';
-    resultsComposite.style.display = 'none';
-    resCards.style.display = 'block';
+    if (!correlationResult) return;
+    const idx = parseInt(resSelector.value) || 0;
+    const results = correlationResult.results || [];
+    const names = correlationResult.well_names || [];
+    renderCostTableModal(results, idx, names);
+    const modal = $('#modal-cost-table');
+    modal.style.display = 'flex';
   });
+  // Well Map button → popup modal
+  if (btnViewMap) {
+    btnViewMap.addEventListener('click', () => {
+      const modal = $('#modal-well-map');
+      modal.style.display = 'flex';
+      drawWellMap();
+    });
+  }
+
+  // ── Modal close handlers ────────────────────────────────────────
+  const modalCostTable = $('#modal-cost-table');
+  const modalWellMap = $('#modal-well-map');
+  if (modalCostTable) {
+    $('#modal-cost-table-close').addEventListener('click', () => { modalCostTable.style.display = 'none'; });
+    modalCostTable.addEventListener('click', (e) => { if (e.target === modalCostTable) modalCostTable.style.display = 'none'; });
+  }
+  if (modalWellMap) {
+    $('#modal-well-map-close').addEventListener('click', () => { modalWellMap.style.display = 'none'; });
+    modalWellMap.addEventListener('click', (e) => { if (e.target === modalWellMap) modalWellMap.style.display = 'none'; });
+  }
 
   function drawCompositeView() {
     if (!correlationResult) return;
@@ -3157,5 +3181,263 @@
     } catch(e) { /* non-critical — labels already have basic tooltips */ }
   }
   loadOptionsHelp();
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Cost Table Modal (popup)
+  // ═══════════════════════════════════════════════════════════════════
+
+  function renderCostTableModal(results, idx, wellNames) {
+    const body = $('#modal-cost-table-body');
+    if (!body) return;
+    const r = results[idx];
+    if (!r) { body.innerHTML = '<em>No result selected.</em>'; return; }
+    const lines = r.lines || [];
+    const names = wellNames || [];
+    let html = `<div style="margin-bottom:.5rem; font-size:12.5px;">
+      <strong>#${idx+1}</strong> &mdash; Cost: ${r.cost != null ? r.cost.toFixed(4) : '-'} | ${lines.length} correlation lines
+    </div>`;
+    if (lines.length && names.length) {
+      html += '<table class="corr-table"><thead><tr><th>Line</th>';
+      names.forEach(n => { html += `<th>${esc(n)}</th>`; });
+      html += '</tr></thead><tbody>';
+      lines.forEach((line, li) => {
+        const markers = line.markers || line;
+        const lt = line.line_type || '';
+        const rowColor = lt === 'boundary' ? '#e8f5e9' : lt === 'gap' ? '#fff3e0' : '';
+        html += `<tr style="background:${rowColor}"><td style="font-weight:600;">${li+1}</td>`;
+        if (Array.isArray(markers)) {
+          markers.forEach((v, wi) => {
+            const color = v === 0 ? '#999' : (lt === 'boundary' ? '#2e7d32' : '#333');
+            html += `<td style="color:${color};">${v != null ? v : '-'}</td>`;
+          });
+        }
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      html += `<div style="margin-top:.5rem; font-size:11px; color:#605e5c;">
+        <span style="display:inline-block; width:12px; height:12px; background:#e8f5e9; border:1px solid #ccc; vertical-align:middle;"></span> boundary &nbsp;
+        <span style="display:inline-block; width:12px; height:12px; background:#fff3e0; border:1px solid #ccc; vertical-align:middle;"></span> gap &nbsp;
+        <span style="display:inline-block; width:12px; height:12px; background:#fff; border:1px solid #ccc; vertical-align:middle;"></span> framework
+      </div>`;
+    } else {
+      html += '<em>No correlation lines available.</em>';
+    }
+    body.innerHTML = html;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Well Location Map (popup)
+  // ═══════════════════════════════════════════════════════════════════
+
+  function drawWellMap() {
+    const canvas = $('#well-map-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const cw = rect.width > 0 ? rect.width : 600;
+    const ch = rect.height > 0 ? rect.height : 500;
+    canvas.width = cw * dpr;
+    canvas.height = ch * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Gather well positions from wellDetails
+    const wells = wellDetails || [];
+    if (!wells.length) {
+      ctx.fillStyle = '#605e5c';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No well data loaded.', cw / 2, ch / 2);
+      return;
+    }
+
+    // Filter wells with valid coordinates
+    const posWells = wells.filter(w => w.x != null && w.y != null && (w.x !== 0 || w.y !== 0));
+    if (posWells.length === 0) {
+      ctx.fillStyle = '#605e5c';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No well coordinates available.', cw / 2, ch / 2);
+      return;
+    }
+
+    // Compute extents
+    const xs = posWells.map(w => w.x);
+    const ys = posWells.map(w => w.y);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xRange = xMax - xMin || 1;
+    const yRange = yMax - yMin || 1;
+
+    // Map margins
+    const margin = { top: 40, right: 40, bottom: 50, left: 60 };
+    const plotW = cw - margin.left - margin.right;
+    const plotH = ch - margin.top - margin.bottom;
+
+    // Uniform scale (proper aspect ratio)
+    const scaleX = plotW / xRange;
+    const scaleY = plotH / yRange;
+    const scale = Math.min(scaleX, scaleY);
+    const offsetX = margin.left + (plotW - xRange * scale) / 2;
+    const offsetY = margin.top + (plotH - yRange * scale) / 2;
+
+    function toCanvasX(x) { return offsetX + (x - xMin) * scale; }
+    function toCanvasY(y) { return offsetY + (yMax - y) * scale; } // Y inverted (north up)
+
+    // Draw axes
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, ch - margin.bottom);
+    ctx.lineTo(cw - margin.right, ch - margin.bottom);
+    ctx.stroke();
+
+    // Axis labels and ticks
+    ctx.fillStyle = '#333';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    const nTicksX = Math.min(6, Math.max(2, Math.ceil(plotW / 80)));
+    for (let i = 0; i <= nTicksX; i++) {
+      const val = xMin + (xRange * i / nTicksX);
+      const cx = toCanvasX(val);
+      ctx.beginPath();
+      ctx.moveTo(cx, ch - margin.bottom);
+      ctx.lineTo(cx, ch - margin.bottom + 5);
+      ctx.stroke();
+      ctx.fillText(val.toFixed(0), cx, ch - margin.bottom + 16);
+    }
+    ctx.textAlign = 'right';
+    const nTicksY = Math.min(6, Math.max(2, Math.ceil(plotH / 80)));
+    for (let i = 0; i <= nTicksY; i++) {
+      const val = yMin + (yRange * i / nTicksY);
+      const cy = toCanvasY(val);
+      ctx.beginPath();
+      ctx.moveTo(margin.left - 5, cy);
+      ctx.lineTo(margin.left, cy);
+      ctx.stroke();
+      ctx.fillText(val.toFixed(0), margin.left - 8, cy + 4);
+    }
+
+    // Axis titles
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('X (Easting)', cw / 2, ch - 8);
+    ctx.save();
+    ctx.translate(14, ch / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Y (Northing)', 0, 0);
+    ctx.restore();
+
+    // Determine current well panel section (ordered subset shown in correlation)
+    let panelOrder = null;
+    if (correlationResult && correlationResult.well_names) {
+      panelOrder = correlationResult.well_names
+        .map(n => posWells.findIndex(w => w.name === n))
+        .filter(i => i >= 0);
+    }
+
+    // Draw panel section as polygon/polyline connecting wells in order
+    if (panelOrder && panelOrder.length >= 2) {
+      ctx.strokeStyle = '#0078d4';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath();
+      const first = posWells[panelOrder[0]];
+      ctx.moveTo(toCanvasX(first.x), toCanvasY(first.y));
+      for (let i = 1; i < panelOrder.length; i++) {
+        const w = posWells[panelOrder[i]];
+        ctx.lineTo(toCanvasX(w.x), toCanvasY(w.y));
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw section direction arrows
+      if (panelOrder.length >= 2) {
+        const lastW = posWells[panelOrder[panelOrder.length - 1]];
+        const prevW = posWells[panelOrder[panelOrder.length - 2]];
+        const ax = toCanvasX(lastW.x), ay = toCanvasY(lastW.y);
+        const bx = toCanvasX(prevW.x), by = toCanvasY(prevW.y);
+        const angle = Math.atan2(ay - by, ax - bx);
+        const arrLen = 10;
+        ctx.fillStyle = '#0078d4';
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - arrLen * Math.cos(angle - 0.4), ay - arrLen * Math.sin(angle - 0.4));
+        ctx.lineTo(ax - arrLen * Math.cos(angle + 0.4), ay - arrLen * Math.sin(angle + 0.4));
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Draw well markers
+    const wellRadius = 6;
+    for (let i = 0; i < posWells.length; i++) {
+      const w = posWells[i];
+      const cx = toCanvasX(w.x);
+      const cy = toCanvasY(w.y);
+      const inPanel = panelOrder && panelOrder.includes(i);
+
+      // Well dot
+      ctx.beginPath();
+      ctx.arc(cx, cy, wellRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = inPanel ? '#0078d4' : '#4BB748';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Well name label
+      ctx.fillStyle = '#333';
+      ctx.font = inPanel ? 'bold 11px sans-serif' : '11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(w.name, cx + wellRadius + 3, cy + 4);
+    }
+
+    // Legend
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+    const legY = margin.top - 10;
+    ctx.fillStyle = '#0078d4';
+    ctx.fillRect(cw - margin.right - 200, legY - 8, 10, 10);
+    ctx.fillStyle = '#333';
+    ctx.fillText('Panel section well', cw - margin.right - 186, legY);
+    ctx.fillStyle = '#4BB748';
+    ctx.fillRect(cw - margin.right - 200, legY + 8, 10, 10);
+    ctx.fillStyle = '#333';
+    ctx.fillText('Other well', cw - margin.right - 186, legY + 16);
+    if (panelOrder && panelOrder.length >= 2) {
+      ctx.strokeStyle = '#0078d4';
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath();
+      ctx.moveTo(cw - margin.right - 200, legY + 28);
+      ctx.lineTo(cw - margin.right - 190, legY + 28);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#333';
+      ctx.fillText('Section line', cw - margin.right - 186, legY + 32);
+    }
+
+    // Scale bar
+    const scaleBarLen = Math.pow(10, Math.floor(Math.log10(xRange * 0.3)));
+    const scaleBarPx = scaleBarLen * scale;
+    const sbx = margin.left + 10;
+    const sby = ch - margin.bottom + 35;
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(sbx, sby);
+    ctx.lineTo(sbx + scaleBarPx, sby);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sbx, sby - 3); ctx.lineTo(sbx, sby + 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sbx + scaleBarPx, sby - 3); ctx.lineTo(sbx + scaleBarPx, sby + 3); ctx.stroke();
+    ctx.fillStyle = '#333';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${scaleBarLen} m`, sbx + scaleBarPx / 2, sby + 14);
+  }
 
 })();

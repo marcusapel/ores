@@ -487,7 +487,8 @@
             <button class="btn btn-sm btn-outline" id="btn-view-plot">Correlation Plot</button>
             <button class="btn btn-sm btn-outline" id="btn-view-composite">Composite (3)</button>
             <button class="btn btn-sm btn-outline" id="btn-view-wheeler">Wheeler</button>
-            <button class="btn btn-sm btn-outline" id="btn-view-table">Table</button>
+            <button class="btn btn-sm btn-outline" id="btn-view-table" title="Show correlation table as popup">&#128200; Table</button>
+            <button class="btn btn-sm btn-outline" id="btn-view-map" title="Show well location map">&#128506; Map</button>
           </span>
         </div>
         <!-- Cost ranking bar -->
@@ -537,10 +538,32 @@
             <canvas id="wheeler-canvas" style="display:block; width:100%; height:320px;" role="img" aria-label="Wheeler gap diagram showing stratigraphic presence and absence"></canvas>
           </div>
         </div>
-        <!-- Table view -->
-        <div id="results-cards"></div>
+        <!-- Table view (hidden, shown as popup) -->
+        <div id="results-cards" style="display:none;"></div>
       </div>
     </section>
+  </div>
+
+  <!-- ═══ Modal: Correlation Cost Table ═══ -->
+  <div id="modal-cost-table" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.45); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:8px; padding:1rem 1.2rem; max-width:90vw; max-height:85vh; overflow:auto; box-shadow:0 8px 32px rgba(0,0,0,.25); min-width:400px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem;">
+        <strong style="font-size:14px;">Correlation Cost Table</strong>
+        <button id="modal-cost-table-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#605e5c; padding:0 4px;" title="Close">&times;</button>
+      </div>
+      <div id="modal-cost-table-body" style="font-size:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal: Well Location Map ═══ -->
+  <div id="modal-well-map" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.45); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:8px; padding:1rem 1.2rem; max-width:90vw; max-height:85vh; overflow:auto; box-shadow:0 8px 32px rgba(0,0,0,.25); min-width:500px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem;">
+        <strong style="font-size:14px;">Well Location Map</strong>
+        <button id="modal-well-map-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#605e5c; padding:0 4px;" title="Close">&times;</button>
+      </div>
+      <canvas id="well-map-canvas" style="display:block; width:100%; height:500px; border:1px solid #e1dfdd; border-radius:4px;" role="img" aria-label="Well location map showing well positions and current panel section"></canvas>
+    </div>
   </div>
 
   <!-- Tab 6: Export -->
