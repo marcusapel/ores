@@ -6330,21 +6330,31 @@ class WeCoStudio(QMainWindow):
     def closeEvent(self, event):
         """Ensure all background threads are stopped before exit."""
         workers = []
-        # RunPage engine worker
+        # RunPage engine worker — abort the C++ engine first
+        if hasattr(self, 'page_run'):
+            w = getattr(self.page_run, '_worker', None)
+            if w is not None and w.isRunning():
+                w.request_abort()
+                workers.append(w)
+        # Collect any other running QThreads
         if hasattr(self, '_pages'):
             for page in self._pages.values() if isinstance(self._pages, dict) else []:
                 for attr in ('_worker', '_plot_worker', '_rddms_worker'):
                     w = getattr(page, attr, None)
-                    if w is not None and w.isRunning():
+                    if w is not None and w.isRunning() and w not in workers:
                         workers.append(w)
-        # Also check direct attributes on all children
         for child in self.findChildren(QThread):
-            if child.isRunning():
+            if child.isRunning() and child not in workers:
                 workers.append(child)
         for w in workers:
             w.quit()
         for w in workers:
-            w.wait(3000)  # 3s max per worker
+            w.wait(5000)  # 5s max per worker
+        # Force-terminate any truly stuck threads
+        for w in workers:
+            if w.isRunning():
+                w.terminate()
+                w.wait(1000)
         event.accept()
 
     @staticmethod
@@ -6439,6 +6449,17 @@ class WeCoStudio(QMainWindow):
         self._dark_btn.setFixedSize(90, 24)
         self._dark_btn.clicked.connect(self.toggle_dark_mode)
         self.statusBar().addPermanentWidget(self._dark_btn)
+
+        # Quit button in status bar
+        self._quit_btn = QPushButton("✕ Quit")
+        self._quit_btn.setFixedSize(60, 24)
+        self._quit_btn.setToolTip("Quit WeCo Studio (Ctrl+Q)")
+        self._quit_btn.clicked.connect(self.close)
+        self.statusBar().addPermanentWidget(self._quit_btn)
+
+        # Keyboard shortcut: Ctrl+Q to quit
+        from PyQt6.QtGui import QShortcut, QKeySequence
+        QShortcut(QKeySequence("Ctrl+Q"), self, activated=self.close)
 
         # Default page
         self.sidebar.setCurrentRow(0)
@@ -6975,6 +6996,7 @@ class WeCoStudio(QMainWindow):
 
 def main():
     import argparse
+    import signal
     parser = argparse.ArgumentParser(description=f"WeCo Studio v{VERSION}")
     parser.add_argument("--demo", "-d", type=str, help="Load demo by ID (e.g., 1.1, quat-hydro, coal-full)")
     parser.add_argument("--well-list", "-w", type=str, help="Well list file to load")
@@ -6988,6 +7010,13 @@ def main():
     _app_font = QFont("DejaVu Sans", 10)
     _app_font.setStyleHint(QFont.StyleHint.SansSerif)
     app.setFont(_app_font)
+
+    # Allow Ctrl+C in terminal to close the app gracefully
+    signal.signal(signal.SIGINT, lambda *_: app.quit())
+    # Timer to let Python process signals (Qt event loop blocks signal delivery)
+    _sig_timer = QTimer()
+    _sig_timer.start(200)
+    _sig_timer.timeout.connect(lambda: None)
 
     window = WeCoStudio()
     window.show()
