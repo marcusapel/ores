@@ -465,12 +465,21 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
                 # Place name centred above the log tracks
                 mid_ax = log_axes_for_well[len(log_axes_for_well) // 2]
                 title_text = well.name
+                # Truncate long names when many wells
+                if n_disp > 10 and len(title_text) > 10:
+                    title_text = title_text[:9] + "\u2026"
                 if self._show_md_labels:
                     orig_depth = well_depths[wi_data]
                     if len(orig_depth) > 0:
-                        title_text += f"\nMD: {orig_depth[0]:.0f}–{orig_depth[-1]:.0f}"
-                mid_ax.set_title(title_text, fontsize=8, fontweight="bold",
-                                 color=wcolor, pad=14)
+                        title_text += f"\nMD: {orig_depth[0]:.0f}-{orig_depth[-1]:.0f}"
+                # Scale font/pad for many wells
+                name_fs = 7 if n_disp > 8 else 8
+                name_pad = 8 if n_disp > 10 else 14
+                if n_disp > 14:
+                    name_fs = 6
+                    name_pad = 4
+                mid_ax.set_title(title_text, fontsize=name_fs, fontweight="bold",
+                                 color=wcolor, pad=name_pad)
 
             # Gap axis for correlation lines
             if wi_display < n_disp - 1:
@@ -495,8 +504,8 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
             n_cor = self._res.get_nbr_results()
             title_parts.append(f"Correlation #{self._cor_index}  |  Cost: {cost:.4f}  |  {n_cor} alternatives")
         if title_parts:
-            self.fig.text(0.5, 0.985, "  ".join(title_parts),
-                          ha="center", va="top", fontsize=9, style="italic",
+            self.fig.text(0.5, 0.997, "  ".join(title_parts),
+                          ha="center", va="top", fontsize=8, style="italic",
                           color="#555")
 
         # Restore previous y-axis view limits (preserves user zoom/pan)
