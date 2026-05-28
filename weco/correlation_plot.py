@@ -565,6 +565,57 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
 
     # ──── Draw a log track ───────────────────────────────────────────
 
+    @staticmethod
+    def _is_discrete_log(vals: np.ndarray) -> bool:
+        """Detect if a log is discrete (facies codes) vs continuous."""
+        finite = vals[np.isfinite(vals)]
+        if len(finite) == 0:
+            return False
+        unique = np.unique(finite)
+        # Discrete if: few unique values, all integers, small range
+        if len(unique) > 20:
+            return False
+        if not np.allclose(finite, np.round(finite)):
+            return False
+        if np.max(finite) > 50 or np.min(finite) < -5:
+            return False
+        return True
+
+    def _draw_discrete_log(self, ax, vals, dep, log_name, y_lim):
+        """Render discrete (facies) log as coloured blocks."""
+        ax.set_ylim(y_lim)
+        ax.set_xlim(0, 1)
+        ax.set_xticks([])
+
+        # Draw coloured blocks for each contiguous facies interval
+        n = len(vals)
+        i = 0
+        while i < n:
+            fid = int(round(vals[i]))
+            j = i + 1
+            while j < n and int(round(vals[j])) == fid:
+                j += 1
+            # Block from dep[i] to dep[j-1] (extend half-sample above/below)
+            y_top = dep[i]
+            y_bot = dep[j - 1]
+            if i > 0:
+                y_top = 0.5 * (dep[i - 1] + dep[i])
+            if j < n:
+                y_bot = 0.5 * (dep[j - 1] + dep[j])
+            c = LITHO_PALETTE[fid % len(LITHO_PALETTE)]
+            ax.axhspan(y_top, y_bot, facecolor=c, alpha=0.85,
+                       linewidth=0.3, edgecolor="#888", zorder=3)
+            i = j
+
+        # Label
+        ax.text(0.5, 1.02, log_name, transform=ax.transAxes,
+                ha="center", va="bottom", fontsize=5.5, color="#444",
+                fontweight="bold", clip_on=True)
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.5)
+            spine.set_color("#ccc")
+        ax.spines["top"].set_visible(False)
+
     def _draw_log_track(self, ax, well, log_name, depth, y_lim,
                         well_color, track_idx, well_idx, n_wells):
         ax.set_ylim(y_lim)
@@ -594,6 +645,11 @@ class CorrelationPlotWidget(FigureCanvasQTAgg):
             n = min(len(raw), len(depth))
             vals = raw[:n]
             dep = depth[:n]
+
+            # Discrete facies data → coloured blocks
+            if self._is_discrete_log(vals):
+                self._draw_discrete_log(ax, vals, dep, log_name, y_lim)
+                return
 
             if is_log_scale:
                 pos = vals[vals > 0]
