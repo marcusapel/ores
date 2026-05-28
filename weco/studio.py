@@ -4694,6 +4694,28 @@ class ResultsPage(QWidget):
         self._results_splitter.addWidget(bottom_panel)
         self._results_splitter.setStretchFactor(0, 3)  # plot gets more space
         self._results_splitter.setStretchFactor(1, 1)  # bottom panel less
+        self._results_splitter.setCollapsible(0, False)
+        self._results_splitter.setCollapsible(1, True)
+
+        # Toggle handle: click to collapse/expand bottom panel
+        self._bottom_panel = bottom_panel
+        self._bottom_collapsed = False
+        self._saved_splitter_sizes = None
+        toggle_bar = QHBoxLayout()
+        toggle_bar.setContentsMargins(0, 0, 0, 0)
+        toggle_bar.addStretch()
+        self._toggle_btn = QPushButton("▼ Details")
+        self._toggle_btn.setFixedHeight(18)
+        self._toggle_btn.setFixedWidth(90)
+        self._toggle_btn.setStyleSheet(
+            "QPushButton { font-size: 10px; border: 1px solid #ccc; "
+            "border-radius: 3px; background: #f0f0f0; }"
+            "QPushButton:hover { background: #e0e0e0; }")
+        self._toggle_btn.setToolTip("Click to collapse/expand the details panel")
+        self._toggle_btn.clicked.connect(self._toggle_bottom_panel)
+        toggle_bar.addWidget(self._toggle_btn)
+        toggle_bar.addStretch()
+        lo.addLayout(toggle_bar)
 
         self._res_file = None
         self._well_list = None
@@ -4870,6 +4892,26 @@ class ResultsPage(QWidget):
         ax.invert_yaxis()
         self._wheeler_fig.tight_layout(pad=0.5)
         self._wheeler_canvas.draw()
+
+    def _toggle_bottom_panel(self):
+        """Collapse/expand the bottom details panel with one click."""
+        sizes = self._results_splitter.sizes()
+        if self._bottom_collapsed:
+            # Expand: restore saved sizes
+            if self._saved_splitter_sizes:
+                self._results_splitter.setSizes(self._saved_splitter_sizes)
+            else:
+                total = sum(sizes)
+                self._results_splitter.setSizes([int(total * 0.65), int(total * 0.35)])
+            self._bottom_collapsed = False
+            self._toggle_btn.setText("▼ Details")
+        else:
+            # Collapse: save current sizes and minimize bottom
+            self._saved_splitter_sizes = sizes
+            total = sum(sizes)
+            self._results_splitter.setSizes([total, 0])
+            self._bottom_collapsed = True
+            self._toggle_btn.setText("▲ Details")
 
     def _cor_prev(self):
         val = self.cor_spin.value()
