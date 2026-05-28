@@ -5019,8 +5019,17 @@ class ResultsPage(QWidget):
 
         # Draw current panel section (well order from correlation)
         n_wells = self._res_file.nbr_well() if self._res_file else len(wells)
-        panel_coords = [(w.x, w.y) for w in wells[:n_wells]]
-        panel_well_names = [w.name for w in wells[:n_wells]]
+        # Use user-reordered well list if available
+        visible = self._get_visible_well_names()
+        if visible:
+            panel_wells = [w for w in wells if w.name in visible]
+            # Maintain the user's display order
+            name_order = {n: i for i, n in enumerate(visible)}
+            panel_wells.sort(key=lambda w: name_order.get(w.name, 999))
+        else:
+            panel_wells = list(wells[:n_wells])
+        panel_coords = [(w.x, w.y) for w in panel_wells]
+        panel_well_names = [w.name for w in panel_wells]
 
         if len(panel_coords) >= 2:
             px = [c[0] for c in panel_coords]
