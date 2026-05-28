@@ -3252,15 +3252,8 @@
       return;
     }
 
-    // Filter wells with valid coordinates
-    const posWells = wells.filter(w => w.x != null && w.y != null && (w.x !== 0 || w.y !== 0));
-    if (posWells.length === 0) {
-      ctx.fillStyle = '#605e5c';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('No well coordinates available.', cw / 2, ch / 2);
-      return;
-    }
+    // All wells should have coordinates
+    const posWells = wells.map(w => ({ name: w.name, x: w.x || 0, y: w.y || 0 }));
 
     // Compute extents
     const xs = posWells.map(w => w.x);
