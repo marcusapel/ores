@@ -67,7 +67,8 @@ public:
 		std::signal(SIGINT, old_handler);
 		s_running_project = nullptr;
 		if (s_sigint_received) {
-			throw py::error_already_set();  // raises KeyboardInterrupt
+			PyErr_SetNone(PyExc_KeyboardInterrupt);
+			throw py::error_already_set();
 		}
 		return ok;
 	}
@@ -84,6 +85,7 @@ public:
 		std::signal(SIGINT, old_handler);
 		s_running_project = nullptr;
 		if (s_sigint_received) {
+			PyErr_SetNone(PyExc_KeyboardInterrupt);
 			throw py::error_already_set();
 		}
 		return ok;
@@ -125,6 +127,7 @@ void def_project(py::module_& m){
 
 		.def("run",&WeCo::PyProject::py_run_file,"run from file")
 		.def("run",&WeCo::PyProject::py_run_welllist,"run from WellList")
+		.def("request_abort",&WeCo::PyProject::py_request_abort,"Abort a running correlation (thread-safe)")
 		.def("add_ccf_part",&WeCo::PyProject::py_add_ccf_part,"Adds a CCFPart to the list of costs")
 
 		.def_static("task_order_keys",[](){return WeCo::Project::TaskOrderFactory::name_list();} )
