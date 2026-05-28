@@ -4535,11 +4535,13 @@ class ResultsPage(QWidget):
         btn_row.addWidget(self._tract_overlay_cb)
         btn_row.addStretch()
 
-        # Viewer tabs
+        # Viewer tabs + bottom controls in a vertical splitter for resize
+        self._results_splitter = QSplitter(Qt.Orientation.Vertical)
         self.view_tabs = QTabWidget()
         self._wheeler_pending = None  # init before signal can fire
         self.view_tabs.currentChanged.connect(self._on_view_tab_changed)
-        lo.addWidget(self.view_tabs, 1)
+        self._results_splitter.addWidget(self.view_tabs)
+        lo.addWidget(self._results_splitter, 1)
 
         # Tab 0: Professional Correlation Plot (matplotlib interactive)
         self._corplot = None
@@ -4585,11 +4587,17 @@ class ResultsPage(QWidget):
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.view_tabs.addTab(lbl, "Legacy (unavailable)")
 
+        # ─ Bottom panel (summary, navigation, well select, history) ─
+        bottom_panel = QWidget()
+        bottom_lo = QVBoxLayout(bottom_panel)
+        bottom_lo.setContentsMargins(0, 4, 0, 0)
+        bottom_lo.setSpacing(4)
+
         # Summary table
         self.summary_table = QTableWidget()
         self.summary_table.setMaximumHeight(160)
         self.summary_table.setAlternatingRowColors(True)
-        lo.addWidget(self.summary_table)
+        bottom_lo.addWidget(self.summary_table)
 
         # ─ Prev/Next navigation (below summary table, side-by-side) ─
         nav_bar = QHBoxLayout()
@@ -4601,7 +4609,7 @@ class ResultsPage(QWidget):
         self._btn_next.clicked.connect(self._cor_next)
         nav_bar.addWidget(self._btn_next)
         nav_bar.addStretch()
-        lo.addLayout(nav_bar)
+        bottom_lo.addLayout(nav_bar)
 
         # ─ Well selection and ordering ─
         well_group = QGroupBox("Wells (select and reorder for display)")
@@ -4636,7 +4644,7 @@ class ResultsPage(QWidget):
         well_btn_lo.addWidget(btn_apply)
         well_btn_lo.addStretch()
         well_grp_lo.addLayout(well_btn_lo)
-        lo.addWidget(well_group)
+        bottom_lo.addWidget(well_group)
 
         # §11.11.4 — Side-by-side comparison tab
         sidebyside = QWidget()
@@ -4681,7 +4689,11 @@ class ResultsPage(QWidget):
         hist_btn_lo.addWidget(btn_clear_hist)
         hist_btn_lo.addStretch()
         hist_lo.addLayout(hist_btn_lo)
-        lo.addWidget(hist_group)
+        bottom_lo.addWidget(hist_group)
+
+        self._results_splitter.addWidget(bottom_panel)
+        self._results_splitter.setStretchFactor(0, 3)  # plot gets more space
+        self._results_splitter.setStretchFactor(1, 1)  # bottom panel less
 
         self._res_file = None
         self._well_list = None
