@@ -3327,7 +3327,12 @@
     // Determine current well panel section (ordered subset shown in correlation)
     let panelOrder = null;
     if (correlationResult && correlationResult.well_names) {
-      panelOrder = correlationResult.well_names
+      let orderedNames = correlationResult.well_names;
+      // Apply user-selected well order if set
+      if (corrPlotConfig.wellOrder && corrPlotConfig.wellOrder.length === orderedNames.length) {
+        orderedNames = corrPlotConfig.wellOrder.map(i => correlationResult.well_names[i]);
+      }
+      panelOrder = orderedNames
         .map(n => posWells.findIndex(w => w.name === n))
         .filter(i => i >= 0);
     }
