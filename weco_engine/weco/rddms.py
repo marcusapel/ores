@@ -89,7 +89,7 @@ logger = logging.getLogger("weco.rddms")
 # §1  GOCAD RESQML package availability
 # ═══════════════════════════════════════════════════════════════════════
 _RESQML_DIR = os.path.expanduser("~/gocad/lib/scripts")
-if _RESQML_DIR not in sys.path:
+if os.path.isdir(_RESQML_DIR) and _RESQML_DIR not in sys.path:
     sys.path.insert(0, _RESQML_DIR)
 
 _resqml_available = False
@@ -688,8 +688,12 @@ def rddms_list_wells(
     ttype = "resqml20.obj_WellboreTrajectoryRepresentation"
     try:
         resources = sess.list_resources(dataspace, ttype)
-    except Exception:
+    except (ConnectionError, TimeoutError, OSError) as e:
+        logger.warning(f"RDDMS list_resources failed: {e}")
         return []
+    except Exception as e:
+        logger.error(f"RDDMS list_resources unexpected error: {e}")
+        raise
     out = []
     for r in resources:
         out.append({
@@ -943,7 +947,8 @@ def _build_resqml_discrete_property(well_name, prop_name, values, code_map=None,
         if code_map:
             obj.code_map = code_map
         return obj
-    except Exception:
+    except (ImportError, AttributeError) as e:
+        logger.warning(f"Cannot create discrete property '{prop_name}': {e}")
         return None
 
 

@@ -328,20 +328,7 @@ def _validate_options_against_wells(options: dict, well_list) -> None:
 
 
 # Canonical option-reset dict — ensures no state leaks between runs.
-# Keys use underscores (translated to hyphens by set_options_ext).
-_RESET_OPTS: Dict[str, Any] = {
-    "no_crossing": "", "no_crossing2": "", "no_crossing3": "",
-    "same_region": "", "same_region2": "", "same_region3": "",
-    "polarity_region": "", "var_region": "",
-    "var_data": "", "var_data2": "", "var_data3": "",
-    "var_data4": "", "var_data5": "",
-    "var_weight": 1.0, "var_weight2": 1.0, "var_weight3": 1.0,
-    "var_weight4": 1.0, "var_weight5": 1.0,
-    "dist_distal": "", "dist_facies": "",
-    "gap_cost_func": "", "const_gap_cost": 0.0,
-    "const_gap_cost_start": -1.0, "const_gap_cost_end": -1.0,
-    "multi_dist_distal": "", "multi_dist_facies": "",
-}
+from weco.ext import RESET_OPTS as _RESET_OPTS
 
 
 def _run_engine(well_list, options: dict, options_file: Optional[str] = None):

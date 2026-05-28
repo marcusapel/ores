@@ -23,6 +23,25 @@ from weco.engine_data import WellList, well_list_python2engine, cor_graph2res_fi
 _TMP_DIR = _os.path.join(_tempfile.gettempdir(), "weco")
 _os.makedirs(_TMP_DIR, exist_ok=True)
 
+# Options that must be reset between engine runs to prevent C++ global state
+# leaking names/weights from a previous project.  Canonical single source.
+RESET_OPTS = {
+    "no_crossing": "", "no_crossing2": "", "no_crossing3": "",
+    "same_region": "", "same_region2": "", "same_region3": "",
+    "polarity_region": "", "var_region": "",
+    "var_data": "", "var_data2": "", "var_data3": "",
+    "var_data4": "", "var_data5": "",
+    "var_weight": 1.0, "var_weight2": 1.0, "var_weight3": 1.0,
+    "var_weight4": 1.0, "var_weight5": 1.0,
+    "dist_distal": "", "dist_facies": "",
+    "gap_cost_func": "", "gap_cost_func_mult": 1.0,
+    "const_gap_cost": 0.0, "const_gap_cost_start": -1.0,
+    "const_gap_cost_end": -1.0,
+    "multi_dist_distal": "", "multi_dist_facies": "",
+    "b3d_curve_dip": "", "b3d_curve_azimuth": "",
+    "b3d_curve_depth": "", "b3d_curve_facies": "",
+}
+
 
 class ProjectExt(Project):
     """
