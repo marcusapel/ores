@@ -26,8 +26,10 @@ FROM python:3.12-slim
 RUN groupadd -g 1001 ores && useradd -u 1001 -g 1001 -r -d /app -s /sbin/nologin ores
 
 # Runtime: libgomp needed by WeCo C++ engine (OpenMP)
+# Also upgrade ncurses to patch CVE-2025-69720 (buffer overflow in infocmp)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgomp1 \
+    && apt-get upgrade -y libncursesw6 ncurses-base ncurses-bin \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
