@@ -1293,6 +1293,10 @@
   function showResults(data) {
     resEmpty.style.display = 'none';
     resSummary.style.display = 'block';
+    // Reset state that may be stale from a previous run/demo
+    corrPlotConfig.wellOrder = null;
+    const ctrlWO = $('#ctrl-well-order');
+    if (ctrlWO) ctrlWO.value = 'result';
     // Show demo name / well list context
     const resCtx = $('#res-context');
     if (resCtx) {
