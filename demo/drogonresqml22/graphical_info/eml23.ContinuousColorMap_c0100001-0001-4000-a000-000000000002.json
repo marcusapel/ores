@@ -1,0 +1,58 @@
+{
+  "Uuid": "c0100001-0001-4000-a000-000000000002",
+  "SchemaVersion": "2.3",
+  "Citation": {
+    "Title": "viridis",
+    "Description": "Continuous color map: viridis",
+    "Creation": "2026-05-20T10:00:00Z",
+    "Originator": "Drogon RESQML 2.2 Demo (Equinor)",
+    "Format": "ORES push_graphical_info.py"
+  },
+  "Entry": [
+    {
+      "Index": 0.0,
+      "Hsv": {
+        "Hue": 280,
+        "Saturation": 0.7,
+        "Value": 0.3,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 0.25,
+      "Hsv": {
+        "Hue": 230,
+        "Saturation": 0.6,
+        "Value": 0.55,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 0.5,
+      "Hsv": {
+        "Hue": 175,
+        "Saturation": 0.7,
+        "Value": 0.65,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 0.75,
+      "Hsv": {
+        "Hue": 100,
+        "Saturation": 0.8,
+        "Value": 0.78,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 1.0,
+      "Hsv": {
+        "Hue": 65,
+        "Saturation": 0.9,
+        "Value": 0.93,
+        "Alpha": 1.0
+      }
+    }
+  ]
+}

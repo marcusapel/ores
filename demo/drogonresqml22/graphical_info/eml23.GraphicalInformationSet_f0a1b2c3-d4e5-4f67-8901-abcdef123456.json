@@ -1,0 +1,110 @@
+{
+  "Uuid": "f0a1b2c3-d4e5-4f67-8901-abcdef123456",
+  "SchemaVersion": "2.3",
+  "Citation": {
+    "Title": "Drogon Property Visualization",
+    "Description": "GraphicalInformationSet: color scales, log mapping, opacity for Drogon RESQML 2.2 ContinuousProperty objects on IjkGrid.",
+    "Creation": "2026-05-20T10:00:00Z",
+    "Originator": "Drogon RESQML 2.2 Demo (Equinor)",
+    "Format": "ORES push_graphical_info.py"
+  },
+  "GraphicalInformation": [
+    {
+      "TargetObject": {
+        "UUID": "34d8af4f-2178-413a-b8c1-92100515bb5d",
+        "ContentType": "application/x-resqml+xml;version=2.2;type=ContinuousProperty",
+        "Title": "Oil Saturation"
+      },
+      "ColorInformation": {
+        "UseLogarithmicMapping": false,
+        "UseReverseMapping": false,
+        "MinIndex": 0.0,
+        "MaxIndex": 1.0,
+        "ColorMap": {
+          "UUID": "c0100001-0001-4000-a000-000000000001",
+          "ContentType": "application/x-eml+xml;version=2.3;type=ContinuousColorMap",
+          "Title": "plasma"
+        }
+      }
+    },
+    {
+      "TargetObject": {
+        "UUID": "291af871-c827-4797-ba22-026891b65a44",
+        "ContentType": "application/x-resqml+xml;version=2.2;type=ContinuousProperty",
+        "Title": "Gas Saturation"
+      },
+      "ColorInformation": {
+        "UseLogarithmicMapping": false,
+        "UseReverseMapping": true,
+        "MinIndex": 0.0,
+        "MaxIndex": 1.0,
+        "ColorMap": {
+          "UUID": "c0100001-0001-4000-a000-000000000002",
+          "ContentType": "application/x-eml+xml;version=2.3;type=ContinuousColorMap",
+          "Title": "viridis"
+        }
+      }
+    },
+    {
+      "TargetObject": {
+        "UUID": "0490b8f5-8d1f-4315-a3c6-d062436a8feb",
+        "ContentType": "application/x-resqml+xml;version=2.2;type=ContinuousProperty",
+        "Title": "Oil Bulk Volume"
+      },
+      "ColorInformation": {
+        "UseLogarithmicMapping": true,
+        "UseReverseMapping": false,
+        "MinIndex": 1.0,
+        "MaxIndex": 12938.49,
+        "ColorMap": {
+          "UUID": "c0100001-0001-4000-a000-000000000003",
+          "ContentType": "application/x-eml+xml;version=2.3;type=ContinuousColorMap",
+          "Title": "hot"
+        }
+      },
+      "Opacity": 0.85
+    },
+    {
+      "TargetObject": {
+        "UUID": "160356a2-5d1e-4424-a937-3176ca2bfc2f",
+        "ContentType": "application/x-resqml+xml;version=2.2;type=ContinuousProperty",
+        "Title": "Water Saturation (Gas Zone)"
+      },
+      "ColorInformation": {
+        "UseLogarithmicMapping": false,
+        "UseReverseMapping": false,
+        "MinIndex": 0.0,
+        "MaxIndex": 1.0,
+        "ColorMap": {
+          "UUID": "c0100001-0001-4000-a000-000000000001",
+          "ContentType": "application/x-eml+xml;version=2.3;type=ContinuousColorMap",
+          "Title": "plasma"
+        }
+      }
+    },
+    {
+      "TargetObject": {
+        "UUID": "3099b3c7-2689-4acc-8bba-724d05e75ef5",
+        "ContentType": "application/x-resqml+xml;version=2.2;type=ContinuousProperty",
+        "Title": "Carbonate Volume Fraction"
+      },
+      "ColorInformation": {
+        "UseLogarithmicMapping": false,
+        "UseReverseMapping": false,
+        "MinIndex": 0.0,
+        "MaxIndex": 1.0,
+        "ColorMap": {
+          "UUID": "c0100001-0001-4000-a000-000000000002",
+          "ContentType": "application/x-eml+xml;version=2.3;type=ContinuousColorMap",
+          "Title": "viridis"
+        }
+      },
+      "DefaultColor": {
+        "Hue": 200,
+        "Saturation": 0.7,
+        "Value": 0.9,
+        "Alpha": 1.0
+      }
+    }
+  ]
+}

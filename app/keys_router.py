@@ -1503,6 +1503,7 @@ _3D_TYPES = {
     "pointsetrepresentation", "wellboretrajectoryrepresentation",
     "wellboremarkerframerepresentation", "polylinesetrepresentation",
     "deviationsurveyrepresentation", "ijkgridrepresentation",
+    "continuousproperty", "discreteproperty", "categoricalproperty",
 }
 
 def _is_3d_type(typ: str) -> bool:

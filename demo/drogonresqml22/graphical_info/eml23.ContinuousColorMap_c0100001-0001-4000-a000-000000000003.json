@@ -1,0 +1,58 @@
+{
+  "Uuid": "c0100001-0001-4000-a000-000000000003",
+  "SchemaVersion": "2.3",
+  "Citation": {
+    "Title": "hot",
+    "Description": "Continuous color map: hot",
+    "Creation": "2026-05-20T10:00:00Z",
+    "Originator": "Drogon RESQML 2.2 Demo (Equinor)",
+    "Format": "ORES push_graphical_info.py"
+  },
+  "Entry": [
+    {
+      "Index": 0.0,
+      "Hsv": {
+        "Hue": 0,
+        "Saturation": 1.0,
+        "Value": 0.1,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 0.25,
+      "Hsv": {
+        "Hue": 0,
+        "Saturation": 1.0,
+        "Value": 0.6,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 0.5,
+      "Hsv": {
+        "Hue": 20,
+        "Saturation": 1.0,
+        "Value": 0.85,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 0.75,
+      "Hsv": {
+        "Hue": 40,
+        "Saturation": 0.95,
+        "Value": 0.95,
+        "Alpha": 1.0
+      }
+    },
+    {
+      "Index": 1.0,
+      "Hsv": {
+        "Hue": 55,
+        "Saturation": 0.1,
+        "Value": 1.0,
+        "Alpha": 1.0
+      }
+    }
+  ]
+}

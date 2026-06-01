@@ -650,7 +650,8 @@
     const _3D_TYPE_KEYS = ['grid2drepresentation', 'triangulatedsetrepresentation',
       'pointsetrepresentation', 'wellboretrajectoryrepresentation',
       'wellboremarkerframerepresentation', 'polylinesetrepresentation',
-      'deviationsurveyrepresentation', 'ijkgridrepresentation'];
+      'deviationsurveyrepresentation', 'ijkgridrepresentation',
+      'continuousproperty', 'discreteproperty', 'categoricalproperty'];
     function is3dType(typ) {
       const t = (typ || '').toLowerCase();
       return _3D_TYPE_KEYS.some(k => t.includes(k));
@@ -843,13 +844,21 @@
       }
 
       const baseColor = new THREE.Color(hexColor);
+      const propVals = geo.propertyValues || null;
+      const propMin = geo.propertyMin || 0, propMax = geo.propertyMax || 1;
+      const cmInfo = geo.colorMap || null;
+      const pLog = cmInfo && cmInfo.useLog, pRev = cmInfo && cmInfo.useReverse;
+      const pCmap = cmInfo && cmInfo.colorMapName;
       const normPos = new Float32Array(positions.length);
       const colors = new Float32Array(positions.length);
       for (let i = 0; i < nVerts; i++) {
         normPos[i*3]     = (positions[i*3]     - cx) / extLateral * 2;
         normPos[i*3 + 1] = (positions[i*3 + 2] - cz) / extLateral * 2 * zExag;
         normPos[i*3 + 2] = (positions[i*3 + 1] - cy) / extLateral * 2;
-        if (kind === 'surface' || kind === 'points') {
+        if (propVals && propVals.length > i) {
+          const [cr, cg, cb] = _colorFromProperty(propVals[i], propMin, propMax, pLog, pRev, pCmap);
+          colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
+        } else if (kind === 'surface' || kind === 'points') {
           const z = positions[i*3+2];
           const [cr, cg, cb] = _gql3dColorZ(isFinite(z) ? z : cz, zmin, zmax);
           colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
@@ -1619,6 +1628,93 @@
       return [r, g, b];
     }
 
+    function _colorFromProperty(val, vmin, vmax, useLog, useReverse, cmapName) {
+      // Color by property value with named colormap support (from GraphicalInformationSet)
+      if (val == null || !isFinite(val)) return [0.3, 0.3, 0.3]; // grey for null/NaN
+      let t;
+      if (useLog && vmin > 0 && vmax > vmin && val > 0) {
+        t = (Math.log(val) - Math.log(vmin)) / (Math.log(vmax) - Math.log(vmin));
+      } else {
+        t = vmax > vmin ? (val - vmin) / (vmax - vmin) : 0.5;
+      }
+      t = Math.max(0, Math.min(1, t));
+      if (useReverse) t = 1 - t;
+      const name = (cmapName || '').toLowerCase();
+      if (name === 'viridis') return _cmapViridis(t);
+      if (name === 'hot') return _cmapHot(t);
+      return _cmapPlasma(t); // default
+    }
+
+    function _cmapPlasma(t) {
+      // plasma: dark purple → magenta → orange → yellow
+      let r, g, b;
+      if (t < 0.25) {
+        const s = t / 0.25;
+        r = 0.05 * (1-s) + 0.55 * s;
+        g = 0.03 * (1-s) + 0.0  * s;
+        b = 0.53 * (1-s) + 0.65 * s;
+      } else if (t < 0.5) {
+        const s = (t - 0.25) / 0.25;
+        r = 0.55 * (1-s) + 0.87 * s;
+        g = 0.0  * (1-s) + 0.22 * s;
+        b = 0.65 * (1-s) + 0.51 * s;
+      } else if (t < 0.75) {
+        const s = (t - 0.5) / 0.25;
+        r = 0.87 * (1-s) + 0.99 * s;
+        g = 0.22 * (1-s) + 0.56 * s;
+        b = 0.51 * (1-s) + 0.13 * s;
+      } else {
+        const s = (t - 0.75) / 0.25;
+        r = 0.99 * (1-s) + 0.94 * s;
+        g = 0.56 * (1-s) + 0.97 * s;
+        b = 0.13 * (1-s) + 0.13 * s;
+      }
+      return [r, g, b];
+    }
+
+    function _cmapViridis(t) {
+      // viridis: purple → blue → teal → green → yellow
+      let r, g, b;
+      if (t < 0.25) {
+        const s = t / 0.25;
+        r = 0.28 * (1-s) + 0.13 * s;
+        g = 0.0  * (1-s) + 0.57 * s;
+        b = 0.33 * (1-s) + 0.55 * s;
+      } else if (t < 0.5) {
+        const s = (t - 0.25) / 0.25;
+        r = 0.13 * (1-s) + 0.15 * s;
+        g = 0.57 * (1-s) + 0.73 * s;
+        b = 0.55 * (1-s) + 0.34 * s;
+      } else if (t < 0.75) {
+        const s = (t - 0.5) / 0.25;
+        r = 0.15 * (1-s) + 0.63 * s;
+        g = 0.73 * (1-s) + 0.85 * s;
+        b = 0.34 * (1-s) + 0.17 * s;
+      } else {
+        const s = (t - 0.75) / 0.25;
+        r = 0.63 * (1-s) + 0.99 * s;
+        g = 0.85 * (1-s) + 0.91 * s;
+        b = 0.17 * (1-s) + 0.14 * s;
+      }
+      return [r, g, b];
+    }
+
+    function _cmapHot(t) {
+      // hot: black → red → orange → yellow → white
+      let r, g, b;
+      if (t < 0.33) {
+        const s = t / 0.33;
+        r = s; g = 0; b = 0;
+      } else if (t < 0.67) {
+        const s = (t - 0.33) / 0.34;
+        r = 1.0; g = s; b = 0;
+      } else {
+        const s = (t - 0.67) / 0.33;
+        r = 1.0; g = 1.0; b = s;
+      }
+      return [r, g, b];
+    }
+
     async function load3D() {
       const ds = dsSel.value, typ = typSel.value, uuid = objSel.value;
       if (!ds || !typ || !uuid) return;
@@ -1699,6 +1795,15 @@
           if (ratio < 0.4) zExag = Math.max(3, 0.4 / ratio);
         }
 
+        // Property coloring: use property values if available
+        const propVals = geo.propertyValues || null;
+        const propMin = geo.propertyMin || 0, propMax = geo.propertyMax || 1;
+        const propName = geo.propertyName || '';
+        const colorMapInfo = geo.colorMap || null;
+        const useLog = colorMapInfo && colorMapInfo.useLog;
+        const useReverse = colorMapInfo && colorMapInfo.useReverse;
+        const cmapName = colorMapInfo && colorMapInfo.colorMapName;
+
         // Normalize positions to center and apply z-exaggeration
         const normPos = new Float32Array(positions.length);
         const colors = new Float32Array(positions.length);
@@ -1706,9 +1811,16 @@
           normPos[i*3]     = (positions[i*3]     - cx) / extLateral * 2;
           normPos[i*3 + 1] = (positions[i*3 + 2] - cz) / extLateral * 2 * zExag;  // Z → Y (up)
           normPos[i*3 + 2] = (positions[i*3 + 1] - cy) / extLateral * 2;          // Y → Z (depth)
-          const z = positions[i*3 + 2];
-          const [cr, cg, cb] = colorFromZ(isFinite(z) ? z : cz, zmin, zmax);
-          colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
+          if (propVals && propVals.length > i) {
+            // Color by property value
+            const v = propVals[i];
+            const [cr, cg, cb] = _colorFromProperty(v, propMin, propMax, useLog, useReverse, cmapName);
+            colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
+          } else {
+            const z = positions[i*3 + 2];
+            const [cr, cg, cb] = colorFromZ(isFinite(z) ? z : cz, zmin, zmax);
+            colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
+          }
         }
 
         // Create geometry
@@ -2044,15 +2156,26 @@
         // Legend
         const legendCanvas = $('viewer3d-legend');
         const lctx = legendCanvas.getContext('2d');
+        const legendIsProp = !!(propVals && propVals.length);
         for (let y = 0; y < 200; y++) {
           const t = 1 - y / 199;
-          const z = zmin + t * (zmax - zmin);
-          const [cr, cg, cb] = colorFromZ(z, zmin, zmax);
+          let cr, cg, cb;
+          if (legendIsProp) {
+            const v = propMin + t * (propMax - propMin);
+            [cr, cg, cb] = _colorFromProperty(v, propMin, propMax, useLog, useReverse, cmapName);
+          } else {
+            const z = zmin + t * (zmax - zmin);
+            [cr, cg, cb] = colorFromZ(z, zmin, zmax);
+          }
           lctx.fillStyle = `rgb(${cr*255|0},${cg*255|0},${cb*255|0})`;
           lctx.fillRect(0, y, 24, 1);
         }
         const labels = $('viewer3d-legend-labels');
-        labels.innerHTML = `<span>${zmax.toFixed(1)}</span><span>${((zmin+zmax)/2).toFixed(1)}</span><span>${zmin.toFixed(1)}</span>`;
+        if (legendIsProp) {
+          labels.innerHTML = `<span>${propMax.toFixed(2)}</span><span>${propName}</span><span>${propMin.toFixed(2)}</span>`;
+        } else {
+          labels.innerHTML = `<span>${zmax.toFixed(1)}</span><span>${((zmin+zmax)/2).toFixed(1)}</span><span>${zmin.toFixed(1)}</span>`;
+        }
 
         grid2dStatus.textContent = `Done - ${nVerts.toLocaleString()} vertices`;
       } catch (e) {

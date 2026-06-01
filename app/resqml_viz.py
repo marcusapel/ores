@@ -1332,6 +1332,199 @@ async def fetch_grid2d_surface(
     return await _rest_grid2d_surface(access_token, ds, uuid)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Property visualization helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_PROPERTY_KEYWORDS = ("continuousproperty", "discreteproperty", "categoricalproperty")
+
+
+def _is_property_type(tl: str) -> bool:
+    """Return True if type-string (lowered) is a RESQML property type."""
+    return any(k in tl for k in _PROPERTY_KEYWORDS)
+
+
+def _extract_rep_type_from_content_type(ct: str) -> str | None:
+    """Extract the RDDMS type name from a ContentType string.
+
+    E.g. 'application/x-resqml+xml;version=2.0;type=obj_IjkGridRepresentation'
+      → 'resqml20.obj_IjkGridRepresentation'
+    Or  'application/x-resqml+xml;version=2.2;type=IjkGridRepresentation'
+      → 'resqml22.IjkGridRepresentation'
+    """
+    if not ct:
+        return None
+    # Parse out version and type from ContentType
+    version = ""
+    obj_type = ""
+    for part in ct.split(";"):
+        part = part.strip()
+        if part.startswith("version="):
+            version = part[len("version="):]
+        elif part.startswith("type="):
+            obj_type = part[len("type="):]
+    if not obj_type:
+        return None
+    if "2.2" in version:
+        return f"resqml22.{obj_type}"
+    # Default to 2.0.1
+    return f"resqml20.{obj_type}" if obj_type.startswith("obj_") else f"resqml20.obj_{obj_type}"
+
+
+async def _property_geometry(
+    access_token: str, ds: str, typ: str, uuid: str,
+) -> dict[str, Any]:
+    """Fetch property values and the supporting representation geometry.
+
+    Returns the supporting rep's geometry dict with added:
+      - propertyValues: list[float|int]
+      - propertyMin / propertyMax: value range
+      - propertyName: display name
+      - colorMap: optional {name, min, max} from GraphicalInformationSet
+    """
+    from . import osdu
+
+    enc = urllib.parse.quote(ds, safe="")
+    hdr = osdu.headers(access_token)
+
+    async with osdu._http(timeout=120) as client:
+        # 1. Fetch the property object
+        obj_url = osdu._rddms_url(f"/dataspaces/{enc}/resources/{typ}/{uuid}")
+        r1 = await client.get(obj_url, headers=hdr, params={"$format": "json"})
+        r1.raise_for_status()
+        obj = osdu._normalize_obj(r1.json(), uuid)
+
+        title = (obj.get("Citation") or {}).get("Title") or uuid
+
+        # 2. Extract SupportingRepresentation reference
+        sup_ref = obj.get("SupportingRepresentation") or {}
+        sup_uuid = sup_ref.get("UUID") or sup_ref.get("Uuid") or sup_ref.get("uuid") or ""
+        sup_ct = sup_ref.get("ContentType") or sup_ref.get("contentType") or ""
+        sup_type = _extract_rep_type_from_content_type(sup_ct)
+
+        if not sup_uuid or not sup_type:
+            raise ValueError(
+                f"Property {uuid} has no resolvable SupportingRepresentation "
+                f"(UUID={sup_uuid!r}, ContentType={sup_ct!r})"
+            )
+
+        # 3. Read property values array
+        r_al = await client.get(f"{obj_url}/arrays", headers=hdr)
+        prop_values: list[float] = []
+        if r_al.status_code not in (404, 405, 412):
+            r_al.raise_for_status()
+            arr_list = r_al.json() or []
+            # Property typically has a single "values" array
+            for a in arr_list:
+                uid = a.get("uid") or {}
+                p = uid.get("pathInResource", "")
+                if "values" in p.lower() or not prop_values:
+                    arr_enc = urllib.parse.quote(p, safe="")
+                    r_arr = await client.get(f"{obj_url}/arrays/{arr_enc}", headers=hdr)
+                    if r_arr.status_code == 200:
+                        prop_values = _extract_flat_array(r_arr.json() or {})
+                    if prop_values:
+                        break
+
+        # 4. Look for GraphicalInformationSet in the dataspace
+        color_map_info = await _find_graphical_info(client, hdr, enc, uuid)
+
+    # 5. Fetch the supporting representation geometry (recursive call)
+    geo = await fetch_geometry_3d(access_token, ds, sup_type, sup_uuid)
+
+    # 6. Annotate with property values
+    geo["propertyValues"] = prop_values
+    if prop_values:
+        finite_vals = [v for v in prop_values if v is not None and isinstance(v, (int, float))]
+        geo["propertyMin"] = min(finite_vals) if finite_vals else 0
+        geo["propertyMax"] = max(finite_vals) if finite_vals else 1
+    else:
+        geo["propertyMin"] = 0
+        geo["propertyMax"] = 1
+    geo["propertyName"] = title
+    if color_map_info:
+        geo["colorMap"] = color_map_info
+
+    return geo
+
+
+async def _find_graphical_info(client, hdr: dict, enc_ds: str, prop_uuid: str) -> dict | None:
+    """Search for a GraphicalInformationSet referencing this property.
+
+    Returns {name, minValue, maxValue, useLog, useReverse} or None.
+    """
+    from . import osdu
+
+    # Try to list GraphicalInformationSet objects in the dataspace
+    for gis_type in ("resqml22.GraphicalInformationSet", "eml23.GraphicalInformationSet"):
+        list_url = osdu._rddms_url(f"/dataspaces/{enc_ds}/resources/{gis_type}")
+        try:
+            r = await client.get(list_url, headers=hdr, params={"$format": "json"})
+            if r.status_code != 200:
+                continue
+            items = r.json()
+            if not isinstance(items, list):
+                items = [items] if isinstance(items, dict) else []
+
+            for item in items:
+                gis_uuid = item.get("Uuid") or item.get("UUID") or item.get("uuid") or ""
+                if not gis_uuid:
+                    continue
+                # Fetch the full object
+                gis_url = osdu._rddms_url(
+                    f"/dataspaces/{enc_ds}/resources/{gis_type}/{gis_uuid}")
+                r2 = await client.get(gis_url, headers=hdr, params={"$format": "json"})
+                if r2.status_code != 200:
+                    continue
+                gis_obj = osdu._normalize_obj(r2.json(), gis_uuid)
+                # Look through GraphicalInformation entries for our property
+                gi_list = gis_obj.get("GraphicalInformation") or []
+                if isinstance(gi_list, dict):
+                    gi_list = [gi_list]
+                for gi in gi_list:
+                    target = gi.get("TargetObject") or {}
+                    target_uuid = target.get("UUID") or target.get("Uuid") or ""
+                    if target_uuid.lower() != prop_uuid.lower():
+                        continue
+                    # Found a match – extract color info
+                    ci = gi.get("ColorInformation") or {}
+                    return {
+                        "useLog": ci.get("UseLogarithmicMapping", False),
+                        "useReverse": ci.get("UseReverseMapping", False),
+                        "minIndex": ci.get("MinIndex"),
+                        "maxIndex": ci.get("MaxIndex"),
+                        "colorMapName": (ci.get("ColorMap") or {}).get("Title")
+                            or (ci.get("ColorMap") or {}).get("Citation", {}).get("Title"),
+                        "defaultColor": _extract_color(gi.get("DefaultColor")),
+                        "opacity": gi.get("Opacity"),
+                    }
+        except Exception as e:
+            log.debug("_find_graphical_info: %s check failed: %s", gis_type, e)
+            continue
+    return None
+
+
+def _extract_color(color_obj) -> str | None:
+    """Convert an HsvColor/RgbColor dict to a CSS hex string."""
+    if not color_obj or not isinstance(color_obj, dict):
+        return None
+    # RGB
+    if "Red" in color_obj:
+        r = int(float(color_obj.get("Red", 0)) * 255)
+        g = int(float(color_obj.get("Green", 0)) * 255)
+        b = int(float(color_obj.get("Blue", 0)) * 255)
+        return f"#{r:02x}{g:02x}{b:02x}"
+    # HSV (convert to hex)
+    if "Hue" in color_obj:
+        import colorsys
+        h = float(color_obj.get("Hue", 0)) / 360
+        s = float(color_obj.get("Saturation", 1))
+        v = float(color_obj.get("Value", 1))
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+    return None
+
+
 async def fetch_geometry_3d(
     access_token: str,
     ds: str,
@@ -1349,9 +1542,18 @@ async def fetch_geometry_3d(
       - PointSetRepresentation        → XYZ points
       - WellboreTrajectoryRepresentation → XYZ polyline
       - WellboreMarkerFrameRepresentation → XYZ markers with MD/labels
+      - IjkGridRepresentation         → pillar point cloud
+      - ContinuousProperty / DiscreteProperty / CategoricalProperty
+        → supporting rep geometry coloured by property values
 
     Returns a dict with ``kind`` and geometry arrays for Three.js.
     """
+    tl = typ.lower()
+
+    # ── Property types: resolve geometry from SupportingRepresentation ─
+    if _is_property_type(tl):
+        return await _property_geometry(access_token, ds, typ, uuid)
+
     # ── 1. Local PG (co-located, fastest) ─────────────────────────────
     try:
         from .pg_backend import get_pool
