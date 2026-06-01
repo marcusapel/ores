@@ -650,7 +650,7 @@
     const _3D_TYPE_KEYS = ['grid2drepresentation', 'triangulatedsetrepresentation',
       'pointsetrepresentation', 'wellboretrajectoryrepresentation',
       'wellboremarkerframerepresentation', 'polylinesetrepresentation',
-      'deviationsurveyrepresentation'];
+      'deviationsurveyrepresentation', 'ijkgridrepresentation'];
     function is3dType(typ) {
       const t = (typ || '').toLowerCase();
       return _3D_TYPE_KEYS.some(k => t.includes(k));
@@ -1422,7 +1422,7 @@
         // --- Other 3D-capable types ---
         else if (is3dType(typ)) {
           grid2dSection.style.display = '';
-          const shortType = typ.replace(/.*obj_/, '').replace(/Representation$/, '');
+          const shortType = typ.replace(/.*obj_/, '').replace(/^resqml\d+\./, '').replace(/Representation$/, '');
           grid2dBadge.textContent = shortType;
           grid2dStatus.textContent = '';
           btnTable.style.display = 'none';

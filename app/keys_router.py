@@ -1502,7 +1502,7 @@ _3D_TYPES = {
     "grid2drepresentation", "triangulatedsetrepresentation",
     "pointsetrepresentation", "wellboretrajectoryrepresentation",
     "wellboremarkerframerepresentation", "polylinesetrepresentation",
-    "deviationsurveyrepresentation",
+    "deviationsurveyrepresentation", "ijkgridrepresentation",
 }
 
 def _is_3d_type(typ: str) -> bool:

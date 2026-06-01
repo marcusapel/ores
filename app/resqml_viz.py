@@ -21,6 +21,47 @@ from typing import Any
 
 log = logging.getLogger("rddms-admin.resqml_viz")
 
+
+# ── Array response parsing ───────────────────────────────────────────────────
+
+def _flatten_nested(data) -> list:
+    """Recursively flatten nested lists/arrays into a flat list of scalars."""
+    if isinstance(data, (int, float)):
+        return [data]
+    if isinstance(data, list):
+        result: list = []
+        for item in data:
+            if isinstance(item, (list, tuple)):
+                result.extend(_flatten_nested(item))
+            else:
+                result.append(item)
+        return result
+    return []
+
+
+def _extract_flat_array(body: Any) -> list:
+    """Extract a flat numeric array from varying RDDMS response formats.
+
+    Handles:
+      - ``{"data": {"data": [...]}}``  (Microsoft RDDMS)
+      - ``{"data": [...]}``, ``{"values": [...]}``
+      - ``[...]``  (direct list)
+      - Nested 2-D/3-D arrays (flattened)
+    """
+    if isinstance(body, list):
+        return _flatten_nested(body)
+    if not isinstance(body, dict):
+        return []
+    inner = body.get("data") or body.get("values") or body
+    if isinstance(inner, list):
+        return _flatten_nested(inner)
+    if isinstance(inner, dict):
+        values = inner.get("data") or inner.get("values") or []
+        if isinstance(values, list):
+            return _flatten_nested(values)
+    return []
+
+
 # ── XML helpers ──────────────────────────────────────────────────────────────
 
 def _strip_ns(tag: str) -> str:
@@ -876,6 +917,17 @@ async def _build_geometry_result(
         return {"kind": "trajectory", "title": title, "positions": positions,
                 "md": md_values, "zmin": zmin, "zmax": zmax}
 
+    # ── IjkGridRepresentation ─────────────────────────────────────────
+    if "ijkgrid" in tl:
+        # IjkGrid stores pillar/corner-point geometry as a large Points array.
+        # Render as a point cloud of pillar coordinates for now.
+        positions = await _find_read("points", "pillar", "coordinates", "nodes")
+        if not positions:
+            positions = await _fallback_read(0)
+        zmin, zmax = _z_stats(positions)
+        return {"kind": "points", "title": title, "positions": positions,
+                "zmin": zmin, "zmax": zmax}
+
     return None
 
 
@@ -947,14 +999,27 @@ async def _rest_grid2d_surface(
     from . import osdu
 
     enc = urllib.parse.quote(ds, safe="")
-    typ = "resqml20.obj_Grid2dRepresentation"
     hdr = osdu.headers(access_token)
-    base_obj = osdu._rddms_url(f"/dataspaces/{enc}/resources/{typ}/{uuid}")
 
     async with osdu._http(timeout=120) as client:
-        r1 = await client.get(base_obj, headers=hdr)
-        r1.raise_for_status()
-        grid = osdu._normalize_obj(r1.json(), uuid)
+        # Try both RESQML 2.0.1 and 2.2 type names
+        grid = None
+        base_obj = ""
+        for typ in ("resqml20.obj_Grid2dRepresentation", "resqml22.Grid2dRepresentation"):
+            url = osdu._rddms_url(f"/dataspaces/{enc}/resources/{typ}/{uuid}")
+            try:
+                r1 = await client.get(url, headers=hdr, params={"$format": "json"})
+                if r1.status_code == 404:
+                    continue
+                r1.raise_for_status()
+                grid = osdu._normalize_obj(r1.json(), uuid)
+                if grid:
+                    base_obj = url
+                    break
+            except Exception:
+                continue
+        if not grid:
+            raise ValueError(f"Grid2d {uuid} not found in dataspace {ds}")
 
         patch = grid.get("Grid2dPatch") or {}
         n_fast = int(patch.get("FastestAxisCount", 0))
@@ -968,28 +1033,32 @@ async def _rest_grid2d_surface(
 
         geometry = _parse_lattice(origin_d, offsets, n_slow, n_fast)
 
-        # Resolve CRS
+        # Resolve CRS (try both 2.0.1 and 2.2 type names)
         crs_ref = geom.get("LocalCrs") or {}
         crs = crs_ref.get("_data")
         if not crs:
             crs_uuid = crs_ref.get("UUID") or crs_ref.get("Uuid")
             if crs_uuid:
                 ct = crs_ref.get("ContentType", "")
-                crs_typ = (
-                    "resqml20.obj_LocalTime3dCrs"
-                    if "LocalTime3dCrs" in ct
-                    else "resqml20.obj_LocalDepth3dCrs"
-                )
-                try:
-                    r_crs = await client.get(
-                        osdu._rddms_url(f"/dataspaces/{enc}/resources/{crs_typ}/{crs_uuid}"),
-                        headers=hdr,
-                    )
-                    r_crs.raise_for_status()
-                    crs = osdu._normalize_obj(r_crs.json(), crs_uuid)
-                except Exception as e:
-                    log.warning("_rest_grid2d_surface: CRS fetch failed: %s", e)
-                    crs = None
+                if "LocalTime3dCrs" in ct:
+                    crs_types = ["resqml20.obj_LocalTime3dCrs", "resqml22.LocalTime3dCrs"]
+                else:
+                    crs_types = ["resqml20.obj_LocalDepth3dCrs", "resqml22.LocalDepth3dCrs"]
+                for crs_typ in crs_types:
+                    try:
+                        r_crs = await client.get(
+                            osdu._rddms_url(f"/dataspaces/{enc}/resources/{crs_typ}/{crs_uuid}"),
+                            headers=hdr, params={"$format": "json"},
+                        )
+                        if r_crs.status_code == 404:
+                            continue
+                        r_crs.raise_for_status()
+                        crs = osdu._normalize_obj(r_crs.json(), crs_uuid)
+                        if crs:
+                            break
+                    except Exception as e:
+                        log.warning("_rest_grid2d_surface: CRS fetch failed (%s): %s", crs_typ, e)
+                        continue
 
         # Z-values
         r_al = await client.get(f"{base_obj}/arrays", headers=hdr)
@@ -1005,7 +1074,7 @@ async def _rest_grid2d_surface(
         for a in arr_list:
             uid = a.get("uid") or {}
             pir = uid.get("pathInResource", "")
-            if "points_patch" in pir or "zvalues" in pir:
+            if "points_patch" in pir.lower() or "zvalues" in pir.lower() or "z_values" in pir.lower():
                 arr_path = pir
                 break
         if not arr_path and arr_list:
@@ -1017,11 +1086,7 @@ async def _rest_grid2d_surface(
             r_arr = await client.get(f"{base_obj}/arrays/{arr_enc}", headers=hdr)
             r_arr.raise_for_status()
             arr_body = r_arr.json() or {}
-            inner = arr_body.get("data") or arr_body
-            if isinstance(inner, dict):
-                zvalues = inner.get("data") or inner.get("values") or []
-            elif isinstance(inner, list):
-                zvalues = inner
+            zvalues = _extract_flat_array(arr_body)
 
     return {
         "grid": grid,
@@ -1069,10 +1134,7 @@ async def _rest_geometry3d(
             r = await client.get(f"{obj_url}/arrays/{arr_enc}", headers=hdr)
             r.raise_for_status()
             body = r.json() or {}
-            inner = body.get("data") or body
-            if isinstance(inner, dict):
-                return inner.get("data") or inner.get("values") or []
-            return inner if isinstance(inner, list) else []
+            return _extract_flat_array(body)
 
         arr_paths: dict[str, str] = {}
         fallback_paths: list[str] = []
