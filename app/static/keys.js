@@ -3269,7 +3269,307 @@
       }
     }
   }
-}`
+}`,
+      // ─── WITSML (Well / Log / Channel) ────────────────────────────────────
+      // Queries for WITSML 2.1 objects ingested via ETP PutDataObjects.
+      // Type naming: witsml21.Well, witsml21.Wellbore, witsml21.Log, etc.
+      witsml_browse_wells: `# Browse all WITSML wells and wellbores in the dataspace
+# Shows the full well inventory with wellbore children
+# Typical WITSML hierarchy: Well → Wellbore → Log → ChannelSet
+{
+  wells: resqmlObjects(
+    dataspace: "$DS"
+    typeName: "witsml21.Well"
+    limit: 30
+  ) {
+    uuid
+    title
+    typeName
+  }
+  wellbores: resqmlObjects(
+    dataspace: "$DS"
+    typeName: "witsml21.Wellbore"
+    limit: 30
+  ) {
+    uuid
+    title
+    typeName
+  }
+}`,
+      witsml_well_to_logs: `# RELATIONSHIP: Well → Wellbore → Log → ChannelSet hierarchy
+# Traverses the WITSML object graph via ETP relationship edges.
+# Direction "sources" = objects that reference this well (wellbores, logs)
+#
+# Step 1: Pick a well UUID from the browse query above
+# Step 2: Query its sources to find wellbores
+# Step 3: Query a wellbore's sources to find logs and trajectories
+#
+# Example: find everything that references a well
+{
+  wellChildren: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.Well"
+    includeRelations: true
+    limit: 10
+  ) {
+    backend totalScanned totalMatched
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+  wellboreChildren: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.Wellbore"
+    includeRelations: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}
+# Expected: Well → Wellbore (source), Wellbore → Log + Trajectory (sources)
+# Use objectRelations for a specific UUID to drill deeper:
+# {
+#   objectRelations(
+#     dataspace: "$DS"
+#     typeName: "witsml21.Wellbore"
+#     uuid: "WELLBORE-UUID-HERE"
+#     direction: "sources"
+#   ) { uuid name typeName direction }
+# }`,
+      witsml_log_deep: `# DEEP SEARCH: Log curves with statistics
+# Finds all WITSML Logs and their related ChannelSets (curve containers)
+# Each Log contains channels like GR, RHOB, NPHI, DT, RDEEP, etc.
+#
+# includeRelations reveals: Log → ChannelSet children, Log → Wellbore parent
+# includeStatistics shows array stats if log data was stored as arrays
+#
+# For WITSML, curve metadata comes from XML (ChannelSet/Channel elements);
+# the manifest enrichment extracts: Curves[], TopMeasuredDepth, UOM per channel
+{
+  logs: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.Log"
+    includeRelations: true
+    includeStatistics: true
+    limit: 15
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+      }
+    }
+  }
+  channels: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.ChannelSet"
+    includeRelations: true
+    includeStatistics: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}
+# Tip: Use titleContains: "GR" or "RHOB" to filter specific curves
+# Tip: Use category: "witsml" to search all WITSML types at once`,
+      witsml_realtime_channels: `# REAL-TIME: ChannelSet streaming data query
+# ChannelSets represent real-time drilling/logging channels in WITSML 2.1
+# They are the containers for time-indexed or depth-indexed measurements
+#
+# In a real-time scenario:
+#   1. ETP ChannelStreaming (Protocol 1) pushes live channel data
+#   2. ETP PutDataObjects stores the ChannelSet + Log metadata
+#   3. This query retrieves the latest stored state
+#
+# For actual real-time subscription, use ETP WebSocket directly:
+#   Protocol 1 (ChannelStreaming): StartStreaming → ChannelData notifications
+#   Protocol 2 (ChannelDataFrame): RequestChannelData for bulk retrieval
+#
+# This query shows stored channel metadata and any indexed data:
+{
+  channels: resqmlObjects(
+    dataspace: "$DS"
+    typeName: "witsml21.ChannelSet"
+    limit: 20
+  ) {
+    uuid
+    title
+    typeName
+  }
+  trajectories: resqmlObjects(
+    dataspace: "$DS"
+    typeName: "witsml21.Trajectory"
+    limit: 10
+  ) {
+    uuid
+    title
+    typeName
+  }
+  logs: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.Log"
+    includeRelations: true
+    includeStatistics: true
+    limit: 5
+  ) {
+    backend totalScanned totalMatched
+    objects {
+      uuid title
+      relations { uuid name typeName direction }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}
+# ─── Real-Time ETP Streaming (not GraphQL) ───────────────────────────
+# To subscribe to live channel data via ETP WebSocket:
+#
+#   ws://server:9002  (binary Avro, ETP 1.2)
+#
+#   1. RequestSession → OpenSession
+#   2. ChannelStreaming.StartStreaming(channels: [...channel URIs...])
+#   3. Server pushes ChannelData messages as new data arrives
+#   4. Each message contains: channelId, indexes[], value, timestamp
+#
+# Channel URIs follow the pattern:
+#   eml:///witsml21.ChannelSet(uuid)/channel(mnemonic)
+#
+# Use the etp-client library (port 8080) for a REST-friendly wrapper,
+# or connect directly via WebSocket for lowest latency.`,
+      witsml_mudlog_drilling: `# DRILLING OPS: Mud logging by hole section
+# A realistic use case: during drilling, the geologist queries mud log data
+# to compare lithology and gas readings between hole sections.
+#
+# Chevron KKS-1 has two mud logs recorded during drilling:
+#   - Surface Hole MudLog  (0–500m, riser + conductor casing)
+#   - Production Hole MudLog (500–3200m, reservoir section)
+#
+# This query finds all MudLogs for a specific wellbore, showing:
+#   - Which wellbore they belong to (target relation)
+#   - Mud log properties (lithology intervals, gas readings)
+#
+# Use case: "Show me all mud log reports for KKS-1 — I need to check
+# the gas shows recorded while drilling through the Draupne shale"
+{
+  mudLogs: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.MudLog"
+    includeRelations: true
+    includeStatistics: true
+    limit: 10
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+  # Cross-reference: which wellbore has both logs AND mud logs?
+  wellboreGraph: deepSearch(
+    $DS_ARG
+    typeName: "witsml21.Wellbore"
+    titleContains: "KKS"
+    includeRelations: true
+    limit: 5
+  ) {
+    totalMatched
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+}
+# Expected result:
+#   mudLogs → 2 objects: "KKS-1 Surface Hole MudLog", "KKS-1 Production Hole MudLog"
+#   Each has relation → KKS-1 WB1 (target Wellbore)
+#   wellboreGraph → KKS-1 WB1 with sources: Log, 2× MudLog; target: Well
+#
+# Real-world follow-up queries:
+#   - Filter by depth interval to find gas shows in reservoir section
+#   - Compare mud weights between hole sections (kick detection)
+#   - Correlate mud log lithology with wireline log (CMR) interpretation`,
+      witsml_field_comparison: `# FIELD DEVELOPMENT: Compare wells across a platform
+# The Drogon field has 8 wells on platforms A, B, C.
+# This query finds all wells in the field and their log/trajectory data,
+# enabling a drilling engineer to compare well designs.
+#
+# Use case: "Which Drogon wells have composite logs and trajectories?
+# I need to plan a sidetrack from B-2 and want to compare nearby paths."
+{
+  wells: deepSearch(
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Well"
+    includeRelations: true
+    limit: 20
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+    }
+  }
+  trajectories: deepSearch(
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Trajectory"
+    includeRelations: true
+    includeStatistics: true
+    limit: 20
+  ) {
+    totalMatched
+    objects {
+      uuid title typeName
+      relations {
+        uuid name typeName direction
+      }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean }
+      }
+    }
+  }
+}
+# Expected: 8 wells (A-1..A-4, B-1..B-2, C-1..C-2)
+# Each well → 1 wellbore → 1 composite log + 1 drilled trajectory
+# Trajectories show inclination/azimuth statistics for well path comparison
+#
+# Follow-up: use objectRelations on a specific wellbore UUID to get
+# its full data graph (log, trajectory, mudlog, cement job, etc.)`
     };
 
     function gqlSelectedDataspaces() {
