@@ -2222,13 +2222,13 @@
     count
   }
 }`,
-      objects_grid: `# Browse IjkGrid representations (geocellular grids)
-# Drogon has "Geogrid" (927k cells); remote instances may also include "Simgrid" (107k cells)
+      objects_grid: `# Browse PointSet representations (well picks, fault points)
+# Drogon has 23 PointSets: depth picks from interpreted horizons + extracted faults
 {
   resqmlObjects(
     dataspace: "$DS"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    limit: 10
+    typeName: "resqml20.obj_PointSetRepresentation"
+    limit: 15
   ) {
     uuid
     title
@@ -2250,13 +2250,14 @@
 }`,
 
       // ─── Relationships ────────────────────────────────────────────────
-      rel_grid_targets: `# TARGETS: what does the Geogrid reference?
-# Shows CRS and StratigraphicColumnRank links
+      rel_grid_targets: `# TARGETS: what does a fault interpretation reference?
+# Shows the TectonicBoundaryFeature (geological concept) it represents
+# Using fault F1 (UUID from the Drogon structural model)
 {
   objectRelations(
     dataspace: "$DS"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
+    typeName: "resqml20.obj_FaultInterpretation"
+    uuid: "67eb8600-bc7b-4f34-87ce-ed4c2cb287e8"
     direction: "targets"
   ) {
     uuid
@@ -2265,9 +2266,11 @@
     direction
     contentType
   }
-}`,
-      rel_grid_sources: `# SOURCES: what references the Geogrid? (attached properties)
-# Returns ContinuousProperty and DiscreteProperty objects
+}
+# Tip: run "Faults graph" to see all 6 fault UUIDs,
+# then paste any UUID above to explore its references.`,
+      rel_grid_sources: `# SOURCES: what references the Geogrid? (CRS, stratigraphy)
+# The IjkGrid references CRS and StratigraphicColumnRank as targets
 {
   objectRelations(
     dataspace: "$DS"
@@ -2312,24 +2315,18 @@
 # }`,
 
       // ─── Deep Search (IjkGrid) ───────────────────────────────────────
-      deep_poro: `# Deep search: find IjkGrids with Porosity cells > 0.25
-# Uses OSDU canonical kind "porosity" (matches PORO, PHIT, etc.)
-# Drogon PORO ranges 0–0.36; this finds the high-porosity reservoir cells
-# Tip: select multiple dataspaces above to search across all of them
+      deep_poro: `# Deep search: Fault interpretations with full relationship graph
+# Finds all faults and shows their representations (PolylineSet = fault sticks)
+# Direction "source" = objects that point TO this fault (representations)
+# Direction "target" = objects this fault points TO (TectonicBoundaryFeature)
 #
-# Note: arrayFilter requires PG or ETP backend for cell-value access.
-# On REST-only backends, remove arrayFilter to get kind-matched results.
-# Alternative: use titleContains: "PORO" to match by raw property name
+# Drogon has 6 faults: F1–F6 (normal faults bounding horst/graben)
 {
   deepSearch(
     $DS_ARG
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    propertyFilter: {
-      kind: "porosity"
-      arrayFilter: { threshold: 0.25, operator: GT }
-    }
-    includeStatistics: true
-    limit: 5
+    typeName: "resqml20.obj_FaultInterpretation"
+    includeRelations: true
+    limit: 10
   ) {
     backend
     totalScanned
@@ -2338,102 +2335,86 @@
     objects {
       uuid
       title
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean stdDev }
-        matchingCells { count total fraction }
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
-      deep_perm: `# Deep search: IjkGrids with Permeability > 500 mD (high-perm zones)
-# Kind filter "permeability" matches titles like "Horizontal Permeability"
-# PERMX ranges 0–3830 mD on Geogrid, 0–4278 on Simgrid (if available)
+      deep_perm: `# Deep search: PointSet representations (horizon picks, fault extractions)
+# 23 PointSets in Drogon: depth/time picks for each horizon and fault
+# Includes relations showing which HorizonInterpretation each set belongs to
 #
-# Note: arrayFilter requires PG or ETP backend for cell-value access.
-# Alternative: use titleContains: "PERMX" to match only X-direction perm
+# titleContains filters by name substring (case-insensitive)
 {
   deepSearch(
     $DS_ARG
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    propertyFilter: {
-      kind: "permeability"
-      arrayFilter: { threshold: 500.0, operator: GT }
-    }
-    includeStatistics: true
-    limit: 5
+    typeName: "resqml20.obj_PointSetRepresentation"
+    includeRelations: true
+    limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title
-      properties {
-        title kind
-        statistics { count minValue maxValue mean }
-        matchingCells { count total fraction }
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
-      deep_sw: `# Deep search: IjkGrids where water saturation < 0.3
-# Uses OSDU canonical kind "saturation" (matches SW, SO)
-# Low saturation = oil/gas zone; high = water zone
+      deep_sw: `# Deep search: Stratigraphic units and their boundary horizons
+# Shows the 5 Drogon stratigraphic units with relations to:
+#   - StratigraphicUnitFeature (target: the geological unit concept)
+#   - StratigraphicColumnRankInterpretation (target: parent rank)
 #
-# Note: arrayFilter requires PG or ETP backend for cell-value access.
-# Alternative: use titleContains: "SW" to match by raw property name
+# Units define the layering: Nordland, Shetland, Draupne, etc.
 {
   deepSearch(
     $DS_ARG
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    propertyFilter: {
-      kind: "saturation"
-      arrayFilter: { threshold: 0.3, operator: LT }
-    }
-    includeStatistics: true
-    limit: 5
+    typeName: "resqml20.obj_StratigraphicUnitInterpretation"
+    includeRelations: true
+    limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title
-      properties {
-        title kind
-        statistics { count minValue maxValue mean }
-        matchingCells { count total fraction }
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
-      deep_all_props: `# List ALL properties on IjkGrids (no filter, just browse)
-# Shows every ContinuousProperty and DiscreteProperty attached
+      deep_all_props: `# Browse ALL structural boundary features (horizons + faults)
+# Shows every geological boundary with its interpretation relations
+# GeneticBoundaryFeature = horizons; TectonicBoundaryFeature = faults
 {
-  deepSearch(
+  horizons: deepSearch(
     $DS_ARG
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    includeStatistics: true
-    limit: 2
+    typeName: "resqml20.obj_GeneticBoundaryFeature"
+    includeRelations: true
+    limit: 10
   ) {
     backend totalScanned totalMatched
     objects {
       uuid title
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
 
       // ─── Deep Search (Surfaces / Grid2D) ──────────────────────────────
-      deep_grid2d_horizons: `# Grid2D surfaces → which horizon / boundary feature?
+      deep_grid2d_horizons: `# Fault sticks (PolylineSet) → which fault interpretation?
 # Uses includeRelations to traverse the RESQML object graph:
-#   Grid2D → target HorizonInterpretation → target GeneticBoundaryFeature
-# Each surface points to exactly one horizon interpretation.
+#   PolylineSetRepresentation → target FaultInterpretation → target TectonicBoundaryFeature
+# Each polyline set is a seismic interpretation of a fault plane.
 {
   deepSearch(
     $DS_ARG
-    typeName: "resqml20.obj_Grid2dRepresentation"
+    typeName: "resqml20.obj_PolylineSetRepresentation"
     includeRelations: true
-    includeStatistics: false
-    limit: 20
+    limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
@@ -2647,88 +2628,78 @@
 }`,
 
       // ─── Deep Search (Well Logs) ──────────────────────────────────────
-      deep_well_phit: `# Wells with Porosity > 0.25
-# Uses OSDU canonical kind "porosity" (matches PORO, PHIT log curves)
-# Searches WellboreFrameRepresentations for attached log properties
+      deep_well_phit: `# WITSML Logs for Drogon field wells
+# Each well has a "Composite Log" containing GR, DT, RHOB, NPHI, etc.
+# Relations show which wellbore the log belongs to (target)
 #
-# Alternative: use titleContains: "PHIT" to match only total porosity
+# 8 wells × 1 composite log = 8 log objects
 {
   deepSearch(
-    $DS_ARG
-    typeName: "resqml20.obj_WellboreFrameRepresentation"
-    propertyFilter: {
-      kind: "porosity"
-      arrayFilter: { threshold: 0.25, operator: GT }
-    }
-    includeStatistics: true
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Log"
+    includeRelations: true
     limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title
-      properties {
-        title kind
-        statistics { count minValue maxValue mean }
-        matchingCells { count total fraction }
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
-      deep_well_perm: `# Wells with Permeability > 100 mD
-# Kind filter "permeability" matches titles like "KLOGH", "PERM*"
-# KLOGH is the log-derived horizontal permeability
+      deep_well_perm: `# WITSML Trajectories (drilled well paths)
+# Each Drogon well has a drilled trajectory defining the 3D well path
+# Used for directional drilling planning and anti-collision
 #
-# Alternative: use titleContains: "KLOGH" to match only log permeability
+# Relations reveal: Trajectory → Wellbore (target)
 {
   deepSearch(
-    $DS_ARG
-    typeName: "resqml20.obj_WellboreFrameRepresentation"
-    propertyFilter: {
-      kind: "permeability"
-      arrayFilter: { threshold: 100.0, operator: GT }
-    }
-    includeStatistics: true
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Trajectory"
+    includeRelations: true
     limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title
-      properties {
-        title kind
-        statistics { count minValue maxValue mean }
-        matchingCells { count total fraction }
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
-      deep_well_all: `# All log properties on wells (browse curves available)
-# Drogon wells have: PHIT, KLOGH, VSH, DENS, AI, VP, VS, Sw, Facies…
+      deep_well_all: `# All WITSML objects for a specific well (title filter)
+# Use titleContains to find everything related to a specific well
+# Combines Wells, Wellbores, Logs, Trajectories, MudLogs, ChannelSets
 {
   deepSearch(
-    $DS_ARG
-    typeName: "resqml20.obj_WellboreFrameRepresentation"
-    includeStatistics: true
-    limit: 3
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Wellbore"
+    titleContains: "A-1"
+    includeRelations: true
+    limit: 5
   ) {
-    backend totalScanned totalMatched
+    backend totalScanned totalMatched queryDescription
     objects {
-      uuid title
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
+      uuid title typeName
+      relations {
+        uuid name typeName direction
       }
     }
   }
 }`,
 
       // ─── Numerical Data ───────────────────────────────────────────────
-      array_stats: `# Get array metadata and statistics for the Geogrid
-# (geometry pillars, cell connectivity, etc.)
+      array_stats: `# Get array metadata and statistics for a PointSet
+# Shows coordinate arrays (XYZ points) for horizon depth picks
+# 124,922 points × 3 coordinates = 374,766 values
 {
   objectArrays(
     dataspace: "$DS"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
+    typeName: "resqml20.obj_PointSetRepresentation"
+    uuid: "0633e96a-4928-4f6e-b115-89c75e39b4df"
     includeStatistics: true
   ) {
     path
@@ -2740,12 +2711,13 @@
     }
   }
 }`,
-      array_sample: `# Read sample values from Geogrid arrays (first 20 elements)
+      array_sample: `# Read sample values from PointSet arrays (first 20 XYZ coordinates)
+# Each row is [X, Y, Z] in the local CRS (UTM easting, northing, depth)
 {
   objectArrays(
     dataspace: "$DS"
-    typeName: "resqml20.obj_IjkGridRepresentation"
-    uuid: "2c6de928-7e08-4601-b979-34048bd68c02"
+    typeName: "resqml20.obj_PointSetRepresentation"
+    uuid: "0633e96a-4928-4f6e-b115-89c75e39b4df"
     includeStatistics: true
     includeSampleValues: true
     sampleSize: 20
@@ -2820,18 +2792,16 @@
     }
   }
 }`,
-      fed_enrich: `# Full pipeline: all sources + relations + property stats
+      fed_enrich: `# Full pipeline: all sources + relations for horizon interpretations
 {
   federatedSearch(
     text: "*"
     dataspaces: $DS_LIST
-    typeName: "resqml20.obj_IjkGridRepresentation"
+    typeName: "resqml20.obj_HorizonInterpretation"
     searchCatalog: true
     searchRddms: true
     searchRemoteRddms: true
     includeRelations: true
-    includeProperties: true
-    includeStatistics: true
     limit: 5
   ) {
     totalCatalog totalLocalRddms totalRemoteRddms totalMerged sources
@@ -2839,10 +2809,6 @@
       uuid title typeName dataspace
       foundInCatalog foundInLocalRddms foundInRemoteRddms
       relations { uuid name typeName direction }
-      properties {
-        title kind
-        statistics { count minValue maxValue mean }
-      }
     }
   }
 }`,
@@ -2850,38 +2816,31 @@
       // These demonstrate the unique value of federated GraphQL:
       // correlating OSDU catalog metadata with RDDMS object-graph data
       // using shared UUIDs across systems.
-      xref_grid_props: `# CROSS-SYSTEM: Find grids indexed in OSDU catalog,
-# then discover their attached properties from RDDMS.
+      xref_grid_props: `# CROSS-SYSTEM: Find faults indexed in OSDU catalog,
+# then discover their RDDMS representations.
 #
 # Why only GraphQL can do this:
-#   OSDU Search knows the grid exists (WPC record) but has NO property data.
-#   RDDMS has the properties (porosity, permeability) but isn't searchable by OSDU kind.
-#   GraphQL bridges the gap: catalog hit → UUID → RDDMS graph → properties.
+#   OSDU Search knows the fault exists (WPC record) but has NO representation data.
+#   RDDMS has the representations (PolylineSets) but isn't searchable by OSDU kind.
+#   GraphQL bridges the gap: catalog hit → UUID → RDDMS graph → representations.
 {
   federatedSearch(
     text: "*"
-    kind: "osdu:wks:work-product-component--IjkGridRepresentation:*"
+    kind: "osdu:wks:work-product-component--FaultInterpretation:*"
     dataspaces: $DS_LIST
-    typeName: "resqml20.obj_IjkGridRepresentation"
+    typeName: "resqml20.obj_FaultInterpretation"
     searchCatalog: true
     searchRddms: true
     includeRelations: true
-    includeProperties: true
-    includeStatistics: true
-    limit: 5
+    limit: 10
   ) {
     totalCatalog totalLocalRddms totalMerged sources
     hits {
       uuid title typeName dataspace
       foundInCatalog foundInLocalRddms
       osduId osduKind
-      # Relations from RDDMS graph (CRS, stratigraphy, features)
+      # Relations from RDDMS graph (PolylineSet, TectonicBoundaryFeature)
       relations { uuid name typeName direction }
-      # Properties from RDDMS (porosity, perm, saturation)
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean stdDev }
-      }
     }
   }
 }`,
@@ -2994,68 +2953,58 @@
 }
 # ↑ After running: filter results where foundInLocalRddms=false
 #   (those are catalog-only records with no RDDMS backing)`,
-      xref_well_chain: `# CROSS-SYSTEM: Trace a well from catalog to full RDDMS graph
+      xref_well_chain: `# CROSS-SYSTEM: Trace a WITSML well from OSDU catalog to RDDMS data
 #
 # Why only GraphQL can do this:
-#   OSDU catalog stores flat WPC records - you can search for wells.
-#   But the Feature → Interpretation → Trajectory → FrameRepresentation
-#   chain lives in RDDMS only. Catalog has no knowledge of these edges.
-#   GraphQL finds the well in catalog, then traverses the RDDMS graph
-#   to reveal the full subsurface object hierarchy.
+#   OSDU catalog stores flat Well records (master-data--Well).
+#   RDDMS stores the Well → Wellbore → Log → ChannelSet graph.
+#   GraphQL finds the well in catalog, then traverses RDDMS to reveal
+#   the full drilling data hierarchy (mud logs, trajectories, logs).
+#
+# Uses maap/witsml where we ingested both WITSML data and OSDU manifest.
 {
   federatedSearch(
     text: "*"
-    kind: "osdu:wks:work-product-component--WellboreTrajectory:*"
-    dataspaces: $DS_LIST
-    typeName: "resqml20.obj_WellboreFeature"
+    dataspaces: ["maap/witsml"]
+    typeName: "witsml21.Wellbore"
     searchCatalog: true
     searchRddms: true
     includeRelations: true
-    includeProperties: true
-    limit: 5
+    limit: 10
   ) {
     totalCatalog totalLocalRddms totalMerged sources
     hits {
       uuid title typeName dataspace
       foundInCatalog foundInLocalRddms
       osduId osduKind
-      # Graph edges: Interpretation → Trajectory → FrameRep → logs
+      # Graph edges: Wellbore → Well (target), Log/MudLog/Trajectory (sources)
       relations {
         uuid name typeName direction
-      }
-      # Any attached array properties (deviation surveys, logs)
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
       }
     }
   }
 }`,
-      xref_grid_full: `# CROSS-SYSTEM: Full grid lineage - catalog metadata + RDDMS graph + array stats
+      xref_grid_full: `# CROSS-SYSTEM: Full horizon lineage - catalog metadata + RDDMS graph
 #
 # The ultimate cross-system query that no single API can answer:
-#   1. OSDU catalog → finds the grid (WPC record with OSDU id, kind, version)
+#   1. OSDU catalog → finds the horizon (WPC record with OSDU id, kind)
 #   2. UUID match → confirms it exists in RDDMS (data integrity check)
-#   3. Graph traversal → finds CRS, stratigraphy, interpretation links
-#   4. Property discovery → finds porosity, permeability, saturation arrays
-#   5. Array statistics → computes min/max/mean without downloading data
+#   3. Graph traversal → finds PointSets, features, stratigraphy links
 #
 # This single query replaces: 1 catalog search + N RDDMS REST calls +
-# N property lookups + N array stat computations.
+# N relation lookups.
 {
   federatedSearch(
     text: "*"
-    kind: "osdu:wks:work-product-component--IjkGridRepresentation:*"
+    kind: "osdu:wks:work-product-component--HorizonInterpretation:*"
     dataspaces: $DS_LIST
-    typeName: "resqml20.obj_IjkGridRepresentation"
+    typeName: "resqml20.obj_HorizonInterpretation"
     searchCatalog: true
     searchRddms: true
     searchRemoteRddms: true
     includeRelations: true
-    includeProperties: true
-    includeStatistics: true
-    propertyFilter: { kind: "porosity", arrayFilter: { threshold: 0.1, operator: GT } }
-    limit: 3
+    relationFilter: ["PointSet", "Boundary", "Stratigraphic"]
+    limit: 10
   ) {
     totalCatalog totalLocalRddms totalRemoteRddms totalMerged
     sources queryDescription
@@ -3064,11 +3013,6 @@
       foundInCatalog foundInLocalRddms foundInRemoteRddms
       osduId osduKind
       relations { uuid name typeName direction }
-      properties {
-        uuid title kind uom
-        statistics { count minValue maxValue mean stdDev }
-        matchingCells { count total fraction }
-      }
     }
   }
 }`,
@@ -3151,15 +3095,15 @@
     }
   }
 }`,
-      struct_org_model: `# STRUCTURAL: StructuralOrganizationInterpretation → all members
+      struct_org_model: `# STRUCTURAL: OrganizationFeature → the top-level structural framework
 #
-# The top-level structural model object that references ALL faults and
-# horizons in the interpretation. Direction "targets" shows what it
-# points to (FaultInterpretation, HorizonInterpretation, etc.)
+# Drogon has one OrganizationFeature that represents the structural model.
+# Its relations point to the interpretations (faults, horizons) that
+# comprise the structural framework.
 {
   deepSearch(
     dataspace: "$DS"
-    typeName: "resqml20.obj_StructuralOrganizationInterpretation"
+    typeName: "resqml20.obj_OrganizationFeature"
     includeRelations: true
     limit: 5
   ) {
@@ -3172,17 +3116,17 @@
     }
   }
 }`,
-      struct_grid2d_all: `# STRUCTURAL: All Grid2D surfaces with their parent horizon + CRS
+      struct_grid2d_all: `# STRUCTURAL: All fault stick polylines with their parent faults
 #
-# Lists every depth/time surface (Grid2dRepresentation) and shows
-# which HorizonInterpretation and CRS each references.
-# Expected for Drogon: 9 Grid2D surfaces (7 depth + 2 time)
+# Lists every PolylineSetRepresentation (fault sticks from seismic)
+# and shows which FaultInterpretation each references.
+# Expected for Drogon: 6 PolylineSets (one per fault: F1–F6)
 {
   deepSearch(
     dataspace: "$DS"
-    typeName: "resqml20.obj_Grid2dRepresentation"
+    typeName: "resqml20.obj_PolylineSetRepresentation"
     includeRelations: true
-    limit: 20
+    limit: 10
   ) {
     totalMatched
     objects {
@@ -3193,18 +3137,18 @@
     }
   }
 }`,
-      struct_catalog_vs_rddms: `# STRUCTURAL: Compare catalog StructureMap records with RDDMS Grid2D objects
+      struct_catalog_vs_rddms: `# STRUCTURAL: Compare catalog HorizonInterp records with RDDMS objects
 #
-# Federated query that finds StructureMap WPCs in the OSDU catalog
-# and cross-references them with Grid2dRepresentation in RDDMS.
+# Federated query that finds HorizonInterpretation WPCs in the OSDU catalog
+# and cross-references them with HorizonInterpretation in RDDMS.
 # Hits with both foundInCatalog=true and foundInLocalRddms=true are
 # fully synchronized. Missing on either side indicates a gap.
 {
   federatedSearch(
-    text: "*"
-    kind: "osdu:wks:work-product-component--StructureMap:*"
+    text: "Drogon"
+    kind: "osdu:wks:work-product-component--HorizonInterpretation:*"
     dataspaces: $DS_LIST
-    typeName: "resqml20.obj_Grid2dRepresentation"
+    typeName: "resqml20.obj_HorizonInterpretation"
     searchCatalog: true
     searchRddms: true
     includeRelations: true
@@ -3241,31 +3185,27 @@
     }
   }
 }`,
-      struct_grid_to_props: `# STRUCTURAL: IjkGrid → all cell properties (porosity, perm, facies, etc.)
+      struct_grid_to_props: `# STRUCTURAL: HorizonInterpretation → all representations + features
 #
-# Direction "sources" on the grid finds everything that references it:
-#   - ContinuousProperty (porosity, permeability, Sw, NTG, ...)
-#   - DiscreteProperty (facies, region, zone)
+# Direction "sources" on the horizon finds everything that references it:
+#   - PointSetRepresentation (depth picks)
+#   - PolylineSetRepresentation (contour lines)
+#   - WellboreMarkerFrameRepresentation (well markers)
 #
-# With includeStatistics: get min/max/mean for each property array.
-# Expected for Drogon: 1 grid → 32 properties (189 continuous + 65 discrete)
+# Direction "targets" shows the GeneticBoundaryFeature (geological concept).
+# Expected for Drogon: 6 horizons × (3–6 PointSets + 1 Feature)
 {
   deepSearch(
     dataspace: "$DS"
-    typeName: "resqml20.obj_IjkGridRepresentation"
+    typeName: "resqml20.obj_HorizonInterpretation"
     includeRelations: true
-    includeStatistics: true
-    limit: 3
+    limit: 10
   ) {
     totalMatched
     objects {
       uuid title typeName
       relations {
         uuid name typeName direction
-      }
-      properties {
-        uuid title kind uom
-        statistics { count minValue maxValue mean stdDev }
       }
     }
   }
@@ -3359,7 +3299,6 @@
     $DS_ARG
     typeName: "witsml21.Log"
     includeRelations: true
-    includeStatistics: true
     limit: 15
   ) {
     backend totalScanned totalMatched queryDescription
@@ -3368,17 +3307,12 @@
       relations {
         uuid name typeName direction
       }
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean stdDev }
-      }
     }
   }
   channels: deepSearch(
     $DS_ARG
     typeName: "witsml21.ChannelSet"
     includeRelations: true
-    includeStatistics: true
     limit: 10
   ) {
     totalMatched
@@ -3387,32 +3321,22 @@
       relations {
         uuid name typeName direction
       }
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
-      }
     }
   }
 }
 # Tip: Use titleContains: "GR" or "RHOB" to filter specific curves
 # Tip: Use category: "witsml" to search all WITSML types at once`,
-      witsml_realtime_channels: `# REAL-TIME: ChannelSet streaming data query
-# ChannelSets represent real-time drilling/logging channels in WITSML 2.1
-# They are the containers for time-indexed or depth-indexed measurements
+      witsml_realtime_channels: `# WELL DATA OVERVIEW: Channels, Trajectories, and Logs
+# Shows all measurement containers for a well:
+#   - ChannelSets: curve data containers (GR, DT, RHOB channels)
+#   - Trajectories: directional survey data (MD, inclination, azimuth)
+#   - Logs: composite log objects that group channels by run
 #
-# In a real-time scenario:
-#   1. ETP ChannelStreaming (Protocol 1) pushes live channel data
-#   2. ETP PutDataObjects stores the ChannelSet + Log metadata
-#   3. This query retrieves the latest stored state
-#
-# For actual real-time subscription, use ETP WebSocket directly:
-#   Protocol 1 (ChannelStreaming): StartStreaming → ChannelData notifications
-#   Protocol 2 (ChannelDataFrame): RequestChannelData for bulk retrieval
-#
-# This query shows stored channel metadata and any indexed data:
+# Uses maap/witsml for ChannelSet (Chevron KKS-1 GR+DT)
+# and maap/drogon for trajectories/logs (8 Drogon wells)
 {
   channels: resqmlObjects(
-    dataspace: "$DS"
+    dataspace: "maap/witsml"
     typeName: "witsml21.ChannelSet"
     limit: 20
   ) {
@@ -3420,30 +3344,28 @@
     title
     typeName
   }
-  trajectories: resqmlObjects(
-    dataspace: "$DS"
+  trajectories: deepSearch(
+    dataspace: "maap/drogon"
     typeName: "witsml21.Trajectory"
+    includeRelations: true
     limit: 10
   ) {
-    uuid
-    title
-    typeName
+    totalMatched
+    objects {
+      uuid title typeName
+      relations { uuid name typeName direction }
+    }
   }
   logs: deepSearch(
-    $DS_ARG
+    dataspace: "maap/drogon"
     typeName: "witsml21.Log"
     includeRelations: true
-    includeStatistics: true
-    limit: 5
+    limit: 10
   ) {
-    backend totalScanned totalMatched
+    totalMatched
     objects {
       uuid title
       relations { uuid name typeName direction }
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
-      }
     }
   }
 }
@@ -3481,7 +3403,6 @@
     $DS_ARG
     typeName: "witsml21.MudLog"
     includeRelations: true
-    includeStatistics: true
     limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
@@ -3489,10 +3410,6 @@
       uuid title typeName
       relations {
         uuid name typeName direction
-      }
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
       }
     }
   }
@@ -3548,7 +3465,6 @@
     dataspace: "maap/drogon"
     typeName: "witsml21.Trajectory"
     includeRelations: true
-    includeStatistics: true
     limit: 20
   ) {
     totalMatched
@@ -3556,10 +3472,6 @@
       uuid title typeName
       relations {
         uuid name typeName direction
-      }
-      properties {
-        title kind uom
-        statistics { count minValue maxValue mean }
       }
     }
   }

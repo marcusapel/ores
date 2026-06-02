@@ -286,11 +286,11 @@
               <option value="status">Backend status</option>
               <option value="dataspaces">List dataspaces</option>
               <option value="types">Resource types &amp; counts</option>
-              <option value="objects_grid">Browse IjkGrids</option>
+              <option value="objects_grid">Browse PointSets (horizon picks)</option>
               <option value="objects_wells">Browse wellbores</option>
             </optgroup>
             <optgroup label="Relations (graph traversal)">
-              <option value="rel_grid_targets">Geogrid → targets (CRS, stratigraphy)</option>
+              <option value="rel_grid_targets">Fault → targets (boundary feature)</option>
               <option value="rel_grid_sources">Geogrid ← sources (properties)</option>
               <option value="rel_well_chain">Well chain: Feature → Interp → Trajectory</option>
             </optgroup>
@@ -300,49 +300,49 @@
               <option value="strat_boundaries">All boundary features (strat + technical)</option>
               <option value="xref_strat_horizons">Federated: catalog horizons ↔ RDDMS</option>
             </optgroup>
-            <optgroup label="Deep Search (property filter + stats)">
-              <option value="deep_poro">IjkGrid: porosity &gt; 0.25</option>
-              <option value="deep_perm">IjkGrid: permeability &gt; 500 mD</option>
-              <option value="deep_sw">IjkGrid: water saturation &lt; 0.3</option>
-              <option value="deep_all_props">IjkGrid: all properties</option>
-              <option value="deep_grid2d_horizons">Grid2D → horizon / boundary</option>
+            <optgroup label="Deep Search (relations + structure)">
+              <option value="deep_poro">Faults: interpretations + relations</option>
+              <option value="deep_perm">PointSets: horizon picks + relations</option>
+              <option value="deep_sw">Stratigraphic units + boundaries</option>
+              <option value="deep_all_props">All boundary features (browse)</option>
+              <option value="deep_grid2d_horizons">Fault sticks (PolylineSet) → interp</option>
               <option value="deep_grid2d_arrays">Grid2D: array statistics</option>
-              <option value="deep_horizon_grid2d">Horizon → Grid2Ds &amp; representations</option>
-              <option value="deep_well_phit">Wells: porosity &gt; 0.25</option>
-              <option value="deep_well_perm">Wells: permeability &gt; 100</option>
-              <option value="deep_well_all">Wells: all log properties</option>
-              <option value="array_stats">Array statistics (raw)</option>
-              <option value="array_sample">Array sample values</option>
+              <option value="deep_horizon_grid2d">Horizon → PointSets &amp; representations</option>
+              <option value="deep_well_phit">WITSML Logs (Drogon composite)</option>
+              <option value="deep_well_perm">WITSML Trajectories (drilled paths)</option>
+              <option value="deep_well_all">WITSML Wellbore detail (A-1)</option>
+              <option value="array_stats">Array statistics (PointSet XYZ)</option>
+              <option value="array_sample">Array sample values (coordinates)</option>
             </optgroup>
             <optgroup label="Federated (Catalog + RDDMS)">
               <option value="fed_local">Local RDDMS only (un-indexed PG)</option>
               <option value="fed_catalog">OSDU catalog only (metadata)</option>
               <option value="fed_both">All sources merged by UUID</option>
-              <option value="fed_enrich">All + relations + property stats</option>
-              <option value="xref_grid_props">Grid in catalog → properties in RDDMS</option>
+              <option value="fed_enrich">All + relations (horizons)</option>
+              <option value="xref_grid_props">Faults in catalog → RDDMS graph</option>
               <option value="xref_horizon_reps">Horizon in catalog → RDDMS representations</option>
               <option value="xref_orphan_rddms">RDDMS orphans (not in catalog)</option>
               <option value="xref_catalog_only">Catalog ghosts (not in RDDMS)</option>
               <option value="xref_well_chain">Well chain: catalog → RDDMS graph</option>
-              <option value="xref_grid_full">Full lineage + property filter</option>
+              <option value="xref_grid_full">Full horizon lineage (catalog+RDDMS)</option>
             </optgroup>
             <optgroup label="Structural Model (FIRP)">
               <option value="struct_features_to_reps">Features → Interpretations → Reps</option>
               <option value="struct_interp_to_surfaces">HorizonInterp → surfaces (reverse)</option>
               <option value="struct_faults_graph">Faults: Feature → Interp → PolylineSet</option>
-              <option value="struct_org_model">StructuralOrg → all members</option>
-              <option value="struct_grid2d_all">All Grid2D surfaces + parents</option>
+              <option value="struct_org_model">OrganizationFeature → structural model</option>
+              <option value="struct_grid2d_all">Fault sticks (PolylineSet) + parents</option>
               <option value="struct_catalog_vs_rddms">Catalog StructureMap ↔ RDDMS Grid2D</option>
               <option value="struct_strat_column">Strat column → units → boundaries</option>
-              <option value="struct_grid_to_props">IjkGrid → all cell properties</option>
+              <option value="struct_grid_to_props">Horizons → all representations</option>
             </optgroup>
             <optgroup label="WITSML (Well / Log / Channel)">
               <option value="witsml_browse_wells">Browse wells &amp; wellbores</option>
               <option value="witsml_well_to_logs">Well → Wellbore → Log hierarchy</option>
-              <option value="witsml_log_deep">Log curves deep search + stats</option>
+              <option value="witsml_log_deep">Log + ChannelSet deep search</option>
               <option value="witsml_mudlog_drilling">Mud logging by hole section (KKS-1)</option>
               <option value="witsml_field_comparison">Field wells: logs + trajectories</option>
-              <option value="witsml_realtime_channels">ChannelSet: real-time streaming data</option>
+              <option value="witsml_realtime_channels">Well data overview: channels + paths</option>
             </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>
