@@ -308,9 +308,9 @@
               <option value="deep_grid2d_horizons">Fault sticks (PolylineSet) → interp</option>
               <option value="deep_grid2d_arrays">Grid2D: array statistics</option>
               <option value="deep_horizon_grid2d">Horizon → PointSets &amp; representations</option>
-              <option value="deep_well_phit">WITSML Logs (Drogon composite)</option>
-              <option value="deep_well_perm">WITSML Trajectories (drilled paths)</option>
-              <option value="deep_well_all">WITSML Wellbore detail (A-1)</option>
+              <option value="deep_well_phit">WITSML Logs + RESQML array stats</option>
+              <option value="deep_well_perm">WITSML search by name (titleContains)</option>
+              <option value="deep_well_all">All WITSML types + sample values</option>
               <option value="array_stats">Array statistics (PointSet XYZ)</option>
               <option value="array_sample">Array sample values (coordinates)</option>
             </optgroup>
@@ -339,10 +339,10 @@
             <optgroup label="WITSML (Well / Log / Channel)">
               <option value="witsml_browse_wells">Browse wells &amp; wellbores</option>
               <option value="witsml_well_to_logs">Well → Wellbore → Log hierarchy</option>
-              <option value="witsml_log_deep">Log + ChannelSet deep search</option>
+              <option value="witsml_log_deep">Title search + category query</option>
               <option value="witsml_mudlog_drilling">Mud logging by hole section (KKS-1)</option>
               <option value="witsml_field_comparison">Field wells: logs + trajectories</option>
-              <option value="witsml_realtime_channels">Well data overview: channels + paths</option>
+              <option value="witsml_realtime_channels">Federated well search + stats</option>
             </optgroup>
           </select>
           <span class="btn btn-action" id="gql-run">▶ Run</span>

@@ -2628,53 +2628,52 @@
 }`,
 
       // ─── Deep Search (Well Logs) ──────────────────────────────────────
-      deep_well_phit: `# WITSML Logs for Drogon field wells
-# Each well has a "Composite Log" containing GR, DT, RHOB, NPHI, etc.
-# Relations show which wellbore the log belongs to (target)
+      deep_well_phit: `# WELL DATA + NUMERICAL STATS: WITSML logs + RESQML array statistics
+# Demonstrates combining WITSML metadata with RESQML numerical data
+# in a single GraphQL request:
+#   1. WITSML Logs: metadata objects (XML) — no arrays, but relations show hierarchy
+#   2. RESQML PointSet: has 124k XYZ coordinates with full statistics
 #
-# 8 wells × 1 composite log = 8 log objects
+# Use case: "Show me wells with logs AND compute depth statistics
+# from the seismic horizon picks to compare coverage"
 {
-  deepSearch(
+  drogonLogs: deepSearch(
     dataspace: "maap/drogon"
     typeName: "witsml21.Log"
+    titleContains: "Composite"
     includeRelations: true
-    limit: 10
+    limit: 8
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title
-      relations {
-        uuid name typeName direction
-      }
+      relations { uuid name typeName direction }
     }
   }
-}`,
-      deep_well_perm: `# WITSML Trajectories (drilled well paths)
-# Each Drogon well has a drilled trajectory defining the 3D well path
-# Used for directional drilling planning and anti-collision
-#
-# Relations reveal: Trajectory → Wellbore (target)
-{
-  deepSearch(
+  # RESQML PointSet has actual numerical arrays with statistics
+  horizonPoints: objectArrays(
     dataspace: "maap/drogon"
-    typeName: "witsml21.Trajectory"
-    includeRelations: true
-    limit: 10
+    typeName: "resqml20.obj_PointSetRepresentation"
+    uuid: "0633e96a-4928-4f6e-b115-89c75e39b4df"
+    includeStatistics: true
   ) {
-    backend totalScanned totalMatched queryDescription
-    objects {
-      uuid title
-      relations {
-        uuid name typeName direction
-      }
-    }
+    path
+    dataType
+    dimensions
+    totalElements
+    statistics { count minValue maxValue mean stdDev nanCount }
   }
-}`,
-      deep_well_all: `# All WITSML objects for a specific well (title filter)
-# Use titleContains to find everything related to a specific well
-# Combines Wells, Wellbores, Logs, Trajectories, MudLogs, ChannelSets
+}
+# Note: WITSML objects store metadata as XML (well names, curve mnemonics,
+# depths). They don't have HDF5 arrays. RESQML objects (grids, surfaces,
+# point sets) store numerical data in HDF5 → those have array statistics.`,
+      deep_well_perm: `# SEARCH BY NAME: Find all WITSML objects for well "A-1"
+# Demonstrates titleContains filter — searches across a type
+# Use this to find everything related to a specific well by name
+#
+# Try changing "A-1" to "B-1" or "C-2" to explore other wells
 {
-  deepSearch(
+  wellbores: deepSearch(
     dataspace: "maap/drogon"
     typeName: "witsml21.Wellbore"
     titleContains: "A-1"
@@ -2684,12 +2683,74 @@
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title typeName
-      relations {
-        uuid name typeName direction
-      }
+      relations { uuid name typeName direction }
     }
   }
-}`,
+  logs: deepSearch(
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Log"
+    titleContains: "A-1"
+    includeRelations: true
+    limit: 5
+  ) {
+    totalMatched
+    objects {
+      uuid title typeName
+      relations { uuid name typeName direction }
+    }
+  }
+  trajectories: deepSearch(
+    dataspace: "maap/drogon"
+    typeName: "witsml21.Trajectory"
+    titleContains: "A-1"
+    includeRelations: true
+    limit: 5
+  ) {
+    totalMatched
+    objects {
+      uuid title typeName
+      relations { uuid name typeName direction }
+    }
+  }
+}
+# Expected: 1 wellbore, 1 log, 1 trajectory — all for DROGON A-1
+# Each shows relation to parent (Well or Wellbore)`,
+      deep_well_all: `# CATEGORY SEARCH + NUMERICAL SAMPLE VALUES
+# Two examples in one query:
+#   1. category:"witsml" → searches ALL WITSML types at once
+#      (Well, Wellbore, Log, Trajectory, ChannelSet, MudLog)
+#   2. PointSet sample values → actual XYZ coordinates from HDF5
+#
+# The category search replaces running 6 separate type queries
+{
+  allWitsml: deepSearch(
+    dataspace: "maap/drogon"
+    category: "witsml"
+    includeRelations: true
+    limit: 30
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title typeName
+      relations { uuid name typeName direction }
+    }
+  }
+  # Sample actual numerical values from RESQML arrays
+  pointCoordinates: objectArrays(
+    dataspace: "maap/drogon"
+    typeName: "resqml20.obj_PointSetRepresentation"
+    uuid: "0633e96a-4928-4f6e-b115-89c75e39b4df"
+    includeStatistics: true
+    includeSampleValues: true
+    sampleSize: 10
+  ) {
+    path dimensions totalElements
+    statistics { minValue maxValue mean stdDev }
+    sampleValues
+  }
+}
+# Expected: ~32 WITSML objects (8 Wells + 8 Wellbores + 8 Logs + 8 Trajectories)
+# Plus 10 sample [X,Y,Z] coordinate triplets from the horizon point set`,
 
       // ─── Numerical Data ───────────────────────────────────────────────
       array_stats: `# Get array metadata and statistics for a PointSet
@@ -3285,105 +3346,111 @@
 #     direction: "sources"
 #   ) { uuid name typeName direction }
 # }`,
-      witsml_log_deep: `# DEEP SEARCH: Log curves with statistics
-# Finds all WITSML Logs and their related ChannelSets (curve containers)
-# Each Log contains channels like GR, RHOB, NPHI, DT, RDEEP, etc.
+      witsml_log_deep: `# TITLE SEARCH: Find wells/logs by name substring
+# Uses titleContains to filter across types — the WITSML equivalent
+# of a property-value search (since WITSML has no HDF5 arrays).
 #
-# includeRelations reveals: Log → ChannelSet children, Log → Wellbore parent
-# includeStatistics shows array stats if log data was stored as arrays
+# Try: "A-1", "B-2", "KKS", "Composite", "Drilled"
+# This searches the Citation.Title field from the XML metadata.
 #
-# For WITSML, curve metadata comes from XML (ChannelSet/Channel elements);
-# the manifest enrichment extracts: Curves[], TopMeasuredDepth, UOM per channel
+# Combined with category search across both dataspaces:
 {
-  logs: deepSearch(
-    $DS_ARG
+  # Search by name in drogon (8 Drogon wells)
+  drogonResults: deepSearch(
+    dataspace: "maap/drogon"
     typeName: "witsml21.Log"
+    titleContains: "A-1"
     includeRelations: true
-    limit: 15
+    limit: 10
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title typeName
-      relations {
-        uuid name typeName direction
-      }
+      relations { uuid name typeName direction }
     }
   }
-  channels: deepSearch(
-    $DS_ARG
-    typeName: "witsml21.ChannelSet"
+  # Search by name in witsml (Chevron KKS-1)
+  kksResults: deepSearch(
+    dataspace: "maap/witsml"
+    typeName: "witsml21.Well"
+    titleContains: "KKS"
     includeRelations: true
     limit: 10
   ) {
-    totalMatched
+    backend totalScanned totalMatched queryDescription
     objects {
       uuid title typeName
-      relations {
-        uuid name typeName direction
-      }
+      relations { uuid name typeName direction }
     }
   }
-}
-# Tip: Use titleContains: "GR" or "RHOB" to filter specific curves
-# Tip: Use category: "witsml" to search all WITSML types at once`,
-      witsml_realtime_channels: `# WELL DATA OVERVIEW: Channels, Trajectories, and Logs
-# Shows all measurement containers for a well:
-#   - ChannelSets: curve data containers (GR, DT, RHOB channels)
-#   - Trajectories: directional survey data (MD, inclination, azimuth)
-#   - Logs: composite log objects that group channels by run
-#
-# Uses maap/witsml for ChannelSet (Chevron KKS-1 GR+DT)
-# and maap/drogon for trajectories/logs (8 Drogon wells)
-{
-  channels: resqmlObjects(
-    dataspace: "maap/witsml"
-    typeName: "witsml21.ChannelSet"
+  # Category search: ALL WITSML types in one shot
+  allWitsmlDrogon: deepSearch(
+    dataspace: "maap/drogon"
+    category: "witsml"
+    titleContains: "A-1"
+    includeRelations: true
     limit: 20
   ) {
-    uuid
-    title
-    typeName
-  }
-  trajectories: deepSearch(
-    dataspace: "maap/drogon"
-    typeName: "witsml21.Trajectory"
-    includeRelations: true
-    limit: 10
-  ) {
-    totalMatched
+    totalScanned totalMatched queryDescription
     objects {
       uuid title typeName
       relations { uuid name typeName direction }
     }
   }
-  logs: deepSearch(
-    dataspace: "maap/drogon"
-    typeName: "witsml21.Log"
+}
+# Expected:
+#   drogonResults → 1 log: "DROGON A-1 Composite Log" with relation to WB
+#   kksResults → 1 well: "Chevron KKS-1" with wellbore sources
+#   allWitsmlDrogon → Well + Wellbore + Log + Trajectory for DROGON A-1
+#
+# Tip: WITSML doesn't have numerical arrays (no statistics).
+# For stats, combine with RESQML objectArrays (see "Array statistics")`,
+      witsml_realtime_channels: `# FEDERATED WELL SEARCH: OSDU Catalog + Local RDDMS
+# Demonstrates the full federation stack for well objects:
+#   1. Searches OSDU catalog for Well records (osdu:wks:master-data--Well)
+#   2. Searches local PG for WITSML Well objects
+#   3. Merges by UUID / name — shows which wells exist in both systems
+#
+# Plus: array statistics from a RESQML point set (numerical data demo)
+{
+  # Federated: finds wells in OSDU catalog AND/OR local RDDMS
+  wellSearch: federatedSearch(
+    text: "DROGON"
+    kind: "osdu:wks:master-data--Well:*"
+    typeName: "witsml21.Well"
+    dataspaces: ["maap/drogon"]
+    searchCatalog: true
+    searchRddms: true
     includeRelations: true
     limit: 10
   ) {
-    totalMatched
-    objects {
-      uuid title
+    totalCatalog totalLocalRddms totalMerged sources
+    hits {
+      uuid title typeName dataspace
+      foundInCatalog foundInLocalRddms
+      osduId osduKind
       relations { uuid name typeName direction }
     }
   }
+  # Numerical stats from RESQML (horizon picks: 124k XYZ points)
+  depthStats: objectArrays(
+    dataspace: "maap/drogon"
+    typeName: "resqml20.obj_PointSetRepresentation"
+    uuid: "0633e96a-4928-4f6e-b115-89c75e39b4df"
+    includeStatistics: true
+    includeSampleValues: true
+    sampleSize: 5
+  ) {
+    path dimensions totalElements
+    statistics { count minValue maxValue mean stdDev }
+    sampleValues
+  }
 }
-# ─── Real-Time ETP Streaming (not GraphQL) ───────────────────────────
-# To subscribe to live channel data via ETP WebSocket:
-#
-#   ws://server:9002  (binary Avro, ETP 1.2)
-#
-#   1. RequestSession → OpenSession
-#   2. ChannelStreaming.StartStreaming(channels: [...channel URIs...])
-#   3. Server pushes ChannelData messages as new data arrives
-#   4. Each message contains: channelId, indexes[], value, timestamp
-#
-# Channel URIs follow the pattern:
-#   eml:///witsml21.ChannelSet(uuid)/channel(mnemonic)
-#
-# Use the etp-client library (port 8080) for a REST-friendly wrapper,
-# or connect directly via WebSocket for lowest latency.`,
+# Expected:
+#   wellSearch → 8 Drogon wells, foundInLocalRddms=true
+#   If ingested to OSDU: also foundInCatalog=true with osduId
+#   depthStats → [124922, 3] array with min/max/mean depth values
+#   sampleValues → 5 rows of [X, Y, Z] coordinate triplets`,
       witsml_mudlog_drilling: `# DRILLING OPS: Mud logging by hole section
 # A realistic use case: during drilling, the geologist queries mud log data
 # to compare lithology and gas readings between hole sections.

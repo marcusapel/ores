@@ -130,6 +130,13 @@ RESQML_TYPE_CATEGORIES: Dict[str, List[str]] = {
         "resqml20.obj_WellboreTrajectoryRepresentation",
         "resqml20.obj_WellboreFrameRepresentation",
     ],
+    "witsml": [
+        "witsml21.Well",
+        "witsml21.Wellbore",
+        "witsml21.Log",
+        "witsml21.ChannelSet",
+        "witsml21.Trajectory",
+    ],
 }
 
 # Flat list of all commonly-used types (for default scanning)
@@ -673,8 +680,14 @@ async def _deep_search_pg(
                 for sources in prop_sources_map.values()
                 for ps in sources
             ]
-            if all_prop_ids:
-                arrays_map = await _pg_batch_arrays_for_objects(pool, dataspace, all_prop_ids)
+            # Also include WITSML objects that have their own arrays (channels)
+            witsml_obj_ids = [
+                r["obj_id"] for r, tn in candidates
+                if "witsml" in tn.lower() and not prop_sources_map.get(r["obj_id"])
+            ]
+            all_ids_for_arrays = list(set(all_prop_ids + witsml_obj_ids))
+            if all_ids_for_arrays:
+                arrays_map = await _pg_batch_arrays_for_objects(pool, dataspace, all_ids_for_arrays)
 
         # Step 5: Batch-fetch relations (if needed)
         relations_map: Dict[int, List[Dict[str, Any]]] = {}
@@ -695,41 +708,30 @@ async def _deep_search_pg(
             prop_sources = prop_sources_map.get(obj_id, [])
 
             if property_filter and property_filter.kind and not prop_sources:
-                continue
+                # For WITSML objects, channels act as properties
+                if "witsml" not in res_type_name.lower():
+                    continue
 
             property_results: List[PropertyInfo] = []
             passes_filter = not (property_filter and property_filter.array_filter)
 
-            for ps in prop_sources:
-                p_name = ps["p_name"]
-                p_uuid = ps["p_guid"]
-                p_type = f"{ps['p_ml']}.{ps['p_typ_xml']}"
-                p_obj_id = ps["p_obj_id"]
-
-                # Title filter on property
-                if property_filter and property_filter.title_contains:
-                    if property_filter.title_contains.lower() not in p_name.lower():
-                        continue
-
-                # Kind from batch cache
-                kind = kind_cache.get(p_obj_id, "Unknown")
-
-                # Kind filter
-                if property_filter and property_filter.kind:
-                    if property_filter.kind.lower() not in kind.lower() and \
-                       property_filter.kind.lower() not in p_name.lower():
-                        continue
-
-                prop_info = PropertyInfo(
-                    uuid=p_uuid, title=p_name, type_name=p_type, kind=kind,
-                )
-
-                # Arrays (from batch cache)
-                if need_arrays:
-                    p_arrays = arrays_map.get(p_obj_id, [])
-                    array_infos: List[ArrayInfo] = []
-                    for pa in p_arrays:
-                        ai = ArrayInfo(path=pa["path"])
+            # WITSML channel-as-property: treat the object's own arrays as channels
+            if not prop_sources and "witsml" in res_type_name.lower():
+                obj_arrays = arrays_map.get(obj_id, [])
+                for pa in obj_arrays:
+                    mnemonic = pa["path"].rsplit("/", 1)[-1] if "/" in pa["path"] else pa["path"]
+                    # Title filter on channel mnemonic
+                    if property_filter and property_filter.title_contains:
+                        if property_filter.title_contains.lower() not in mnemonic.lower():
+                            continue
+                    # Kind filter on mnemonic
+                    if property_filter and property_filter.kind:
+                        if property_filter.kind.lower() not in mnemonic.lower():
+                            continue
+                    pi = PropertyInfo(
+                        uuid=uuid, title=mnemonic, type_name="Channel", kind=mnemonic,
+                    )
+                    if need_arrays:
                         try:
                             values = await _pg_read_array_by_id(
                                 pool, dataspace, pa["ary_id"], pa["type"]
@@ -737,10 +739,11 @@ async def _deep_search_pg(
                         except Exception:
                             values = []
                         if values:
+                            ai = ArrayInfo(path=pa["path"])
                             ai.total_elements = len(values)
                             if include_statistics:
                                 ai.statistics = _compute_statistics(values)
-                                prop_info.statistics = ai.statistics
+                                pi.statistics = ai.statistics
                             if include_sample_values:
                                 ai.sample_values = values[:sample_size]
                             if property_filter and property_filter.array_filter:
@@ -748,13 +751,67 @@ async def _deep_search_pg(
                                 match_result = _check_threshold(
                                     values, af.threshold, af.operator, af.threshold_high
                                 )
-                                prop_info.matching_cells = match_result
+                                pi.matching_cells = match_result
                                 if match_result.count > 0:
                                     passes_filter = True
-                        array_infos.append(ai)
-                    prop_info.arrays = array_infos if array_infos else None
+                            pi.arrays = [ai]
+                    property_results.append(pi)
+            else:
+                for ps in prop_sources:
+                    p_name = ps["p_name"]
+                    p_uuid = ps["p_guid"]
+                    p_type = f"{ps['p_ml']}.{ps['p_typ_xml']}"
+                    p_obj_id = ps["p_obj_id"]
 
-                property_results.append(prop_info)
+                    # Title filter on property
+                    if property_filter and property_filter.title_contains:
+                        if property_filter.title_contains.lower() not in p_name.lower():
+                            continue
+
+                    # Kind from batch cache
+                    kind = kind_cache.get(p_obj_id, "Unknown")
+
+                    # Kind filter
+                    if property_filter and property_filter.kind:
+                        if property_filter.kind.lower() not in kind.lower() and \
+                           property_filter.kind.lower() not in p_name.lower():
+                            continue
+
+                    prop_info = PropertyInfo(
+                        uuid=p_uuid, title=p_name, type_name=p_type, kind=kind,
+                    )
+
+                    # Arrays (from batch cache)
+                    if need_arrays:
+                        p_arrays = arrays_map.get(p_obj_id, [])
+                        array_infos: List[ArrayInfo] = []
+                        for pa in p_arrays:
+                            ai = ArrayInfo(path=pa["path"])
+                            try:
+                                values = await _pg_read_array_by_id(
+                                    pool, dataspace, pa["ary_id"], pa["type"]
+                                )
+                            except Exception:
+                                values = []
+                            if values:
+                                ai.total_elements = len(values)
+                                if include_statistics:
+                                    ai.statistics = _compute_statistics(values)
+                                    prop_info.statistics = ai.statistics
+                                if include_sample_values:
+                                    ai.sample_values = values[:sample_size]
+                                if property_filter and property_filter.array_filter:
+                                    af = property_filter.array_filter
+                                    match_result = _check_threshold(
+                                        values, af.threshold, af.operator, af.threshold_high
+                                    )
+                                    prop_info.matching_cells = match_result
+                                    if match_result.count > 0:
+                                        passes_filter = True
+                            array_infos.append(ai)
+                        prop_info.arrays = array_infos if array_infos else None
+
+                    property_results.append(prop_info)
 
             if property_filter and property_filter.kind and not property_results:
                 continue
@@ -1178,7 +1235,9 @@ async def deep_search_impl(
                 include_sample_values, sample_size, limit, relation_filter,
             )
             # Fall back to REST if this dataspace isn't in PG
-            if result.total_scanned == 0 and "not found in PG" in result.query_description:
+            # but only for remote dataspaces — local ones (maap/*) are authoritative in PG
+            if result.total_scanned == 0 and "not found in PG" in result.query_description \
+                    and not ds_list[0].startswith("maap/"):
                 return await _deep_search_rest(
                     token, ds_list[0], effective_type, title_contains,
                     property_filter, include_relations, include_statistics,

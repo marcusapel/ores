@@ -512,7 +512,7 @@ async def keys_objects(
                 uid = uri.split("(")[-1].rstrip(")")
             else:
                 uid = uri
-        title = (r.get("Citation") or {}).get("Title") or r.get("name") or uid or uri
+        title = (r.get("Citation") or {}).get("Title") or r.get("name") or r.get("title") or uid or uri
         ct = r.get("$type") or r.get("contentType") or ""
         type_path = _infer_type_path(r)
         # When listing by specific type and inference fails, use the requested type

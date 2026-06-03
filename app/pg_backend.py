@@ -383,16 +383,19 @@ async def pg_read_array(pool, dataspace: str, uuid: str, path: str) -> List[floa
         if not src:
             return []
         ary = await conn.fetchrow(f"""
-            SELECT id, type, dim1, dim2, dim3, dim4, usize
+            SELECT id, type, dim1, dim2, dim3, dim4, usize, value
             FROM {schema}.ary WHERE obj_id=$1 AND path=$2
         """, src["obj_id"], path)
         if not ary:
             return []
-        # Read all binary chunks in order
-        bins = await conn.fetch(f"""
-            SELECT value FROM {schema}.bin WHERE ary_id=$1 ORDER BY idx
-        """, ary["id"])
-        raw = b"".join(b["value"] for b in bins)
+        # Read binary: inline ary.value first, then chunked bin table
+        if ary["value"]:
+            raw = bytes(ary["value"])
+        else:
+            bins = await conn.fetch(f"""
+                SELECT value FROM {schema}.bin WHERE ary_id=$1 ORDER BY idx
+            """, ary["id"])
+            raw = b"".join(b["value"] for b in bins)
 
         # Determine element format
         fmt_char = ARY_TYPE_FMT.get(ary["type"] if ary["type"] is not None else 1, "d")
@@ -517,12 +520,19 @@ async def pg_read_array_by_id(pool, dataspace: str, ary_id: int, ary_type: int =
     if not schema:
         return []
     async with pool.acquire() as conn:
-        bins = await conn.fetch(f"""
-            SELECT value FROM {schema}.bin WHERE ary_id=$1 ORDER BY idx
+        # Check inline value first
+        row = await conn.fetchrow(f"""
+            SELECT value FROM {schema}.ary WHERE id=$1
         """, ary_id)
-        if not bins:
-            return []
-        raw = b"".join(b["value"] for b in bins)
+        if row and row["value"]:
+            raw = bytes(row["value"])
+        else:
+            bins = await conn.fetch(f"""
+                SELECT value FROM {schema}.bin WHERE ary_id=$1 ORDER BY idx
+            """, ary_id)
+            if not bins:
+                return []
+            raw = b"".join(b["value"] for b in bins)
         fmt_char = ARY_TYPE_FMT.get(ary_type, "d")
         elem_size = struct.calcsize(fmt_char)
         n_elements = len(raw) // elem_size if elem_size else 0

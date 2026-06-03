@@ -136,8 +136,10 @@ class Query:
         resources = []
         if pool:
             resources = await _pg_list_resources(pool, dataspace, type_name, limit)
-        if not resources:
-            # PG returned nothing (or no pool) → try REST
+        if not resources and not dataspace.startswith("maap/"):
+            # PG returned nothing (or no pool) → try REST for remote dataspaces only.
+            # Local dataspaces (maap/*) are authoritative in PG; don't fall back
+            # to the remote OSDU RDDMS which won't have them.
             token = _get_token_from_info(info)
             resources = await _rest_list_resources(token, dataspace, type_name, limit)
         results = []
