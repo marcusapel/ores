@@ -1305,6 +1305,64 @@
       }
     }
 
+    // ── Array Popup ──────────────────────────────────────────────────────
+    async function showArrayPopup(ds, uuid, path) {
+      const overlay = $('array-popup-overlay');
+      const titleEl = $('array-popup-title');
+      const statsEl = $('array-popup-stats');
+      const valuesEl = $('array-popup-values');
+      titleEl.textContent = path;
+      statsEl.innerHTML = '<p class="muted">Loading…</p>';
+      valuesEl.textContent = '';
+      overlay.classList.add('open');
+
+      try {
+        const qp = `ds=${encodeURIComponent(ds)}&uuid=${encodeURIComponent(uuid)}&path=${encodeURIComponent(path)}`;
+        const res = await fetch(`/keys/object/array.json?${qp}`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        // Render statistics
+        if (data.statistics) {
+          const s = data.statistics;
+          const cards = [
+            { label: 'Count', value: s.count },
+            { label: 'Min', value: s.minValue?.toFixed(4) },
+            { label: 'Max', value: s.maxValue?.toFixed(4) },
+            { label: 'Mean', value: s.mean?.toFixed(4) },
+            { label: 'Median', value: s.median?.toFixed(4) },
+            { label: 'Std Dev', value: s.stdDev?.toFixed(4) },
+          ];
+          if (s.nanCount > 0) cards.push({ label: 'NaN', value: s.nanCount });
+          statsEl.innerHTML = cards.map(c =>
+            `<div class="stat-card"><div class="stat-label">${c.label}</div><div class="stat-value">${c.value}</div></div>`
+          ).join('');
+        } else {
+          statsEl.innerHTML = '<p class="muted">No statistics (empty array).</p>';
+        }
+
+        // Render values
+        const truncNote = data.truncated ? `\n\n… (showing first 200 of ${data.totalElements} values)` : '';
+        valuesEl.textContent = JSON.stringify(data.values, null, 2) + truncNote;
+      } catch (e) {
+        statsEl.innerHTML = `<p style="color:red;">Error: ${esc(e.message)}</p>`;
+        valuesEl.textContent = '';
+      }
+    }
+
+    // Array popup close handlers
+    $('array-popup-close').addEventListener('click', () => {
+      $('array-popup-overlay').classList.remove('open');
+    });
+    $('array-popup-overlay').addEventListener('click', (e) => {
+      if (e.target === $('array-popup-overlay')) $('array-popup-overlay').classList.remove('open');
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('array-popup-overlay').classList.contains('open')) {
+        $('array-popup-overlay').classList.remove('open');
+      }
+    });
+
     async function loadDetails() {
       const ds = dsSel.value, typ = typSel.value, uuid = objSel.value;
       if (!ds || !typ || !uuid) { setMsg('Pick dataspace, type, and object.'); return; }
@@ -1407,10 +1465,14 @@
           ? `<ul>${
               arr.map(a => {
                 const p = a.path || a.pathInResource || (a.uid && a.uid.pathInResource) || '';
-                return `<li><code>${esc(p)}</code></li>`;
+                return `<li data-array-path="${esc(p)}"><code>${esc(p)}</code></li>`;
               }).join('')
             }</ul>`
           : '<p class="muted">No arrays.</p>';
+        // Attach click handlers for array popup
+        arraysEl.querySelectorAll('li[data-array-path]').forEach(li => {
+          li.addEventListener('click', () => showArrayPopup(ds, uuid, li.dataset.arrayPath));
+        });
 
         // --- Grid2d section (auto-detect table vs depth map) ---
         if (isGrid2dType(typ)) {
@@ -2715,42 +2777,103 @@
 }
 # Expected: 1 wellbore, 1 log, 1 trajectory — all for DROGON A-1
 # Each shows relation to parent (Well or Wellbore)`,
-      deep_well_all: `# CATEGORY SEARCH + NUMERICAL SAMPLE VALUES
+      deep_well_all: `# CATEGORY SEARCH + WELL LOG SAMPLE VALUES
 # Two examples in one query:
 #   1. category:"witsml" → searches ALL WITSML types at once
 #      (Well, Wellbore, Log, Trajectory, ChannelSet, MudLog)
-#   2. PointSet sample values → actual XYZ coordinates from HDF5
+#      With statistics on any objects that have numerical arrays
+#   2. Log objectArrays → actual curve values (GR, DT, NPHI, RHOB)
 #
 # The category search replaces running 6 separate type queries
 {
   allWitsml: deepSearch(
-    dataspace: "maap/drogon"
+    dataspace: "maap/witsml"
     category: "witsml"
     includeRelations: true
+    includeStatistics: true
     limit: 30
   ) {
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title typeName
       relations { uuid name typeName direction }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+      }
     }
   }
-  # Sample actual numerical values from RESQML arrays
-  pointCoordinates: objectArrays(
-    dataspace: "maap/drogon"
-    typeName: "resqml20.obj_PointSetRepresentation"
-    uuid: "0633e96a-4928-4f6e-b115-89c75e39b4df"
+  # Sample actual log curve values from a Composite Log
+  logCurves: objectArrays(
+    dataspace: "maap/witsml"
+    typeName: "witsml21.Log"
+    uuid: "e6ce89d2-569e-5902-bea0-5f9451f7ad08"
     includeStatistics: true
     includeSampleValues: true
-    sampleSize: 10
+    sampleSize: 5
   ) {
     path dimensions totalElements
-    statistics { minValue maxValue mean stdDev }
+    statistics { count minValue maxValue mean stdDev }
     sampleValues
   }
 }
-# Expected: ~32 WITSML objects (8 Wells + 8 Wellbores + 8 Logs + 8 Trajectories)
-# Plus 10 sample [X,Y,Z] coordinate triplets from the horizon point set`,
+# Expected: ~25 WITSML objects (Wells + Wellbores + Logs + Trajectories + MudLogs)
+# Plus 5 channels (DEPTH, GR, DT, NPHI, RHOB) with realistic petrophysical values:
+#   DEPTH: 1000–1002 m, GR: 45–56 API, DT: 95–105 µs/ft, NPHI: 0.18–0.24, RHOB: 2.35–2.45 g/cc`,
+
+      // ─── WITSML Log Filter by Curve Value ─────────────────────────────
+      deep_well_gr_filter: `# WELL LOG FILTER: Find logs where GR exceeds a threshold
+# Uses propertyFilter with arrayFilter to select only logs that have
+# Gamma Ray (GR) values above 50 API — a realistic shale/sand cutoff.
+#
+# GR > 50 API typically indicates shale-rich intervals.
+# Adjust the threshold to narrow or broaden results:
+#   > 30  → most intervals (permissive)
+#   > 50  → shale-dominated (realistic median)
+#   > 80  → high-GR shales only (restrictive)
+{
+  highGrLogs: deepSearch(
+    dataspace: "maap/witsml"
+    typeName: "witsml21.Log"
+    includeRelations: true
+    includeStatistics: true
+    propertyFilter: {
+      kind: "GR"
+      arrayFilter: { operator: GT, threshold: 50.0 }
+    }
+    limit: 10
+  ) {
+    backend totalScanned totalMatched queryDescription
+    objects {
+      uuid title typeName
+      relations { uuid name typeName direction }
+      properties {
+        title kind uom
+        statistics { count minValue maxValue mean stdDev }
+        matchingCells { count total fraction }
+      }
+    }
+  }
+  # Also show full stats for comparison (all logs, no filter)
+  allLogStats: deepSearch(
+    dataspace: "maap/witsml"
+    typeName: "witsml21.Log"
+    includeStatistics: true
+    limit: 10
+  ) {
+    totalMatched
+    objects {
+      uuid title
+      properties {
+        title kind
+        statistics { count minValue maxValue mean stdDev }
+      }
+    }
+  }
+}
+# Expected: Logs where GR channel has values > 50 API
+# matchingCells shows how many data points exceed the threshold
+# Use this to identify shale-prone intervals across all wells`,
 
       // ─── Numerical Data ───────────────────────────────────────────────
       array_stats: `# Get array metadata and statistics for a PointSet
@@ -3348,16 +3471,16 @@
 # }`,
       witsml_log_deep: `# TITLE SEARCH: Find wells/logs by name substring
 # Uses titleContains to filter across types — the WITSML equivalent
-# of a property-value search (since WITSML has no HDF5 arrays).
+# of a property-value search.
 #
 # Try: "A-1", "B-2", "KKS", "Composite", "Drilled"
 # This searches the Citation.Title field from the XML metadata.
 #
-# Combined with category search across both dataspaces:
+# Combined with category search to find all A-1 related objects:
 {
-  # Search by name in drogon (8 Drogon wells)
-  drogonResults: deepSearch(
-    dataspace: "maap/drogon"
+  # Search by name in witsml (DROGON A-1 logs)
+  a1Results: deepSearch(
+    dataspace: "maap/witsml"
     typeName: "witsml21.Log"
     titleContains: "A-1"
     includeRelations: true
@@ -3383,9 +3506,9 @@
       relations { uuid name typeName direction }
     }
   }
-  # Category search: ALL WITSML types in one shot
-  allWitsmlDrogon: deepSearch(
-    dataspace: "maap/drogon"
+  # Category search: ALL WITSML types matching "A-1"
+  allWitsmlA1: deepSearch(
+    dataspace: "maap/witsml"
     category: "witsml"
     titleContains: "A-1"
     includeRelations: true
@@ -3399,12 +3522,12 @@
   }
 }
 # Expected:
-#   drogonResults → 1 log: "DROGON A-1 Composite Log" with relation to WB
-#   kksResults → 1 well: "Chevron KKS-1" with wellbore sources
-#   allWitsmlDrogon → Well + Wellbore + Log + Trajectory for DROGON A-1
+#   a1Results → 2 logs: "DROGON A-1 Composite Log", "DROGON A-1 GR+DT Log"
+#   kksResults → 1 well: "Chevron KKS-1" with wellbore + log sources
+#   allWitsmlA1 → Well + Wellbore + Log + Trajectory for DROGON A-1
 #
-# Tip: WITSML doesn't have numerical arrays (no statistics).
-# For stats, combine with RESQML objectArrays (see "Array statistics")`,
+# For curve statistics, use objectArrays on a specific Log UUID
+# (see "CATEGORY SEARCH + WELL LOG SAMPLE VALUES" preset)`,
       witsml_realtime_channels: `# FEDERATED WELL SEARCH: OSDU Catalog + Local RDDMS
 # Demonstrates the full federation stack for well objects:
 #   1. Searches OSDU catalog for Well records (osdu:wks:master-data--Well)

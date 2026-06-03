@@ -86,6 +86,47 @@
   .btn-show3d-results:hover { background: #0e6b0e; box-shadow: 0 3px 8px rgba(16,124,16,0.45); }
   .btn-show3d-results svg { width: 16px; height: 16px; fill: currentColor; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+  /* ── Array Popup Modal ── */
+  .array-popup-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9500;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+    align-items: center; justify-content: center;
+  }
+  .array-popup-overlay.open { display: flex; }
+  .array-popup-modal {
+    width: min(700px, 90vw); max-height: 80vh; background: #fff; border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .array-popup-header {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    background: #f3f2f1; border-bottom: 1px solid #edebe9; flex-shrink: 0;
+  }
+  .array-popup-header h3 { margin: 0; font-size: 14px; flex: 1; word-break: break-all; }
+  .array-popup-close {
+    background: none; border: 1px solid #999; color: #333; border-radius: 4px;
+    padding: 4px 12px; cursor: pointer; font-size: 13px;
+  }
+  .array-popup-close:hover { background: #e1dfdd; }
+  .array-popup-body { padding: 16px; overflow: auto; flex: 1; }
+  .array-popup-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px; margin-bottom: 12px;
+  }
+  .array-popup-stats .stat-card {
+    background: #f9f9f9; border: 1px solid #edebe9; border-radius: 4px;
+    padding: 8px; text-align: center;
+  }
+  .stat-card .stat-label { font-size: 11px; color: #605e5c; text-transform: uppercase; }
+  .stat-card .stat-value { font-size: 16px; font-weight: 600; color: #323130; margin-top: 2px; }
+  .array-popup-values {
+    background: #1a1a2e; color: #a8e6cf; padding: 12px; border-radius: 4px;
+    font-family: monospace; font-size: 12px; max-height: 300px; overflow: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #arrays ul li { cursor: pointer; }
+  #arrays ul li:hover { background: #f3f2f1; border-radius: 3px; }
+  #arrays ul li code { color: #0078d4; }
 </style>
 {% endblock %}
 
@@ -311,6 +352,7 @@
               <option value="deep_well_phit">WITSML Logs + RESQML array stats</option>
               <option value="deep_well_perm">WITSML search by name (titleContains)</option>
               <option value="deep_well_all">All WITSML types + sample values</option>
+              <option value="deep_well_gr_filter">WITSML Logs: GR &gt; 50 API (shale filter)</option>
               <option value="array_stats">Array statistics (PointSet XYZ)</option>
               <option value="array_sample">Array sample values (coordinates)</option>
             </optgroup>
@@ -392,6 +434,20 @@
         <div class="gql3d-status" id="gql3d-loading">Select renderable objects and click Show 3D Results</div>
         <div class="gql3d-hud" id="gql3d-hud" style="display:none;"></div>
         <div class="gql3d-legend" id="gql3d-legend" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Array Data Popup -->
+  <div id="array-popup-overlay" class="array-popup-overlay">
+    <div class="array-popup-modal">
+      <div class="array-popup-header">
+        <h3 id="array-popup-title">Array</h3>
+        <button class="array-popup-close" id="array-popup-close">✕ Close</button>
+      </div>
+      <div class="array-popup-body">
+        <div id="array-popup-stats" class="array-popup-stats"></div>
+        <div id="array-popup-values" class="array-popup-values"></div>
       </div>
     </div>
   </div>

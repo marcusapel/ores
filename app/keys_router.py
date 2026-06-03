@@ -416,6 +416,72 @@ async def keys_object_json(
     })
 
 
+@router.get("/keys/object/array.json")
+async def keys_object_array_json(
+    request: Request,
+    ds: str = Query(..., description="Dataspace path"),
+    uuid: str = Query(..., description="UUID of the object"),
+    path: str = Query(..., description="Array path (e.g. WITSML/.../GR)"),
+):
+    """
+    Return raw values + statistics for a single array.
+    Used by the popup when clicking an array path in the Keys page.
+    """
+    import math
+    import struct as _struct
+
+    uuid_s = _sanitize_uuid(uuid)
+    values: list = []
+
+    try:
+        from .pg_backend import get_pool, pg_read_array
+        pool = await get_pool()
+        if pool:
+            values = await pg_read_array(pool, ds, uuid_s, path)
+    except Exception as e:
+        log.warning("keys_object_array_json: pg_read_array failed: %s", e)
+
+    if not values:
+        # Fallback: try REST
+        at = _access_token(request)
+        enc = urllib.parse.quote(ds, safe="")
+        try:
+            values = await osdu.read_array(at, enc, "", uuid_s, path)
+        except Exception:
+            pass
+
+    if not values:
+        return JSONResponse({"path": path, "values": [], "statistics": None})
+
+    # Compute statistics
+    finite = [v for v in values if math.isfinite(v)]
+    n = len(finite)
+    stats = None
+    if n > 0:
+        sorted_vals = sorted(finite)
+        mean = sum(finite) / n
+        variance = sum((x - mean) ** 2 for x in finite) / n if n > 1 else 0.0
+        std_dev = math.sqrt(variance)
+        median = sorted_vals[n // 2] if n % 2 else (sorted_vals[n // 2 - 1] + sorted_vals[n // 2]) / 2
+        stats = {
+            "count": n,
+            "minValue": sorted_vals[0],
+            "maxValue": sorted_vals[-1],
+            "mean": round(mean, 6),
+            "median": round(median, 6),
+            "stdDev": round(std_dev, 6),
+            "nanCount": len(values) - n,
+        }
+
+    return JSONResponse({
+        "path": path,
+        "totalElements": len(values),
+        "statistics": stats,
+        "values": values[:200],  # Cap at 200 for display
+        "truncated": len(values) > 200,
+    })
+
+
 @router.get("/keys/objects.json")
 async def keys_objects(
     request: Request,
