@@ -357,7 +357,7 @@ def build_manifest(objects: dict) -> dict:
                            "osdu:wks:master-data--LocalBoundaryFeature:1.1.0",
                            obj["title"], obj["description"])
         # In RESQML 2.2 the kind is an attribute, not encoded in the type name
-        bkind = obj.get("boundary_kind", "").lower()
+        bkind = (obj.get("boundary_kind") or "").lower()
         if "fault" in bkind or "tectonic" in bkind:
             rec["data"]["BoundaryType"] = "fault"
         else:

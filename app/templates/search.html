@@ -310,6 +310,23 @@
           <code>data.Name:"*"</code>
           <span class="ex-desc">Well Logs – WITSML-based log data (GR, DT, RHOB…)</span>
         </div>
+        <div class="ex-hdr" style="margin-top:.5rem;">ETP / WITSML / RDDMS</div>
+        <div class="ex-item" data-q="*" data-target="searchQuery" data-kind="osdu:wks:dataset--ETPDataspace:*">
+          <code>*</code>
+          <span class="ex-desc">ETP Dataspaces – all RDDMS-registered geomodel dataspaces</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:&quot;*KKS*&quot;" data-target="searchQuery" data-kind="osdu:wks:work-product-component--WellLog:*">
+          <code>data.Name:"*KKS*"</code>
+          <span class="ex-desc">Well Logs – Chevron KKS-1 (CVX DLIS→WITSML)</span>
+        </div>
+        <div class="ex-item" data-q="data.FacilityName:&quot;*DROGON*&quot;" data-target="searchQuery" data-kind="osdu:wks:master-data--Well:*">
+          <code>data.FacilityName:"*DROGON*"</code>
+          <span class="ex-desc">Wells – Drogon field (ETP/WITSML ingested)</span>
+        </div>
+        <div class="ex-item" data-q="data.Name:&quot;*Composite*&quot; OR data.Name:&quot;*Trajectory*&quot;" data-target="searchQuery" data-kind="osdu:wks:work-product-component--WellLog:*">
+          <code>data.Name:"*Composite*" OR data.Name:"*Trajectory*"</code>
+          <span class="ex-desc">Well Logs + Trajectories – composite/directional data</span>
+        </div>
       </div>
     </span>
   </div>
@@ -324,6 +341,7 @@
   <div style="display:flex;gap:.5rem;align-items:center;">
     <button type="submit" id="searchBtn" class="btn">Search</button>
     <button type="button" id="btn-save-query" class="btn-ex" title="Save current query">💾 Save</button>
+    <button type="button" id="btn-reset-form" class="btn-ex" title="Reset form to defaults" style="margin-left:.5rem;">↺ Reset</button>
   </div>
 </form>
 
@@ -507,7 +525,24 @@
     }
     preset?.addEventListener('change', applyPreset);
 
-
+    // Reset button handler
+    const resetBtn = document.getElementById('btn-reset-form');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function() {
+        if (input) input.value = '';
+        if (preset) preset.selectedIndex = 0;
+        const queryInput = document.getElementById('searchQuery');
+        if (queryInput) queryInput.value = '*';
+        const limitInput = document.querySelector('input[name="limit"]');
+        if (limitInput) limitInput.value = '50';
+        const rfInput = document.querySelector('input[name="returnedFields"]');
+        if (rfInput) rfInput.value = 'id,kind,version';
+        const savedSel = document.getElementById('savedQuerySelect');
+        if (savedSel) savedSel.selectedIndex = 0;
+        const delBtn = document.getElementById('btn-delete-query');
+        if (delBtn) delBtn.style.display = 'none';
+      });
+    }
   })();
 </script>
 

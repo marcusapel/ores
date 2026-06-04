@@ -46,8 +46,10 @@ demo/drogon/records
 # ── Generated manifests & ETP tokens (instance-specific, rebuilt by scripts) ──
 demo/drogonresqml/manifest_*.json
 demo/drogonresqml/.etp_token
+demo/drogonresqml/schema_examples/
 demo/drogonresqml22/manifest_*.json
 demo/drogonresqml22/.etp_token
+demo/drogonresqml22/schema_examples/
 
 # ── Local runtime artifacts ──
 ores_tokens.db
