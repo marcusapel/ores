@@ -87,26 +87,40 @@ def _content_type_to_qualified_type(content_type: str) -> str:
 
 
 def _convert_dor(dor_xml: str) -> str:
-    """Convert all DataObjectReferences: ContentType/UUID -> QualifiedType/Uuid."""
+    """Convert all DataObjectReferences: ContentType/UUID -> QualifiedType/Uuid.
+    
+    EXCEPT: HdfProxy DORs (referencing EpcExternalPartReference) are kept in v2.0
+    format because the ETP import tool uses <eml:UUID> to resolve HDF5 filenames.
+    """
 
-    # ContentType -> QualifiedType
-    def _replace_ct(m):
-        indent = m.group(1)
-        ct_value = m.group(2)
-        qt = _content_type_to_qualified_type(ct_value)
-        return f'{indent}<eml:QualifiedType xsi:type="xsd:string">{qt}</eml:QualifiedType>'
+    # Split on HdfProxy boundaries to preserve those DORs
+    parts = re.split(r'(<eml:HdfProxy[^>]*>.*?</eml:HdfProxy>)', dor_xml, flags=re.DOTALL)
 
-    dor_xml = re.sub(
-        r'(\s*)<eml:ContentType[^>]*>([^<]+)</eml:ContentType>',
-        _replace_ct, dor_xml)
+    converted_parts = []
+    for part in parts:
+        if '<eml:HdfProxy' in part:
+            # Keep HdfProxy DOR unchanged (v2.0 format)
+            converted_parts.append(part)
+        else:
+            # ContentType -> QualifiedType
+            def _replace_ct(m):
+                indent = m.group(1)
+                ct_value = m.group(2)
+                qt = _content_type_to_qualified_type(ct_value)
+                return f'{indent}<eml:QualifiedType xsi:type="xsd:string">{qt}</eml:QualifiedType>'
 
-    # UUID -> Uuid
-    dor_xml = re.sub(
-        r'<eml:UUID([^>]*)>([^<]+)</eml:UUID>',
-        r'<eml:Uuid\1>\2</eml:Uuid>',
-        dor_xml)
+            part = re.sub(
+                r'(\s*)<eml:ContentType[^>]*>([^<]+)</eml:ContentType>',
+                _replace_ct, part)
 
-    return dor_xml
+            # UUID -> Uuid
+            part = re.sub(
+                r'<eml:UUID([^>]*)>([^<]+)</eml:UUID>',
+                r'<eml:Uuid\1>\2</eml:Uuid>',
+                part)
+            converted_parts.append(part)
+
+    return ''.join(converted_parts)
 
 
 def _convert_property_kind(xml: str) -> str:
@@ -398,6 +412,14 @@ def main():
 
                     m = re.match(r'obj_(\w+?)_[0-9a-f-]{36}\.xml', old_name)
                     old_type = m.group(1) if m else ""
+
+                    # Keep EpcExternalPartReference completely unchanged
+                    # (import tool uses .rels for v2.0 but fails with v2.2 parsing)
+                    if old_type == 'EpcExternalPartReference':
+                        type_counts['EpcExternalPartReference'] += 1
+                        dst.writestr(old_name, content_bytes)
+                        continue
+
                     new_type = _convert_type_name(old_type)
                     type_counts[new_type] += 1
                     if old_type != new_type:
@@ -406,7 +428,11 @@ def main():
                     xml = _convert_content(xml, old_type, new_type)
                     content_bytes = xml.encode("utf-8")
 
-                    new_name = _convert_filename(old_name)
+                    # Keep obj_ prefix for EpcExternalPartReference (import tool expects it)
+                    if 'EpcExternalPartReference' in old_type:
+                        new_name = old_name
+                    else:
+                        new_name = _convert_filename(old_name)
                     dst.writestr(new_name, content_bytes)
 
                 elif old_name.endswith(".xml") and not old_name.startswith("[") and not old_name.startswith("_"):
@@ -418,22 +444,57 @@ def main():
                     xml = re.sub(r'xsi:type="eml:obj_(\w+)"', r'xsi:type="eml:\1"', xml)
                     xml = re.sub(r'xsi:type="resqml2:obj_(\w+)"', lambda m2: f'xsi:type="resqml2:{_convert_type_name(m2.group(1))}"', xml)
                     xml = xml.replace('RESQML v2.0 (Drogon Demo)', 'RESQML v2.2 (Drogon Demo)')
+                    # Add <eml:Filename> to EpcExternalPartReference (required by ETP import)
+                    if 'EpcExternalPartReference' in xml and '<eml:Filename' not in xml:
+                        title_m = re.search(r'<eml:Title[^>]*>([^<]+)</eml:Title>', xml)
+                        if title_m:
+                            filename = title_m.group(1)
+                            xml = re.sub(
+                                r'(</eml:MimeType>)',
+                                r'\1\n\t<eml:Filename xsi:type="xsd:string">' + filename + '</eml:Filename>',
+                                xml)
                     content_bytes = xml.encode("utf-8")
                     dst.writestr(old_name, content_bytes)
 
                 elif old_name == "[Content_Types].xml":
                     ct_xml = content_bytes.decode("utf-8")
-                    ct_xml = re.sub(r'obj_(\w+?)_', lambda m2: f'{_convert_type_name(m2.group(1))}_', ct_xml)
+                    # Rename obj_ in PartNames — but keep EpcExternalPartReference as-is
+                    ct_xml = re.sub(
+                        r'obj_(\w+?)_',
+                        lambda m2: (f'obj_{m2.group(1)}_' if m2.group(1) == 'EpcExternalPartReference'
+                                    else f'{_convert_type_name(m2.group(1))}_'),
+                        ct_xml)
+                    # Upgrade version=2.0 → 2.2 EXCEPT for EpcExternalPartReference
+                    # (import tool uses .rels Target for v2.0 but not v2.2)
                     ct_xml = ct_xml.replace("version=2.0", "version=2.2")
-                    # Strip obj_ from ContentType values: type=obj_Foo -> type=Foo
-                    ct_xml = re.sub(r'type=obj_(\w+)', lambda m2: f'type={_convert_type_name(m2.group(1))}', ct_xml)
+                    ct_xml = ct_xml.replace(
+                        "version=2.2;type=obj_EpcExternalPartReference",
+                        "version=2.0;type=obj_EpcExternalPartReference")
+                    # Strip obj_ from ContentType values — except EpcExternalPartReference
+                    ct_xml = re.sub(
+                        r'type=obj_(\w+)',
+                        lambda m2: (f'type=obj_{m2.group(1)}' if m2.group(1) == 'EpcExternalPartReference'
+                                    else f'type={_convert_type_name(m2.group(1))}'),
+                        ct_xml)
                     # No PropertyKind entries needed (kept as inline enum)
                     dst.writestr(old_name, ct_xml.encode("utf-8"))
 
                 elif old_name.startswith("_rels/") and old_name.endswith(".rels"):
                     rels_xml = content_bytes.decode("utf-8")
-                    rels_xml = re.sub(r'obj_(\w+?)_', lambda m2: f'{_convert_type_name(m2.group(1))}_', rels_xml)
-                    new_rels_name = re.sub(r'obj_(\w+?)_', lambda m2: f'{_convert_type_name(m2.group(1))}_', old_name)
+                    # Rename obj_ targets — but keep EpcExternalPartReference as-is
+                    rels_xml = re.sub(
+                        r'obj_(\w+?)_',
+                        lambda m2: (f'obj_{m2.group(1)}_' if m2.group(1) == 'EpcExternalPartReference'
+                                    else f'{_convert_type_name(m2.group(1))}_'),
+                        rels_xml)
+                    # Keep EpcExternalPartReference .rels filename with obj_ prefix
+                    if 'EpcExternalPartReference' in old_name:
+                        new_rels_name = old_name
+                    else:
+                        new_rels_name = re.sub(
+                            r'obj_(\w+?)_',
+                            lambda m2: f'{_convert_type_name(m2.group(1))}_',
+                            old_name)
                     dst.writestr(new_rels_name, rels_xml.encode("utf-8"))
 
                 else:
