@@ -37,6 +37,13 @@ TYPE_RENAMES = {
     "TectonicBoundaryFeature": "BoundaryFeature",
     "StratigraphicUnitFeature": "RockVolumeFeature",
     "OrganizationFeature": "Model",
+    "WellboreMarkerFrameRepresentation": "WellboreFrameRepresentation",
+}
+
+# Types removed in RESQML 2.2 — exclude from output EPC
+EXCLUDED_TYPES = {
+    "MdDatum",
+    "DeviationSurveyRepresentation",
 }
 
 # Types that are Interpretations (use InterpretedFeature for their DOR to feature)
@@ -79,7 +86,7 @@ def _content_type_to_qualified_type(content_type: str) -> str:
     if domain == "resqml":
         return f"resqml22.{type_name}"
     elif domain == "eml":
-        return f"eml23.{type_name}"
+        return f"eml22.{type_name}"
     elif domain == "witsml":
         return f"witsml21.{type_name}"
     else:
@@ -88,49 +95,63 @@ def _content_type_to_qualified_type(content_type: str) -> str:
 
 def _convert_dor(dor_xml: str) -> str:
     """Convert all DataObjectReferences: ContentType/UUID -> QualifiedType/Uuid.
-    
-    EXCEPT: HdfProxy DORs (referencing EpcExternalPartReference) are kept in v2.0
-    format because the ETP import tool uses <eml:UUID> to resolve HDF5 filenames.
+
+    Includes HdfProxy DORs — v2.2 requires QualifiedType/Uuid everywhere.
     """
 
-    # Split on HdfProxy boundaries to preserve those DORs
-    parts = re.split(r'(<eml:HdfProxy[^>]*>.*?</eml:HdfProxy>)', dor_xml, flags=re.DOTALL)
+    # ContentType -> QualifiedType
+    def _replace_ct(m):
+        indent = m.group(1)
+        ct_value = m.group(2)
+        qt = _content_type_to_qualified_type(ct_value)
+        return f'{indent}<eml:QualifiedType xsi:type="xsd:string">{qt}</eml:QualifiedType>'
 
-    converted_parts = []
-    for part in parts:
-        if '<eml:HdfProxy' in part:
-            # Keep HdfProxy DOR unchanged (v2.0 format)
-            converted_parts.append(part)
-        else:
-            # ContentType -> QualifiedType
-            def _replace_ct(m):
-                indent = m.group(1)
-                ct_value = m.group(2)
-                qt = _content_type_to_qualified_type(ct_value)
-                return f'{indent}<eml:QualifiedType xsi:type="xsd:string">{qt}</eml:QualifiedType>'
+    dor_xml = re.sub(
+        r'(\s*)<eml:ContentType[^>]*>([^<]+)</eml:ContentType>',
+        _replace_ct, dor_xml)
 
-            part = re.sub(
-                r'(\s*)<eml:ContentType[^>]*>([^<]+)</eml:ContentType>',
-                _replace_ct, part)
+    # UUID -> Uuid
+    dor_xml = re.sub(
+        r'<eml:UUID([^>]*)>([^<]+)</eml:UUID>',
+        r'<eml:Uuid\1>\2</eml:Uuid>',
+        dor_xml)
 
-            # UUID -> Uuid
-            part = re.sub(
-                r'<eml:UUID([^>]*)>([^<]+)</eml:UUID>',
-                r'<eml:Uuid\1>\2</eml:Uuid>',
-                part)
-            converted_parts.append(part)
+    return dor_xml
 
-    return ''.join(converted_parts)
+
+# Deterministic namespace for PropertyKind UUIDs
+import uuid as _uuid
+_PK_NS = _uuid.UUID("a48c9c25-1e3a-43c8-be6a-044224cc69cb")
+
+# Track all PropertyKind names encountered during conversion
+_property_kind_names: set = set()
+
+
+def _pk_uuid(kind_name: str) -> str:
+    """Deterministic UUID for a standard PropertyKind name."""
+    return str(_uuid.uuid5(_PK_NS, kind_name))
 
 
 def _convert_property_kind(xml: str) -> str:
-    """Keep PropertyKind as-is (v2.0 StandardPropertyKind/Kind).
-    
-    While RESQML 2.2 schema expects a DOR for PropertyKind,
-    keeping the inline enum avoids needing to create PropertyKind objects
-    and their .rels entries in the EPC. The ETP server and cxml parser
-    handle both formats.
-    """
+    """Convert v2.0 StandardPropertyKind/Kind enum to v2.2 PropertyKind DOR."""
+
+    def _replace_pk(m):
+        kind_name = m.group(1)
+        _property_kind_names.add(kind_name)
+        pk_uuid = _pk_uuid(kind_name)
+        return (
+            '<resqml2:PropertyKind xsi:type="eml:DataObjectReference">\n'
+            '\t\t<eml:QualifiedType xsi:type="xsd:string">eml22.PropertyKind</eml:QualifiedType>\n'
+            f'\t\t<eml:Title xsi:type="eml:DescriptionString">{kind_name}</eml:Title>\n'
+            f'\t\t<eml:Uuid xsi:type="eml:UuidString">{pk_uuid}</eml:Uuid>\n'
+            '\t</resqml2:PropertyKind>'
+        )
+
+    xml = re.sub(
+        r'<resqml2:PropertyKind[^>]*xsi:type="resqml2:StandardPropertyKind"[^>]*>\s*'
+        r'<resqml2:Kind[^>]*>([^<]+)</resqml2:Kind>\s*</resqml2:PropertyKind>',
+        _replace_pk, xml)
+
     return xml
 
 
@@ -279,6 +300,91 @@ def _determine_object_category(type_name: str) -> str:
     return "other"
 
 
+# Map v2.0 Hdf5Array xsi:type to v2.2 ExternalArray xsi:type
+_HDF5_TO_EXTERNAL = {
+    "resqml2:DoubleHdf5Array": "eml:FloatingPointExternalArray",
+    "resqml2:IntegerHdf5Array": "eml:IntegerExternalArray",
+    "resqml2:BooleanHdf5Array": "eml:BooleanExternalArray",
+    "resqml2:Point3dHdf5Array": "resqml2:Point3DExternalArray",
+}
+
+
+def _convert_hdf5_arrays(xml: str) -> str:
+    """Convert v2.0 Hdf5Array blocks to v2.2 ExternalArray format.
+    
+    RESQML 2.2 uses EML 2.3 ExternalDataArray/ExternalDataArrayPart structure:
+    
+    v2.2: <X xsi:type="eml:FloatingPointExternalArray">
+            <eml:ArrayFloatingPointType>arrayOfDouble64LE</eml:ArrayFloatingPointType>
+            <eml:CountPerValue>1</eml:CountPerValue>
+            <eml:Values xsi:type="eml:ExternalDataArray">
+              <eml:ExternalDataArrayPart>
+                <eml:Count>1</eml:Count>
+                <eml:PathInExternalFile>PATH</eml:PathInExternalFile>
+                <eml:StartIndex>0</eml:StartIndex>
+                <eml:URI>drogon.h5</eml:URI>
+              </eml:ExternalDataArrayPart>
+            </eml:Values>
+          </X>
+    """
+    # Replace xsi:type for array containers
+    for old_type, new_type in _HDF5_TO_EXTERNAL.items():
+        xml = xml.replace(f'xsi:type="{old_type}"', f'xsi:type="{new_type}"')
+
+    # After type replacement, add required child elements for FloatingPointExternalArray
+    # Insert ArrayFloatingPointType and CountPerValue before Values
+    xml = re.sub(
+        r'(xsi:type="eml:FloatingPointExternalArray">)\s*(<eml:Values|<resqml2:Values)',
+        r'\1\n\t\t\t<eml:ArrayFloatingPointType>arrayOfDouble64LE</eml:ArrayFloatingPointType>'
+        r'\n\t\t\t<eml:CountPerValue>1</eml:CountPerValue>\n\t\t\t\2',
+        xml)
+
+    # Insert ArrayIntegerType and CountPerValue before Values for IntegerExternalArray
+    # (NullValue already exists from v2.0)
+    xml = re.sub(
+        r'(xsi:type="eml:IntegerExternalArray">)\s*'
+        r'(<resqml2:NullValue[^>]*>[^<]*</resqml2:NullValue>)\s*'
+        r'(<eml:Values|<resqml2:Values)',
+        r'\1\n\t\t\t<eml:ArrayIntegerType>arrayOfInt32LE</eml:ArrayIntegerType>'
+        r'\n\t\t\t\2'
+        r'\n\t\t\t<eml:CountPerValue>1</eml:CountPerValue>\n\t\t\t\3',
+        xml)
+
+    # Convert <resqml2:Values/Coordinates xsi:type="eml:Hdf5Dataset"> → ExternalDataArray
+    def _rewrite_hdf5_dataset(m):
+        indent = m.group(1)
+        elem_name = m.group(2)
+        path = m.group(3)
+        # All use ExternalDataArray/ExternalDataArrayPart with URI
+        if elem_name == 'Coordinates':
+            tag_open = f'<resqml2:Coordinates xsi:type="resqml2:ExternalDataArray">'
+            tag_close = '</resqml2:Coordinates>'
+        else:
+            tag_open = '<eml:Values xsi:type="eml:ExternalDataArray">'
+            tag_close = '</eml:Values>'
+        return (
+            f'{indent}{tag_open}\n'
+            f'{indent}\t<eml:ExternalDataArrayPart>\n'
+            f'{indent}\t\t<eml:Count>1</eml:Count>\n'
+            f'{indent}\t\t<eml:PathInExternalFile>{path}</eml:PathInExternalFile>\n'
+            f'{indent}\t\t<eml:StartIndex>0</eml:StartIndex>\n'
+            f'{indent}\t\t<eml:URI>drogon.h5</eml:URI>\n'
+            f'{indent}\t</eml:ExternalDataArrayPart>\n'
+            f'{indent}{tag_close}'
+        )
+
+    xml = re.sub(
+        r'(\s*)<resqml2:(Values|Coordinates) xsi:type="eml:Hdf5Dataset">\s*'
+        r'<eml:PathInHdfFile[^>]*>([^<]+)</eml:PathInHdfFile>\s*'
+        r'<eml:HdfProxy xsi:type="eml:DataObjectReference">.*?</eml:HdfProxy>\s*'
+        r'</resqml2:\2>',
+        _rewrite_hdf5_dataset,
+        xml,
+        flags=re.DOTALL)
+
+    return xml
+
+
 def _convert_content(xml: str, old_type: str, new_type: str) -> str:
     """Apply all 2.0.1->2.2 transformations to XML content."""
 
@@ -312,6 +418,9 @@ def _convert_content(xml: str, old_type: str, new_type: str) -> str:
         xml = xml.replace("RepresentedInterpretation", "InterpretedFeature")
     elif category == "representation":
         xml = xml.replace("RepresentedInterpretation", "RepresentedObject")
+
+    # 6b. Convert Hdf5Array types -> ExternalArray (v2.2)
+    xml = _convert_hdf5_arrays(xml)
 
     # 7. Property-specific conversions
     if "Property" in new_type:
@@ -348,6 +457,14 @@ def _convert_content(xml: str, old_type: str, new_type: str) -> str:
         'RESQML v2.0 (Drogon Demo)',
         'RESQML v2.2 (Drogon Demo)')
 
+    # 12. All Features + Model: add IsWellKnown (required in v2.2)
+    if "Feature" in new_type or new_type == "Model":
+        if '<resqml2:IsWellKnown' not in xml and '<eml:IsWellKnown' not in xml:
+            xml = re.sub(
+                r'(</eml:Citation>)',
+                r'\1\n\t<resqml2:IsWellKnown xsi:type="xsd:boolean">true</resqml2:IsWellKnown>',
+                xml, count=1)
+
     return xml
 
 
@@ -368,10 +485,31 @@ def _generate_property_kind_objects_from_names(kinds: set) -> dict:
     """Generate PropertyKind XML objects for the given kind names."""
     import uuid as _uuid
     _NS = _uuid.UUID("a48c9c25-1e3a-43c8-be6a-044224cc69cb")
+
+    # Map PropertyKind names to valid QuantityTypeKind enum values
+    _QUANTITY_CLASS_MAP = {
+        "net to gross ratio": "volume per volume",
+        "index": "dimensionless",
+        "volume": "volume",
+        "amplitude": "dimensionless",
+        "dimensionless": "dimensionless",
+        "saturation": "volume per volume",
+        "porosity": "volume per volume",
+        "length": "length",
+        "velocity": "length per time",
+        "volume fraction": "volume per volume",
+        "mass per volume": "mass per volume",
+        "shale volume": "volume per volume",
+        "Rock Impedance": "dimensionless",
+        "rock permeability": "permeability rock",
+        "depth": "length",
+        "thermodynamic temperature": "thermodynamic temperature",
+    }
     
     pk_objects = {}
     for kind_name in sorted(kinds):
         pk_uuid = str(_uuid.uuid5(_NS, kind_name))
+        quantity_class = _QUANTITY_CLASS_MAP.get(kind_name, "dimensionless")
         pk_xml = f"""<?xml version='1.0' encoding='UTF-8'?>
 <eml:PropertyKind xmlns:eml="http://www.energistics.org/energyml/data/commonv2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" schemaVersion="2.2" uuid="{pk_uuid}" xsi:type="eml:PropertyKind">
 \t<eml:Citation xsi:type="eml:Citation">
@@ -380,7 +518,7 @@ def _generate_property_kind_objects_from_names(kinds: set) -> dict:
 \t\t<eml:Creation xsi:type="xsd:dateTime">2025-01-01T00:00:00Z</eml:Creation>
 \t\t<eml:Format xsi:type="eml:DescriptionString">RESQML v2.2 Standard PropertyKind</eml:Format>
 \t</eml:Citation>
-\t<eml:QuantityClass xsi:type="eml:QuantityClassKind">{kind_name}</eml:QuantityClass>
+\t<eml:QuantityClass xsi:type="eml:QuantityTypeKind">{quantity_class}</eml:QuantityClass>
 \t<eml:IsAbstract xsi:type="xsd:boolean">false</eml:IsAbstract>
 </eml:PropertyKind>"""
         filename = f"PropertyKind_{pk_uuid}.xml"
@@ -400,6 +538,7 @@ def main():
     from collections import Counter
     type_counts = Counter()
     renamed_count = 0
+    excluded_count = 0
 
 
     with zipfile.ZipFile(SRC_EPC, "r") as src:
@@ -412,6 +551,11 @@ def main():
 
                     m = re.match(r'obj_(\w+?)_[0-9a-f-]{36}\.xml', old_name)
                     old_type = m.group(1) if m else ""
+
+                    # Skip types that don't exist in RESQML 2.2
+                    if old_type in EXCLUDED_TYPES:
+                        excluded_count += 1
+                        continue
 
                     # Keep EpcExternalPartReference completely unchanged
                     # (import tool uses .rels for v2.0 but fails with v2.2 parsing)
@@ -477,9 +621,19 @@ def main():
                                     else f'type={_convert_type_name(m2.group(1))}'),
                         ct_xml)
                     # No PropertyKind entries needed (kept as inline enum)
-                    dst.writestr(old_name, ct_xml.encode("utf-8"))
+                    # Defer [Content_Types].xml write until after PropertyKind objects are known
+                    # Remove entries for excluded types
+                    for excl_type in EXCLUDED_TYPES:
+                        ct_xml = re.sub(
+                            rf'<Override[^>]*PartName="/obj_{excl_type}_[^"]*"[^>]*/>\s*', '', ct_xml)
+                    ct_xml_deferred = ct_xml
+                    ct_name_deferred = old_name
 
                 elif old_name.startswith("_rels/") and old_name.endswith(".rels"):
+                    # Skip .rels for excluded types
+                    rels_type_m = re.search(r'obj_(\w+?)_', old_name)
+                    if rels_type_m and rels_type_m.group(1) in EXCLUDED_TYPES:
+                        continue
                     rels_xml = content_bytes.decode("utf-8")
                     # Rename obj_ targets — but keep EpcExternalPartReference as-is
                     rels_xml = re.sub(
@@ -500,7 +654,29 @@ def main():
                 else:
                     dst.writestr(old_name, content_bytes)
 
-    print(f"\n  Converted {sum(type_counts.values())} objects ({renamed_count} type renames)")
+            # ── Add PropertyKind objects ──────────────────────────────────
+            if _property_kind_names:
+                pk_objects = _generate_property_kind_objects_from_names(_property_kind_names)
+                for pk_filename, pk_xml in pk_objects.items():
+                    dst.writestr(pk_filename, pk_xml.encode("utf-8"))
+                    type_counts["PropertyKind"] += 1
+                print(f"  Added {len(pk_objects)} PropertyKind objects")
+
+                # Add PropertyKind entries to [Content_Types].xml
+                pk_ct_entries = ""
+                for pk_filename in pk_objects:
+                    pk_ct_entries += (
+                        f'\n <Override PartName="/{pk_filename}" '
+                        f'ContentType="application/x-eml+xml;version=2.2;type=PropertyKind"/>'
+                    )
+                # Insert before closing </Types>
+                ct_xml_deferred = ct_xml_deferred.replace(
+                    '</Types>', pk_ct_entries + '\n</Types>')
+
+            # Write [Content_Types].xml
+            dst.writestr(ct_name_deferred, ct_xml_deferred.encode("utf-8"))
+
+    print(f"\n  Converted {sum(type_counts.values())} objects ({renamed_count} type renames, {excluded_count} excluded)")
     print(f"  Types:")
     for t, c in sorted(type_counts.items()):
         print(f"    {t:45s} {c:4d}")
