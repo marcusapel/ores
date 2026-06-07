@@ -13,9 +13,11 @@ graph LR
   GQL --> A["Path A: OSDU Catalog · ES<br/>kind + text search"]
   GQL --> B["Path B: Local PG · asyncpg<br/>fastest, un-indexed data"]
   GQL --> Cr["Path C: Remote RDDMS · REST<br/>Azure-hosted dataspaces"]
+  GQL --> D["Path D: Discovery · batch graph<br/>ETP Protocol 3 via REST"]
   A --> F["FederatedSearchResult<br/><i>merge by UUID</i>"]
   B --> F
   Cr --> F
+  D --> F
 ```
 
 | Path | Best for | Speed |
@@ -24,6 +26,7 @@ graph LR
 | RDDMS REST | Browse dataspaces, single objects, full XML | Medium |
 | ETP WebSocket | Bulk EPC import/export, streaming | Fast |
 | GraphQL (PG) | Deep filtering, array predicates, multi-dataspace | Fastest (10–50× vs REST) |
+| GraphQL (Discovery) | Deep search on ADME/remote without PG access | Fast (1 call vs N+1) |
 | GraphQL federated | OSDU + RDDMS simultaneously, UUID dedup | Fast (parallel) |
 
 ---
@@ -606,15 +609,15 @@ _Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates - di
 
 ### Summary Table
 
-| Operation | REST API | GraphQL + PG | ETP (est.) |
-|-----------|----------|-------------|------------|
-| **Simple listing** (50 objects) | 80–200 ms | **5–15 ms** | 10–30 ms |
-| **Object + relations + arrays** | 300–600 ms | **10–30 ms** | 15–50 ms |
-| **Deep search** (10 grids, PORO > 0.25) | 5–15 s | **0.1–0.3 s** | 0.1–0.4 s |
-| **Large array read** (500K float64) | 1–3 s | **0.1–0.3 s** | 0.05–0.2 s |
-| **Setup complexity** | None (just URL) | PG access needed | ETP client + discovery impl |
-| **Portability** | Any OSDU | Co-located only | Any ETP server |
-| **Standard** | RDDMS REST v2 | Internal | Energistics ETP 1.2 |
+| Operation | REST API | Discovery | GraphQL + PG | ETP (est.) |
+|-----------|----------|-----------|-------------|------------|
+| **Simple listing** (50 objects) | 80–200 ms | 60–150 ms | **5–15 ms** | 10–30 ms |
+| **Object + relations + arrays** | 300–600 ms | 100–200 ms | **10–30 ms** | 15–50 ms |
+| **Deep search** (10 grids, PORO > 0.25) | 5–15 s | **0.3–1 s** | **0.1–0.3 s** | 0.1–0.4 s |
+| **Large array read** (500K float64) | 1–3 s | 1–3 s | **0.1–0.3 s** | 0.05–0.2 s |
+| **Setup complexity** | None (just URL) | `RDDMS_DISCOVERY=1` | PG access needed | ETP client |
+| **Portability** | Any OSDU | Any OSDU (MR 271+) | Co-located only | Any ETP server |
+| **Standard** | RDDMS REST v2 | ETP Discovery via REST | Internal | Energistics ETP 1.2 |
 
 ### Why PG is 10–50× Faster
 
@@ -628,15 +631,31 @@ _Measured on `maap/drogon` data (swedev). ETP values are reasoned estimates - di
 ### Performance Tips
 
 1. **Always prefer GraphQL + PG** when `GRAPHQL_PG_CONN_STRING` is set - the resolver auto-selects the fastest backend.
-2. **Use `category` for broad searches** - `category: "well"` searches all 10 well-related types in one query. Use `typeName` only when you know the exact type.
-3. **Avoid REST for deep queries** - 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). The same query takes ~0.2 s on PG.
-4. **Batch optimization (PG):** The PG path uses batch SQL queries (`ANY($1::int[])`) for properties, relations, arrays, and XML kind extraction - a deep search of 20 objects with properties now requires ~6 SQL round-trips instead of ~80.
-5. **Concurrent REST:** The REST fallback path fetches sources for up to 10 objects in parallel via `asyncio.gather`, reducing latency by ~5×.
-6. **Schema cache:** Dataspace→schema lookups are cached in-memory (cleared on instance switch). Avoid calling `deepSearch` in a tight loop per-object - use `limit` and `dataspaces:[...]` instead.
-7. **Large arrays:** PG binary transfer is 5–10× faster than JSON. If you must use REST, avoid reading arrays > 100K elements in tight loops.
-8. **Federated search** runs OSDU catalog + RDDMS in parallel - enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
-9. **Connection pooling** is automatic: `httpx.AsyncClient` for REST, `asyncpg` pool (min=2, max=10) for PG.
-10. **ETP** currently covers bulk import/export only. When discovery protocol is implemented, expect REST-like portability with PG-like speed (binary Avro over persistent WebSocket).
+2. **Enable Discovery** (`RDDMS_DISCOVERY=1`) on ADME/remote deployments where PG is not available - it replaces N+1 REST calls with a single batch graph call.
+3. **Use `category` for broad searches** - `category: "well"` searches all 10 well-related types in one query. Use `typeName` only when you know the exact type.
+4. **Avoid REST for deep queries** - 10 grids × 3 properties = ~80 serial HTTP calls (~5 s). Discovery does the same in ~1 call (~0.5 s). PG does it in ~0.2 s.
+5. **Batch optimization (PG):** The PG path uses batch SQL queries (`ANY($1::int[])`) for properties, relations, arrays, and XML kind extraction - a deep search of 20 objects with properties now requires ~6 SQL round-trips instead of ~80.
+6. **Batch optimization (Discovery):** `POST /query/graph/search` sends all candidate URIs in a single ETP session. The server traverses the graph and returns a merged, deduplicated result with edges — no N+1.
+7. **Concurrent REST:** The REST fallback path fetches sources for up to 10 objects in parallel via `asyncio.gather`, reducing latency by ~5×.
+8. **Schema cache:** Dataspace→schema lookups are cached in-memory (cleared on instance switch). Avoid calling `deepSearch` in a tight loop per-object - use `limit` and `dataspaces:[...]` instead.
+9. **Large arrays:** PG binary transfer is 5–10× faster than JSON. Discovery and REST both use JSON for arrays — avoid reading arrays > 100K elements in tight loops.
+10. **Federated search** runs OSDU catalog + RDDMS in parallel - enable only the sources you need (`searchCatalog`, `searchRddms`, `searchRemoteRddms`) to cut latency.
+11. **Connection pooling** is automatic: `httpx.AsyncClient` for REST/Discovery, `asyncpg` pool (min=2, max=10) for PG.
+
+### Backend Selection Order
+
+`deep_search_impl` tries backends in this order (first success wins):
+
+```
+1. Discovery  (RDDMS_DISCOVERY=1)  →  POST /query/graph/search  (1 batch call)
+   ↓ fallback if endpoint unavailable
+2. PostgreSQL (GRAPHQL_PG_CONN_STRING set)  →  SQL JOINs  (fastest, local only)
+   ↓ fallback if dataspace not in PG
+3. REST       (always available)  →  N+1 individual calls  (M26 compatible)
+```
+
+The `backend` field in `DeepSearchResult` tells you which path was used:
+`"Discovery"`, `"PostgreSQL"`, or `"REST"`.
 
 ---
 

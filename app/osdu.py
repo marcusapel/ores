@@ -468,6 +468,102 @@ async def list_targets(access_token: str, ds_enc: str, typ: str, uuid: str) -> l
         r.raise_for_status()
         return r.json() or []
 
+
+# ── Discovery / Deep Search (requires MR 271 endpoints) ──────────────
+
+# Feature gate: set RDDMS_DISCOVERY=1 to enable batch graph search and
+# deleted-resources endpoints.  These require open-etp-client >= MR 271
+# which adds POST /query/graph/search and GET /dataspaces/{id}/deleted.
+# Default OFF until MR 271 is merged and deployed on target ADME instance.
+RDDMS_DISCOVERY_ENABLED: bool = os.getenv("RDDMS_DISCOVERY", "").strip() in ("1", "true", "yes")
+
+
+async def graph_search(
+    access_token: str,
+    uris: list[str],
+    scope: str = "sources",
+    depth: int = 2,
+    data_object_types: list[str] | None = None,
+    count_objects: bool = True,
+    include_secondary_targets: bool = False,
+    include_secondary_sources: bool = False,
+) -> dict[str, Any]:
+    """POST /query/graph/search — batch graph across multiple URIs.
+
+    Requires open-etp-client with MR 271 (POST /query/graph/search).
+    Returns ``{"resources": [...], "links": [...]}``.
+    """
+    async with _http(timeout=120) as client:
+        r = await client.post(
+            _rddms_url("/query/graph/search"),
+            headers=headers(access_token),
+            json={
+                "uris": uris,
+                "scope": scope,
+                "depth": depth,
+                "dataObjectTypes": data_object_types or [],
+                "countObjects": count_objects,
+                "includeSecondaryTargets": include_secondary_targets,
+                "includeSecondarySources": include_secondary_sources,
+            },
+        )
+        r.raise_for_status()
+        return r.json() or {"resources": [], "links": []}
+
+
+async def list_deleted_resources(
+    access_token: str,
+    ds_enc: str,
+    data_object_types: str = "",
+    since: str = "",
+) -> list[dict]:
+    """GET /dataspaces/{dataspaceId}/deleted — list deleted resources.
+
+    Requires open-etp-client with MR 271 (GET /dataspaces/{id}/deleted).
+    """
+    params: dict[str, str] = {}
+    if data_object_types:
+        params["dataObjectTypes"] = data_object_types
+    if since:
+        params["storeLastWriteFilter"] = since
+    async with _http(timeout=60) as client:
+        r = await client.get(
+            _rddms_url(f"/dataspaces/{ds_enc}/deleted"),
+            headers=headers(access_token),
+            params=params,
+        )
+        r.raise_for_status()
+        return r.json() or []
+
+
+async def list_resources_deep(
+    access_token: str,
+    ds_enc: str,
+    typ: str,
+    depth: int = 1,
+    data_object_types: str = "",
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """GET /dataspaces/{id}/resources/{type}?depth=N — list with recursive depth.
+
+    Falls back to depth=1 on older etp-client versions that don't accept it.
+    """
+    params: dict[str, str] = {}
+    if depth > 1:
+        params["depth"] = str(depth)
+    if data_object_types:
+        params["dataObjectTypes"] = data_object_types
+    if limit:
+        params["$top"] = str(limit)
+    async with _http(timeout=90) as client:
+        r = await client.get(
+            _rddms_url(f"/dataspaces/{ds_enc}/resources/{typ}"),
+            headers=headers(access_token),
+            params=params,
+        )
+        r.raise_for_status()
+        return r.json() or []
+
 # ── Transactions ──────────────────────────────────────────────────────
 
 async def begin_transaction(access_token: str, ds_path: str) -> str:

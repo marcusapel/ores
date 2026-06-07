@@ -1174,6 +1174,302 @@ async def _deep_search_rest(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Deep search - discovery backend (MR 271 batch graph, gated by RDDMS_DISCOVERY)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+async def _deep_search_discovery(
+        token: str,
+        dataspace: str,
+        type_name: str,
+        title_contains: Optional[str],
+        property_filter: Optional[PropertyFilter],
+        include_relations: bool,
+        include_statistics: bool,
+        include_sample_values: bool,
+        sample_size: int,
+        limit: int,
+        relation_filter: Optional[List[str]] = None,
+) -> DeepSearchResult:
+    """Discovery-based deep search using POST /query/graph/search (MR 271).
+
+    Instead of N+1 REST calls per object, this backend:
+      1) Lists resources of the target type in the dataspace
+      2) Sends all candidate URIs to POST /query/graph/search in one call
+      3) Builds ResqmlObject results from the merged graph
+
+    Falls back to _deep_search_rest on any error (endpoint not available yet).
+    """
+    backend = "Discovery"
+    warnings: List[str] = []
+
+    # Resolve type names (supports categories/wildcards)
+    type_names = resolve_type_names(type_name)
+    if not type_names:
+        type_names = [type_name]
+
+    enc = urllib.parse.quote(dataspace, safe="")
+
+    # Step 1: List candidate objects (same as REST path)
+    all_resources: List[Dict[str, Any]] = []
+    for tn in type_names:
+        try:
+            resources = await _rest_list_resources(token, dataspace, tn, limit * 3)
+            for r in resources:
+                r["_resolved_type"] = tn
+            all_resources.extend(resources)
+        except Exception as e:
+            warnings.append(f"Failed to list {tn}: {e}")
+
+    if not all_resources:
+        return DeepSearchResult(
+            objects=[], total_scanned=0, total_matched=0,
+            query_description=f"type={type_name}: no resources found",
+            backend=backend, warnings=warnings or None,
+        )
+
+    total_scanned = len(all_resources)
+
+    # Pre-filter by title
+    if title_contains:
+        all_resources = [
+            r for r in all_resources
+            if title_contains.lower() in r["title"].lower()
+        ]
+
+    candidates = [r for r in all_resources if r["uuid"]][:limit * 2]
+
+    if not candidates:
+        return DeepSearchResult(
+            objects=[], total_scanned=total_scanned, total_matched=0,
+            query_description=f"type={type_name}: no candidates after filter",
+            backend=backend, warnings=warnings or None,
+        )
+
+    # Step 2: Batch graph search — one call for ALL candidates
+    candidate_uris = [r.get("uri", "") for r in candidates if r.get("uri")]
+
+    # Property types we're interested in as sources of representations
+    prop_types = [
+        "resqml20.obj_ContinuousProperty",
+        "resqml20.obj_DiscreteProperty",
+        "resqml20.obj_CategoricalProperty",
+        "resqml20.obj_PointsProperty",
+        "resqml22.ContinuousProperty",
+        "resqml22.DiscreteProperty",
+        "resqml22.CategoricalProperty",
+    ]
+
+    graph: Dict[str, Any] = {"resources": [], "links": []}
+    try:
+        graph = await osdu.graph_search(
+            token,
+            candidate_uris,
+            scope="sources",
+            depth=2,
+            data_object_types=prop_types if (property_filter or include_statistics) else [],
+            count_objects=include_relations,
+        )
+    except Exception as e:
+        warnings.append(f"graph_search failed ({e}); falling back to REST")
+        # Return a sentinel so the caller knows to fall back
+        return DeepSearchResult(
+            objects=[], total_scanned=total_scanned, total_matched=0,
+            query_description=f"Discovery graph_search unavailable: {e}",
+            backend="Discovery-FALLBACK",
+            warnings=warnings,
+        )
+
+    # Build lookup structures from graph
+    graph_resources_by_uri: Dict[str, Dict[str, Any]] = {}
+    for gr in graph.get("resources", []):
+        uri = gr.get("uri", "")
+        if uri:
+            graph_resources_by_uri[uri] = gr
+
+    # Build edge index: target_uri → [source resources]
+    # In RESQML, properties are *sources* of their representation (target)
+    sources_of: Dict[str, List[Dict[str, Any]]] = {}
+    targets_of: Dict[str, List[Dict[str, Any]]] = {}
+    for link in graph.get("links", []):
+        src_uri = link.get("source", "")
+        tgt_uri = link.get("target", "")
+        if src_uri and tgt_uri:
+            sources_of.setdefault(tgt_uri, []).append(
+                graph_resources_by_uri.get(src_uri, {"uri": src_uri})
+            )
+            targets_of.setdefault(src_uri, []).append(
+                graph_resources_by_uri.get(tgt_uri, {"uri": tgt_uri})
+            )
+
+    # Step 3: Build results from graph
+    matched: List[ResqmlObject] = []
+
+    for r in candidates:
+        if len(matched) >= limit:
+            break
+
+        uuid = r["uuid"]
+        title = r["title"]
+        tn = r["_resolved_type"]
+        r_uri = r.get("uri", "")
+
+        # Extract property sources from graph edges
+        source_entries = sources_of.get(r_uri, [])
+
+        # Filter to property types
+        prop_entries = []
+        for se in source_entries:
+            parsed = _parse_eml_entry(se)
+            if any(k in parsed["contentType"]
+                   for k in ("ContinuousProperty", "DiscreteProperty",
+                             "CategoricalProperty", "PointsProperty")):
+                prop_entries.append(parsed)
+
+        if property_filter and property_filter.kind and not prop_entries:
+            continue
+
+        # Build PropertyInfo from graph data (no extra REST calls needed for basic info)
+        property_results: List[PropertyInfo] = []
+        passes_filter = not (property_filter and property_filter.array_filter)
+
+        for pe in prop_entries:
+            p_uuid = pe["uuid"]
+            p_name = pe["name"]
+            if not p_uuid:
+                continue
+
+            p_type = pe["contentType"]
+
+            # We don't have property kind from graph metadata alone —
+            # would need a follow-up GetDataObjects call. For now, use type name as proxy.
+            kind = "unknown"
+            if "Continuous" in p_type:
+                kind = "continuous"
+            elif "Discrete" in p_type:
+                kind = "discrete"
+            elif "Categorical" in p_type:
+                kind = "categorical"
+            elif "Points" in p_type:
+                kind = "points"
+
+            # Kind filter
+            if property_filter and property_filter.kind:
+                if property_filter.kind.lower() not in kind.lower():
+                    # If we have a kind filter but only type-inferred kind,
+                    # try to fetch the actual object for precise kind (lazy)
+                    try:
+                        p_obj = await _rest_get_resource(token, dataspace, p_type, p_uuid)
+                        kind = _extract_property_kind(p_obj)
+                        if property_filter.kind.lower() not in kind.lower():
+                            continue
+                    except Exception:
+                        continue
+
+            # Title filter on property
+            if property_filter and property_filter.title_contains:
+                if property_filter.title_contains.lower() not in p_name.lower():
+                    continue
+
+            prop_info = PropertyInfo(
+                uuid=p_uuid,
+                title=p_name,
+                type_name=p_type,
+                kind=kind,
+                uom=None,
+            )
+
+            # Array statistics/filtering still requires individual array calls
+            # (graph search doesn't return array data)
+            if include_statistics or include_sample_values or (property_filter and property_filter.array_filter):
+                try:
+                    p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
+                except Exception:
+                    p_arrays = []
+
+                array_infos: List[ArrayInfo] = []
+                for pa in p_arrays:
+                    pa_uid = pa.get("uid") or {}
+                    pa_path = pa_uid.get("pathInResource", "") if isinstance(pa_uid, dict) else ""
+                    if not pa_path:
+                        continue
+
+                    ai = ArrayInfo(path=pa_path)
+                    try:
+                        values = await _rest_read_array(token, dataspace, p_type, p_uuid, pa_path)
+                    except Exception:
+                        values = []
+
+                    if values:
+                        ai.total_elements = len(values)
+                        if include_statistics:
+                            ai.statistics = _compute_statistics(values)
+                            prop_info.statistics = ai.statistics
+                        if include_sample_values:
+                            ai.sample_values = values[:sample_size]
+                        if property_filter and property_filter.array_filter:
+                            af = property_filter.array_filter
+                            match = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
+                            prop_info.matching_cells = match
+                            if match.count > 0:
+                                passes_filter = True
+
+                    array_infos.append(ai)
+                prop_info.arrays = array_infos if array_infos else None
+
+            property_results.append(prop_info)
+
+        if property_filter and property_filter.kind and not property_results:
+            continue
+        if property_filter and property_filter.array_filter and not passes_filter:
+            continue
+
+        # Relations from graph edges (no extra REST calls!)
+        relation_results: Optional[List[RelationInfo]] = None
+        if include_relations:
+            relation_results = []
+            for te in targets_of.get(r_uri, []):
+                parsed = _parse_eml_entry(te)
+                if parsed["uuid"]:
+                    relation_results.append(RelationInfo(
+                        uuid=parsed["uuid"], name=parsed["name"],
+                        type_name=parsed["contentType"],
+                        direction="target", content_type=parsed["contentType"],
+                    ))
+            for se in source_entries:
+                parsed = _parse_eml_entry(se)
+                if parsed["uuid"]:
+                    relation_results.append(RelationInfo(
+                        uuid=parsed["uuid"], name=parsed["name"],
+                        type_name=parsed["contentType"],
+                        direction="source", content_type=parsed["contentType"],
+                    ))
+            relation_results = _filter_relations(relation_results, relation_filter)
+
+        matched.append(ResqmlObject(
+            uuid=uuid, title=title, type_name=type_name,
+            relations=relation_results,
+            properties=property_results if property_results else None,
+        ))
+
+    # Build description
+    desc_parts = [f"type={type_name}"]
+    if title_contains:
+        desc_parts.append(f"title~'{title_contains}'")
+    if property_filter and property_filter.kind:
+        desc_parts.append(f"property.kind='{property_filter.kind}'")
+
+    return DeepSearchResult(
+        objects=matched,
+        total_scanned=total_scanned,
+        total_matched=len(matched),
+        query_description=" AND ".join(desc_parts),
+        backend=backend,
+        warnings=warnings or None,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Deep search - resolver implementation (called from Query.deep_search)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -1227,6 +1523,19 @@ async def deep_search_impl(
 
     # Single dataspace: use existing path
     if len(ds_list) == 1:
+        # Route 1: Discovery batch graph (MR 271) — tried first when enabled
+        if osdu.RDDMS_DISCOVERY_ENABLED:
+            disc_result = await _deep_search_discovery(
+                token, ds_list[0], effective_type, title_contains,
+                property_filter, include_relations, include_statistics,
+                include_sample_values, sample_size, limit, relation_filter,
+            )
+            # If discovery succeeded (not a fallback sentinel), use it
+            if disc_result.backend != "Discovery-FALLBACK":
+                return disc_result
+            # Otherwise fall through to PG / REST
+
+        # Route 2: PostgreSQL direct (local co-located with ETP server)
         pool = await _get_pool()
         if pool:
             result = await _deep_search_pg(
@@ -1244,17 +1553,31 @@ async def deep_search_impl(
                     include_sample_values, sample_size, limit, relation_filter,
                 )
             return result
+
+        # Route 3: REST N+1 fallback (always available)
         return await _deep_search_rest(
             token, ds_list[0], effective_type, title_contains,
             property_filter, include_relations, include_statistics,
             include_sample_values, sample_size, limit, relation_filter,
         )
 
-    # Multiple dataspaces: try PG first for each, fall back to REST per-ds
+    # Multiple dataspaces: try Discovery → PG → REST per-ds
     pool = await _get_pool()
+    use_discovery = osdu.RDDMS_DISCOVERY_ENABLED
 
     async def _search_one_ds(ds: str) -> DeepSearchResult:
-        """Search a single dataspace: PG first, REST fallback."""
+        """Search a single dataspace: Discovery → PG → REST."""
+        # Try discovery first
+        if use_discovery:
+            disc_result = await _deep_search_discovery(
+                token, ds, effective_type, title_contains,
+                property_filter, include_relations, include_statistics,
+                include_sample_values, sample_size, limit, relation_filter,
+            )
+            if disc_result.backend != "Discovery-FALLBACK":
+                return disc_result
+
+        # PG
         if pool:
             pg_result = await _deep_search_pg(
                 pool, ds, effective_type, title_contains,
@@ -1264,6 +1587,8 @@ async def deep_search_impl(
             if pg_result.total_scanned > 0 or "not found in PG" not in pg_result.query_description:
                 return pg_result
             # Dataspace not in PG → try REST
+
+        # REST fallback
         return await _deep_search_rest(
             token, ds, effective_type, title_contains,
             property_filter, include_relations, include_statistics,
