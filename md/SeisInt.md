@@ -337,7 +337,7 @@ This requires fetching the geometry node to inspect `NodePatch[0].Geometry.Local
 
 ## 7) RESQML 2.0.1 vs 2.2 - Implications for OSDU
 
-RESQML 2.2 was officially released in 2023 and is significantly better aligned with OSDU's metadata needs. However, our current RDDMS dataset uses **RESQML 2.0.1** (`SchemaVersion: "2.0"`). This section documents the improvements in 2.2 and what they would enable.
+RESQML 2.2 was officially released in 2023 and is significantly better aligned with OSDU's metadata needs. However, our current RDDMS dataset uses **RESQML 2.0.1** (`SchemaVersion: "2.0"`) and 2.2 is not yet in production use. This section documents the improvements in 2.2 for future reference — the pipeline and all examples remain 2.0.1-based.
 
 ### 7.1 Key Differences Affecting OSDU Mapping
 
@@ -406,11 +406,11 @@ Since our RDDMS serves 2.0.1 objects, the pipeline must work around these limita
 The RDDMS REST API path includes the RESQML version in the type identifier:
 
 ```
-resqml20.obj_PolylineSetRepresentation   ← RESQML 2.0.1
-resqml22.obj_PolylineSetRepresentation   ← RESQML 2.2 (when supported)
+resqml20.obj_PolylineSetRepresentation   ← RESQML 2.0.1 (current production)
+resqml22.obj_PolylineSetRepresentation   ← RESQML 2.2 (supported but not in active use)
 ```
 
-When the RDDMS adds 2.2 support, the pipeline would need to handle both versions - detection via `SchemaVersion` field (`"2.0"` vs `"2.2"`) and adjusted field extraction.
+The RDDMS client already supports both version prefixes in type resolution. When datasets are migrated to 2.2, the pipeline will need adjusted field extraction (e.g., direct `Domain` enum instead of CRS-chasing). Until then, all seismic interpretation workflows use the `resqml20.*` type paths.
 
 ---
 
@@ -568,9 +568,38 @@ sequenceDiagram
     Search-->>App: StructureMap record IDs
     App->>Storage: GET record by ID
     Storage-->>App: StructureMap (Name, grid params, DDMSDatasets[])
-    App->>RDDMS: GET Grid2dRepresentation (from DDMSDatasets[] URI)
-    RDDMS-->>App: Grid metadata + Z-value array
+    App->>RDDMS: GET /resources/:dataspaceId/:uuid (Grid2dRep)
+    RDDMS-->>App: Grid metadata + object JSON
+    App->>RDDMS: GET /resources/:dataspaceId/:uuid/arrays/:path
+    RDDMS-->>App: Z-value array (with optional starts/counts slicing)
 ```
+
+### RDDMS REST Endpoints for Seismic Interpretation
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/resources/:dataspaceId` | `GET` | List all objects in a dataspace (discovery) |
+| `/resources/:dataspaceId/:type/:uuid` | `GET` | Fetch a single RESQML object (Grid2d, PolylineSet, PointSet) |
+| `/resources/:dataspaceId/:type/:uuid/arrays` | `GET` | List all arrays on an object (Z-values, XY coords) |
+| `/resources/:dataspaceId/:type/:uuid/arrays/:path` | `GET` | Fetch array content (supports `starts`/`counts` for slicing large grids) |
+| `/resources/:dataspaceId/:type/:uuid/arrays/:path/metadata` | `GET` | Array metadata (type, dimensions) without fetching data |
+| `/query/graph/search` | `POST` | Traverse interpretation chains (representation → interpretation → feature) |
+| `/query/resources/find` | `POST` | Filter resources by type and properties (e.g., all Grid2dRepresentations in a dataspace) |
+
+**Graph search for interpretation chain resolution**:
+
+The RDDMS `POST /query/graph/search` endpoint uses ETP Discovery Protocol 3 (`getGraph`) to traverse the full interpretation chain in a single request:
+
+```json
+{
+  "dataspaceId": "maap/drogon",
+  "uris": ["eml:///dataspace('maap/drogon')/resqml20.obj_Grid2dRepresentation(uuid='...')"],
+  "depth": 2,
+  "includeEdges": true
+}
+```
+
+This returns the `Grid2dRepresentation` → `HorizonInterpretation` → `LocalBoundaryFeature` chain with edges, enabling complete metadata extraction without N+1 fetches.
 
 ---
 
@@ -589,9 +618,20 @@ sequenceDiagram
 - [GenericRepresentation:1.2.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/GenericRepresentation.1.2.0.md)
 - [SeismicBinGrid:1.3.0](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/work-product-component/SeismicBinGrid.1.3.0.md)
 
+### RDDMS Client API
+
+- `GET /resources/:dataspaceId` — list objects in a dataspace (by type filter)
+- `GET /resources/:dataspaceId/:type/:uuid` — fetch single RESQML object
+- `GET /resources/:dataspaceId/:type/:uuid/arrays/:path` — fetch array data (Z-values, coordinates)
+- `POST /query/graph/search` — graph traversal for interpretation chains (ETP Discovery Protocol 3)
+- `POST /query/resources/find` — filtered resource discovery (ETP DiscoveryQuery Protocol 13)
+- `POST /dataspaces/:id/clone` — duplicate dataspace (for project-scoped interpretation workspaces)
+- `POST /dataspaces/:id/lock` — lock dataspace read-only (freeze SOR baseline)
+
 ### ORES Workspace
 
 - SeisTodo - Open questions & follow-up work (Oslo'26 DD Workshop)
 - [`demo/drogonresqml/build_full_manifest.py`](../demo/drogonresqml/build_full_manifest.py) - Full manifest builder (StructureMaps, faults, horizons)
 - [`demo/drogonresqml/DrogonDemo.md`](../demo/drogonresqml/DrogonDemo.md) - Dataset reference (FIRP model, object inventory)
 - [`app/structuremap.py`](../app/structuremap.py) - Live StructureMap generation
+- [P&WS Guide](/howto/pws) - Project collaboration (dataspace lifecycle for interpretation projects)
