@@ -25,6 +25,8 @@ weco_deploy_key.pub
 *.zip
 *.xml
 *.bak
+*.log
+
 
 # ── Project-specific ignores ──
 demo/eqn/
