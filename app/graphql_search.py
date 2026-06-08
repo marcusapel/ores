@@ -508,6 +508,72 @@ def _check_threshold(
     return CellMatch(count=count, total=total, fraction=count / total if total else 0.0)
 
 
+def _enrich_arrays_from_values(
+    values: List[float],
+    ai: ArrayInfo,
+    prop_info: PropertyInfo,
+    property_filter: Optional[PropertyFilter],
+    include_statistics: bool,
+    include_sample_values: bool,
+    sample_size: int,
+) -> bool:
+    """Apply stats/threshold/sampling to array values. Returns True if threshold passes."""
+    passes = False
+    if not values:
+        return passes
+    ai.total_elements = len(values)
+    if include_statistics:
+        ai.statistics = _compute_statistics(values)
+        prop_info.statistics = ai.statistics
+    if include_sample_values:
+        ai.sample_values = values[:sample_size]
+    if property_filter and property_filter.array_filter:
+        af = property_filter.array_filter
+        match = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
+        prop_info.matching_cells = match
+        if match.count > 0:
+            passes = True
+    return passes
+
+
+async def _enrich_property_via_rest(
+    token: str,
+    dataspace: str,
+    p_type: str,
+    p_uuid: str,
+    prop_info: PropertyInfo,
+    property_filter: Optional[PropertyFilter],
+    include_statistics: bool,
+    include_sample_values: bool,
+    sample_size: int,
+) -> Tuple[Optional[List[ArrayInfo]], bool]:
+    """Load arrays via REST and enrich a PropertyInfo. Returns (array_infos, passes_filter)."""
+    try:
+        p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
+    except Exception:
+        p_arrays = []
+
+    array_infos: List[ArrayInfo] = []
+    passes = False
+    for pa in p_arrays:
+        pa_uid = pa.get("uid") or {}
+        pa_path = pa_uid.get("pathInResource", "") if isinstance(pa_uid, dict) else ""
+        if not pa_path:
+            continue
+        ai = ArrayInfo(path=pa_path)
+        try:
+            values = await _rest_read_array(token, dataspace, p_type, p_uuid, pa_path)
+        except Exception:
+            values = []
+        if _enrich_arrays_from_values(
+            values, ai, prop_info, property_filter,
+            include_statistics, include_sample_values, sample_size,
+        ):
+            passes = True
+        array_infos.append(ai)
+    return (array_infos if array_infos else None, passes)
+
+
 def _extract_property_kind(obj: Dict[str, Any]) -> str:
     """Extract property kind from a RESQML property object JSON.
 
@@ -738,23 +804,13 @@ async def _deep_search_pg(
                             )
                         except Exception:
                             values = []
-                        if values:
-                            ai = ArrayInfo(path=pa["path"])
-                            ai.total_elements = len(values)
-                            if include_statistics:
-                                ai.statistics = _compute_statistics(values)
-                                pi.statistics = ai.statistics
-                            if include_sample_values:
-                                ai.sample_values = values[:sample_size]
-                            if property_filter and property_filter.array_filter:
-                                af = property_filter.array_filter
-                                match_result = _check_threshold(
-                                    values, af.threshold, af.operator, af.threshold_high
-                                )
-                                pi.matching_cells = match_result
-                                if match_result.count > 0:
-                                    passes_filter = True
-                            pi.arrays = [ai]
+                        ai = ArrayInfo(path=pa["path"])
+                        if _enrich_arrays_from_values(
+                            values, ai, pi, property_filter,
+                            include_statistics, include_sample_values, sample_size,
+                        ):
+                            passes_filter = True
+                        pi.arrays = [ai]
                     property_results.append(pi)
             else:
                 for ps in prop_sources:
@@ -793,21 +849,11 @@ async def _deep_search_pg(
                                 )
                             except Exception:
                                 values = []
-                            if values:
-                                ai.total_elements = len(values)
-                                if include_statistics:
-                                    ai.statistics = _compute_statistics(values)
-                                    prop_info.statistics = ai.statistics
-                                if include_sample_values:
-                                    ai.sample_values = values[:sample_size]
-                                if property_filter and property_filter.array_filter:
-                                    af = property_filter.array_filter
-                                    match_result = _check_threshold(
-                                        values, af.threshold, af.operator, af.threshold_high
-                                    )
-                                    prop_info.matching_cells = match_result
-                                    if match_result.count > 0:
-                                        passes_filter = True
+                            if _enrich_arrays_from_values(
+                                values, ai, prop_info, property_filter,
+                                include_statistics, include_sample_values, sample_size,
+                            ):
+                                passes_filter = True
                             array_infos.append(ai)
                         prop_info.arrays = array_infos if array_infos else None
 
@@ -1050,48 +1096,18 @@ async def _deep_search_rest(
 
             # Step 4: optionally load array data for statistics/filtering
             if include_statistics or include_sample_values or (property_filter and property_filter.array_filter):
-                try:
-                    p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
-                except Exception:
-                    p_arrays = []
+                arr_result, arr_passes = await _enrich_property_via_rest(
+                    token, dataspace, p_type, p_uuid, prop_info,
+                    property_filter, include_statistics, include_sample_values, sample_size,
+                )
+                prop_info.arrays = arr_result
+                if arr_passes:
+                    passes_filter = True
 
-                if not p_arrays and (include_statistics or (property_filter and property_filter.array_filter)):
+                if not arr_result and (include_statistics or (property_filter and property_filter.array_filter)):
                     _no_array_msg = "REST backend: array values not available (statistics/threshold need PG or ETP)"
                     if _no_array_msg not in warnings:
                         warnings.append(_no_array_msg)
-
-                array_infos: List[ArrayInfo] = []
-                for pa in p_arrays:
-                    pa_uid = pa.get("uid") or {}
-                    pa_path = pa_uid.get("pathInResource", "") if isinstance(pa_uid, dict) else ""
-                    if not pa_path:
-                        continue
-
-                    ai = ArrayInfo(path=pa_path)
-                    try:
-                        values = await _rest_read_array(token, dataspace, p_type, p_uuid, pa_path)
-                    except Exception:
-                        values = []
-
-                    if values:
-                        ai.total_elements = len(values)
-                        if include_statistics:
-                            ai.statistics = _compute_statistics(values)
-                            prop_info.statistics = ai.statistics
-                        if include_sample_values:
-                            ai.sample_values = values[:sample_size]
-
-                        # Array threshold filter
-                        if property_filter and property_filter.array_filter:
-                            af = property_filter.array_filter
-                            match = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
-                            prop_info.matching_cells = match
-                            if match.count > 0:
-                                passes_filter = True
-
-                    array_infos.append(ai)
-
-                prop_info.arrays = array_infos if array_infos else None
 
             property_results.append(prop_info)
 
@@ -1266,7 +1282,7 @@ async def _deep_search_discovery(
             token,
             candidate_uris,
             scope="sources",
-            depth=2,
+            depth=1 if not include_relations else 2,
             data_object_types=prop_types if (property_filter or include_statistics) else [],
             count_objects=include_relations,
         )
@@ -1382,40 +1398,13 @@ async def _deep_search_discovery(
             # Array statistics/filtering still requires individual array calls
             # (graph search doesn't return array data)
             if include_statistics or include_sample_values or (property_filter and property_filter.array_filter):
-                try:
-                    p_arrays = await _rest_list_arrays(token, dataspace, p_type, p_uuid)
-                except Exception:
-                    p_arrays = []
-
-                array_infos: List[ArrayInfo] = []
-                for pa in p_arrays:
-                    pa_uid = pa.get("uid") or {}
-                    pa_path = pa_uid.get("pathInResource", "") if isinstance(pa_uid, dict) else ""
-                    if not pa_path:
-                        continue
-
-                    ai = ArrayInfo(path=pa_path)
-                    try:
-                        values = await _rest_read_array(token, dataspace, p_type, p_uuid, pa_path)
-                    except Exception:
-                        values = []
-
-                    if values:
-                        ai.total_elements = len(values)
-                        if include_statistics:
-                            ai.statistics = _compute_statistics(values)
-                            prop_info.statistics = ai.statistics
-                        if include_sample_values:
-                            ai.sample_values = values[:sample_size]
-                        if property_filter and property_filter.array_filter:
-                            af = property_filter.array_filter
-                            match = _check_threshold(values, af.threshold, af.operator, af.threshold_high)
-                            prop_info.matching_cells = match
-                            if match.count > 0:
-                                passes_filter = True
-
-                    array_infos.append(ai)
-                prop_info.arrays = array_infos if array_infos else None
+                arr_result, arr_passes = await _enrich_property_via_rest(
+                    token, dataspace, p_type, p_uuid, prop_info,
+                    property_filter, include_statistics, include_sample_values, sample_size,
+                )
+                prop_info.arrays = arr_result
+                if arr_passes:
+                    passes_filter = True
 
             property_results.append(prop_info)
 

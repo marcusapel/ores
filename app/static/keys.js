@@ -186,6 +186,7 @@
     ${dsArg}
     typeName: "${typeName}"
     ${propFilter ? propFilter : ''}
+    includeRelations: ${relations}
     includeStatistics: ${stats}
     includeSampleValues: ${sample}
     limit: ${limit}
@@ -193,6 +194,7 @@
     backend totalScanned totalMatched queryDescription
     objects {
       uuid title typeName
+      ${relations ? 'relations { uuid name typeName direction contentType }' : ''}
       properties {
         title kind uom
         ${stats ? 'statistics { count minValue maxValue mean stdDev }' : ''}
