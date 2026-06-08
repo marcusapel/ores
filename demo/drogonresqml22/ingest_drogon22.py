@@ -208,7 +208,7 @@ def import_epc(token: str, cfg: InstanceConfig) -> bool:
         f"--data-partition-id {cfg.partition} "
         f"--auth bearer --jwt-token $JWT "
         f"-s {cfg.dataspace} "
-        f"--import-epc /data/{EPC_FILE.name} -j"
+        f"--import-epc /data/{EPC_FILE.name} -j -M 50MB"
     )
     cmd = [
         "docker", "run", "--rm",

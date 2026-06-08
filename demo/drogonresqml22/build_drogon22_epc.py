@@ -46,6 +46,17 @@ EXCLUDED_TYPES = {
     "DeviationSurveyRepresentation",
 }
 
+# Objects whose HDF5 datasets are missing from all available source H5 files
+# (Grid2dRepresentation "Depth Surface - Geogrid Extract" with no points_patch0)
+EXCLUDED_UUIDS = {
+    "023e0b30-3822-41a3-b4ad-7b8d34b5f42a",
+    "4b836144-9eaf-4511-aea0-cee8b1d63994",
+    "7d76b4fb-d927-4697-89a9-882b7a516a49",
+    "ce5fac58-c8c8-44ad-be08-12f75a2af509",
+    "d2fef43f-0aa0-427d-afc1-ab254b71fcd2",
+    "eba48dd6-f2d0-49e1-b0d6-ad2f401c51f9",
+}
+
 # Types that are Interpretations (use InterpretedFeature for their DOR to feature)
 INTERPRETATION_TYPES = {
     "FaultInterpretation", "HorizonInterpretation",
@@ -549,11 +560,17 @@ def main():
                 if old_name.endswith(".xml") and old_name.startswith("obj_"):
                     xml = content_bytes.decode("utf-8")
 
-                    m = re.match(r'obj_(\w+?)_[0-9a-f-]{36}\.xml', old_name)
+                    m = re.match(r'obj_(\w+?)_([0-9a-f-]{36})\.xml', old_name)
                     old_type = m.group(1) if m else ""
+                    obj_uuid = m.group(2) if m else ""
 
                     # Skip types that don't exist in RESQML 2.2
                     if old_type in EXCLUDED_TYPES:
+                        excluded_count += 1
+                        continue
+
+                    # Skip objects with missing HDF5 data
+                    if obj_uuid in EXCLUDED_UUIDS:
                         excluded_count += 1
                         continue
 
@@ -622,17 +639,25 @@ def main():
                         ct_xml)
                     # No PropertyKind entries needed (kept as inline enum)
                     # Defer [Content_Types].xml write until after PropertyKind objects are known
-                    # Remove entries for excluded types
+                    # Remove entries for excluded types (match both obj_ and non-prefixed)
                     for excl_type in EXCLUDED_TYPES:
                         ct_xml = re.sub(
-                            rf'<Override[^>]*PartName="/obj_{excl_type}_[^"]*"[^>]*/>\s*', '', ct_xml)
+                            rf'<Override[^>]*PartName="/(?:obj_)?{excl_type}_[^"]*"[^>]*/>\s*', '', ct_xml)
+                    # Remove entries for excluded UUIDs
+                    for excl_uuid in EXCLUDED_UUIDS:
+                        ct_xml = re.sub(
+                            rf'<Override[^>]*PartName="[^"]*{excl_uuid}[^"]*"[^>]*/>\s*', '', ct_xml)
                     ct_xml_deferred = ct_xml
                     ct_name_deferred = old_name
 
                 elif old_name.startswith("_rels/") and old_name.endswith(".rels"):
-                    # Skip .rels for excluded types
-                    rels_type_m = re.search(r'obj_(\w+?)_', old_name)
+                    # Skip .rels for excluded types (check both obj_ and non-prefixed)
+                    rels_type_m = re.search(r'(?:obj_)?(\w+?)_[0-9a-f-]{36}', old_name)
                     if rels_type_m and rels_type_m.group(1) in EXCLUDED_TYPES:
+                        continue
+                    # Skip .rels for excluded UUIDs
+                    rels_uuid_m = re.search(r'([0-9a-f-]{36})', old_name)
+                    if rels_uuid_m and rels_uuid_m.group(1) in EXCLUDED_UUIDS:
                         continue
                     rels_xml = content_bytes.decode("utf-8")
                     # Rename obj_ targets — but keep EpcExternalPartReference as-is
@@ -641,6 +666,14 @@ def main():
                         lambda m2: (f'obj_{m2.group(1)}_' if m2.group(1) == 'EpcExternalPartReference'
                                     else f'{_convert_type_name(m2.group(1))}_'),
                         rels_xml)
+                    # Remove relationships targeting excluded types
+                    for excl_type in EXCLUDED_TYPES:
+                        rels_xml = re.sub(
+                            rf'<Relationship[^>]*Target="[^"]*{excl_type}_[^"]*"[^>]*/>\s*', '', rels_xml)
+                    # Remove relationships targeting excluded UUIDs
+                    for excl_uuid in EXCLUDED_UUIDS:
+                        rels_xml = re.sub(
+                            rf'<Relationship[^>]*Target="[^"]*{excl_uuid}[^"]*"[^>]*/>\s*', '', rels_xml)
                     # Keep EpcExternalPartReference .rels filename with obj_ prefix
                     if 'EpcExternalPartReference' in old_name:
                         new_rels_name = old_name
