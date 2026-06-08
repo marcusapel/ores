@@ -1,6 +1,8 @@
 # BusinessDecision Drogon Demo - Data Model Guide
 
-> **Scope:** Documents the data model and schema patterns for a Decision Gate 1 and 2 package using the Drogon field as a worked example. Covers OSDU schemas, relationships, activity-based provenance, and cross-gate analysis. For demo data and pipeline specifics, see `demo/drogon_dg2/`.
+> **Scope:** Worked example of DG1 and DG2 packages using the Drogon field. For general BD concepts and linking patterns, see [BusinessDecision](/howto/business-decision). For CollaborationProject lifecycle, see [P&WS](/howto/pws).
+>
+> **Demo data**: `demo/drogon_dg2/`
 
 ---
 
@@ -23,25 +25,11 @@ Select a reservoir (e.g. *Drogon*) and ORES automatically finds every `BusinessD
 
 ### What a Decision Gate Package Contains
 
-Conceptually, each `BusinessDecision` record is **the central hub** of a decision gate package. It ties together:
+Each `BusinessDecision` record is the **central hub** linking all evidence via its `Parameters[]` array. The Drogon demo uses the full pattern: REV volumes (raw + stats), design matrix, DevelopmentConcept, GeoLabelSet, Activity provenance, Risks, Documents, geomodel (ETPDataspace), PersistedCollection (evidence bundle), and CollaborationProject (cross-DG namespace).
 
-| Concept | OSDU Representation | Role |
-|---------|---------------------|------|
-| **Decision identity** | `master-data--BusinessDecision` | Hub record with level (DG1–DG4), approval status, personnel, risks |
-| **Collaboration namespace** | `master-data--CollaborationProject` | Cross-DG master-data that bridges SoE (WIP collaboration) and SoR (trusted collection). Persists from DG1 through FID, accumulating curated artefacts per gate. BD links via `ParentProjectID` |
-| **Reservoir scope** | `master-data--Reservoir` + `ReservoirSegment` | Shared master-data anchors referenced across all gates |
-| **Volumes** | `ReservoirEstimatedVolumes` WPC (raw + stats) | Quantitative evidence - per-realisation and P10/P50/P90 aggregates |
-| **Dashboard labels** | `GeoLabelSet` WPC | Headline P10/P50/P90 figures for quick dashboards |
-| **Input parameters** | `ColumnBasedTable` WPC | Design matrix / uncertainty variables |
-| **Development concept** | `DevelopmentConcept` WPC *(custom schema)* | Structured concept fields - no canonical OSDU kind exists, so a LOCAL registered schema is used |
-| **Workflow provenance** | `Activity` + `ActivityTemplate` WPC | Full input/output capture for reproducibility |
-| **Risks** | `master-data--Risk` | Severity/probability ratings evolving gate-to-gate |
-| **Governance documents** | `Document` WPC | SRA, CRA, PDO (DG1); adds PTR at DG2 |
-| **Geomodel** | `ETPDataspace` dataset → RDDMS | Gridded reservoir model lives in Reservoir DDMS, linked via an ETP dataspace pointer |
-| **Evidence bundle** | `PersistedCollection` WPC | DG2+ packages all artefacts (99 records in the Drogon example) into one searchable collection |
-| **Project collection** | `CollaborationProjectCollection` WPC | SoR accumulator - the trusted collection referenced by the CP grows across gates (unlike PersistedCollection which snapshots one gate) |
+> For the full role taxonomy (Input vs InputReference) and linking semantics, see [BusinessDecision](/howto/business-decision).
 
-All links flow through the BD's `Parameters[]` array using canonical OSDU kinds and types - `Input` for evidence artefacts, `InputReference` for context/scope anchors (reservoir, prior-gate BD, ETP dataspace). See the entity relationship diagram and the full schema tables below.
+All links flow through the BD's `Parameters[]` array using canonical OSDU kinds and types - `Input` for evidence artefacts, `InputReference` for context/scope anchors (reservoir, prior-gate BD, ETP dataspace).
 
 ---
 

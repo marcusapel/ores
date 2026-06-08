@@ -80,18 +80,7 @@ Three complementary objectives:
 
 #### fmu-dataio → OSDU volume column mapping
 
-| fmu-dataio column | OSDU PropertyType |
-|---|---|
-| `BULK` | `ReservoirEstimatedVolumePropertyType:Bulk` |
-| `NET` | `...:Net` |
-| `PORV` | `...:Pore` |
-| `HCPV` | `...:HydrocarbonPore` |
-| `STOIIP` | `...:Oil` |
-| `GIIP` | `...:Gas` |
-| `ASSOCIATEDGAS` | `...:AssociatedGas` |
-| `REAL` (key) | `Realisation` KeyColumn |
-| `ZONE` (key) | `Zone` KeyColumn |
-| `REGION`/`FACIES` (key) | `SegmentID` KeyColumn |
+> See [Volumes § 3](/howto/volumes) for the full column mapping table (`BULK`→Bulk, `STOIIP`→Oil, etc.) and JSON examples for both raw-realisation and aggregated-statistics REV records.
 
 ---
 

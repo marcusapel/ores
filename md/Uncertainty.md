@@ -1,32 +1,9 @@
 
-# Uncertainty (FMU) in OSDU - Detailed Guide
+# Uncertainty (FMU) in OSDU
 
 > **Purpose**: Persist FMU ensemble / Monte Carlo **inputs**, **scenarios**, and **outputs** in OSDU; link **input design and static bundles** to **output volumes** by **Realisation**; use **Activity semantics** and **persisted collections** for robust provenance across DG1…DG4.
 >
-> **FMU ecosystem context**:
-> - [ERT](https://github.com/equinor/ert) orchestrates FMU workflows - defines cases, iterations/ensembles, realizations, and the design matrix (parameterization)
-> - [fmu-dataio](https://github.com/equinor/fmu-dataio) exports data with metadata including `fmu.realization.id`, `fmu.ensemble`, `fmu.case` identity
-> - [Sumo](https://github.com/equinor/fmu-sumo) is the current cloud SoR for FMU results; OSDU provides the structured data management layer described here
-> - The OSDU Activity model with `Parameters[]` is a **proposed mapping** for representing FMU provenance in OSDU - it is not how FMU currently stores provenance (which uses the denormalized fmu-dataio metadata schema v0.20.0)
-
----
-
-## 0. FMU uncertainty model (how it works today)
-
-In Equinor's FMU workflow:
-
-1. **ERT** manages the **design matrix** - a table of parameter combinations (e.g., porosity multiplier, rel-perm family, OWC shift) that defines each realization
-2. Each realization runs a chain of FORWARD_MODELs: RMS (geomodel) → Eclipse/OPM (simulator) → post-processing
-3. **fmu-dataio** exports results from each step with metadata tagging:
-   - `fmu.case.uuid` - the FMU case
-   - `fmu.ensemble.name` / `.uuid` - the ensemble (iteration)
-   - `fmu.realization.id` - the realization index (0, 1, 2, …)
-   - `data.content` - what kind of data (volumes, surfaces, tables, etc.)
-   - `data.standard_result.name` - standardized result name (e.g., `inplace_volumes`)
-4. **Sumo** receives all exports and indexes them for querying by case/ensemble/realization/content
-5. Post-processing aggregates results across realizations → statistical summaries (P10/P50/P90)
-
-The **design matrix → realization → output** provenance chain is captured implicitly by the shared `fmu.realization.id` across all exports in a run. OSDU's explicit Activity model can make this provenance chain **explicit and queryable**.
+> **Prerequisites**: [FMU → OSDU strategy](/howto/fmu-osdu) (ERT/fmu-dataio/Sumo context and data model mapping) · [Volumes](/howto/volumes) (REV schema, column mapping, JSON examples)
 
 ---
 
@@ -122,59 +99,15 @@ For each run/iteration, create an Activity (or reuse `BusinessDecision` paramete
 ## 4. Outputs - Volumes
 
 ### 4.1 Raw per‑realisation (REV)
-Keys: `Realisation`, `Zone`, `SegmentID` with `KindID = master-data--ReservoirSegment:2.0.0`.  
-Columns: `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` with `PropertyTypeID = reference-data--ReservoirEstimatedVolumePropertyType:<Prop>` and `UnitOfMeasureID` (e.g., `m3`).
-
-**Example (excerpt)**:
-```json
-{
-  "kind": "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
-  "data": {
-    "ParentObjectID": "dev:master-data--Reservoir:...:1",
-    "Volumes": {
-      "KeyColumns": [
-        {"ColumnName": "Realisation", "ColumnRole": "Key", "ValueType": "integer"},
-        {"ColumnName": "Zone", "ColumnRole": "Key", "ValueType": "string"},
-        {"ColumnName": "SegmentID", "ColumnRole": "Key", "ValueType": "string",
-         "KindID": "osdu:wks:master-data--ReservoirSegment:2.0.0"}
-      ],
-      "Columns": [
-        {"ColumnName": "Bulk", "ValueType": "number",
-         "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-         "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3"}
-      ]
-    }
-  }
-}
-```
+Keys: `Realisation`, `Zone`, `SegmentID` (with `KindID = master-data--ReservoirSegment:2.0.0`).  
+Columns: `Bulk`, `Net`, `Pore`, `HydrocarbonPore`, `Oil`, `AssociatedGas` — each with `PropertyTypeID` and `UnitOfMeasureID: m3`.
 
 ### 4.2 Aggregated statistics (REV)
-Keys: `Zone`, `SegmentID`.  
-Columns: dot notation with facet annotation, e.g., `Bulk.P10`, `Oil.P50`, `AssociatedGas.StandardDeviation` with `FacetIDs = [{FacetTypeID: statistics, FacetRoleID: P10|P50|P90|ArithmeticMean|Minimum|Maximum|StandardDeviation}]`.
+Keys: `Zone`, `SegmentID` (no Realisation — aggregated across runs).  
+Columns: dot notation `<Property>.<Statistic>` — e.g. `Bulk.P10`, `Oil.ArithmeticMean`.  
+Each column carries `FacetIDs` with `FacetType:statistics` + `FacetRole:<P10|P50|P90|ArithmeticMean|...>`.
 
-**Example (excerpt)**:
-```json
-{
-  "kind": "osdu:wks:work-product-component--ReservoirEstimatedVolumes:1.1.0",
-  "data": {
-    "ParentObjectID": "dev:master-data--Reservoir:...:1",
-    "Volumes": {
-      "KeyColumns": [
-        {"ColumnName": "Zone", "ColumnRole": "Key", "ValueType": "string"},
-        {"ColumnName": "SegmentID", "ColumnRole": "Key", "ValueType": "string",
-         "KindID": "osdu:wks:master-data--ReservoirSegment:2.0.0"}
-      ],
-      "Columns": [
-        {"ColumnName": "Bulk.P10", "ValueType": "number",
-         "PropertyTypeID": "dev:reference-data--ReservoirEstimatedVolumePropertyType:Bulk:",
-         "UnitOfMeasureID": "dev:reference-data--UnitOfMeasure:m3",
-         "FacetIDs": [{"FacetTypeID": "dev:reference-data--FacetType:statistics",
-                         "FacetRoleID": "dev:reference-data--FacetRole:P10"}]}
-      ]
-    }
-  }
-}
-```
+> See [Volumes](/howto/volumes) for full JSON examples of both raw and aggregated REV records, column mapping from fmu-dataio, and naming conventions.
 
 ---
 
