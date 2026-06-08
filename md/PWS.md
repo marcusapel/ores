@@ -1,142 +1,70 @@
-# Project & Workflow Service (P&WS) - Summary & RDDMS Integration
+# Project & Workflow Service (P&WS)
 
-> **Service version**: 0.30.0-SNAPSHOT  
-> **Base path**: `/api/pws/v1`  
-> **Repo**: [community.opengroup.org/osdu/platform/system/project-and-workflow](https://community.opengroup.org/osdu/platform/system/project-and-workflow)   
-> **Related guides**: [Activity](/howto/activity) · [BusinessDecision](/howto/business-decision) · [Volumes](/howto/volumes) · [Risk](/howto/risk) · [Query](/howto/query-guide) · [Uncertainty](/howto/uncertainty)
+> **Base path**: `/api/pws/v1` · **Kind**: `osdu:wks:master-data--CollaborationProject:1.0.0`  
+> **Related**: [Activity](/howto/activity) · [BusinessDecision](/howto/business-decision) · [Volumes](/howto/volumes) · [Risk](/howto/risk) · [Query](/howto/query-guide)
 
 > [!IMPORTANT]
-> **Release Status (June 2025)**: P&WS is **in active development** — not yet released as a generally available OSDU service. The AWS provider exists (`provider/pws-aws`) but the service is not deployed on Azure ADME. The schemas (`CollaborationProject`, `CollaborationProjectCollection`, `CollaborationProjectLifecycleStatus`) are defined in OSDU Data Definitions and can be used today for schema-driven governance patterns. This guide documents both the P&WS API (for when it becomes available) and **preparation patterns** that work today using existing OSDU + RDDMS capabilities.
+> **Availability (June 2026)**: P&WS exists as an AWS provider (`provider/pws-aws`) but is **not deployed on Azure ADME**. The schemas are defined in OSDU Data Definitions and work today via the Storage API on any platform. This guide covers both the P&WS API (for when it ships) and **preparation patterns** using existing OSDU + RDDMS capabilities.
 
 ---
 
-## 1. Overview
+## 1. What Is a CollaborationProject?
 
-The **Project & Workflow Service (P&WS)** provides a structured project collaboration layer on top of OSDU. It manages the lifecycle of multi-user subsurface projects where teams assemble trusted data references, work in isolated namespaces (WIP), and publish back to the System of Record (SOR) with full event auditing.
-
-Key capabilities:
-- **Collaboration Projects** - named containers with purpose, dates, personnel, ACLs, and lifecycle status
-- **Cross-DG master-data** - a `CollaborationProject` is `master-data`, not a transient workspace. It **persists across decision gates** (DG1 → DG2 → DG3 → FID), accumulating trusted data references at each gate while bridging the System of Engagement (SoE: WIP collaboration) and the System of Record (SoR: curated artefacts)
-- **Trusted SOR resources** - curated list of existing OSDU records the project uses as baseline input
-- **WIP (Work In Progress) namespaces** - isolated workspaces where contributors modify data without affecting the SOR
-- **WIP → SOR publishing** - controlled promotion of WIP records back into the shared data fabric with conflict detection
-- **Lifecycle event journal** - chronological log of every project action (creation, opening, resource additions, publications, closure)
-
-### CP as Cross-DG Namespace Bridge (SoE ↔ SoR)
-
-A `CollaborationProject` is **not** scoped to a single decision gate - it is the persistent namespace that contextualises all geomodelling work for a field:
+A `CollaborationProject` is **master-data** — a persistent namespace that bridges the System of Engagement (SoE: WIP collaboration) and System of Record (SoR: curated artefacts). It persists across decision gates (DG1 → DG2 → DG3 → FID), accumulating trusted data at each gate.
 
 ```mermaid
 graph LR
   DG1["BusinessDecision DG1"] --> CP["CollaborationProject<br/><i>master-data</i>"]
   DG2["BusinessDecision DG2"] -->|ParentProjectID| CP
   DG3["BusinessDecision DG3"] --> CP
-  CP -->|TrustedCollectionID| TC["CollaborationProjectCollection<br/><i>ResourceIDs · SoR accumulates per gate</i>"]
-  CP --- AS["ActivityStates<br/>DG1✓ → DG2● → DG3 → FID"]
-  CP --- P["Parameters<br/>SoE: dataspaces, activities, volumes"]
+  CP -->|TrustedCollectionID| TC["CollaborationProjectCollection<br/><i>SoR accumulates per gate</i>"]
 ```
-
-The `CollaborationProjectCollection` (WPC) is the **SoR accumulator** - each gate adds its curated artefacts to the same collection. Unlike a `PersistedCollection` (which snapshots a single gate's evidence), the trusted collection grows across gates.
 
 | Concept | Kind | Role |
 |---------|------|------|
-| **CollaborationProject** | `master-data` | Persistent cross-DG namespace, SoE↔SoR bridge |
+| **CollaborationProject** | `master-data` | Persistent cross-DG namespace |
 | **CollaborationProjectCollection** | `work-product-component` | Versioned SoR accumulator (ResourceIDs[]) |
-| **PersistedCollection** | `work-product-component` | Per-gate evidence snapshot (DataReferences[]) |
-| **BusinessDecision** | `master-data` | Per-gate decision hub, links to CP via ParentProjectID |
-
-### Where P&WS fits in the OSDU stack
-
-```mermaid
-graph TB
-  subgraph Apps[\"Applications\"]
-    ORES[\"ORES\"] ~~~ Petrel[\"Petrel\"] ~~~ RI[\"ResInsight\"] ~~~ WV[\"Webviz\"]
-  end
-  subgraph Mid[\" \"]
-    PWS[\"P&WS Service<br/>Project lifecycle · SOR/WIP · Publish & conflict\"]
-    RDDMS[\"Reservoir DDMS<br/>RESQML dataspaces · Grids, properties, maps · ETP\"]
-  end
-  subgraph Core[\"Core OSDU Services\"]
-    C[\"Storage · Search · Schema · Entitlements · Legal\"]
-  end
-  Apps --> Mid --> Core
-```
+| **CollaborationProjectLifecycleStatus** | `reference-data` | Open / Closed |
+| **BusinessDecision** | `master-data` | Per-gate decision hub, links via ParentProjectID |
 
 ---
 
-## 2. OSDU Schemas
-
-| Schema | Kind | Role |
-|--------|------|------|
-| **CollaborationProject** | `osdu:wks:master-data--CollaborationProject:1.0.0` | The project record itself - name, purpose, dates, personnel, lifecycle status, namespace, contributor ACLs, trusted collection reference, lifecycle events journal |
-| **CollaborationProjectCollection** | `osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0` | A versioned list of `ResourceIDs[]` - used for both trusted (SOR) and WIP resource snapshots |
-| **CollaborationProjectLifecycleStatus** | `osdu:wks:reference-data--CollaborationProjectLifecycleStatus:1.0.0` | Enumeration of status values: `Open`, `Closed` |
-
-### CollaborationProject Key Fields
+## 2. Schema: Key Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `ProjectID` | string | Short identifier |
 | `ProjectName` | string | Display name |
-| `Purpose` | string | Project objectives |
+| `Purpose` | string | Objectives |
 | `ProjectBeginDate` / `ProjectEndDate` | ISO 8601 | Schedule window |
-| `Namespace` | UUID | Isolation namespace for WIP records |
-| `LifecycleStatusID` | ref-data ID | Current status (→ `CollaborationProjectLifecycleStatus`) |
-| `LifecycleEvents[]` | array | Journal of all lifecycle events with `EventID`, `Name`, `DateTime`, `Remark`, and optional `ResourceCollectionID` / `WIPResourceCollectionID` |
-| `TrustedCollectionID` | WPC ID | → `CollaborationProjectCollection` holding the aggregated list of trusted SOR resource IDs |
-| `ProjectContributorACL` | object | ACL for project contributors (separate from OSDU record ACL) |
-| `DefaultWIPACL` | object | Default ACL applied to WIP resources |
-| `Personnel[]` | array | Team members with `PersonName`, `CompanyOrganisationID`, `ProjectRoleID` |
-| `Parameters[]` | array | Inherited from `AbstractProjectActivity` - links to dataspaces, reservoirs, collections, activities |
+| `Namespace` | UUID | WIP isolation namespace |
+| `LifecycleStatusID` | ref-data ID | Open or Closed |
+| `TrustedCollectionID` | WPC ID | → CollaborationProjectCollection with SOR resource IDs |
+| `DefaultWIPACL` | object | ACL applied to WIP resources |
+| `ProjectContributorACL` | object | Who can contribute |
+| `Personnel[]` | array | Team members with name, role |
+| `Parameters[]` | array | Links to dataspaces, reservoirs, collections |
+| `LifecycleEvents[]` | array | Journal: EventID, Name, DateTime, Remark |
 
 ---
 
 ## 3. API Reference
 
-### Projects
+All endpoints require `Authorization: Bearer <token>`, `data-partition-id`, and `Content-Type: application/json`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/projects` | List all collaboration projects (`limit`, `offset` query params) |
-| `POST` | `/projects` | Create a new project (JSON body = `CollaborationProject` record) |
-| `GET` | `/projects/{id}` | Get a single project by record ID |
-
-### Project Status
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/projects/{id}/status` | Change status (`{"status": "Open"}` or `{"status": "Closed"}`) |
-
-### Trusted SOR Resources
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/projects/{id}/resources` | List all trusted SOR resource IDs |
-| `POST` | `/projects/{id}/resources` | Add SOR records to the trusted set (body = JSON array of record IDs) |
-| `DELETE` | `/projects/{id}/resources` | Remove records from the trusted set |
-
-### WIP Resources
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/projects/{id}/wip-resources` | List all WIP resource IDs in the project namespace |
-| `POST` | `/projects/{id}/wip-resources/publishing` | Publish WIP records to SOR. Body: `{"ids": [...]}`. Returns 200 on success or 409 on conflict |
-
-### Lifecycle Events
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/projects/{id}/lifecycleevents` | List all lifecycle events |
-| `POST` | `/projects/{id}/lifecycleevents` | Add a custom event (`{"Name": "...", "Remark": "..."}`) |
-| `DELETE` | `/projects/{id}/lifecycleevents/{eventId}` | Remove a lifecycle event |
-
-### Headers Required
-
-| Header | Value |
-|--------|-------|
-| `Authorization` | `Bearer <access_token>` |
-| `data-partition-id` | OSDU partition `dev` |
-| `Content-Type` | `application/json` |
+| `POST` | `/projects` | Create project |
+| `GET` | `/projects` | List projects (limit, offset) |
+| `GET` | `/projects/{id}` | Get project |
+| `POST` | `/projects/{id}/status` | Set status: `{"status": "Open"\|"Closed"}` |
+| `GET` | `/projects/{id}/resources` | List trusted SOR resource IDs |
+| `POST` | `/projects/{id}/resources` | Add SOR records (body = array of IDs) |
+| `DELETE` | `/projects/{id}/resources` | Remove from trusted set |
+| `GET` | `/projects/{id}/wip-resources` | List WIP resource IDs |
+| `POST` | `/projects/{id}/wip-resources/publishing` | Publish WIP → SOR (409 on conflict) |
+| `GET` | `/projects/{id}/lifecycleevents` | List lifecycle events |
+| `POST` | `/projects/{id}/lifecycleevents` | Add event: `{"Name": "...", "Remark": "..."}` |
 
 ---
 
@@ -148,373 +76,109 @@ stateDiagram-v2
     Created --> Open : POST /status (Open)
     Open --> Closed : POST /status (Closed)
     Closed --> [*]
-
-    note right of Open
-        While Open the project accepts
-        POST /resources - add SOR refs
-        POST /lifecycleevents - log work
-        Ingest WIP records via Storage API
-        POST /wip-resources/publishing
-    end note
 ```
 
-### Typical Flow
+**Typical flow:**
 
-1. **Create** - `POST /projects` → project record with `LifecycleStatusID = Created`
-2. **Open** - `POST /projects/{id}/status` with `{"status": "Open"}`
-3. **Add trusted SOR resources** - `POST /projects/{id}/resources` with arrays of existing OSDU record IDs (wells, wellbores, trajectories, datasets, grids, etc.)
-4. **Log lifecycle events** - `POST /projects/{id}/lifecycleevents` for working sessions, reviews, milestones
-5. **Create WIP records** - Ingest new or modified records via the Storage API into the project namespace
-6. **Publish WIP → SOR** - `POST /projects/{id}/wip-resources/publishing` with `{"ids": [...]}`. Conflict detection returns 409 if records already exist in SOR with the same ID
-7. **Close** - `POST /projects/{id}/status` with `{"status": "Closed"}`
+1. `POST /projects` → Created
+2. `POST /status` → Open
+3. `POST /resources` → add trusted SOR baseline (wells, grids, surfaces)
+4. Ingest WIP records via Storage API into project namespace
+5. `POST /wip-resources/publishing` → promote to SOR (409 = conflict)
+6. `POST /status` → Closed
 
-### Auto-logged Events
-
-The service automatically journals lifecycle events for: `Created`, `Open`, `SOR Resources added`, `WIP Resources published`, and `Closed`. Custom events can be added for working sessions, reviews, or any ad-hoc milestone.
+Auto-logged events: `Created`, `Open`, `SOR Resources added`, `WIP Resources published`, `Closed`.
 
 ---
 
-## 5. SOR & WIP Resource Management
+## 5. SOR & WIP
 
-### System of Record (Trusted Resources)
-
-Trusted resources are existing OSDU records selected as the project's input baseline. Adding resources:
-- Appends IDs to the project's `TrustedCollectionID` (a `CollaborationProjectCollection` WPC)
-- Logs an `SOR Resources added` lifecycle event with a `ResourceCollectionID` snapshot
-
-Multiple portions can be added incrementally - each addition is individually journaled.
-
-### Work In Progress (WIP)
-
-WIP resources live in the project's `Namespace` (UUID-based isolation). They are ingested through normal OSDU Storage API calls and tracked via the `wip-resources` endpoint. Publishing WIP to SOR:
-- Copies WIP records into the main namespace
-- Returns 200 on success with the published record IDs
-- Returns **409** if a WIP record's ID conflicts with an existing SOR record of the same version
-- Conflict reports list the conflicting record IDs and versions for resolution
+| Layer | What | How |
+|-------|------|-----|
+| **SOR (Trusted)** | Existing OSDU records selected as project baseline | `POST /resources` appends IDs to TrustedCollectionID |
+| **WIP** | New/modified records in project Namespace | Ingest via Storage API; tracked by `/wip-resources` |
+| **Publish** | Promote WIP → SOR | `POST /wip-resources/publishing`; returns 409 on conflict |
 
 ---
 
-## 6. Detailed Use Cases
+## 6. Use Cases
 
-### 6.1 Multi-Discipline Reservoir Study (DG2/DG3)
+### Reservoir Study (DG2/DG3)
+Create CP scoped to target reservoir. Assemble trusted baseline (wells, trajectories, seismic horizons). Each discipline works in WIP. Publish after QC. Project persists across gates — `BusinessDecision` references it via `ParentProjectID`.
 
-**Scenario**: A subsurface team prepares a concept-select decision gate. Geologists, geophysicists, and reservoir engineers collaborate on a shared dataset spanning wells, seismic interpretations, geomodels, and simulation results.
+### FMU Ensemble
+Link CP to FMU case and design matrix. Ingest volumes/surfaces as WIP. Review in ORES/Webviz. Publish P10/P50/P90 to SOR. Activity records capture provenance.
 
-**P&WS Flow**:
-1. Project manager creates a `CollaborationProject` scoped to the target reservoir - this is master-data that will persist across DG2, DG3, and FID
-2. Trusted SOR resources are assembled: existing wells, wellbores, trajectories, seismic horizons, stratigraphic column
-3. Each discipline works in WIP: geologist adds new horizon interpretations, engineer adds simulation inputs
-4. Geomodel grids and properties are ingested as WIP records linked to the project namespace
-5. After QC and review, WIP records are published to SOR in controlled batches (wells first, then dependent WPCs)
-6. `BusinessDecision` record is created referencing the project via `ParentProjectID` and the project's published artifacts as `Parameters[]` inputs
-7. Project remains open for the next gate - its trusted collection accumulates the curated artefacts
-8. Project is closed only after FID, preserving the full cross-gate lifecycle journal as decision audit trail
+### Well Planning
+Add existing wells + geomodel as trusted SOR. Design new trajectories as WIP. Iterate, run collision checks. Publish approved trajectories; discard rejected at closure.
 
-**Data types involved**: `Well`, `Wellbore`, `WellboreTrajectory`, `WellboreMarkerSet`, `HorizonInterpretation`, `StructureMap`, `IjkGridRepresentation`, `ReservoirEstimatedVolumes`, `ColumnBasedTable`, `BusinessDecision`, `Risk`
+### RESQML Data Package
+Reference RDDMS dataspace via `Parameters[GeoModelDataspace]`. Register OSDU catalog records as trusted SOR. Import modified objects as WIP. Use GraphQL deep-search to compare. Publish approved records.
 
-### 6.2 FMU Ensemble Collaboration
-
-**Scenario**: An FMU workflow produces hundreds of realizations. The team wants to review, select representative cases, and publish curated results as decision evidence.
-
-**P&WS Flow**:
-1. Create project linked to the FMU case `WorkProduct` and the target `Reservoir`
-2. Register the design matrix `ColumnBasedTable` and existing base-case grids as trusted SOR resources
-3. FMU outputs (raw `ReservoirEstimatedVolumes`, aggregated statistics, ensemble surfaces) are ingested as WIP
-4. Team reviews results in ORES/Webviz, adds lifecycle events documenting review sessions
-5. Selected representative cases (P10/P50/P90 realizations) are published to SOR
-6. Aggregated `GeoLabelSet` with headline KPIs is published for dashboard consumption
-7. `Activity` records capture provenance: design matrix → ERT run → volumes output
-8. `BusinessDecision` at the relevant gate references the published volumes, risks, and DevelopmentConcept
-
-**Data types involved**: `ColumnBasedTable`, `ReservoirEstimatedVolumes`, `GeoLabelSet`, `IjkGridRepresentation`, `StructureMap`, `Activity`, `ActivityTemplate`, `WorkProduct`, `BusinessDecision`
-
-### 6.3 Well Planning & Trajectory Design
-
-**Scenario**: Drilling engineering team designs new well trajectories using existing geomodel context, wants to iterate on designs without affecting the SOR until approved.
-
-**P&WS Flow**:
-1. Create project referencing the geomodel dataspace and target reservoir
-2. Add existing wells, wellbores, and the reference trajectory set as trusted SOR
-3. Design new WellboreTrajectory records as WIP - iterate on inclination, azimuth, target points
-4. Run collision checks and pore-pressure analysis against trusted SOR trajectories + WIP candidates
-5. Log review sessions as lifecycle events
-6. Approved trajectories are published to SOR; rejected ones remain as WIP (or are discarded at project closure)
-
-**Data types involved**: `Well`, `Wellbore`, `WellboreTrajectory`, `WellboreMarkerSet`, `StructureMap`, `IjkGridRepresentation`
-
-### 6.4 Seismic Interpretation Integration
-
-**Scenario**: Seismic interpreters produce new horizon picks that need to be reconciled with the existing stratigraphic framework before being used as input to geomodeling.
-
-**P&WS Flow**:
-1. Create project linking to the seismic survey dataspaces and the master stratigraphic column
-2. Register existing `SeismicHorizon`, `HorizonInterpretation`, and `StratigraphicColumn` as trusted SOR
-3. Interpreter creates new `HorizonControlPoints` and updated `StructureMap` WPCs as WIP
-4. QC sessions compare WIP surfaces against trusted SOR horizons using ORES 3D viewer
-5. New surfaces replace or augment the existing horizon set upon SOR publication
-6. Lifecycle events document the interpretation workflow, QC outcomes and review gates
-
-**Data types involved**: `SeismicHorizon`, `HorizonInterpretation`, `HorizonControlPoints`, `StructureMap`, `GenericBinGrid`, `StratigraphicColumn`, `StratigraphicUnitInterpretation`
-
-### 6.5 Cross-Asset Data Sharing
-
-**Scenario**: A producing field's subsurface model needs to be shared with a neighboring license partner for unitization evaluation, with strict access control.
-
-**P&WS Flow**:
-1. Create project with restricted `ProjectContributorACL` scoped to partner users
-2. Add relevant SOR resources (reservoir segments, volumes, key wells) as trusted - these become the "data room"
-3. Partner contributes their own data as WIP (e.g., adjusted OWC, new segment interpretations)
-4. Joint review sessions documented as lifecycle events
-5. Agreed-upon records are published to SOR; disputed ones remain as WIP for further iteration
-6. Project closure captures the full negotiation and data-exchange audit trail
-
-### 6.6 RESQML Data Package Collaboration
-
-**Scenario**: A team works with RESQML data packages (EPC files) managed by the Reservoir DDMS. They need to assemble, modify, and publish curated RESQML objects within a governed project context.
-
-**P&WS Flow**:
-1. Create project referencing the RDDMS dataspace URI via `Parameters[]` (`GeoModelDataspace`)
-2. Register OSDU catalog records for existing RESQML objects (grids, properties, surfaces) as trusted SOR
-3. Import new/modified RESQML objects into RDDMS under the project namespace as WIP
-4. Use ORES GraphQL deep-search to compare WIP vs SOR objects by UUID, property filters, and array statistics
-5. Publish catalog records for approved RESQML objects to SOR (RDDMS data remains in the dataspace)
-6. Log lifecycle events capturing the import, QC, and approval workflow
+### Cross-Asset Data Sharing
+Restrict `ProjectContributorACL` to partner users. Trusted resources = "data room". Partner contributes WIP. Joint review → publish agreed records. Closure = audit trail.
 
 ---
 
-## 7. Reservoir DDMS Impact & Collaboration
+## 7. RDDMS Integration
 
-### 7.1 Dual-Layer Architecture
-
-P&WS and RDDMS operate on complementary layers of the OSDU data fabric:
-
-| Aspect | P&WS | RDDMS |
-|--------|------|-------|
-| **Scope** | Project lifecycle, resource governance, SOR/WIP flow | RESQML domain data: grids, properties, surfaces, arrays |
-| **Record types** | `CollaborationProject`, `CollaborationProjectCollection` | RESQML objects via `DDMSDatasets[]` URIs |
-| **Data storage** | OSDU Storage API (metadata + references) | RESQML dataspaces (actual array data, geometry, CRS) |
-| **Access** | REST API at `/api/pws/v1` | REST API + ETP WebSocket + GraphQL |
-| **Isolation** | Namespace-based WIP isolation | Dataspace-based isolation (lock/unlock) |
-| **Versioning** | Record versions via OSDU Storage | Dataspace versioning + object CITATIONs |
-
-### 7.2 RDDMS as Data Backend for P&WS Projects
-
-When a P&WS project references RDDMS data, the relationship works through **OSDU catalog records** that contain `DDMSDatasets[]` URIs pointing to RESQML objects in dataspaces:
-
-```mermaid
-flowchart TB
-    subgraph PWS["P&WS Project"]
-        CP[CollaborationProject]
-        SOR[Trusted SOR Resources]
-        WIP[WIP Resources]
-    end
-
-    subgraph OSDU["OSDU Catalog"]
-        SM[StructureMap WPC]
-        IJK[IjkGridRepresentation WPC]
-        GR[GenericRepresentation WPC]
-    end
-
-    subgraph RDDMS["Reservoir DDMS"]
-        DS1["Dataspace: project/geomodel"]
-        G2D[Grid2dRepresentation<br/>Z-values, CRS]
-        GRID[IjkGrid3d<br/>Pillars, cells]
-        PROP[ContinuousProperty<br/>PORO, PERMX, SW]
-    end
-
-    CP --> SOR
-    CP --> WIP
-    SOR --> SM
-    SOR --> IJK
-    WIP --> GR
-    SM -- "DDMSDatasets[]" --> G2D
-    IJK -- "DDMSDatasets[]" --> GRID
-    GRID --> PROP
-    G2D --> DS1
-    GRID --> DS1
-```
-
-### 7.3 Namespace ↔ Dataspace Alignment
-
-A critical design question is how P&WS WIP **namespaces** map to RDDMS **dataspaces**:
-
-| Approach | Description | Pros | Cons |
-|----------|-------------|------|------|
-| **1:1 mapping** | Each P&WS project creates a dedicated RDDMS dataspace for WIP | Clean isolation; straightforward publish | Extra dataspace lifecycle overhead |
-| **Shared dataspace** | WIP records reference objects in existing dataspaces | Simpler setup; fewer dataspaces | Harder isolation; risk of cross-project contamination |
-| **Layered** | SOR dataspace (locked) + WIP dataspace (unlocked) per project | Matches P&WS SOR/WIP semantics | Adds complexity; requires WIP → SOR dataspace copy |
-
-**Recommendation**: The layered approach best mirrors P&WS semantics. The SOR dataspace should be locked; the WIP dataspace is the project's working area. Publishing WIP records copies objects from WIP dataspace to SOR dataspace (analogous to P&WS `wip-resources/publishing`).
-
----
-
-## 8. RDDMS Interface Points
-
-### 8.1 Current Touchpoints (ORES Implementation)
-
-The ORES web app already integrates P&WS concepts with RDDMS:
-
-| Feature | Integration |
-|---------|------------|
-| **CollaborationProject creation** (Add DG tab) | Links to RDDMS dataspaces via `Parameters[]` → `GeoModelDataspace` with `DataObjectParameter` = `ETPDataspace` ID |
-| **Reservoir scope** | Parameters link to `master-data--Reservoir` - the same entity RDDMS WPCs reference via `ParentObjectID` |
-| **PersistedCollection** | Evidence packages that bundle RDDMS-hosted WPCs (grids, surfaces, properties) with their catalog records |
-| **GraphQL deep-search** | Queries across RDDMS dataspaces to find objects by property filter, array statistics, and UUID - used to discover and validate project resources |
-| **3D visualization** | ORES Resqml3D viewer renders RDDMS objects (grids, surfaces, wellbore trajectories) for QC within project context |
-| **Dataspace admin** | ORES ResDdmsAdmin page manages RDDMS dataspaces (create, lock, unlock, delete, import) - aligns with project lifecycle |
-
-### 8.2 API-Level Interfaces
+P&WS governs **project lifecycle**; RDDMS stores **domain data** (grids, properties, surfaces, arrays). They connect through OSDU catalog records containing `DDMSDatasets[]` URIs.
 
 ```mermaid
 graph LR
-  PWS["P&WS API<br/>/projects · /resources<br/>/wip-* · /status · /lifecycle"] -->|records| OSDU["OSDU Storage & Search<br/>CollabProject · Collections · All WPCs"]
-  RDDMS["RDDMS REST & ETP<br/>/dataspaces · /types<br/>/resources · /arrays"] -->|records| OSDU
-  PWS -.->|"Project resources reference<br/>DDMSDatasets[] → RDDMS objects"| RDDMS
+  PWS["P&WS<br/>Lifecycle · SOR/WIP · Publish"] -->|records| OSDU["OSDU Catalog"]
+  RDDMS["RDDMS<br/>Dataspaces · Objects · Arrays"] -->|records| OSDU
+  PWS -.->|"DDMSDatasets[] references"| RDDMS
 ```
 
-**RDDMS Client Endpoints Available Today for Collaboration**:
+### How Namespaces Map to Dataspaces
 
-| Endpoint | Method | Purpose | P&WS Lifecycle Phase |
-|----------|--------|---------|---------------------|
-| `/dataspaces` | `POST` | Create project dataspaces | Project creation |
-| `/dataspaces/:id/clone` | `POST` | Duplicate dataspace (SOR → WIP fork) | WIP provisioning |
-| `/dataspaces/:id/lock` | `POST` | Set dataspace read-only | Lock SOR baseline |
-| `/dataspaces/:id/lock` | `DELETE` | Remove read-only flag | Re-open for edits |
-| `/dataspaces/:id` | `DELETE` | Remove dataspace | Project closure cleanup |
-| `/query/graph/search` | `POST` | Discover object relationships in dataspace | Resource discovery & validation |
-| `/query/resources/find` | `POST` | Find resources by filter | Inventory project objects |
-| `/resources/:dataspaceId/:uuid` | `GET` | Read single RESQML object | Detailed inspection |
-| `/resources/:dataspaceId` | `PUT` | Write RESQML objects | WIP data creation |
+| Approach | Description |
+|----------|-------------|
+| **Layered** (recommended) | `<project>/sor` (locked) + `<project>/wip` (unlocked). Publishing = copy objects from WIP to SOR dataspace |
+| **1:1** | One dedicated dataspace per project |
+| **Shared** | Multiple projects share dataspaces (simpler but weaker isolation) |
 
-The ETP protocol layer (via `DataspaceOSDUCustomer`) additionally supports:
-- `CopyDataspacesContent` — bulk copy all objects from source dataspaces to a target (WIP → SOR promotion)
-- `CopyToDataspace` — copy specific resources by URI to a target dataspace (selective publish)
-- `GetDataspaceInfo` — retrieve dataspace metadata including lock state
+### RDDMS Endpoints for Collaboration
 
-### 8.3 Data Flow for RDDMS-Backed Projects
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/dataspaces` | `POST` | Create project dataspaces |
+| `/dataspaces/:id/clone` | `POST` | Fork SOR → WIP snapshot |
+| `/dataspaces/:id/lock` | `POST` | Freeze SOR baseline (read-only) |
+| `/dataspaces/:id/lock` | `DELETE` | Re-open for edits |
+| `/dataspaces/:id` | `DELETE` | Cleanup at project closure |
+| `/resources/:dataspaceId` | `PUT` | Write objects to WIP |
+| `/query/graph/search` | `POST` | Discover relationships |
 
-1. **Discovery**: Search OSDU catalog for RDDMS-backed WPCs (StructureMaps, Grids) → read `DDMSDatasets[]` URIs
-2. **Registration**: Add discovered WPC IDs to P&WS project as trusted SOR resources
-3. **WIP creation**: Import new RESQML objects into RDDMS WIP dataspace + create corresponding OSDU catalog records in WIP namespace
-4. **Validation**: Use GraphQL deep-search to compare WIP vs SOR objects (array statistics, property coverage, CRS consistency)
-5. **Publishing**: Promote WIP catalog records to SOR via P&WS + copy RESQML objects from WIP dataspace to SOR dataspace via RDDMS import
-6. **Audit**: Lifecycle events document which RESQML objects were added, reviewed, and published
+ETP protocol additionally supports `CopyDataspacesContent` (bulk WIP→SOR) and `CopyToDataspace` (selective publish).
+
+### ORES Integration Points
+
+| Feature | How it works |
+|---------|-------------|
+| **Add DG tab** | Creates CP linked to RDDMS dataspace via `Parameters[GeoModelDataspace]` |
+| **3D viewer** | Renders RDDMS objects for QC within project context |
+| **GraphQL deep-search** | Compare WIP vs SOR by property filter and array stats |
+| **Dataspace admin** | Create, lock, unlock, delete dataspaces (aligns with lifecycle) |
+
+> See [Query Guide](/howto/query-guide) for GraphQL syntax and property filtering.
 
 ---
 
-## 9. RDDMS Opportunities
+## 8. Working Today (Without P&WS API)
 
-### 9.1 Project-Scoped Dataspaces
+These patterns work now and are forward-compatible with P&WS when it ships.
 
-P&WS projects could **automatically provision RDDMS dataspaces** aligned with project lifecycle:
-- `POST /projects` → creates a locked SOR dataspace + unlocked WIP dataspace
-- `POST /status {"status": "Closed"}` → locks the WIP dataspace
-- Dataspace names follow a convention: `<project-id>/sor`, `<project-id>/wip`
+### Dataspace Convention
 
-### 9.2 RESQML-Aware WIP Publishing
-
-Extend WIP publishing to understand RESQML object graphs. When publishing a grid property, automatically include the parent grid and its CRS. When publishing a surface, include the referenced interpretation and bin grid. This prevents orphaned references in SOR.
-
-### 9.3 Array-Level Conflict Detection
-
-Current P&WS conflict detection works at the record ID level. RDDMS could enable **array-level** conflict detection:
-- Compare Z-value arrays between WIP and SOR versions of a surface
-- Show property value differences between WIP and SOR grid properties
-- Provide delta statistics (RMSE, max diff, histogram) for reviewer decision support
-
-### 9.4 Deep-Search Project Dashboard
-
-Combine P&WS project resources with RDDMS deep-search to build a **project dashboard** showing:
-- All trusted SOR objects with types, counts, and array statistics
-- All WIP objects with modification dates and delta from SOR baseline
-- Object relationship graph (targets/sources) within the project scope
-- Property coverage matrix: which zones / reservoir segments have which properties
-
-### 9.5 ETP Streaming for WIP Sync
-
-Use ETP WebSocket for efficient WIP data transfer:
-- Bulk import of RESQML objects from Petrel/ResInsight into the project WIP dataspace
-- Real-time notifications when WIP objects change (for multi-user collaboration)
-- Streaming array data for large grids and properties without full EPC file round-trips
-
-### 9.6 Activity Provenance Integration
-
-Link RDDMS operations to OSDU Activity records:
-- RESQML import → `Activity` with input = EPC file, output = list of imported WPC IDs
-- Grid property computation → `Activity` linking input grid + computation parameters to output property
-- Ensemble grid variations → multiple `Activity` records keyed by `Realisation`
-
-### 9.7 Cross-Dataspace Federation
-
-Enable P&WS projects to reference resources across multiple RDDMS dataspaces (e.g., base geomodel in one dataspace, seismic reprocessing in another). The GraphQL federated-search already supports multi-dataspace queries - extending this to P&WS project context would enable cross-domain collaboration.
-
-### 9.8 Version Comparison & Merge
-
-Extend RDDMS with version-aware operations for P&WS:
-- **Compare**: Side-by-side diff of two versions of a grid, surface, or property (visual + statistical)
-- **Merge**: Combine changes from multiple WIP contributors into a single SOR version (analogous to git merge for subsurface data)
-- **Revert**: Restore a previous version from the lifecycle event journal
-
----
-
-## 10. Preparing Today — Patterns Without P&WS
-
-Even before P&WS is deployed, teams can implement the core collaboration patterns using existing OSDU schemas, the RDDMS client REST API, and ORES GraphQL. This section documents what works **today** as preparation for P&WS adoption.
-
-### 10.1 RDDMS Dataspace Lifecycle as WIP/SOR Proxy
-
-The RDDMS client (`open-etp-client`) already exposes the full DataspaceOSDU ETP protocol via REST:
-
-| Operation | REST Endpoint | ETP Protocol | P&WS Analog |
-|-----------|--------------|--------------|-------------|
-| **Create dataspace** | `POST /dataspaces` | Dataspace Protocol 24 | Project namespace creation |
-| **Clone dataspace** | `POST /dataspaces/:id/clone` | DataspaceOSDU `CopyDataspacesContent` | Fork SOR → WIP snapshot |
-| **Lock (read-only)** | `POST /dataspaces/:id/lock` | DataspaceOSDU `LockDataspaces(lock=true)` | Freeze SOR baseline |
-| **Unlock** | `DELETE /dataspaces/:id/lock` | DataspaceOSDU `LockDataspaces(lock=false)` | Re-open for edits |
-| **Copy objects to dataspace** | DataspaceOSDU `CopyToDataspace` | DataspaceOSDU Protocol | Publish WIP → SOR (object-level) |
-| **Copy full dataspace content** | DataspaceOSDU `CopyDataspacesContent` | DataspaceOSDU Protocol | Bulk promote WIP |
-| **Delete dataspace** | `DELETE /dataspaces/:id` | Dataspace Protocol 24 | Archive / clean up |
-
-**Pattern: Project-scoped dataspace convention**
 ```
-<project-id>/sor    → locked, curated baseline (trusted resources)
-<project-id>/wip    → unlocked, active working area
-<project-id>/review → cloned from wip, locked for QC review
+<project-id>/sor    → locked baseline
+<project-id>/wip    → unlocked working area
+<project-id>/review → cloned from wip, locked for QC
 ```
 
-**Example: Create a governed project workspace**
-```bash
-# 1. Create SOR dataspace with ACLs in CustomData
-POST /dataspaces
-{
-  "DataspaceId": "dg2-nordfjord/sor",
-  "Path": "dg2-nordfjord/sor",
-  "CustomData": {
-    "viewers": ["data.dg2-nordfjord.viewers@equinor.com"],
-    "owners": ["data.dg2-nordfjord.owners@equinor.com"],
-    "legaltags": ["equinor-private-no"]
-  }
-}
-
-# 2. Import baseline data, then lock
-POST /dataspaces/dg2-nordfjord%2Fsor/lock
-
-# 3. Clone to create WIP workspace
-POST /dataspaces/dg2-nordfjord%2Fsor/clone
-{
-  "DataspaceId": "dg2-nordfjord/wip",
-  "Path": "dg2-nordfjord/wip",
-  "CustomData": {
-    "viewers": ["data.dg2-nordfjord.viewers@equinor.com"],
-    "owners": ["data.dg2-nordfjord.contributors@equinor.com"],
-    "legaltags": ["equinor-private-no"]
-  }
-}
-```
-
-### 10.2 Schema-Driven Governance via OSDU Records
-
-Without P&WS API, create `CollaborationProject` records directly via OSDU Storage API:
+### Create a CollaborationProject Record (Storage API)
 
 ```json
 {
@@ -522,69 +186,26 @@ Without P&WS API, create `CollaborationProject` records directly via OSDU Storag
   "data": {
     "ProjectID": "DG2-Nordfjord-2025",
     "ProjectName": "Nordfjord DG2 Concept Select",
-    "Purpose": "Evaluate three development concepts for Nordfjord field",
+    "Purpose": "Evaluate development concepts for Nordfjord field",
     "ProjectBeginDate": "2025-01-15",
-    "ProjectEndDate": "2025-09-30",
     "LifecycleStatusID": "osdu:reference-data--CollaborationProjectLifecycleStatus:Open:",
     "Personnel": [
       {"PersonName": "Alice Geologist", "ProjectRoleID": "Lead"},
       {"PersonName": "Bob Engineer", "ProjectRoleID": "Contributor"}
     ],
     "Parameters": [
-      {
-        "ParameterID": "GeoModelDataspace",
-        "DataObjectParameter": "eml:///dataspace('dg2-nordfjord/sor')"
-      },
-      {
-        "ParameterID": "WIPDataspace",
-        "DataObjectParameter": "eml:///dataspace('dg2-nordfjord/wip')"
-      },
-      {
-        "ParameterID": "TargetReservoir",
-        "DataObjectParameter": "osdu:master-data--Reservoir:nordfjord:"
-      }
+      {"ParameterID": "GeoModelDataspace", "DataObjectParameter": "eml:///dataspace('dg2-nordfjord/sor')"},
+      {"ParameterID": "WIPDataspace", "DataObjectParameter": "eml:///dataspace('dg2-nordfjord/wip')"},
+      {"ParameterID": "TargetReservoir", "DataObjectParameter": "osdu:master-data--Reservoir:nordfjord:"}
     ],
     "LifecycleEvents": [
-      {
-        "EventID": "1",
-        "Name": "Created",
-        "DateTime": "2025-01-15T09:00:00Z",
-        "Remark": "Initial project setup for DG2 study"
-      }
+      {"EventID": "1", "Name": "Created", "DateTime": "2025-01-15T09:00:00Z", "Remark": "Initial setup"}
     ]
   }
 }
 ```
 
-This record serves as the governance anchor — it's searchable, ACL-protected, and links dataspaces to business context. When P&WS becomes available, these records are already compatible with the service schema.
-
-### 10.3 Activity Records for Workflow Provenance
-
-Use OSDU `Activity` + `ActivityTemplate` to capture workflow steps — this is the pattern P&WS will use for its lifecycle events:
-
-```json
-{
-  "kind": "osdu:wks:master-data--Activity:1.0.0",
-  "data": {
-    "ActivityTemplateID": "osdu:master-data--ActivityTemplate:ResqmlImport:1.0.0:",
-    "ParentProjectID": "osdu:master-data--CollaborationProject:DG2-Nordfjord-2025:",
-    "Parameter": [
-      {"Title": "InputEPC", "IsInput": true, "DataObject": {"UUID": "epc-file-uuid"}},
-      {"Title": "OutputGrid", "IsOutput": true, "DataObject": {"UUID": "ijk-grid-uuid"}},
-      {"Title": "OutputSurface", "IsOutput": true, "DataObject": {"UUID": "surface-uuid"}}
-    ]
-  }
-}
-```
-
-The RDDMS client already resolves Activity→Template→Input/Output chains via the `getSources()` traversal (ETP Protocol 3 Discovery). This means:
-- Import a grid into WIP dataspace → create Activity record linking EPC → grid
-- Run property computation → Activity linking input grid + parameters → output property
-- Each Activity references the `CollaborationProject` via `ParentProjectID`
-
-### 10.4 Trusted Resource Collections Without P&WS API
-
-Use `CollaborationProjectCollection` records to maintain the trusted resource list:
+### Trusted Collection Record
 
 ```json
 {
@@ -599,160 +220,142 @@ Use `CollaborationProjectCollection` records to maintain the trusted resource li
 }
 ```
 
-Reference this collection from the `CollaborationProject.TrustedCollectionID` field. Add resources incrementally by updating the record version.
+Reference from `CollaborationProject.TrustedCollectionID`. Update version to add resources.
 
-### 10.5 ORES GraphQL as Project Dashboard
+### Manual Lifecycle Journaling
 
-Use existing ORES GraphQL queries to build project-scoped views:
+Append entries to `LifecycleEvents[]` on each project milestone:
 
-| Query | Purpose | P&WS Context |
-|-------|---------|-------------|
-| `deep_search` with dataspace filter | Find all objects in a project's SOR dataspace | Inventory trusted resources |
-| `deep_search` with WIP dataspace | Find all objects in WIP | Track work-in-progress |
-| `federated_search` across SOR + WIP | Compare coverage across both | Delta detection |
-| `relations` query on a grid UUID | Show property→grid→CRS dependency tree | Object-graph validation before publish |
-| `browse` by kind in project dataspace | List all WPCs of a type (e.g., all surfaces) | Type-level inventory |
+| Event | When |
+|-------|------|
+| `SOR Dataspace Locked` | After `POST /dataspaces/:id/lock` |
+| `WIP Dataspace Created` | After clone |
+| `RESQML Import` | After writing objects to WIP |
+| `QC Review` | Reviewer sign-off |
+| `Published to SOR` | After WIP→SOR copy |
+| `Closed` | Final |
 
-**Example: Compare WIP vs SOR property coverage**
-```graphql
-query {
-  sor: deep_search(dataspaceId: "dg2-nordfjord/sor", kindFilter: "ContinuousProperty") {
-    uuid title propertyKind arrayStats { min max mean }
-  }
-  wip: deep_search(dataspaceId: "dg2-nordfjord/wip", kindFilter: "ContinuousProperty") {
-    uuid title propertyKind arrayStats { min max mean }
-  }
-}
+### Migration to P&WS
+
+When the service deploys on your platform, existing records are already schema-compatible. P&WS will recognize your `CollaborationProject` records, continue the lifecycle journal, and use your `CollaborationProjectCollection` as `TrustedCollectionID` targets.
+
+---
+
+## 9. Technical Design: RDDMS ↔ CollaborationProject
+
+> [!NOTE]
+> The RDDMS manifest builder automatically generates CP records from ETP dataspaces. Available on **AWS OSDU** (M27+). On Azure ADME, ingest CP records via Storage API directly. Schema requires M27; on M26 register kind manually via Schema Service.
+
+### Dataspace → CP Mapping
+
+| ETP Dataspace | CollaborationProject Field | Notes |
+|---|---|---|
+| `path` | `data.Namespace` / `data.ProjectName` | WIP namespace + display name |
+| `storeCreated` | `data.CreationDateTime` | When created |
+| ACL (customData) | `data.DefaultWIPACL` / `data.ProjectContributorACL` | Access control |
+| Lock state | `data.LifecycleStatusID` | Open (unlocked) / Closed (locked) |
+| UUID v5(path) | `id` | Deterministic, stable |
+
+### Consistency Model
+
+The manifest build is the **sync point**. Between builds, OSDU may be stale.
+
+| Guaranteed | Not Guaranteed |
+|-----------|---------------|
+| Deterministic identity (UUID v5) | Real-time sync |
+| Version tracking (bumps on update) | Lock propagation to OSDU |
+| Idempotent (repeatable builds) | Cross-DDMS coordination |
+| Additive updates (never deletes) | Deletion cascade |
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant RDDMS as RDDMS (ETP)
+  participant Builder as Manifest Builder
+  participant OSDU as OSDU Catalog
+
+  Client->>RDDMS: Create dataspace
+  Client->>RDDMS: Ingest objects
+  Client->>Builder: POST /manifests/build
+  Builder->>OSDU: CP created (v1, Open)
+  Client->>RDDMS: More objects added
+  Client->>Builder: POST /manifests/build
+  Builder->>OSDU: CP updated (v2, enriched)
+  Client->>RDDMS: Lock dataspace
+  Client->>Builder: POST /manifests/build
+  Builder->>OSDU: CP updated (v3, Closed)
 ```
 
-### 10.6 Lifecycle Event Pattern (Manual Journaling)
+### Multi-Domain Collaboration
 
-Until P&WS auto-journals events, append lifecycle entries manually to the `CollaborationProject.LifecycleEvents[]` array:
+Use the `x-collaboration` header to tie multiple DDMS instances to the same CP:
 
-| Event Name | Trigger | Remark |
-|------------|---------|--------|
-| `Created` | Project record ingested | Initial setup |
-| `Open` | Status set to Open | Ready for collaboration |
-| `SOR Dataspace Locked` | `POST /dataspaces/:id/lock` | Baseline frozen |
-| `WIP Dataspace Created` | `POST /dataspaces/:id/clone` | Working area provisioned |
-| `RESQML Import` | Objects written to WIP dataspace | Activity record ref |
-| `QC Review` | Reviewer examines WIP | Reviewer name + outcome |
-| `Published to SOR` | Objects copied from WIP → SOR dataspace | List of promoted UUIDs |
-| `Closed` | Status set to Closed | Final audit |
+```
+Reservoir DDMS:  dataspace 'project-alpha/reservoir'
+Seismic DDMS:    dataspace 'project-alpha/seismic'
+Well DDMS:       dataspace 'project-alpha/wells'
+```
 
-### 10.7 Migration Path to P&WS
+With `x-collaboration: {"id": "shared-cp-uuid"}`, all manifest builds reference the same CollaborationProject.
 
-When P&WS becomes available on your platform:
+### Wells Strategy
 
-1. **Schema compatibility** — `CollaborationProject` records created manually are already in the correct schema; P&WS will recognize them
-2. **Namespace migration** — P&WS assigns UUID-based namespaces; existing dataspace-convention projects can be registered with P&WS by updating the `Namespace` field
-3. **Lifecycle events** — Manual journal entries remain valid; P&WS will continue the journal from where you left off
-4. **Resource collections** — `CollaborationProjectCollection` records are directly usable by P&WS as `TrustedCollectionID` targets
-5. **Dataspace alignment** — The layered SOR/WIP dataspace convention maps directly to P&WS's namespace isolation model; lock/unlock operations already match the Open/Closed lifecycle
+Wells are master-data (SoR-owned) but WellLogs must reference them. RDDMS resolves this at manifest time:
 
----
+```mermaid
+flowchart TD
+  A[Well referenced by WellLog] --> B{Has osduAlias?}
+  B -->|YES| C[Reference existing SoR Well]
+  B -->|NO| D{Inside CP?}
+  D -->|YES| E[Create as WIP in CP namespace]
+  D -->|NO| F{createMissingReferences?}
+  F -->|true| G[Create stub Well]
+  F -->|false| H[Error]
+```
 
-## 11. Improvement Requirements
+**User guidance:**
+- Well exists in OSDU → use `osduAlias` or `x-collaboration` header
+- New field study → CollaborationProject dataspace (wells are WIP until published)
+- Production → let MDM own Well creation; reference via alias
 
-### 11.1 P&WS Service Improvements
+### Manifest Output
 
-| Area | Requirement | Priority |
-|------|-------------|----------|
-| **Azure availability** | Deploy P&WS on Azure ADME (currently AWS-only) | High |
-| **RDDMS-aware publishing** | Extend WIP publishing to handle RESQML object graphs (dependencies, parent objects) | High |
-| **Conflict resolution UX** | When 409 conflict occurs, provide a merge/override workflow rather than just a report | High |
-| **Bulk operations** | Support batch creation of projects and batch resource registration | Medium |
-| **Project templates** | Pre-configured project structures for common workflows (DG study, well planning, seismic reprocessing) | Medium |
-| **Notifications** | Webhook or event-driven notifications for lifecycle events (project opened, WIP published, etc.) | Medium |
-| **Search integration** | Searchable project metadata - find projects by reservoir, purpose, date range, personnel | Medium |
-| **Role-based access** | Finer-grained roles beyond owner/viewer (e.g., reviewer, contributor, observer) | Low |
-
-### 11.2 RDDMS Improvements for P&WS Collaboration
-
-| Area | Requirement | Priority | Status |
-|------|-------------|----------|--------|
-| **Dataspace lifecycle API** | Programmatic create/lock/unlock/delete aligned with P&WS project status changes | High | ✅ Available (REST + ETP DataspaceOSDU) |
-| **Cross-dataspace copy** | Efficient bulk copy of RESQML objects between dataspaces (WIP → SOR promotion) | High | ✅ Available (`CopyDataspacesContent`, `CopyToDataspace`) |
-| **Object-graph-aware operations** | When copying/publishing a RESQML object, automatically include all referenced objects (CRS, grids, interpretations) | High | Planned |
-| **Array differencing** | REST/GraphQL endpoint to compute and return differences between two versions of an array (delta surface, delta property) | Medium | Planned |
-| **Dataspace ACLs** | Per-dataspace access control that can be synchronized with P&WS `ProjectContributorACL` | Medium | Partial (CustomData `viewers`/`owners`) |
-| **ETP project channels** | ETP notification channels scoped to a P&WS project - broadcast changes to all project participants | Medium | Planned |
-| **Object provenance** | Track which P&WS project and lifecycle event caused each RESQML object to be created/modified | Medium | Partial (Activity resolution via `getSources`) |
-| **Concurrent edit detection** | Optimistic locking for RESQML objects within a shared WIP dataspace | Low | Planned |
-
-### 11.3 ORES Client Improvements
-
-| Area | Requirement | Priority |
-|------|-------------|----------|
-| **P&WS integration page** | Dedicated UI for browsing P&WS projects, viewing lifecycle journal, managing SOR/WIP resources | High |
-| **WIP diff viewer** | Visual comparison of WIP vs SOR objects using 3D viewer (overlay surfaces, highlight property differences) | High |
-| **Project-scoped search** | Filter Search/GraphQL results to only resources within a specific P&WS project | Medium |
-| **Lifecycle timeline** | Interactive timeline visualization of project events (created → opened → resources added → published → closed) | Medium |
-| **Publish workflow wizard** | Guided multi-step wizard for WIP → SOR publishing with dependency checking and conflict resolution | Medium |
-| **Dataspace ↔ project linking** | Auto-create RDDMS dataspaces when creating a P&WS project from the Add DG tab | Low |
-
-### 11.4 Schema & Data Model Gaps
-
-| Gap | Description | Impact |
-|-----|-------------|--------|
-| **No P&WS ↔ RDDMS schema link** | `CollaborationProject` has no native field for RDDMS dataspace references - currently modeled as `Parameters[]` | Fragile; depends on convention (`GeoModelDataspace` key) |
-| **Missing project-resource relationship type** | No OSDU relationship type for "resource is trusted by project" or "resource is WIP in project" | Limits search and graph queries |
-| **No WIP status on WPC** | Individual WPC records don't indicate whether they are SOR or WIP | Consumers must query P&WS to determine status |
-| **CollaborationProjectCollection limits** | Large projects with thousands of resources may hit collection size limits | Need pagination or hierarchical collections |
-| **No standard lifecycle event types** | Event names are convention-based strings (`SOR Resources added`, `WIP Resources published`) - not reference-data | Limits machine processing and reporting |
-| **No cross-project lineage** | When a WPC is published from project A and registered in project B, there is no formal lineage link | Limits multi-project provenance tracking |
+The manifest build produces:
+- **MasterData[]**: CollaborationProject + Wells + Wellbores
+- **Data.Datasets[]**: ETPDataspace record
+- **Data.WorkProductComponents[]**: WellLog, Grid, Surface, etc.
 
 ---
 
-## 12. Entity Relationship Diagram
+## 10. Entity Relationships
 
 ```mermaid
 erDiagram
     CollaborationProject ||--o{ CollaborationProjectCollection : "TrustedCollectionID"
-    CollaborationProject ||--o{ CollaborationProjectCollection : "WIPResourceCollections"
     CollaborationProject }o--|| CollaborationProjectLifecycleStatus : "LifecycleStatusID"
-
     CollaborationProjectCollection ||--o{ OSDU_Record : "ResourceIDs[]"
-
     OSDU_Record ||--o| StructureMap : "is-a"
     OSDU_Record ||--o| IjkGridRepresentation : "is-a"
     OSDU_Record ||--o| WellboreTrajectory : "is-a"
-    OSDU_Record ||--o| ReservoirEstimatedVolumes : "is-a"
-    OSDU_Record ||--o| Well : "is-a"
-    OSDU_Record ||--o| Wellbore : "is-a"
-
     StructureMap ||--o| RDDMS_Object : "DDMSDatasets[]"
     IjkGridRepresentation ||--o| RDDMS_Object : "DDMSDatasets[]"
-
     RDDMS_Object }o--|| RDDMS_Dataspace : "lives in"
-
-    CollaborationProject ||--o| BusinessDecision : "linked via Parameters[]"
-    CollaborationProject ||--o| Activity : "linked via Parameters[]"
-    CollaborationProject ||--o| Reservoir : "scope context"
-
+    CollaborationProject ||--o| BusinessDecision : "Parameters[]"
+    CollaborationProject ||--o| Activity : "Parameters[]"
     BusinessDecision ||--o{ Risk : "RiskIDs[]"
-    BusinessDecision ||--o{ ReservoirEstimatedVolumes : "Parameters[] output"
-    BusinessDecision ||--o{ Activity : "PriorActivityIDs[]"
-
     Activity }o--|| ActivityTemplate : "ActivityTemplateID"
 ```
 
 ---
 
-## 13. References
+## 11. References
 
 | Topic | Link |
 |-------|------|
-| P&WS repository | [community.opengroup.org/osdu/platform/system/project-and-workflow](https://community.opengroup.org/osdu/platform/system/project-and-workflow) |
-| P&WS OpenAPI spec | [docs/api/openapi.yaml](https://community.opengroup.org/osdu/platform/system/project-and-workflow/-/blob/main/docs/api/openapi.yaml) |
-| MVP1 Jupyter notebook | [docs/notebook/mvp1.ipynb](https://community.opengroup.org/osdu/platform/system/project-and-workflow/-/blob/main/docs/notebook/mvp1.ipynb) |
+| P&WS repo | [community.opengroup.org/.../project-and-workflow](https://community.opengroup.org/osdu/platform/system/project-and-workflow) |
+| OpenAPI spec | [openapi.yaml](https://community.opengroup.org/osdu/platform/system/project-and-workflow/-/blob/main/docs/api/openapi.yaml) |
 | CollaborationProject schema | [OSDU Data Definitions](https://community.opengroup.org/osdu/data/data-definitions/-/blob/master/E-R/master-data/CollaborationProject.1.0.0.md) |
-| MVP1 test notes | [PWS-MVP1-notebook-M25-test.md](PWS-MVP1-notebook-M25-test.md) |
-| RDDMS query guide | [Query](/howto/query-guide) |
-| Seismic interpretation (RDDMS) | [SeisInt](/howto/seismic-interp) |
+| MVP1 notebook | [mvp1.ipynb](https://community.opengroup.org/osdu/platform/system/project-and-workflow/-/blob/main/docs/notebook/mvp1.ipynb) |
+| Query guide | [Query](/howto/query-guide) |
 | Activity & provenance | [Activity](/howto/activity) |
-| BusinessDecision guide | [BusinessDecision](/howto/business-decision) |
-| Volumes | [Volumes](/howto/volumes) |
-| Uncertainty | [Uncertainty](/howto/uncertainty) |
-| Risk management | [Risk](/howto/risk) |
-| Stratigraphy | [StratColumn](/howto/strat-column) |
+| BusinessDecision | [BusinessDecision](/howto/business-decision) |
