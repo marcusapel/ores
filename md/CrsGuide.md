@@ -55,19 +55,7 @@ Every geometry object (grids, surfaces, point sets) references a **Local 3D CRS*
 | LocalAuthority | `ProjectedLocalAuthorityCrs` | `VerticalLocalAuthorityCrs` | Operator-specific (e.g. NPD codes) |
 | Unknown | `ProjectedUnknownCrs` | `VerticalUnknownCrs` | Legacy; may contain WKT in Unknown field |
 
-### RESQML 2.0.1 vs 2.2 — CRS differences
-
-| Aspect | RESQML 2.0.1 (EML 2.0) | RESQML 2.2 (EML 2.3) |
-|--------|------------------------|----------------------|
-| CRS object | `resqml20.obj_LocalDepth3dCrs` | `eml23.LocalEngineeringCompoundCrs` |
-| Projected CRS location | Inline on CRS object (`ProjectedCrs` field) | Separate `LocalEngineering2dCrs` object (resolved via DOR) |
-| Offsets | `XOffset`, `YOffset`, `ZOffset` on CRS | `OriginProjectedCoordinate1`, `OriginProjectedCoordinate2` on `LocalEngineering2dCrs` |
-| Rotation | `ArealRotation` with `Uom` (dega/rad) | On `LocalEngineering2dCrs` azimuth |
-| Vertical CRS | Inline `VerticalCrs` field | Separate `VerticalAxis` reference |
-| JSON support | XML only | Full JSON support (Common v2.3) |
-| RDDMS crsVersion | `"eml20"` | `"eml23"` |
-
-The RDDMS ETP client handles both versions and normalizes them into the same OSDU output structure.
+> **RESQML 2.2 note:** v2.2 is released but not yet in production use. It replaces `LocalDepth3dCrs` with `eml23.LocalEngineeringCompoundCrs` (offsets on a separate `LocalEngineering2dCrs` object resolved via DOR). The RDDMS ETP client already supports both versions and normalizes them into the same OSDU output. See [Appendix: RESQML 2.2 CRS](#appendix-resqml-22-crs) for details.
 
 ---
 
@@ -113,17 +101,17 @@ flowchart LR
 
 When RDDMS ingests data into OSDU, it stores local-frame metadata under namespaced keys:
 
-| OSDU metadata key | Source (v2.0.1) | Source (v2.2) | Type |
-|-------------------|-----------------|---------------|------|
-| `rddms/localFrame/xOffset` | `XOffset` | `OriginProjectedCoordinate1` | number |
-| `rddms/localFrame/yOffset` | `YOffset` | `OriginProjectedCoordinate2` | number |
-| `rddms/localFrame/zOffset` | `ZOffset` | `OriginVerticalCoordinate` | number |
-| `rddms/localFrame/arealRotationDeg` | `ArealRotation` (converted to deg) | Azimuth (deg) | number |
-| `rddms/localFrame/projectedAxisOrder` | `ProjectedAxisOrder` | — | string |
-| `rddms/localFrame/projectedUom` | `ProjectedUom` | — | string |
-| `rddms/localFrame/verticalUom` | `VerticalUom` | — | string |
-| `rddms/localFrame/zIncreasingDownward` | `ZIncreasingDownward` | — | boolean |
-| `rddms/localFrame/crsVersion` | `"eml20"` | `"eml23"` | string |
+| OSDU metadata key | RESQML source | Type |
+|-------------------|---------------|------|
+| `rddms/localFrame/xOffset` | `XOffset` | number |
+| `rddms/localFrame/yOffset` | `YOffset` | number |
+| `rddms/localFrame/zOffset` | `ZOffset` | number |
+| `rddms/localFrame/arealRotationDeg` | `ArealRotation` (converted to deg) | number |
+| `rddms/localFrame/projectedAxisOrder` | `ProjectedAxisOrder` | string |
+| `rddms/localFrame/projectedUom` | `ProjectedUom` | string |
+| `rddms/localFrame/verticalUom` | `VerticalUom` | string |
+| `rddms/localFrame/zIncreasingDownward` | `ZIncreasingDownward` | boolean |
+| `rddms/localFrame/crsVersion` | `"eml20"` (or `"eml23"` for v2.2) | string |
 
 These keys enable **lossless round-trip** — reconstruct the RESQML CRS from OSDU metadata without data loss.
 
@@ -201,43 +189,7 @@ OSDU ID  :  ...:BoundProjected:EPSG::23031_EPSG::1612
 }
 ```
 
-### RESQML 2.2 (EML 2.3) — LocalEngineeringCompoundCrs
 
-**RESQML (v2.2)** — CRS references a separate `LocalEngineering2dCrs` object
-```json
-{
-  "$type": "eml23.LocalEngineeringCompoundCrs",
-  "LocalEngineering2dCrs": {
-    "$type": "eml23.DataObjectReference",
-    "ContentType": "application/x-eml+xml;version=2.3;type=LocalEngineering2dCrs",
-    "Title": "Drogon Local CRS",
-    "UUID": "abc123..."
-  },
-  "VerticalCrs": { "..." }
-}
-```
-
-The referenced `LocalEngineering2dCrs`:
-```json
-{
-  "$type": "eml23.LocalEngineering2dCrs",
-  "OriginProjectedCoordinate1": 420000.0,
-  "OriginProjectedCoordinate2": 6470000.0,
-  "OriginProjectedCrs": {
-    "AbstractProjectedCrs": { "$type": "eml23.ProjectedEpsgCrs", "EpsgCode": 23031 }
-  }
-}
-```
-
-**OSDU** — same output regardless of RESQML version:
-```json
-{
-  "coordinateReferenceSystemID": "opendes:reference-data--CoordinateReferenceSystem:BoundProjected:EPSG::23031_EPSG::1612",
-  "rddms/localFrame/xOffset": 420000.0,
-  "rddms/localFrame/yOffset": 6470000.0,
-  "rddms/localFrame/crsVersion": "eml23"
-}
-```
 
 ### Full CRS pair — projected + vertical (both EPSG)
 
@@ -335,7 +287,7 @@ Where θ is ArealRotation converted to **radians** (RESQML may store as `dega` o
 | Multiple projected CRSs in one dataspace | Undefined local frames | One projected CRS per RDDMS dataspace |
 | Local frame in CRS record | OSDU rejects or misinterprets | Offsets/rotation go in dataset metadata only |
 | `ArealRotation` unit mismatch | Rotation wrong | RESQML may use deg or rad; RDDMS normalizes to degrees in `arealRotationDeg` |
-| v2.2 CRS not resolved | Missing offsets | `LocalEngineering2dCrs` is a separate object — must be fetched via DOR |
+| v2.2 CRS not resolved | Missing offsets | `LocalEngineering2dCrs` is a separate object — must be fetched via DOR (v2.2 only) |
 
 ---
 
@@ -358,3 +310,68 @@ Where θ is ArealRotation converted to **radians** (RESQML may store as `dega` o
 [os-conv]: https://community.opengroup.org/osdu/platform/system/reference/crs-conversion-service/-/blob/0b2c76d50eb32302f70ce870a82d54f8d43228d8/docs/v3/tutorial/CRS_Convert_Service_howto.md
 [os-adr]: https://community.opengroup.org/osdu/platform/system/home/-/issues/94
 [rq-tut]: https://resqpy.readthedocs.io/en/latest/tutorial/working_with_coord.html
+
+---
+
+## Appendix: RESQML 2.2 CRS
+
+> RESQML 2.2 is released but **not yet in production use**. This section documents the differences for future readiness.
+
+### v2.0.1 vs v2.2 comparison
+
+| Aspect | RESQML 2.0.1 (EML 2.0) | RESQML 2.2 (EML 2.3) |
+|--------|------------------------|----------------------|
+| CRS object | `resqml20.obj_LocalDepth3dCrs` | `eml23.LocalEngineeringCompoundCrs` |
+| Projected CRS location | Inline on CRS object (`ProjectedCrs` field) | Separate `LocalEngineering2dCrs` object (resolved via DOR) |
+| Offsets | `XOffset`, `YOffset`, `ZOffset` on CRS | `OriginProjectedCoordinate1`, `OriginProjectedCoordinate2` on `LocalEngineering2dCrs` |
+| Rotation | `ArealRotation` with `Uom` (dega/rad) | On `LocalEngineering2dCrs` azimuth |
+| Vertical CRS | Inline `VerticalCrs` field | Separate `VerticalAxis` reference |
+| JSON support | XML only | Full JSON support (Common v2.3) |
+| RDDMS crsVersion | `"eml20"` | `"eml23"` |
+
+### v2.2 example: LocalEngineeringCompoundCrs
+
+```json
+{
+  "$type": "eml23.LocalEngineeringCompoundCrs",
+  "LocalEngineering2dCrs": {
+    "$type": "eml23.DataObjectReference",
+    "ContentType": "application/x-eml+xml;version=2.3;type=LocalEngineering2dCrs",
+    "Title": "Drogon Local CRS",
+    "UUID": "abc123..."
+  },
+  "VerticalCrs": { "..." }
+}
+```
+
+The referenced `LocalEngineering2dCrs`:
+```json
+{
+  "$type": "eml23.LocalEngineering2dCrs",
+  "OriginProjectedCoordinate1": 420000.0,
+  "OriginProjectedCoordinate2": 6470000.0,
+  "OriginProjectedCrs": {
+    "AbstractProjectedCrs": { "$type": "eml23.ProjectedEpsgCrs", "EpsgCode": 23031 }
+  }
+}
+```
+
+OSDU output is the same regardless of RESQML version:
+```json
+{
+  "coordinateReferenceSystemID": "opendes:reference-data--CoordinateReferenceSystem:BoundProjected:EPSG::23031_EPSG::1612",
+  "rddms/localFrame/xOffset": 420000.0,
+  "rddms/localFrame/yOffset": 6470000.0,
+  "rddms/localFrame/crsVersion": "eml23"
+}
+```
+
+### v2.2 localFrame key mapping
+
+| OSDU metadata key | v2.2 source |
+|-------------------|-------------|
+| `rddms/localFrame/xOffset` | `LocalEngineering2dCrs.OriginProjectedCoordinate1` |
+| `rddms/localFrame/yOffset` | `LocalEngineering2dCrs.OriginProjectedCoordinate2` |
+| `rddms/localFrame/zOffset` | `OriginVerticalCoordinate` |
+| `rddms/localFrame/arealRotationDeg` | Azimuth (deg) |
+| `rddms/localFrame/crsVersion` | `"eml23"` |
