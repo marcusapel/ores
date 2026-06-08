@@ -5,6 +5,9 @@
 > **Repo**: [community.opengroup.org/osdu/platform/system/project-and-workflow](https://community.opengroup.org/osdu/platform/system/project-and-workflow)   
 > **Related guides**: [Activity](/howto/activity) · [BusinessDecision](/howto/business-decision) · [Volumes](/howto/volumes) · [Risk](/howto/risk) · [Query](/howto/query-guide) · [Uncertainty](/howto/uncertainty)
 
+> [!IMPORTANT]
+> **Release Status (June 2025)**: P&WS is **in active development** — not yet released as a generally available OSDU service. The AWS provider exists (`provider/pws-aws`) but the service is not deployed on Azure ADME. The schemas (`CollaborationProject`, `CollaborationProjectCollection`, `CollaborationProjectLifecycleStatus`) are defined in OSDU Data Definitions and can be used today for schema-driven governance patterns. This guide documents both the P&WS API (for when it becomes available) and **preparation patterns** that work today using existing OSDU + RDDMS capabilities.
+
 ---
 
 ## 1. Overview
@@ -369,6 +372,25 @@ graph LR
   PWS -.->|"Project resources reference<br/>DDMSDatasets[] → RDDMS objects"| RDDMS
 ```
 
+**RDDMS Client Endpoints Available Today for Collaboration**:
+
+| Endpoint | Method | Purpose | P&WS Lifecycle Phase |
+|----------|--------|---------|---------------------|
+| `/dataspaces` | `POST` | Create project dataspaces | Project creation |
+| `/dataspaces/:id/clone` | `POST` | Duplicate dataspace (SOR → WIP fork) | WIP provisioning |
+| `/dataspaces/:id/lock` | `POST` | Set dataspace read-only | Lock SOR baseline |
+| `/dataspaces/:id/lock` | `DELETE` | Remove read-only flag | Re-open for edits |
+| `/dataspaces/:id` | `DELETE` | Remove dataspace | Project closure cleanup |
+| `/query/graph/search` | `POST` | Discover object relationships in dataspace | Resource discovery & validation |
+| `/query/resources/find` | `POST` | Find resources by filter | Inventory project objects |
+| `/resources/:dataspaceId/:uuid` | `GET` | Read single RESQML object | Detailed inspection |
+| `/resources/:dataspaceId` | `PUT` | Write RESQML objects | WIP data creation |
+
+The ETP protocol layer (via `DataspaceOSDUCustomer`) additionally supports:
+- `CopyDataspacesContent` — bulk copy all objects from source dataspaces to a target (WIP → SOR promotion)
+- `CopyToDataspace` — copy specific resources by URI to a target dataspace (selective publish)
+- `GetDataspaceInfo` — retrieve dataspace metadata including lock state
+
 ### 8.3 Data Flow for RDDMS-Backed Projects
 
 1. **Discovery**: Search OSDU catalog for RDDMS-backed WPCs (StructureMaps, Grids) → read `DDMSDatasets[]` URIs
@@ -435,9 +457,204 @@ Extend RDDMS with version-aware operations for P&WS:
 
 ---
 
-## 10. Improvement Requirements
+## 10. Preparing Today — Patterns Without P&WS
 
-### 10.1 P&WS Service Improvements
+Even before P&WS is deployed, teams can implement the core collaboration patterns using existing OSDU schemas, the RDDMS client REST API, and ORES GraphQL. This section documents what works **today** as preparation for P&WS adoption.
+
+### 10.1 RDDMS Dataspace Lifecycle as WIP/SOR Proxy
+
+The RDDMS client (`open-etp-client`) already exposes the full DataspaceOSDU ETP protocol via REST:
+
+| Operation | REST Endpoint | ETP Protocol | P&WS Analog |
+|-----------|--------------|--------------|-------------|
+| **Create dataspace** | `POST /dataspaces` | Dataspace Protocol 24 | Project namespace creation |
+| **Clone dataspace** | `POST /dataspaces/:id/clone` | DataspaceOSDU `CopyDataspacesContent` | Fork SOR → WIP snapshot |
+| **Lock (read-only)** | `POST /dataspaces/:id/lock` | DataspaceOSDU `LockDataspaces(lock=true)` | Freeze SOR baseline |
+| **Unlock** | `DELETE /dataspaces/:id/lock` | DataspaceOSDU `LockDataspaces(lock=false)` | Re-open for edits |
+| **Copy objects to dataspace** | DataspaceOSDU `CopyToDataspace` | DataspaceOSDU Protocol | Publish WIP → SOR (object-level) |
+| **Copy full dataspace content** | DataspaceOSDU `CopyDataspacesContent` | DataspaceOSDU Protocol | Bulk promote WIP |
+| **Delete dataspace** | `DELETE /dataspaces/:id` | Dataspace Protocol 24 | Archive / clean up |
+
+**Pattern: Project-scoped dataspace convention**
+```
+<project-id>/sor    → locked, curated baseline (trusted resources)
+<project-id>/wip    → unlocked, active working area
+<project-id>/review → cloned from wip, locked for QC review
+```
+
+**Example: Create a governed project workspace**
+```bash
+# 1. Create SOR dataspace with ACLs in CustomData
+POST /dataspaces
+{
+  "DataspaceId": "dg2-nordfjord/sor",
+  "Path": "dg2-nordfjord/sor",
+  "CustomData": {
+    "viewers": ["data.dg2-nordfjord.viewers@equinor.com"],
+    "owners": ["data.dg2-nordfjord.owners@equinor.com"],
+    "legaltags": ["equinor-private-no"]
+  }
+}
+
+# 2. Import baseline data, then lock
+POST /dataspaces/dg2-nordfjord%2Fsor/lock
+
+# 3. Clone to create WIP workspace
+POST /dataspaces/dg2-nordfjord%2Fsor/clone
+{
+  "DataspaceId": "dg2-nordfjord/wip",
+  "Path": "dg2-nordfjord/wip",
+  "CustomData": {
+    "viewers": ["data.dg2-nordfjord.viewers@equinor.com"],
+    "owners": ["data.dg2-nordfjord.contributors@equinor.com"],
+    "legaltags": ["equinor-private-no"]
+  }
+}
+```
+
+### 10.2 Schema-Driven Governance via OSDU Records
+
+Without P&WS API, create `CollaborationProject` records directly via OSDU Storage API:
+
+```json
+{
+  "kind": "osdu:wks:master-data--CollaborationProject:1.0.0",
+  "data": {
+    "ProjectID": "DG2-Nordfjord-2025",
+    "ProjectName": "Nordfjord DG2 Concept Select",
+    "Purpose": "Evaluate three development concepts for Nordfjord field",
+    "ProjectBeginDate": "2025-01-15",
+    "ProjectEndDate": "2025-09-30",
+    "LifecycleStatusID": "osdu:reference-data--CollaborationProjectLifecycleStatus:Open:",
+    "Personnel": [
+      {"PersonName": "Alice Geologist", "ProjectRoleID": "Lead"},
+      {"PersonName": "Bob Engineer", "ProjectRoleID": "Contributor"}
+    ],
+    "Parameters": [
+      {
+        "ParameterID": "GeoModelDataspace",
+        "DataObjectParameter": "eml:///dataspace('dg2-nordfjord/sor')"
+      },
+      {
+        "ParameterID": "WIPDataspace",
+        "DataObjectParameter": "eml:///dataspace('dg2-nordfjord/wip')"
+      },
+      {
+        "ParameterID": "TargetReservoir",
+        "DataObjectParameter": "osdu:master-data--Reservoir:nordfjord:"
+      }
+    ],
+    "LifecycleEvents": [
+      {
+        "EventID": "1",
+        "Name": "Created",
+        "DateTime": "2025-01-15T09:00:00Z",
+        "Remark": "Initial project setup for DG2 study"
+      }
+    ]
+  }
+}
+```
+
+This record serves as the governance anchor — it's searchable, ACL-protected, and links dataspaces to business context. When P&WS becomes available, these records are already compatible with the service schema.
+
+### 10.3 Activity Records for Workflow Provenance
+
+Use OSDU `Activity` + `ActivityTemplate` to capture workflow steps — this is the pattern P&WS will use for its lifecycle events:
+
+```json
+{
+  "kind": "osdu:wks:master-data--Activity:1.0.0",
+  "data": {
+    "ActivityTemplateID": "osdu:master-data--ActivityTemplate:ResqmlImport:1.0.0:",
+    "ParentProjectID": "osdu:master-data--CollaborationProject:DG2-Nordfjord-2025:",
+    "Parameter": [
+      {"Title": "InputEPC", "IsInput": true, "DataObject": {"UUID": "epc-file-uuid"}},
+      {"Title": "OutputGrid", "IsOutput": true, "DataObject": {"UUID": "ijk-grid-uuid"}},
+      {"Title": "OutputSurface", "IsOutput": true, "DataObject": {"UUID": "surface-uuid"}}
+    ]
+  }
+}
+```
+
+The RDDMS client already resolves Activity→Template→Input/Output chains via the `getSources()` traversal (ETP Protocol 3 Discovery). This means:
+- Import a grid into WIP dataspace → create Activity record linking EPC → grid
+- Run property computation → Activity linking input grid + parameters → output property
+- Each Activity references the `CollaborationProject` via `ParentProjectID`
+
+### 10.4 Trusted Resource Collections Without P&WS API
+
+Use `CollaborationProjectCollection` records to maintain the trusted resource list:
+
+```json
+{
+  "kind": "osdu:wks:work-product-component--CollaborationProjectCollection:1.0.0",
+  "data": {
+    "ResourceIDs": [
+      "osdu:work-product-component--WellboreTrajectory:traj-1:",
+      "osdu:work-product-component--StructureMap:surf-topReservoir:",
+      "osdu:work-product-component--IjkGridRepresentation:grid-main:"
+    ]
+  }
+}
+```
+
+Reference this collection from the `CollaborationProject.TrustedCollectionID` field. Add resources incrementally by updating the record version.
+
+### 10.5 ORES GraphQL as Project Dashboard
+
+Use existing ORES GraphQL queries to build project-scoped views:
+
+| Query | Purpose | P&WS Context |
+|-------|---------|-------------|
+| `deep_search` with dataspace filter | Find all objects in a project's SOR dataspace | Inventory trusted resources |
+| `deep_search` with WIP dataspace | Find all objects in WIP | Track work-in-progress |
+| `federated_search` across SOR + WIP | Compare coverage across both | Delta detection |
+| `relations` query on a grid UUID | Show property→grid→CRS dependency tree | Object-graph validation before publish |
+| `browse` by kind in project dataspace | List all WPCs of a type (e.g., all surfaces) | Type-level inventory |
+
+**Example: Compare WIP vs SOR property coverage**
+```graphql
+query {
+  sor: deep_search(dataspaceId: "dg2-nordfjord/sor", kindFilter: "ContinuousProperty") {
+    uuid title propertyKind arrayStats { min max mean }
+  }
+  wip: deep_search(dataspaceId: "dg2-nordfjord/wip", kindFilter: "ContinuousProperty") {
+    uuid title propertyKind arrayStats { min max mean }
+  }
+}
+```
+
+### 10.6 Lifecycle Event Pattern (Manual Journaling)
+
+Until P&WS auto-journals events, append lifecycle entries manually to the `CollaborationProject.LifecycleEvents[]` array:
+
+| Event Name | Trigger | Remark |
+|------------|---------|--------|
+| `Created` | Project record ingested | Initial setup |
+| `Open` | Status set to Open | Ready for collaboration |
+| `SOR Dataspace Locked` | `POST /dataspaces/:id/lock` | Baseline frozen |
+| `WIP Dataspace Created` | `POST /dataspaces/:id/clone` | Working area provisioned |
+| `RESQML Import` | Objects written to WIP dataspace | Activity record ref |
+| `QC Review` | Reviewer examines WIP | Reviewer name + outcome |
+| `Published to SOR` | Objects copied from WIP → SOR dataspace | List of promoted UUIDs |
+| `Closed` | Status set to Closed | Final audit |
+
+### 10.7 Migration Path to P&WS
+
+When P&WS becomes available on your platform:
+
+1. **Schema compatibility** — `CollaborationProject` records created manually are already in the correct schema; P&WS will recognize them
+2. **Namespace migration** — P&WS assigns UUID-based namespaces; existing dataspace-convention projects can be registered with P&WS by updating the `Namespace` field
+3. **Lifecycle events** — Manual journal entries remain valid; P&WS will continue the journal from where you left off
+4. **Resource collections** — `CollaborationProjectCollection` records are directly usable by P&WS as `TrustedCollectionID` targets
+5. **Dataspace alignment** — The layered SOR/WIP dataspace convention maps directly to P&WS's namespace isolation model; lock/unlock operations already match the Open/Closed lifecycle
+
+---
+
+## 11. Improvement Requirements
+
+### 11.1 P&WS Service Improvements
 
 | Area | Requirement | Priority |
 |------|-------------|----------|
@@ -450,20 +667,20 @@ Extend RDDMS with version-aware operations for P&WS:
 | **Search integration** | Searchable project metadata - find projects by reservoir, purpose, date range, personnel | Medium |
 | **Role-based access** | Finer-grained roles beyond owner/viewer (e.g., reviewer, contributor, observer) | Low |
 
-### 10.2 RDDMS Improvements for P&WS Collaboration
+### 11.2 RDDMS Improvements for P&WS Collaboration
 
-| Area | Requirement | Priority |
-|------|-------------|----------|
-| **Dataspace lifecycle API** | Programmatic create/lock/unlock/delete aligned with P&WS project status changes | High |
-| **Cross-dataspace copy** | Efficient bulk copy of RESQML objects between dataspaces (WIP → SOR promotion) | High |
-| **Object-graph-aware operations** | When copying/publishing a RESQML object, automatically include all referenced objects (CRS, grids, interpretations) | High |
-| **Array differencing** | REST/GraphQL endpoint to compute and return differences between two versions of an array (delta surface, delta property) | Medium |
-| **Dataspace ACLs** | Per-dataspace access control that can be synchronized with P&WS `ProjectContributorACL` | Medium |
-| **ETP project channels** | ETP notification channels scoped to a P&WS project - broadcast changes to all project participants | Medium |
-| **Object provenance** | Track which P&WS project and lifecycle event caused each RESQML object to be created/modified | Medium |
-| **Concurrent edit detection** | Optimistic locking for RESQML objects within a shared WIP dataspace | Low |
+| Area | Requirement | Priority | Status |
+|------|-------------|----------|--------|
+| **Dataspace lifecycle API** | Programmatic create/lock/unlock/delete aligned with P&WS project status changes | High | ✅ Available (REST + ETP DataspaceOSDU) |
+| **Cross-dataspace copy** | Efficient bulk copy of RESQML objects between dataspaces (WIP → SOR promotion) | High | ✅ Available (`CopyDataspacesContent`, `CopyToDataspace`) |
+| **Object-graph-aware operations** | When copying/publishing a RESQML object, automatically include all referenced objects (CRS, grids, interpretations) | High | Planned |
+| **Array differencing** | REST/GraphQL endpoint to compute and return differences between two versions of an array (delta surface, delta property) | Medium | Planned |
+| **Dataspace ACLs** | Per-dataspace access control that can be synchronized with P&WS `ProjectContributorACL` | Medium | Partial (CustomData `viewers`/`owners`) |
+| **ETP project channels** | ETP notification channels scoped to a P&WS project - broadcast changes to all project participants | Medium | Planned |
+| **Object provenance** | Track which P&WS project and lifecycle event caused each RESQML object to be created/modified | Medium | Partial (Activity resolution via `getSources`) |
+| **Concurrent edit detection** | Optimistic locking for RESQML objects within a shared WIP dataspace | Low | Planned |
 
-### 10.3 ORES Client Improvements
+### 11.3 ORES Client Improvements
 
 | Area | Requirement | Priority |
 |------|-------------|----------|
@@ -474,7 +691,7 @@ Extend RDDMS with version-aware operations for P&WS:
 | **Publish workflow wizard** | Guided multi-step wizard for WIP → SOR publishing with dependency checking and conflict resolution | Medium |
 | **Dataspace ↔ project linking** | Auto-create RDDMS dataspaces when creating a P&WS project from the Add DG tab | Low |
 
-### 10.4 Schema & Data Model Gaps
+### 11.4 Schema & Data Model Gaps
 
 | Gap | Description | Impact |
 |-----|-------------|--------|
@@ -487,7 +704,7 @@ Extend RDDMS with version-aware operations for P&WS:
 
 ---
 
-## 11. Entity Relationship Diagram
+## 12. Entity Relationship Diagram
 
 ```mermaid
 erDiagram
@@ -522,7 +739,7 @@ erDiagram
 
 ---
 
-## 12. References
+## 13. References
 
 | Topic | Link |
 |-------|------|
