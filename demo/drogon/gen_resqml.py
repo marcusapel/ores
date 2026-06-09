@@ -354,19 +354,23 @@ def _add_param_template(root, title: str, role: str, description: str, *,
                         is_input: bool, is_output: bool, min_occurs: int,
                         max_occurs: int,
                         allowed_kind: str):
-    """Add a ParameterTemplate child to an ActivityTemplate node."""
+    """Add a Parameter (of type ParameterTemplate) child to an ActivityTemplate node."""
 
-    pt = rqet.SubElement(root, ns["resqml2"] + "ParameterTemplate")
+    # XSD element name is "Parameter", type is "ParameterTemplate"
+    pt = rqet.SubElement(root, ns["resqml2"] + "Parameter")
     pt.set(ns["xsi"] + "type", ns["resqml2"] + "ParameterTemplate")
     pt.text = rqet.null_xml_text
 
-    kw = rqet.SubElement(pt, ns["resqml2"] + "KeyConstraint")
-    kw.set(ns["xsi"] + "type", ns["xsd"] + "string")
-    kw.text = title
+    # XSD order: KeyConstraint?, IsInput, AllowedKind*, IsOutput, Title,
+    #            DataObjectContentType?, MaxOccurs, MinOccurs, Constraint?, DefaultValue*
 
     ii = rqet.SubElement(pt, ns["resqml2"] + "IsInput")
     ii.set(ns["xsi"] + "type", ns["xsd"] + "boolean")
     ii.text = str(is_input).lower()
+
+    ak = rqet.SubElement(pt, ns["resqml2"] + "AllowedKind")
+    ak.set(ns["xsi"] + "type", ns["resqml2"] + "ParameterKind")
+    ak.text = allowed_kind
 
     io = rqet.SubElement(pt, ns["resqml2"] + "IsOutput")
     io.set(ns["xsi"] + "type", ns["xsd"] + "boolean")
@@ -376,10 +380,6 @@ def _add_param_template(root, title: str, role: str, description: str, *,
     t_node.set(ns["xsi"] + "type", ns["xsd"] + "string")
     t_node.text = title
 
-    d_node = rqet.SubElement(pt, ns["resqml2"] + "Description")  # custom extra
-    d_node.set(ns["xsi"] + "type", ns["xsd"] + "string")
-    d_node.text = description
-
     mo = rqet.SubElement(pt, ns["resqml2"] + "MaxOccurs")
     mo.set(ns["xsi"] + "type", ns["xsd"] + "long")
     mo.text = str(max_occurs)
@@ -387,10 +387,6 @@ def _add_param_template(root, title: str, role: str, description: str, *,
     mino = rqet.SubElement(pt, ns["resqml2"] + "MinOccurs")
     mino.set(ns["xsi"] + "type", ns["xsd"] + "long")
     mino.text = str(min_occurs)
-
-    ak = rqet.SubElement(pt, ns["resqml2"] + "DefaultParameterKind")
-    ak.set(ns["xsi"] + "type", ns["resqml2"] + "ParameterKind")
-    ak.text = allowed_kind
 
 
 def _add_activity(model: rq.Model, template_node, title: str, *,
@@ -458,10 +454,7 @@ def _add_activity_param_ref(root, key: str, *, ref_title: str, ref_uuid, ref_con
     param.set(ns["xsi"] + "type", ns["resqml2"] + "DataObjectParameter")
     param.text = rqet.null_xml_text
 
-    kw = rqet.SubElement(param, ns["resqml2"] + "KeyConstraint")
-    kw.set(ns["xsi"] + "type", ns["xsd"] + "string")
-    kw.text = key
-
+    # XSD order: Title, Index?, Selection?, Key*, then DataObject (extension)
     ti = rqet.SubElement(param, ns["resqml2"] + "Title")
     ti.set(ns["xsi"] + "type", ns["xsd"] + "string")
     ti.text = key
@@ -490,10 +483,7 @@ def _add_activity_param_string(root, key: str, value: str):
     param.set(ns["xsi"] + "type", ns["resqml2"] + "StringParameter")
     param.text = rqet.null_xml_text
 
-    kw = rqet.SubElement(param, ns["resqml2"] + "KeyConstraint")
-    kw.set(ns["xsi"] + "type", ns["xsd"] + "string")
-    kw.text = key
-
+    # XSD order: Title, Index?, Selection?, Key*, then Value (extension)
     ti = rqet.SubElement(param, ns["resqml2"] + "Title")
     ti.set(ns["xsi"] + "type", ns["xsd"] + "string")
     ti.text = key
@@ -509,10 +499,7 @@ def _add_activity_param_int(root, key: str, value: int):
     param.set(ns["xsi"] + "type", ns["resqml2"] + "IntegerQuantityParameter")
     param.text = rqet.null_xml_text
 
-    kw = rqet.SubElement(param, ns["resqml2"] + "KeyConstraint")
-    kw.set(ns["xsi"] + "type", ns["xsd"] + "string")
-    kw.text = key
-
+    # XSD order: Title, Index?, Selection?, Key*, then Value (extension)
     ti = rqet.SubElement(param, ns["resqml2"] + "Title")
     ti.set(ns["xsi"] + "type", ns["xsd"] + "string")
     ti.text = key
@@ -522,12 +509,29 @@ def _add_activity_param_int(root, key: str, value: int):
 
 
 def build_activity_epc(params_uuid, raw_vol_uuid, stat_vol_uuid) -> pathlib.Path:
-    """Create drogon_activity.epc with an ActivityTemplate and 3 Activities."""
+    """Create drogon_activity.epc with an ActivityTemplate, Activity, and the referenced tables.
+
+    Copies the tables EPC first so that all DataObjectReferences resolve within the file.
+    """
 
     OUT.mkdir(parents=True, exist_ok=True)
     epc = OUT / "drogon_activity.epc"
+    tables_epc = OUT / "drogon_tables.epc"
 
-    model = rq.new_model(str(epc))
+    # Start from the tables EPC so referenced objects are present
+    import shutil
+    shutil.copy2(tables_epc, epc)
+    # Also copy the HDF5 file if present
+    tables_h5 = tables_epc.with_suffix(".epc.h5")
+    if not tables_h5.exists():
+        tables_h5 = tables_epc.with_name(tables_epc.stem + ".h5")
+    epc_h5 = epc.with_suffix(".epc.h5")
+    if not epc_h5.exists():
+        epc_h5 = epc.with_name(epc.stem + ".h5")
+    if tables_h5.exists():
+        shutil.copy2(tables_h5, epc_h5)
+
+    model = rq.Model(str(epc))
 
     tmpl = _add_activity_template(
         model,
@@ -654,14 +658,14 @@ def build_activity_epc(params_uuid, raw_vol_uuid, stat_vol_uuid) -> pathlib.Path
         act_uuid=ACT_UUID,
         input_ref={
             "key": "InputParameters",
-            "title": "Drogon Valysar Input Parameters",
+            "title": "Drogon Valysar - Input Parameters (per realisation)",
             "uuid": params_uuid,
             "content_type": "obj_Grid2dRepresentation",
         },
         process_title="RMS DecisionExample - Drogon Valysar (3 realisations: Base / Low / High)",
         output_ref={
             "key": "OutputVolumes",
-            "title": "Drogon Valysar RAW Volumes",
+            "title": "Drogon Valysar - Reservoir Estimated Volumes (RAW, per realisation)",
             "uuid": raw_vol_uuid,
             "content_type": "obj_Grid2dRepresentation",
         },
@@ -681,7 +685,7 @@ def build_activity_epc(params_uuid, raw_vol_uuid, stat_vol_uuid) -> pathlib.Path
     _add_activity_param_ref(
         act_node,
         "OutputParameters",
-        ref_title="Drogon Valysar Input Parameters",
+        ref_title="Drogon Valysar - Input Parameters (per realisation)",
         ref_uuid=params_uuid,
         ref_content_type="obj_Grid2dRepresentation",
     )
@@ -689,7 +693,7 @@ def build_activity_epc(params_uuid, raw_vol_uuid, stat_vol_uuid) -> pathlib.Path
     _add_activity_param_ref(
         act_node,
         "ReportTable",
-        ref_title="Drogon Valysar Statistical Volumes",
+        ref_title="Drogon Valysar - Reservoir Estimated Volumes (statistics)",
         ref_uuid=stat_vol_uuid,
         ref_content_type="obj_Grid2dRepresentation",
     )

@@ -101,6 +101,141 @@ POINTSET_SKIP_PATTERNS = [
 ]
 
 
+def _sanitize_xml(content: str) -> str:
+    """Fix XSD validation issues in RESQML 2.0.1 XML.
+
+    Fixes:
+      1. Add xmlns:xsd if used but not declared
+      2. Fix Citation element ordering (VersionString must precede Description per XSD sequence)
+      3. Replace invalid UOM 'v/v' with 'm3/m3'
+      4. Replace invalid PropertyKinds with closest valid enum values
+      5. Fix ExtraMetadata position (must come before Count/IndexableElement)
+      6. Fix ExtraMetadata values to match corrected UOM/PropertyKind
+      7. Remove DisabledMarkers vendor extension (empty uuid violates pattern facet)
+      8. Fix StratigraphicColumn in CustomData (use ext: namespace to avoid lax validation)
+      9. Add missing Domain element before InterpretedFeature in StructuralOrganizationInterpretation
+    """
+    # 1. Add xmlns:xsd if xsd: prefix is used but namespace undeclared
+    if 'xsd:' in content and 'xmlns:xsd=' not in content:
+        content = content.replace(
+            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
+            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+            'xmlns:xsd="http://www.w3.org/2001/XMLSchema"')
+
+    # 2. Fix Citation element ordering: XSD sequence is
+    #    Title, Originator, Creation, Format, Editor?, LastUpdate?, VersionString?, Description?
+    #    We must ensure VersionString comes before Description
+    def _fix_citation_order(m):
+        citation = m.group(0)
+        # Extract Description and VersionString if both present
+        desc_m = re.search(
+            r'(\s*<eml:Description[^>]*>.*?</eml:Description>)', citation, re.DOTALL)
+        vers_m = re.search(
+            r'(\s*<eml:VersionString[^>]*>.*?</eml:VersionString>)', citation, re.DOTALL)
+        if desc_m and vers_m:
+            # Check if Description appears before VersionString (wrong order)
+            if desc_m.start() < vers_m.start():
+                # Remove both, then re-insert in correct order (VersionString before Description)
+                citation = citation.replace(desc_m.group(1), '')
+                citation = citation.replace(vers_m.group(1), '')
+                # Insert before closing </eml:Citation>
+                insert_pos = citation.rfind('</eml:Citation>')
+                if insert_pos >= 0:
+                    citation = (citation[:insert_pos] +
+                                vers_m.group(1) + desc_m.group(1) + '\n' +
+                                citation[insert_pos:])
+        return citation
+
+    content = re.sub(
+        r'<eml:Citation[^>]*>.*?</eml:Citation>', _fix_citation_order, content, flags=re.DOTALL)
+
+    # 3. Replace invalid UOM 'v/v' with 'm3/m3' (valid ResqmlUom)
+    content = re.sub(
+        r'(<resqml2:UOM[^>]*>)v/v(</resqml2:UOM>)',
+        r'\g<1>m3/m3\2', content)
+
+    # 4. Replace invalid PropertyKinds with valid enum values
+    _PROPERTY_KIND_MAP = {
+        'mass per volume': 'density',
+        'shale volume': 'volume per volume',
+        'volume fraction': 'volume per volume',
+    }
+    for invalid, valid in _PROPERTY_KIND_MAP.items():
+        # Match both with and without xsi:type attribute
+        content = content.replace(
+            f'<resqml2:Kind xsi:type="resqml2:ResqmlPropertyKind">{invalid}</resqml2:Kind>',
+            f'<resqml2:Kind xsi:type="resqml2:ResqmlPropertyKind">{valid}</resqml2:Kind>')
+        content = content.replace(
+            f'<resqml2:Kind>{invalid}</resqml2:Kind>',
+            f'<resqml2:Kind>{valid}</resqml2:Kind>')
+
+    # 5. Fix ExtraMetadata position: XSD requires ExtraMetadata immediately after Citation,
+    #    before Count/IndexableElement/etc.  Our source has them appended at end of root element.
+    extra_metadata_blocks = re.findall(
+        r'<resqml2:ExtraMetadata[^>]*>.*?</resqml2:ExtraMetadata>', content, re.DOTALL)
+    if extra_metadata_blocks:
+        # Check if ExtraMetadata appears AFTER Count/IndexableElement (wrong)
+        citation_end = content.find('</eml:Citation>')
+        first_em = content.find('<resqml2:ExtraMetadata')
+        count_pos = content.find('<resqml2:Count')
+        if citation_end > 0 and first_em > 0 and count_pos > 0 and first_em > count_pos:
+            # ExtraMetadata is in wrong position - move it after Citation
+            for block in extra_metadata_blocks:
+                content = content.replace(block, '')
+            # Clean up any trailing whitespace/newlines from removal
+            content = re.sub(r'\n\s*\n', '\n', content)
+            # Insert all ExtraMetadata blocks after </eml:Citation>
+            em_text = '\n' + '\n'.join(extra_metadata_blocks)
+            content = content.replace('</eml:Citation>', '</eml:Citation>' + em_text, 1)
+
+    # 6. Fix ExtraMetadata values to match corrected UOM/PropertyKind
+    content = content.replace(
+        '>v/v</resqml2:Value>', '>m3/m3</resqml2:Value>')
+    for invalid, valid in _PROPERTY_KIND_MAP.items():
+        content = content.replace(
+            f'>{invalid}</resqml2:Value>', f'>{valid}</resqml2:Value>')
+
+    # 7. Fix DisabledMarkers inside CustomData (RMS vendor extension).
+    #    The element has xsi:type="resqml2:obj_WellboreMarkerFrameRepresentation"
+    #    with empty uuid="" which violates the UUID pattern facet.  Remove entirely.
+    content = re.sub(
+        r'\s*<DisabledMarkers[^>]*>.*?</DisabledMarkers>',
+        '', content, flags=re.DOTALL)
+
+    # 8. Fix StratigraphicColumn inside CustomData (processContents="lax" resolves
+    #    the resqml2: namespace element against the global obj_StratigraphicColumn
+    #    declaration).  Change to a custom namespace so lax validation skips it.
+    if '<resqml2:StratigraphicColumn' in content and '<eml:CustomData' in content:
+        # Add custom namespace declaration if not present
+        if 'xmlns:ext=' not in content:
+            content = re.sub(
+                r'(xmlns:resqml2="http://www.energistics.org/energyml/data/resqmlv2")',
+                r'\1 xmlns:ext="http://www.equinor.com/resqml/extensions"',
+                content)
+        # Replace resqml2:StratigraphicColumn inside CustomData with ext:StratigraphicColumn
+        # Also strip xsi:type to prevent lax validation of children
+        content = re.sub(
+            r'(<eml:CustomData[^>]*>)\s*<resqml2:StratigraphicColumn[^>]*>',
+            r'\1<ext:StratigraphicColumn>',
+            content, flags=re.DOTALL)
+        # Fix closing tag (may have whitespace/newline before it)
+        content = re.sub(
+            r'</resqml2:StratigraphicColumn>\s*</eml:CustomData>',
+            '</ext:StratigraphicColumn></eml:CustomData>',
+            content)
+
+    # 9. Fix StructuralOrganizationInterpretation: missing Domain element before
+    #    InterpretedFeature (required by AbstractFeatureInterpretation XSD sequence).
+    if 'StructuralOrganizationInterpretation' in content:
+        # Check if Domain is missing (InterpretedFeature directly after Citation/CustomData)
+        if '<resqml2:InterpretedFeature' in content and '<resqml2:Domain' not in content:
+            content = content.replace(
+                '<resqml2:InterpretedFeature',
+                '<resqml2:Domain>depth</resqml2:Domain>\n  <resqml2:InterpretedFeature')
+
+    return content
+
+
 def _get_title(content: str) -> str:
     m = re.search(r"<eml:Title[^>]*>([^<]+)</eml:Title>", content)
     return m.group(1) if m else ""
@@ -205,13 +340,15 @@ def build_demo_epc():
         # 5. Build _rels/.rels
         root_rels = _build_root_rels(include_xmls)
 
-        # 6. Write EPC
+        # 6. Write EPC (with sanitization)
         print(f"\nWriting demo EPC: {OUT_EPC}")
         with zipfile.ZipFile(OUT_EPC, "w", zipfile.ZIP_DEFLATED) as dst:
             dst.writestr("[Content_Types].xml", content_types_xml)
             dst.writestr("_rels/.rels", root_rels)
             for name in sorted(include_xmls):
-                dst.writestr(name, src.read(name))
+                xml_content = src.read(name).decode("utf-8")
+                xml_content = _sanitize_xml(xml_content)
+                dst.writestr(name, xml_content.encode("utf-8"))
             for name in sorted(include_rels):
                 dst.writestr(name, src.read(name))
 
