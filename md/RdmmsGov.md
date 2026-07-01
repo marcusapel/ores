@@ -1,6 +1,6 @@
 # Reservoir DDMS as a DDMS for RESQML versus pure Array store
 
-## 1. Purpose
+## 1. Summary
 
 This document explains why Reservoir DDMS, or RDDMS, should not be reduced to an array store while RESQML objects are broken out into OSDU WKS records in the core catalog.
 
