@@ -405,73 +405,6 @@ Rules:
 
 ---
 
-## 8. Target Architecture
-
-```mermaid
-flowchart TD
-  %% Authoring / SoE tools
-  OW["OpenWorks / DecisionSpace<br/>Interpretation projects"]
-  RMS["Petrel / RMS<br/>Geomodelling"]
-  FMU["FMU / ERT<br/>Uncertainty workflows"]
-
-  %% Enterprise authoritative systems
-  SDMA["SDMA / Enterprise SoR<br/>Wells · Wellbores · Reservoirs · Stratigraphy"]
-  WDDMS["Wellbore DDMS<br/>Trajectories · Logs · Markers"]
-  SEIS["Seismic DDMS<br/>Seismic volumes · Bin grids"]
-  REF["Enterprise reference data<br/>CRS · Units · Reference values"]
-
-  %% RDDMS
-  WIP["RDDMS WIP dataspaces<br/>Mutable model workspaces"]
-  SNAP["RDDMS locked snapshots<br/>v1 · v2 · gate evidence"]
-  RSOR["RDDMS model SoR dataspaces<br/>Curated reservoir model state"]
-
-  %% Catalog / governance
-  CAT["OSDU Catalog / Search<br/>WPC summaries · DDMSDatasets links"]
-  CP["CollaborationProject<br/>Namespace · ACL · lifecycle"]
-  ACT["Activity<br/>Provenance · version proxy"]
-  PC["PersistedCollection<br/>Frozen gate evidence"]
-  BD["BusinessDecision<br/>Gate approval · risk · evidence"]
-
-  %% Results / external stores
-  SUMO["Sumo / results store<br/>Raw FMU ensemble results"]
-
-  %% SoE writes
-  OW -->|"export interpretations, picks, surfaces"| WIP
-  RMS -->|"write grids, properties, frameworks"| WIP
-  FMU -->|"static model objects / selected realizations"| WIP
-  FMU -->|"raw ensemble results"| SUMO
-
-  %% References, not copies
-  SDMA -.->|"reference only<br/>stable IDs / versions"| WIP
-  WDDMS -.->|"reference or snapshot<br/>trajectories, logs, markers"| WIP
-  SEIS -.->|"reference seismic context"| WIP
-  REF -.->|"reference CRS, units, ref values"| WIP
-
-  %% Model lifecycle
-  WIP -->|"clone + lock"| SNAP
-  SNAP -->|"publish approved model state"| RSOR
-
-  %% Catalog sync
-  WIP -->|"manifest / summary records"| CAT
-  SNAP -->|"DDMSDatasets[] links"| CAT
-  RSOR -->|"published WPC links"| CAT
-  SUMO -->|"promoted statistics / selected outputs"| CAT
-
-  %% Governance
-  CP -.->|"governs namespace and ACL"| WIP
-  CP -.->|"governs published model state"| RSOR
-  ACT -.->|"records inputs, outputs, changes"| CAT
-  PC -.->|"freezes gate evidence"| CAT
-  BD -.->|"approves gate and references evidence"| CAT
-
-  %% Provenance links
-  ACT -.-> WIP
-  ACT -.-> SNAP
-  BD -.-> PC
-```
-
----
-
 ## 9. Internal RDDMS Service Architecture
 
 ```mermaid
@@ -551,7 +484,7 @@ flowchart LR
 
 | From | To | Pattern | Ownership rule |
 |---|---|---|---|
-| SDMA | RDDMS | Reference only | SDMA remains SoR |
+| SDMA | RDDMS | Reference only | SDMA as current SoR |
 | Wellbore DDMS | RDDMS | Reference or snapshot | Wellbore DDMS remains SoR |
 | Enterprise reference data | RDDMS | Reference only | Enterprise catalog remains SoR |
 | Seismic DDMS | RDDMS | Reference seismic context | Seismic DDMS remains SoR |
