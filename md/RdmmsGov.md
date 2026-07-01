@@ -32,7 +32,7 @@ The recommended separation is:
 
 ---
 
-## 3. Design Principles
+## 2. Design Principles
 
 | # | Principle | Rationale |
 |---|---|---|
@@ -52,9 +52,9 @@ The recommended separation is:
 
 ---
 
-## 4. Why “Arrays in RDDMS, RESQML Objects in Catalog” Is Not Enough
+## 3 Why “Arrays in RDDMS, RESQML Objects in Catalog” Is Not Enough
 
-### 4.1 It separates values from meaning
+### 3.1 It separates values from meaning
 
 A numeric array is rarely meaningful by itself.
 
@@ -71,7 +71,7 @@ That makes consumption slower, more fragile, and less reproducible.
 
 ---
 
-### 4.2 It breaks the RESQML object graph
+### 3.2 It breaks the RESQML object graph
 
 RESQML objects are designed to reference each other as a graph:
 
@@ -102,7 +102,7 @@ This is not a flat catalog problem. It is a domain graph problem.
 
 ---
 
-### 4.3 Catalog search is not a reservoir model query engine
+### 3.3 Catalog search is not a reservoir model query engine
 
 Core catalog/search is appropriate for questions such as:
 
@@ -126,7 +126,7 @@ Those require RESQML-aware indexing, relationship traversal, and domain validati
 
 ---
 
-### 4.4 It weakens transactions and consistency
+### 3.4 It weakens transactions and consistency
 
 Reservoir model updates often involve coordinated writes:
 
@@ -157,7 +157,7 @@ RDDMS should provide transaction boundaries so that model updates are committed 
 
 ---
 
-### 4.5 It weakens reproducibility
+### 3.5 It weakens reproducibility
 
 A model version is reproducible only if the complete dependency context can be restored:
 
@@ -184,11 +184,11 @@ A proper RDDMS dataspace should be able to answer:
 
 ---
 
-## 5. What a Proper RDDMS Should Own
+## 4. What a Proper RDDMS Should Own
 
 RDDMS should own the authoritative reservoir model state.
 
-### 5.1 RESQML model graph
+### 4.1 RESQML model graph
 
 RDDMS should manage:
 
@@ -209,7 +209,7 @@ RDDMS should manage:
 
 ---
 
-### 5.2 Arrays and binary payloads
+### 4.2 Arrays and binary payloads
 
 RDDMS should manage or provide access to:
 
@@ -227,7 +227,7 @@ The important point is not that every byte must physically live in the same data
 
 ---
 
-### 5.3 Topology and relational structures
+### 4.3 Topology and relational structures
 
 RDDMS should index and query structures such as:
 
@@ -245,7 +245,7 @@ This is where a relational or graph-style backend, for example PostgreSQL-style 
 
 ---
 
-### 5.4 Semantic context
+### 4.4 Semantic context
 
 RDDMS should preserve model-specific semantic context:
 
@@ -262,7 +262,7 @@ RDDMS should preserve model-specific semantic context:
 
 ---
 
-## 6. What RDDMS Should Not Own by Default
+## 5. What RDDMS Should Not Own by Default
 
 RDDMS should not become a second authoritative store for shared enterprise or cross-domain master data.
 
@@ -287,7 +287,7 @@ RDDMS should reference, snapshot, derive, or copy these objects according to exp
 
 ---
 
-## 7. Responsibility Model Across Systems
+## 6. Responsibility Model Across Systems
 
 | Layer | Responsibility | Examples | Ownership rule |
 |---|---|---|---|
@@ -301,9 +301,9 @@ RDDMS should reference, snapshot, derive, or copy these objects according to exp
 
 ---
 
-## 8. Reference, Snapshot, Derive, Copy, or Cache
+## 7. Reference, Snapshot, Derive, Copy, or Cache
 
-### 8.1 Reference only
+### 7.1 Reference only
 
 Use for master and reference data that should remain authoritative elsewhere.
 
@@ -328,7 +328,7 @@ RDDMS stores:
 
 ---
 
-### 8.2 Snapshot at model time
+### 7.2 Snapshot at model time
 
 Use when a model must be reproducible exactly as built.
 
@@ -351,7 +351,7 @@ RDDMS stores:
 
 ---
 
-### 8.3 Derived-object ownership
+### 7.3 Derived-object ownership
 
 Use when the project creates reservoir-model-specific derived objects.
 
@@ -370,7 +370,7 @@ RDDMS owns these because they are part of the reservoir model, not the original 
 
 ---
 
-### 8.4 Controlled copy
+### 7.4 Controlled copy
 
 Use only for explicit data-room, partner, publication, or regulatory boundaries.
 
@@ -405,7 +405,7 @@ Rules:
 
 ---
 
-## 9. Target Architecture
+## 8. Target Architecture
 
 ```mermaid
 flowchart TD
@@ -472,7 +472,7 @@ flowchart TD
 
 ---
 
-## 10. Internal RDDMS Service Architecture
+## 9. Internal RDDMS Service Architecture
 
 ```mermaid
 flowchart LR
@@ -547,7 +547,7 @@ flowchart LR
 
 ---
 
-## 11. Data-Flow Summary
+## 10. Data-Flow Summary
 
 | From | To | Pattern | Ownership rule |
 |---|---|---|---|
@@ -565,9 +565,9 @@ flowchart LR
 
 ---
 
-## 12. Operating Model
+## 11. Operating Model
 
-### 12.1 WIP dataspaces
+### 11.1 WIP dataspaces
 
 Project teams work in isolated mutable RDDMS dataspaces.
 
@@ -596,7 +596,7 @@ They should not create new authoritative wells, official trajectories, enterpris
 
 ---
 
-### 12.2 Locked snapshots
+### 11.2 Locked snapshots
 
 At project gates or major modelling milestones, WIP content is cloned or copied into immutable snapshots.
 
@@ -620,7 +620,7 @@ Snapshots contain:
 
 ---
 
-### 12.3 Model SoR dataspaces
+### 11.3 Model SoR dataspaces
 
 Approved model content can be promoted to curated model SoR dataspaces.
 
@@ -635,7 +635,7 @@ These are not enterprise master-data stores for wells or logs. They are curated 
 
 ---
 
-### 12.4 OSDU catalog
+### 11.4 OSDU catalog
 
 The OSDU catalog should contain:
 
@@ -651,7 +651,7 @@ The catalog should not become the authoritative store for the internal RESQML gr
 
 ---
 
-## 13. Versioning Strategy
+## 12. Versioning Strategy
 
 RDDMS dataspaces may be mutable and may not provide native version history in the way a source-control system would. A practical versioning strategy combines locked dataspaces, Activity records, lifecycle events, and persisted gate collections.
 
@@ -677,7 +677,7 @@ project-x/v3
 
 ---
 
-### 13.2 Activity as version record
+### 12.2 Activity as version record
 
 Each significant model update should create an Activity record acting as a version and provenance record.
 
@@ -713,7 +713,7 @@ Example content:
 
 ---
 
-### 13.3 CollaborationProject lifecycle events
+### 12.3 CollaborationProject lifecycle events
 
 Lifecycle events provide a human-readable changelog.
 
@@ -750,7 +750,7 @@ Lifecycle events provide a human-readable changelog.
 
 ---
 
-### 13.4 Gate evidence snapshots
+### 12.4 Gate evidence snapshots
 
 A `CollaborationProjectCollection` can represent a living trusted set. For a decision gate, use a `PersistedCollection` to freeze the exact evidence used for the decision.
 
@@ -767,7 +767,7 @@ Rule:
 
 ---
 
-## 14. Publish Workflow
+## 13. Publish Workflow
 
 ```mermaid
 sequenceDiagram
@@ -803,9 +803,9 @@ Locked snapshots are immutable. Recovery means repointing catalog WPCs and proje
 
 ---
 
-## 15. ACL, Legal, and Dataspace Governance
+## 14. ACL, Legal, and Dataspace Governance
 
-### 15.1 Dataspace and ACL pattern
+### 14.1 Dataspace and ACL pattern
 
 | Dataspace | Lock state | Owners | Viewers |
 |---|---|---|---|
@@ -814,7 +814,7 @@ Locked snapshots are immutable. Recovery means repointing catalog WPCs and proje
 | Model SoR | Locked | Asset or field owners | Enterprise or approved project viewers |
 | JV/shared dataspace | Controlled | JV contributors | Partner data-room viewers |
 
-### 15.2 Rules
+### 14.2 Rules
 
 - Dataspace ACL is the data-room boundary.
 - Sharing should normally be access grant, not data copy.
@@ -825,9 +825,9 @@ Locked snapshots are immutable. Recovery means repointing catalog WPCs and proje
 
 ---
 
-## 16. Practical Domain Rules
+## 15. Practical Domain Rules
 
-### 16.1 Wells and wellbores
+### 15.1 Wells and wellbores
 
 Projects do not create authoritative wells or wellbores in RDDMS.
 
@@ -849,7 +849,7 @@ RDDMS should not store:
 
 ---
 
-### 16.2 Logs
+### 15.2 Logs
 
 Raw and governed logs should remain in Wellbore DDMS or the appropriate enterprise well data store.
 
@@ -863,7 +863,7 @@ RDDMS may store:
 
 ---
 
-### 16.3 Stratigraphy
+### 15.3 Stratigraphy
 
 Enterprise stratigraphic columns should remain centrally governed.
 
@@ -878,7 +878,7 @@ Project-local stratigraphy should only exist as proposal or WIP interpretation, 
 
 ---
 
-### 16.4 CRS and units
+### 15.4 CRS and units
 
 CRS and units should be referenced from enterprise reference data.
 
@@ -886,7 +886,7 @@ RDDMS may cache resolved CRS or unit attributes for performance, but cached valu
 
 ---
 
-### 16.5 FMU and ensembles
+### 15.5 FMU and ensembles
 
 Raw FMU ensemble results should normally stay in a fit-for-purpose results store.
 
@@ -902,9 +902,9 @@ OSDU catalog should expose promoted case or ensemble summaries and link to both 
 
 ---
 
-## 17. Pros and Cons
+## 16. Pros and Cons
 
-### 17.1 Arrays-only RDDMS, RESQML objects in catalog
+### 16.1 Arrays-only RDDMS, RESQML objects in catalog
 
 #### Pros
 
@@ -932,7 +932,7 @@ OSDU catalog should expose promoted case or ensemble summaries and link to both 
 
 ---
 
-### 17.2 RDDMS as proper DDMS
+### 16.2 RDDMS as proper DDMS
 
 #### Pros
 
@@ -959,7 +959,7 @@ OSDU catalog should expose promoted case or ensemble summaries and link to both 
 
 ---
 
-## 18. When Simpler Patterns Are Acceptable
+## 17. When Simpler Patterns Are Acceptable
 
 Some use cases may not require a full RDDMS consumption-zone model.
 
@@ -976,7 +976,7 @@ But for geomodelling, where values depend on topology, relationships, CRS, units
 
 ---
 
-## 19. Risks and Mitigations
+## 18. Risks and Mitigations
 
 | Risk | Mitigation |
 |---|---|
@@ -993,7 +993,7 @@ But for geomodelling, where values depend on topology, relationships, CRS, units
 
 ---
 
-## 20. Implementation Checklist
+## 19. Implementation Checklist
 
 ### Project setup
 
@@ -1034,7 +1034,7 @@ But for geomodelling, where values depend on topology, relationships, CRS, units
 
 ---
 
-## 21. Summary
+## 20. Summary
 
 RDDMS should not be reduced to an array store.
 
